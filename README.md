@@ -6,9 +6,11 @@
 > After 2 years, each version automatically converts to the MIT license.
 > For zero-ops managed hosting with real-time abuse intelligence, use [scopeblind.com](https://scopeblind.com).
 
-**Deploy in 2 minutes. See what bots are doing to your API.**
+**Drop-in gateway protection for public APIs using ScopeBlind JWT verification.**
 
-A Cloudflare Worker that sits in front of your API as a reverse proxy. Starts in **shadow mode** — measures bot traffic without blocking anything. When you're ready, flip to enforcement.
+A Cloudflare Worker that sits in front of your API as a reverse proxy. Starts in **observe mode** — measures repeat abuse without blocking anything. When you're ready, flip to enforcement.
+
+> The browser script starts observation and access decisions. The gateway is the real security boundary for protected APIs.
 
 ## Quick Start
 
@@ -31,13 +33,13 @@ That's it. No API keys, no signup. Your gateway is live at `scopeblind-gateway.<
 
 Point your clients to the gateway URL instead of your origin. All traffic flows through, and you get shadow mode telemetry immediately.
 
-## What Shadow Mode Does
+## What Observe Mode Does
 
-Shadow mode is the default. It **never blocks anything** — it just measures.
+Observe mode is the default. It **never blocks anything** — it just measures.
 
 Every state-changing request (POST, PUT, DELETE, PATCH) is checked for a ScopeBlind proof header. The gateway logs what would happen in enforcement mode:
 
-| Scenario | Shadow Mode | Enforce Mode |
+| Scenario | Observe Mode | Enforce Mode |
 |----------|-------------|--------------|
 | No proof header | ✅ Forward + log `would-block` | ❌ 401 Rejected |
 | Invalid proof | ✅ Forward + log `would-block` | ❌ 429 Rejected |
@@ -46,7 +48,7 @@ Every state-changing request (POST, PUT, DELETE, PATCH) is checked for a ScopeBl
 
 GET requests always pass through — they're never checked.
 
-## Reading Shadow Mode Logs
+## Reading Observe Mode Logs
 
 ```bash
 # Stream logs from your deployed worker
@@ -59,7 +61,7 @@ Every logged event includes:
 - `path`: Request path
 - `ts`: ISO timestamp
 
-After 7 days, you'll have real data showing exactly how much unverified traffic hits your API.
+After 7 days, you'll have real data showing exactly how much unprotected traffic hits your API.
 
 ## Health Check
 
@@ -85,7 +87,7 @@ All config lives in `wrangler.toml`:
 |----------|---------|-------------|
 | `ORIGIN_URL` | (required) | Your backend API URL |
 | `SCOPEBLIND_VERIFIER_URL` | (required) | Your tenant-specific verify URL (e.g. `https://api.scopeblind.com/v/abc123/verify`) |
-| `SHADOW_MODE` | `"true"` | `"true"` = measure only, `"false"` = enforce |
+| `SHADOW_MODE` | `"true"` | `"true"` = observe only, `"false"` = enforce |
 | `PROTECTED_METHODS` | `"POST,PUT,DELETE,PATCH"` | Comma-separated HTTP methods to check |
 | `FALLBACK_MODE` | `"open"` | `"open"` = allow if verifier down, `"closed"` = block |
 
@@ -93,7 +95,7 @@ No secrets needed — your tenant slug in the verifier URL identifies you.
 
 ## Switching to Enforcement
 
-When your shadow mode data confirms the traffic patterns, flip to enforcement:
+When your observe mode data confirms the traffic patterns, flip to enforcement:
 
 ```toml
 # wrangler.toml
@@ -124,7 +126,7 @@ Client → Cloudflare Edge → [ScopeBlind Gateway] → Your API
 Headers forwarded to your origin:
 - `X-ScopeBlind-Mode`: `shadow` or `enforce`
 - `X-ScopeBlind-Verified`: `true`, `failed`, `missing`, `skipped`, or `error`
-- `X-ScopeBlind-Action`: `would-block` (shadow mode only)
+- `X-ScopeBlind-Action`: `would-block` (observe mode only)
 - `X-ScopeBlind-Remaining`: Remaining quota for this proof
 
 ## License
