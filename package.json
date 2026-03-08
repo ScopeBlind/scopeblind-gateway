@@ -2,14 +2,18 @@
   "name": "scopeblind-gateway",
   "version": "1.0.0",
   "private": true,
-  "description": "ScopeBlind Gateway — Cloudflare Worker reverse proxy with shadow mode",
+  "description": "ScopeBlind Gateway — Cloudflare Worker gateway for secure-mode JWT enforcement on public APIs",
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "check": "tsc --noEmit",
     "tail": "wrangler tail --format json | jq 'select(.logs[]?.message | contains(\"_scopeblind\"))'"
   },
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
+  "dependencies": {
+    "jose": "^6.1.0"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240923.0",
     "typescript": "^5.5.0",

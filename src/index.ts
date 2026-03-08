@@ -1,34 +1,47 @@
 /**
  * ScopeBlind Gateway — Cloudflare Worker Reverse Proxy
  *
- * Sits in front of your API. Verifies cryptographic proofs at the edge.
- * Start in shadow mode (measure only), then flip to enforcement when ready.
+ * Enforces ScopeBlind pass tokens at the edge for strict protection on public APIs.
+ * Start in observe mode (measure only), then flip to enforcement when ready.
  *
- * Shadow mode: logs what WOULD be blocked, forwards everything to origin.
- * Enforce mode: blocks requests that fail verification, only forwards valid traffic.
+ * Observe mode: logs what WOULD be blocked, forwards everything to origin.
+ * Enforce mode: blocks protected requests that do not present a valid pass token.
  */
+
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
 
 export interface Env {
   ORIGIN_URL: string;
-  SCOPEBLIND_VERIFIER_URL: string; // e.g. https://api.scopeblind.com/v/abc123/verify — includes tenant ID, no API key needed
-  SHADOW_MODE: string;       // "true" | "false"
-  PROTECTED_METHODS: string; // comma-separated: "POST,PUT,DELETE,PATCH"
-  FALLBACK_MODE: string;     // "open" | "closed"
+  SCOPEBLIND_AUDIENCE: string;   // Your tenant slug (JWT aud)
+  SCOPEBLIND_JWKS_URL?: string;  // Defaults to production JWKS
+  OBSERVE_MODE?: string;         // "true" | "false"
+  SHADOW_MODE?: string;          // Legacy alias
+  PROTECTED_METHODS?: string;    // comma-separated: "POST,PUT,DELETE,PATCH"
+  FALLBACK_MODE?: string;        // "open" | "closed"
 }
 
-interface VerifyResult {
-  ok?: boolean;
-  verified?: boolean;
-  remaining?: number;
-  error?: string;
-  receipt?: any;
-  quota_exceeded?: boolean;
-  mode?: string;
-  upgrade_url?: string;
+interface ScopeBlindPayload extends JWTPayload {
+  agent?: boolean;
+  sub?: string;
+  jti?: string;
 }
 
-// Shadow mode telemetry — logged to console (visible in wrangler tail / Workers Logs)
-function logShadow(action: string, data: Record<string, any>) {
+const DEFAULT_JWKS_URL = 'https://api.scopeblind.com/.well-known/jwks.json';
+const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+
+function getJWKS(url: string) {
+  if (!jwksCache.has(url)) {
+    jwksCache.set(url, createRemoteJWKSet(new URL(url)));
+  }
+  return jwksCache.get(url)!;
+}
+
+function isObserveMode(env: Env) {
+  const raw = env.OBSERVE_MODE ?? env.SHADOW_MODE ?? 'true';
+  return raw === 'true';
+}
+
+function logObserve(action: string, data: Record<string, unknown>) {
   console.log(JSON.stringify({
     _scopeblind: true,
     action,
@@ -37,209 +50,206 @@ function logShadow(action: string, data: Record<string, any>) {
   }));
 }
 
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-    const isShadow = env.SHADOW_MODE === "true";
-    const protectedMethods = (env.PROTECTED_METHODS || "POST,PUT,DELETE,PATCH")
-      .split(",")
-      .map((m) => m.trim().toUpperCase());
+function corsHeaders(request: Request): HeadersInit {
+  return {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': request.headers.get('Origin') || '*',
+  };
+}
 
-    // ---------------------------------------------------------------
-    // 1. CORS Preflight
-    // ---------------------------------------------------------------
-    if (request.method === "OPTIONS") {
+function getCookie(request: Request, name: string): string | null {
+  const cookieHeader = request.headers.get('Cookie');
+  if (!cookieHeader) return null;
+
+  for (const part of cookieHeader.split(/;\s*/)) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    const key = part.slice(0, idx).trim();
+    const value = part.slice(idx + 1);
+    if (key === name) return value;
+  }
+  return null;
+}
+
+function getPassToken(request: Request): { token: string | null; source: 'cookie' | 'header' | 'none' } {
+  const cookieToken = getCookie(request, 'sb_pass');
+  if (cookieToken) return { token: cookieToken, source: 'cookie' };
+
+  const headerToken = request.headers.get('X-ScopeBlind-Token');
+  if (headerToken) return { token: headerToken, source: 'header' };
+
+  return { token: null, source: 'none' };
+}
+
+function stripCookie(headers: Headers, name: string) {
+  const cookieHeader = headers.get('Cookie');
+  if (!cookieHeader) return;
+
+  const filtered = cookieHeader
+    .split(/;\s*/)
+    .filter((part) => !part.startsWith(`${name}=`) && part.length > 0);
+
+  if (filtered.length === 0) {
+    headers.delete('Cookie');
+  } else {
+    headers.set('Cookie', filtered.join('; '));
+  }
+}
+
+function classifyVerifyError(error: unknown): string {
+  if (!(error instanceof Error)) return 'invalid_token';
+  const msg = error.message.toLowerCase();
+  if (msg.includes('exp')) return 'expired_token';
+  if (msg.includes('aud')) return 'invalid_audience';
+  if (msg.includes('iss')) return 'invalid_issuer';
+  if (msg.includes('signature')) return 'invalid_signature';
+  if (msg.includes('jwt')) return 'invalid_token';
+  return 'verification_failed';
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+    const observe = isObserveMode(env);
+    const protectedMethods = (env.PROTECTED_METHODS || 'POST,PUT,DELETE,PATCH')
+      .split(',')
+      .map((m) => m.trim().toUpperCase())
+      .filter(Boolean);
+    const jwksUrl = env.SCOPEBLIND_JWKS_URL || DEFAULT_JWKS_URL;
+
+    // 1. CORS preflight
+    if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
-          "Access-Control-Allow-Origin": request.headers.get("Origin") || "*",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-          "Access-Control-Allow-Headers":
-            "Content-Type, Authorization, X-Proof, X-ScopeBlind-Proof",
-          "Access-Control-Max-Age": "86400",
+          'Access-Control-Allow-Origin': request.headers.get('Origin') || '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-ScopeBlind-Token, DPoP',
+          'Access-Control-Max-Age': '86400',
         },
       });
     }
 
-    // ---------------------------------------------------------------
-    // 2. Health check (for monitoring)
-    // ---------------------------------------------------------------
-    if (url.pathname === "/_scopeblind/health") {
+    // 2. Health check
+    if (url.pathname === '/_scopeblind/health') {
       return Response.json({
         ok: true,
-        mode: isShadow ? "shadow" : "enforce",
+        mode: observe ? 'observe' : 'enforce',
         origin: env.ORIGIN_URL,
-        verifier: env.SCOPEBLIND_VERIFIER_URL,
+        audience: env.SCOPEBLIND_AUDIENCE,
+        jwks: jwksUrl,
       });
     }
 
-    // ---------------------------------------------------------------
-    // 3. Check if this request needs protection
-    // ---------------------------------------------------------------
-    const needsProof = protectedMethods.includes(request.method);
-    const proof =
-      request.headers.get("X-Proof") ||
-      request.headers.get("X-ScopeBlind-Proof");
-
-    // Unprotected methods (e.g., GET) — forward directly
-    if (!needsProof) {
+    // 3. Unprotected methods pass through
+    const needsToken = protectedMethods.includes(request.method.toUpperCase());
+    if (!needsToken) {
       return forwardToOrigin(request, env, url, {
-        "X-ScopeBlind-Mode": isShadow ? "shadow" : "enforce",
-        "X-ScopeBlind-Verified": "skipped",
+        'X-ScopeBlind-Mode': observe ? 'observe' : 'enforce',
+        'X-ScopeBlind-Verified': 'skipped',
       });
     }
 
-    // ---------------------------------------------------------------
-    // 4. Protected method — verify proof
-    // ---------------------------------------------------------------
-
-    // No proof provided
-    if (!proof) {
-      logShadow("no_proof", {
+    // 4. Extract pass token
+    const { token, source } = getPassToken(request);
+    if (!token) {
+      logObserve('missing_token', {
         method: request.method,
         path: url.pathname,
-        ip: request.headers.get("CF-Connecting-IP") || "unknown",
+        ip: request.headers.get('CF-Connecting-IP') || 'unknown',
       });
 
-      if (isShadow) {
-        // Shadow: log and forward anyway
+      if (observe) {
         return forwardToOrigin(request, env, url, {
-          "X-ScopeBlind-Mode": "shadow",
-          "X-ScopeBlind-Verified": "missing",
-          "X-ScopeBlind-Action": "would-block",
+          'X-ScopeBlind-Mode': 'observe',
+          'X-ScopeBlind-Verified': 'missing',
+          'X-ScopeBlind-Action': 'would-block',
         });
-      } else {
-        // Enforce: reject
-        return Response.json(
-          {
-            error: "proof_required",
-            message:
-              "This endpoint requires a ScopeBlind proof. Include it in the X-Proof header.",
-          },
-          {
-            status: 401,
-            headers: corsHeaders(request),
-          }
-        );
       }
-    }
 
-    // Proof provided — verify with ScopeBlind
-    let verifyResult: VerifyResult;
-    try {
-      const verifyRes = await fetch(env.SCOPEBLIND_VERIFIER_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Origin: request.headers.get("Origin") || url.origin,
+      return Response.json(
+        {
+          error: 'pass_token_required',
+          message: 'This endpoint requires a valid ScopeBlind pass token.',
         },
-        body: proof, // Already JSON string from the header
+        { status: 403, headers: corsHeaders(request) },
+      );
+    }
+
+    // 5. Verify JWT via JWKS
+    try {
+      const JWKS = getJWKS(jwksUrl);
+      const { payload } = await jwtVerify(token, JWKS, {
+        algorithms: ['EdDSA'],
+        issuer: 'scopeblind.com',
+        audience: env.SCOPEBLIND_AUDIENCE,
       });
 
-      verifyResult = (await verifyRes.json()) as VerifyResult;
-
-      // Free tier quota exceeded — verifier says to switch to shadow mode
-      // Forward the request anyway (don't break the API), but log it
-      if (verifyResult.quota_exceeded) {
-        logShadow("quota_exceeded", {
-          method: request.method,
-          path: url.pathname,
-          upgrade_url: verifyResult.upgrade_url || "",
-        });
-
-        return forwardToOrigin(request, env, url, {
-          "X-ScopeBlind-Mode": "shadow",
-          "X-ScopeBlind-Verified": "quota-exceeded",
-          "X-ScopeBlind-Action": "would-block",
-          "X-ScopeBlind-Quota": "exceeded",
-        });
-      }
-
-      if (!verifyRes.ok || (!verifyResult.ok && !verifyResult.verified)) {
-        // Verification failed (invalid proof, rate limited, etc.)
-        logShadow("verify_failed", {
-          method: request.method,
-          path: url.pathname,
-          status: verifyRes.status,
-          error: verifyResult.error || "unknown",
-          ip: request.headers.get("CF-Connecting-IP") || "unknown",
-        });
-
-        if (isShadow) {
-          return forwardToOrigin(request, env, url, {
-            "X-ScopeBlind-Mode": "shadow",
-            "X-ScopeBlind-Verified": "failed",
-            "X-ScopeBlind-Action": "would-block",
-            "X-ScopeBlind-Error": verifyResult.error || "verification_failed",
-          });
-        } else {
-          return Response.json(
-            {
-              error: "rate_limited",
-              message: "Request quota exceeded or proof invalid.",
-              details: verifyResult.error,
-            },
-            {
-              status: 429,
-              headers: corsHeaders(request),
-            }
-          );
-        }
-      }
-    } catch (e) {
-      // Verifier unreachable
-      logShadow("verifier_error", {
+      const claims = payload as ScopeBlindPayload;
+      logObserve('verified', {
         method: request.method,
         path: url.pathname,
-        error: e instanceof Error ? e.message : "unknown",
+        sub: claims.sub || null,
+        agent: !!claims.agent,
+        source,
       });
 
-      if (env.FALLBACK_MODE === "closed" && !isShadow) {
+      return forwardToOrigin(request, env, url, {
+        'X-ScopeBlind-Mode': observe ? 'observe' : 'enforce',
+        'X-ScopeBlind-Verified': 'true',
+        'X-ScopeBlind-Subject': claims.sub || '',
+        'X-ScopeBlind-Agent': claims.agent ? 'true' : 'false',
+        'X-ScopeBlind-Token-Source': source,
+        'X-ScopeBlind-Expires': claims.exp ? String(claims.exp) : '',
+        'X-ScopeBlind-JTI': claims.jti || '',
+      });
+    } catch (error) {
+      const reason = classifyVerifyError(error);
+
+      logObserve('invalid_token', {
+        method: request.method,
+        path: url.pathname,
+        reason,
+        source,
+        ip: request.headers.get('CF-Connecting-IP') || 'unknown',
+      });
+
+      const verifierUnavailable = reason === 'verification_failed';
+      if (verifierUnavailable && env.FALLBACK_MODE === 'closed' && !observe) {
         return Response.json(
           {
-            error: "verification_unavailable",
-            message: "Unable to verify request. Try again later.",
+            error: 'verification_unavailable',
+            message: 'Unable to verify ScopeBlind pass token. Try again later.',
           },
-          {
-            status: 503,
-            headers: corsHeaders(request),
-          }
+          { status: 503, headers: corsHeaders(request) },
         );
       }
 
-      // Fail open (or shadow mode) — forward anyway
-      return forwardToOrigin(request, env, url, {
-        "X-ScopeBlind-Mode": isShadow ? "shadow" : "enforce",
-        "X-ScopeBlind-Verified": "error",
-        "X-ScopeBlind-Action": "fallback-allow",
-      });
+      if (observe || (verifierUnavailable && env.FALLBACK_MODE !== 'closed')) {
+        return forwardToOrigin(request, env, url, {
+          'X-ScopeBlind-Mode': observe ? 'observe' : 'enforce',
+          'X-ScopeBlind-Verified': verifierUnavailable ? 'error' : 'invalid',
+          'X-ScopeBlind-Action': verifierUnavailable ? 'fallback-allow' : 'would-block',
+          'X-ScopeBlind-Error': reason,
+        });
+      }
+
+      return Response.json(
+        {
+          error: 'invalid_pass_token',
+          message: 'ScopeBlind pass token missing, invalid, expired, or not issued for this API.',
+          details: reason,
+        },
+        { status: 403, headers: corsHeaders(request) },
+      );
     }
-
-    // ---------------------------------------------------------------
-    // 5. Verification passed — forward to origin
-    // ---------------------------------------------------------------
-    logShadow("verified", {
-      method: request.method,
-      path: url.pathname,
-      remaining: verifyResult.remaining,
-    });
-
-    return forwardToOrigin(request, env, url, {
-      "X-ScopeBlind-Mode": isShadow ? "shadow" : "enforce",
-      "X-ScopeBlind-Verified": "true",
-      "X-ScopeBlind-Remaining": String(verifyResult.remaining ?? ""),
-    });
   },
 };
-
-// ---------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------
 
 async function forwardToOrigin(
   request: Request,
   env: Env,
   url: URL,
-  extraHeaders: Record<string, string>
+  extraHeaders: Record<string, string>,
 ): Promise<Response> {
   const origin = new URL(env.ORIGIN_URL);
   url.hostname = origin.hostname;
@@ -247,13 +257,15 @@ async function forwardToOrigin(
   url.port = origin.port;
 
   const headers = new Headers(request.headers);
-  // Add ScopeBlind metadata headers for the origin to read
   for (const [k, v] of Object.entries(extraHeaders)) {
     if (v) headers.set(k, v);
   }
-  // Remove proof header before forwarding (origin doesn't need it)
-  headers.delete("X-Proof");
-  headers.delete("X-ScopeBlind-Proof");
+
+  // ScopeBlind is the security boundary here — do not leak token inputs to origin.
+  headers.delete('X-ScopeBlind-Token');
+  headers.delete('X-Proof');
+  headers.delete('X-ScopeBlind-Proof');
+  stripCookie(headers, 'sb_pass');
 
   try {
     const response = await fetch(
@@ -261,31 +273,17 @@ async function forwardToOrigin(
         method: request.method,
         headers,
         body: request.body,
-        redirect: "follow",
-      })
+        redirect: 'follow',
+      }),
     );
 
     const res = new Response(response.body, response);
-    // Add CORS headers
-    res.headers.set(
-      "Access-Control-Allow-Origin",
-      request.headers.get("Origin") || "*"
-    );
+    res.headers.set('Access-Control-Allow-Origin', request.headers.get('Origin') || '*');
     return res;
-  } catch (e) {
+  } catch {
     return Response.json(
-      { error: "upstream_error", message: "Failed to reach backend." },
-      {
-        status: 502,
-        headers: corsHeaders(request),
-      }
+      { error: 'upstream_error', message: 'Failed to reach backend.' },
+      { status: 502, headers: corsHeaders(request) },
     );
   }
-}
-
-function corsHeaders(request: Request): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": request.headers.get("Origin") || "*",
-  };
 }

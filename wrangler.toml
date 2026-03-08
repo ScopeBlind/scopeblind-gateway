@@ -3,24 +3,29 @@ main = "src/index.ts"
 compatibility_date = "2024-09-23"
 
 [vars]
-# Your backend API URL — requests will be forwarded here after verification
+# Your backend API URL — verified requests will be forwarded here.
 ORIGIN_URL = "https://your-backend-api.com"
 
-# ScopeBlind Verifier endpoint (includes your tenant ID — no API key needed)
-# You get this URL after scanning your endpoint at scopeblind.com
-SCOPEBLIND_VERIFIER_URL = "https://api.scopeblind.com/v/YOUR_SLUG/verify"
+# Your ScopeBlind tenant slug — used as the JWT audience (aud) claim.
+# Get this by scanning your endpoint at scopeblind.com.
+SCOPEBLIND_AUDIENCE = "YOUR_SLUG"
 
-# Shadow Mode (default: true)
-# "true"  = measure only — logs what WOULD be blocked, but lets everything through
-# "false" = enforce — actually blocks requests that fail verification
-SHADOW_MODE = "true"
+# Public JWKS endpoint for pass-token verification.
+SCOPEBLIND_JWKS_URL = "https://api.scopeblind.com/.well-known/jwks.json"
 
-# Which HTTP methods require proof verification
-# Default: POST, PUT, DELETE, PATCH (state-changing methods)
-# GET requests pass through unverified by default
+# Observe Mode (default: true)
+# "true"  = measure only — log what WOULD be blocked, but forward everything
+# "false" = enforce — reject requests without a valid ScopeBlind pass token
+OBSERVE_MODE = "true"
+
+# Legacy alias still supported by the worker: SHADOW_MODE
+# Prefer OBSERVE_MODE for new installs.
+
+# Which HTTP methods require pass-token verification.
+# GET requests pass through by default.
 PROTECTED_METHODS = "POST,PUT,DELETE,PATCH"
 
-# Fallback behavior when ScopeBlind verifier is unreachable
-# "open"   = allow all traffic (better for reliability)
-# "closed" = block all traffic (better for security)
+# Fallback behavior when JWKS verification is temporarily unavailable.
+# "open"   = allow traffic through (better for reliability)
+# "closed" = reject traffic (better for strict security)
 FALLBACK_MODE = "open"
