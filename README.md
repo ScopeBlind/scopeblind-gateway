@@ -22,8 +22,6 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white" />
 </p>
 
-[![protect-mcp MCP server](https://glama.ai/mcp/servers/tomjwxf/scopeblind-gateway/badges/card.svg)](https://glama.ai/mcp/servers/tomjwxf/scopeblind-gateway)
-
 ---
 
 ## protect-mcp — MCP Server Security Gateway
