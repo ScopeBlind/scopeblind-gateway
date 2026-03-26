@@ -133,6 +133,13 @@ ScopeBlind is part of a three-layer evidence infrastructure. Each layer is indep
 > After 2 years, each version converts to MIT.
 > Verification tools (`@veritasacta/verify`, `@veritasacta/protocol`) are MIT from day one.
 
+## Standards & IP
+
+- **IETF Internet-Draft**: [draft-farley-acta-signed-receipts-00](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) — Signed Decision Receipts for Machine-to-Machine Access Control
+- **Patent Status**: Australian provisional patents pending (2025-2026)
+- **OWASP**: [Agentic Top 10 coverage mapping](https://scopeblind.com/docs/owasp)
+- **Verification**: MIT-licensed — `npx @veritasacta/verify --self-test`
+
 ---
 
 <p align="center">
