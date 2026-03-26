@@ -18,9 +18,17 @@
 </p>
 
 <p align="center">
-  <img alt="License" src="https://img.shields.io/badge/license-FSL--1.1--MIT-blue.svg" />
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-green.svg" />
   <img alt="npm protect-mcp" src="https://img.shields.io/npm/v/protect-mcp?label=protect-mcp&color=cb3837&logo=npm" />
   <img alt="Tests" src="https://img.shields.io/badge/tests-471%20passing-brightgreen" />
+  <a href="https://glama.ai/mcp/servers/tomjwxf/scopeblind-gateway"><img alt="Glama" src="https://glama.ai/mcp/servers/tomjwxf/scopeblind-gateway/badges/score.svg" /></a>
+</p>
+
+<p align="center">
+  <a href="https://smithery.ai/servers/scopeblind/protect-mcp">Smithery</a> &middot;
+  <a href="https://glama.ai/mcp/servers/tomjwxf/scopeblind-gateway">Glama</a> &middot;
+  <a href="https://clawhub.ai/skills/scopeblind-passport">ClawHub</a> &middot;
+  <a href="https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/">IETF Draft</a>
 </p>
 
 ---
