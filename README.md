@@ -11,69 +11,76 @@
 
 <p align="center">
   <a href="https://scopeblind.com">Website</a> &middot;
-  <a href="https://scopeblind.com/docs">Docs</a> &middot;
+  <a href="https://scopeblind.com/docs/mcp">MCP Docs</a> &middot;
   <a href="https://www.npmjs.com/package/protect-mcp">npm</a> &middot;
-  <a href="https://scopeblind.com/verify">Verify a Receipt</a>
+  <a href="https://scopeblind.com/verify">Verify a Receipt</a> &middot;
+  <a href="https://scopeblind.com/stack">The Stack</a>
 </p>
 
 <p align="center">
   <img alt="License" src="https://img.shields.io/badge/license-FSL--1.1--MIT-blue.svg" />
   <img alt="npm protect-mcp" src="https://img.shields.io/npm/v/protect-mcp?label=protect-mcp&color=cb3837&logo=npm" />
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white" />
+  <img alt="Tests" src="https://img.shields.io/badge/tests-471%20passing-brightgreen" />
 </p>
 
 ---
 
-## protect-mcp — MCP Server Security Gateway
+## Progressive Adoption
 
-Wrap any stdio MCP server in one line. Start in shadow mode to see every tool call. Add a policy file to enforce per-tool rules. Generate local keys with `protect-mcp init` if you want signed receipts.
+Start with visibility. Add control when ready. Sign when you want proof. Each step is independently valuable.
 
 ```bash
-# Shadow mode — log every tool call, enforce nothing
-npx protect-mcp -- node your-mcp-server.js
+# 1. Shadow — see what's happening (blocks nothing)
+npx protect-mcp -- node your-server.js
 
-# Generate local signing keys + config template
+# 2. Simulate — test a policy against recorded tool calls
+npx protect-mcp simulate --policy strict.json
+
+# 3. Enforce — apply the policy
+npx protect-mcp --policy strict.json --enforce -- node your-server.js
+
+# 4. Sign — generate keys, produce signed receipts
 npx protect-mcp init
 
-# Run with policy + local signing
-npx protect-mcp --policy protect-mcp.json -- node your-mcp-server.js
+# 5. Report — generate a compliance report
+npx protect-mcp report --period 30d --format md --output report.md
 
-# Try the built-in demo
-npx protect-mcp demo
+# 6. Verify — prove it to anyone, offline
+npx @veritasacta/verify --self-test
 ```
 
-### What ships today
+---
 
-- **Shadow mode** (default) — logs every tool invocation with structured decision entries. Blocks nothing.
-- **Enforce mode** — applies per-tool policies: `block`, `rate_limit`, `min_tier`.
-- **Optional local signing** — when signing is configured, emits Ed25519-signed receipts alongside decision logs.
-- **Demo command** — `npx protect-mcp demo` runs a built-in 5-tool MCP server wrapped with the gateway.
-- **Status command** — `npx protect-mcp status` shows tool call stats from the local decision log.
-- **Evidence store** — file-based receipt history per agent for trust tier promotion.
-- **Verification** — receipts verify offline with `npx @veritasacta/verify` or at [scopeblind.com/verify](https://scopeblind.com/verify).
-- **No account required** — local process, local config, local keys.
+## What ships today
 
-### Current capability boundaries
+- **Shadow mode** (default) — logs every tool call, blocks nothing
+- **Enforce mode** — per-tool policies: `block`, `rate_limit`, `min_tier`, `require_approval`
+- **Approval gates** — high-risk tools pause for human approval (non-blocking, request_id scoped)
+- **Optional local signing** — Ed25519-signed receipts for every decision
+- **Simulate** — dry-run a policy against your recorded log before enforcing
+- **Report** — compliance report from receipts (JSON or Markdown)
+- **Bundle export** — self-contained audit bundles with embedded verification keys
+- **Demo** — `npx protect-mcp demo` runs a built-in MCP server with the gateway
+- **Verification** — `npx @veritasacta/verify --self-test` (MIT, offline, no accounts)
 
-- The bare `npx protect-mcp -- ...` path emits logs, not signed receipts. Run `protect-mcp init` for signing.
-- Tier-aware policy checks are live, but manifest admission is not wired into the default CLI path. CLI sessions default to `unknown` unless a host integration sets admission state programmatically.
-- Credential config validates env-backed references and records credential labels in logs/receipts. Generic per-call injection is adapter-specific.
-- External PDP adapters (OPA, Cerbos, generic) and audit bundle helpers are exported as programmatic hooks, not fully wired into the default CLI path.
+### Capability boundaries
 
-### Example policy
+- Bare `npx protect-mcp -- ...` logs decisions without signing. Run `protect-mcp init` for signed receipts.
+- Trust tiers are live but manifest admission defaults to `unknown` unless set programmatically.
+- External PDP adapters (OPA, Cerbos) and credential vault are exported as programmatic hooks.
+
+### Policy file
 
 ```json
 {
-  "default_tier": "unknown",
   "tools": {
     "delete_database": { "block": true },
+    "send_email": { "require_approval": true },
     "write_file": { "min_tier": "signed-known", "rate_limit": "10/minute" },
-    "read_file": { "rate_limit": "50/minute" },
     "*": { "rate_limit": "100/hour" }
   },
   "signing": {
     "key_path": "./keys/gateway.json",
-    "issuer": "protect-mcp",
     "enabled": true
   }
 }
@@ -92,48 +99,42 @@ npx protect-mcp demo
 }
 ```
 
-Works with Claude Desktop, Cursor, VS Code — any client that speaks MCP over stdio.
+Works with Claude Desktop, Cursor, VS Code, OpenClaw — any client that speaks MCP over stdio.
 
 ---
 
-## The Bigger Picture
+## The Trust Stack
 
-ScopeBlind produces signed, portable receipts for machine access decisions. Each receipt contains the decision, policy digest, trust tier, and timestamp — signed with Ed25519 and verifiable by anyone without calling ScopeBlind.
+ScopeBlind is part of a three-layer evidence infrastructure. Each layer is independently useful and survives the failure of every other layer.
 
-**protect-mcp** is the free, open-source entry point for MCP servers. The **ScopeBlind platform** adds managed signing, a real-time dashboard, and edge enforcement.
+| Layer | What | License |
+|-------|------|---------|
+| **BlindLLM** | Coordination lab — blind AI battles, agent studio | [blindllm.com](https://blindllm.com) |
+| **ScopeBlind** | Commercial enforcement — policies, receipts, approval gates | FSL-1.1-MIT |
+| **Veritas Acta** | Open evidence protocol — format, verifier, constitution | MIT |
 
-*Machines need receipts. Receipts shouldn't require surveillance.*
+[See the full stack &rarr;](https://scopeblind.com/stack)
 
 ## Packages
 
 | Package | npm | Purpose |
 |---------|-----|---------|
-| `protect-mcp` | [![npm](https://img.shields.io/npm/v/protect-mcp)](https://www.npmjs.com/package/protect-mcp) | MCP server security gateway |
-| `@veritasacta/verify` | [![npm](https://img.shields.io/npm/v/@veritasacta/verify)](https://www.npmjs.com/package/@veritasacta/verify) | Offline receipt/bundle verification CLI |
-| `@veritasacta/artifacts` | [![npm](https://img.shields.io/npm/v/@veritasacta/artifacts)](https://www.npmjs.com/package/@veritasacta/artifacts) | Ed25519 signing + JCS canonicalization |
-| `@scopeblind/passport` | [![npm](https://img.shields.io/npm/v/@scopeblind/passport)](https://www.npmjs.com/package/@scopeblind/passport) | Agent identity, signed manifests |
-
-## Architecture
-
-```
-MCP Client (Claude, Cursor, VS Code)
-  → protect-mcp (stdio proxy)
-    → Intercept tools/call JSON-RPC
-    → Evaluate policy (allow / block / rate_limit)
-    → Log decision to stderr ([PROTECT_MCP] prefix)
-    → Sign receipt if signing configured ([PROTECT_MCP_RECEIPT] prefix)
-    → Forward allowed calls to wrapped MCP server
-```
+| `protect-mcp` | [![npm](https://img.shields.io/npm/v/protect-mcp)](https://www.npmjs.com/package/protect-mcp) | MCP security gateway |
+| `@scopeblind/passport` | [![npm](https://img.shields.io/npm/v/@scopeblind/passport)](https://www.npmjs.com/package/@scopeblind/passport) | Agent identity + pack builder |
+| `@scopeblind/red-team` | [![npm](https://img.shields.io/npm/v/@scopeblind/red-team)](https://www.npmjs.com/package/@scopeblind/red-team) | Policy benchmark runner |
+| `@veritasacta/protocol` | [![npm](https://img.shields.io/npm/v/@veritasacta/protocol)](https://www.npmjs.com/package/@veritasacta/protocol) | Evidence protocol (12 receipt types) |
+| `@veritasacta/verify` | [![npm](https://img.shields.io/npm/v/@veritasacta/verify)](https://www.npmjs.com/package/@veritasacta/verify) | MIT offline verifier |
+| `@scopeblind/verify-mcp` | [![npm](https://img.shields.io/npm/v/@scopeblind/verify-mcp)](https://www.npmjs.com/package/@scopeblind/verify-mcp) | MCP server for verification |
 
 ## License
 
 > **Source-available under the [Functional Source License (FSL-1.1-MIT)](https://fsl.software).**
-> You may use, modify, and self-host this freely for your own projects or internal company use.
-> You may not offer ScopeBlind (or a substantially similar service) as a hosted/managed product to third parties.
-> After 2 years, each version automatically converts to the MIT license.
+> Free to use, modify, and self-host. You may not offer a competing hosted service.
+> After 2 years, each version converts to MIT.
+> Verification tools (`@veritasacta/verify`, `@veritasacta/protocol`) are MIT from day one.
 
 ---
 
 <p align="center">
-  Built by <a href="https://github.com/tomjwxf">Tom Farley</a> in Sydney, Australia.
+  Built by <a href="https://github.com/tomjwxf">tomjwxf</a>
 </p>
