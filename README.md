@@ -164,6 +164,49 @@ npx protect-mcp -- node your-server.js
 pip install protect-mcp && protect-mcp -- node your-server.js
 ```
 
+## Notifications (SMS, Slack, PagerDuty)
+
+Get notified when agents need approval:
+
+```bash
+# Slack webhook
+export SCOPEBLIND_WEBHOOK_URL="https://hooks.slack.com/services/..."
+export SCOPEBLIND_WEBHOOK_TEMPLATE="slack"
+
+# SMS via Twilio
+export SCOPEBLIND_SMS_TO="+1234567890"
+export TWILIO_ACCOUNT_SID="..."
+export TWILIO_AUTH_TOKEN="..."
+
+npx protect-mcp --policy policy.json --enforce -- node server.js
+```
+
+## OpenTelemetry Export
+
+Receipts in your existing Datadog/Grafana:
+
+```bash
+npm install @scopeblind/otel-exporter
+```
+
+See [@scopeblind/otel-exporter](https://npmjs.com/package/@scopeblind/otel-exporter).
+
+## Example Integrations
+
+- [Karpathy's autoresearch](https://github.com/tomjwxf/ScopeBlindD2/tree/main/examples/autoresearch) — safety policy for ML experiment agents
+- [Meta HyperAgents](https://github.com/tomjwxf/ScopeBlindD2/tree/main/examples/hyperagents) — sandbox constraints for self-modifying agents
+- [Slack integration](https://github.com/tomjwxf/ScopeBlindD2/tree/main/examples/slack-integration) — 2-minute webhook setup
+
+## Ecosystem
+
+| Package | Purpose |
+|---------|---------|
+| [protect-mcp](https://npmjs.com/package/protect-mcp) | MCP security gateway |
+| [@scopeblind/otel-exporter](https://npmjs.com/package/@scopeblind/otel-exporter) | Receipts in Datadog/Grafana |
+| [create-scopeblind-agent](https://npmjs.com/package/create-scopeblind-agent) | Scaffold governed agents |
+| [@veritasacta/verify](https://npmjs.com/package/@veritasacta/verify) | Offline receipt verifier |
+| [acta-sql](https://pypi.org/project/acta-sql/) | Query receipts with SQL (Python) |
+
 ## License
 
 MIT — free to use, modify, and redistribute.
