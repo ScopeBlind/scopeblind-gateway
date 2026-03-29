@@ -2,7 +2,8 @@
   "name": "scopeblind-gateway",
   "version": "1.0.0",
   "private": true,
-  "description": "ScopeBlind Gateway — Cloudflare Worker gateway for secure-mode JWT enforcement on public APIs",
+  "description": "Security gateway for MCP servers — policy enforcement, signed receipts, and access control",
+  "author": "ScopeBlind Pty Ltd",
   "main": "src/index.ts",
   "scripts": {
     "dev": "wrangler dev",
