@@ -1,0 +1,18 @@
+{
+  "$comment": "Claude Code hooks configuration. Add this to your .claude/settings.json to integrate protect-mcp as a pre-tool-use hook for Claude Code. Every tool call will be evaluated against your protect-mcp policy and produce a signed receipt.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx protect-mcp hook-eval --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\"",
+            "timeout": 5000,
+            "on_failure": "allow"
+          }
+        ]
+      }
+    ]
+  }
+}

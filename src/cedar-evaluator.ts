@@ -1,0 +1,295 @@
+/**
+ * @scopeblind/protect-mcp — Cedar Policy Evaluator (Local WASM)
+ *
+ * Evaluates Cedar policies locally using @cedar-policy/cedar-wasm.
+ * No external server required. Same deterministic evaluation as
+ * AWS Verified Permissions / AgentCore Policy.
+ *
+ * Cedar is loaded as an optional dependency — if the WASM module
+ * isn't installed, this module exports stubs that return fallback decisions.
+ */
+
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { join, extname } from 'node:path';
+import type { ExternalDecision, TrustTier } from './types.js';
+
+// ============================================================
+// Types
+// ============================================================
+
+export interface CedarPolicySet {
+  /** Raw concatenated Cedar source */
+  source: string;
+  /** SHA-256 digest of the sorted, concatenated policy source */
+  digest: string;
+  /** Number of individual .cedar files loaded */
+  fileCount: number;
+  /** Filenames loaded */
+  files: string[];
+}
+
+export interface CedarEvalRequest {
+  /** Tool name being called */
+  tool: string;
+  /** Trust tier of the agent */
+  tier: TrustTier;
+  /** Agent ID (optional) */
+  agentId?: string;
+  /** Additional context fields */
+  context?: Record<string, unknown>;
+}
+
+// ============================================================
+// WASM module (lazily loaded)
+// ============================================================
+
+let cedarWasm: any | null = null;
+let loadAttempted = false;
+
+/**
+ * Attempt to load the Cedar WASM module.
+ * Returns true if successful, false if not installed.
+ */
+async function ensureCedarWasm(): Promise<boolean> {
+  if (cedarWasm) return true;
+  if (loadAttempted) return false;
+  loadAttempted = true;
+
+  try {
+    const moduleName = '@cedar-policy/cedar-wasm';
+    cedarWasm = await import(/* @vite-ignore */ moduleName);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================
+// Policy loading
+// ============================================================
+
+/**
+ * Load all .cedar files from a directory and return a compiled policy set.
+ *
+ * Files are sorted alphabetically for deterministic digest computation.
+ * Throws if the directory doesn't exist or contains no .cedar files.
+ */
+export function loadCedarPolicies(dirPath: string): CedarPolicySet {
+  if (!existsSync(dirPath)) {
+    throw new Error(`Cedar policy directory not found: ${dirPath}`);
+  }
+
+  const entries = readdirSync(dirPath)
+    .filter((f) => extname(f) === '.cedar')
+    .sort();
+
+  if (entries.length === 0) {
+    throw new Error(`No .cedar files found in: ${dirPath}`);
+  }
+
+  const sources: string[] = [];
+  for (const file of entries) {
+    const content = readFileSync(join(dirPath, file), 'utf-8');
+    sources.push(content);
+  }
+
+  const concatenated = sources.join('\n\n');
+  const digest = createHash('sha256').update(concatenated).digest('hex').slice(0, 16);
+
+  return {
+    source: concatenated,
+    digest,
+    fileCount: entries.length,
+    files: entries,
+  };
+}
+
+// ============================================================
+// Entity construction helpers
+// ============================================================
+
+/**
+ * Build the Cedar entities array for a tool call evaluation.
+ *
+ * Entity model:
+ *   Principal: Agent::"<tier>" (or Agent::"<agentId>" if known)
+ *   Action:    Action::"MCP::Tool::call"
+ *   Resource:  Tool::"<toolName>"
+ */
+function buildEntities(req: CedarEvalRequest): Array<Record<string, unknown>> {
+  const agentId = req.agentId || req.tier;
+  return [
+    {
+      uid: { type: 'Agent', id: agentId },
+      attrs: {
+        tier: req.tier,
+        ...(req.agentId ? { agent_id: req.agentId } : {}),
+      },
+      parents: [],
+    },
+    {
+      uid: { type: 'Tool', id: req.tool },
+      attrs: {},
+      parents: [],
+    },
+  ];
+}
+
+// ============================================================
+// Evaluation
+// ============================================================
+
+/**
+ * Evaluate a Cedar policy set against a tool call.
+ *
+ * Returns a standard ExternalDecision compatible with the gateway's
+ * decision pipeline. If Cedar WASM is not available, returns a
+ * fallback allow decision (fail-open, logged).
+ */
+export async function evaluateCedar(
+  policySet: CedarPolicySet,
+  req: CedarEvalRequest,
+): Promise<ExternalDecision> {
+  const available = await ensureCedarWasm();
+
+  if (!available) {
+    return {
+      allowed: true,
+      reason: 'cedar_wasm_not_available',
+      metadata: { fallback: true },
+    };
+  }
+
+  try {
+    const agentId = req.agentId || req.tier;
+
+    // Build the authorization request
+    const authRequest = {
+      principal: { type: 'Agent', id: agentId },
+      action: { type: 'Action', id: 'MCP::Tool::call' },
+      resource: { type: 'Tool', id: req.tool },
+      context: {
+        tier: req.tier,
+        ...(req.context || {}),
+      },
+    };
+
+    const entities = buildEntities(req);
+
+    // Cedar WASM isAuthorized() call
+    // The WASM module exports different APIs depending on version.
+    // We support both the newer `isAuthorized` and older `checkAuthorization`.
+    let result: any;
+
+    if (typeof cedarWasm.isAuthorized === 'function') {
+      result = cedarWasm.isAuthorized({
+        policies: policySet.source,
+        entities,
+        principal: authRequest.principal,
+        action: authRequest.action,
+        resource: authRequest.resource,
+        context: authRequest.context,
+        schema: null, // No schema enforcement — Cedar still evaluates correctly
+      });
+    } else if (typeof cedarWasm.checkAuthorization === 'function') {
+      result = cedarWasm.checkAuthorization(
+        policySet.source,
+        JSON.stringify(entities),
+        JSON.stringify(authRequest),
+      );
+    } else {
+      // Fallback: try the default export
+      const cedarEngine = cedarWasm.default || cedarWasm;
+      if (typeof cedarEngine.isAuthorized === 'function') {
+        result = cedarEngine.isAuthorized({
+          policies: policySet.source,
+          entities,
+          principal: authRequest.principal,
+          action: authRequest.action,
+          resource: authRequest.resource,
+          context: authRequest.context,
+          schema: null,
+        });
+      } else {
+        return {
+          allowed: true,
+          reason: 'cedar_wasm_api_unsupported',
+          metadata: { fallback: true, exports: Object.keys(cedarWasm) },
+        };
+      }
+    }
+
+    // Parse result — Cedar WASM returns:
+    //   { type: "allow" } or { type: "deny", ... }
+    //   or { decision: "Allow" } / { decision: "Deny" }
+    const decision = parseWasmResult(result);
+
+    return {
+      allowed: decision.allowed,
+      reason: decision.allowed ? undefined : `cedar_deny${decision.diagnostics ? ': ' + decision.diagnostics : ''}`,
+      metadata: {
+        policy_digest: policySet.digest,
+        ...(decision.matchedPolicies ? { matched_policies: decision.matchedPolicies } : {}),
+      },
+    };
+  } catch (err) {
+    return {
+      allowed: true,
+      reason: `cedar_eval_error: ${err instanceof Error ? err.message : 'unknown'}`,
+      metadata: { fallback: true, error: true },
+    };
+  }
+}
+
+/**
+ * Parse the WASM evaluation result into a normalized form.
+ */
+function parseWasmResult(result: any): {
+  allowed: boolean;
+  diagnostics?: string;
+  matchedPolicies?: string[];
+} {
+  if (!result) {
+    return { allowed: true, diagnostics: 'null result from Cedar WASM' };
+  }
+
+  // Cedar WASM v4.x format: { type: "allow" | "deny", diagnostics: {...} }
+  if (result.type === 'allow' || result.type === 'Allow') {
+    return { allowed: true };
+  }
+  if (result.type === 'deny' || result.type === 'Deny') {
+    return {
+      allowed: false,
+      diagnostics: result.diagnostics ? JSON.stringify(result.diagnostics) : undefined,
+      matchedPolicies: result.diagnostics?.reasons,
+    };
+  }
+
+  // Alternative format: { decision: "Allow" | "Deny" }
+  if (result.decision === 'Allow') {
+    return { allowed: true };
+  }
+  if (result.decision === 'Deny') {
+    return {
+      allowed: false,
+      diagnostics: result.diagnostics ? JSON.stringify(result.diagnostics) : undefined,
+    };
+  }
+
+  // Boolean fallback
+  if (typeof result === 'boolean') {
+    return { allowed: result };
+  }
+
+  // Unknown format — fail open but log
+  return { allowed: true, diagnostics: `unknown result format: ${JSON.stringify(result)}` };
+}
+
+/**
+ * Validate that Cedar WASM is available.
+ * Useful for CLI startup diagnostics.
+ */
+export async function isCedarAvailable(): Promise<boolean> {
+  return ensureCedarWasm();
+}

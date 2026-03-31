@@ -1,0 +1,57 @@
+{
+  "$comment": "Financial services safety policy. Every financial action requires human approval with evidenced trust tier. All reads are rate-limited. Destructive operations blocked entirely.",
+  "incident": "agent-unauthorized-transaction-pattern",
+  "incident_name": "Unauthorized Financial Transaction via AI Agent",
+  "owasp_categories": ["A05-Insufficient-Access-Control", "A06-Excessive-Autonomy"],
+  "controls": {
+    "soc2": ["CC6.1", "CC6.2", "CC6.3", "CC6.6", "CC6.8", "CC7.1", "CC7.2", "CC8.1"],
+    "eu_ai_act": ["Art.9", "Art.12", "Art.13", "Art.14", "Art.15"],
+    "owasp_mcp": ["MCP-03", "MCP-07", "MCP-08", "MCP-09"],
+    "nist_ai_rmf": ["GOVERN-1.1", "GOVERN-6.1", "MAP-3.1", "MEASURE-2.1", "MANAGE-2.1"],
+    "pci_dss": ["Req-7", "Req-10"],
+    "iso_27001": ["A.9.2", "A.12.4"]
+  },
+  "tools": {
+    "*": {
+      "rate_limit": "30/minute",
+      "min_tier": "signed-known"
+    },
+    "transfer_funds": {
+      "require_approval": true,
+      "min_tier": "privileged"
+    },
+    "create_payment": {
+      "require_approval": true,
+      "min_tier": "privileged"
+    },
+    "approve_transaction": {
+      "require_approval": true,
+      "min_tier": "privileged"
+    },
+    "modify_account": {
+      "require_approval": true,
+      "min_tier": "evidenced"
+    },
+    "delete_account": {
+      "block": true
+    },
+    "close_account": {
+      "block": true
+    },
+    "read_balance": {
+      "rate_limit": "10/minute",
+      "min_tier": "evidenced"
+    },
+    "read_transactions": {
+      "rate_limit": "10/minute",
+      "min_tier": "evidenced"
+    },
+    "generate_report": {
+      "rate_limit": "5/hour",
+      "min_tier": "signed-known"
+    }
+  },
+  "signing": {
+    "enabled": true
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "$comment": "Prevents data exfiltration via AI agents. Blocks all outbound data channels (email, webhooks, uploads, HTTP). Restricts file reads. Requires approval for any external communication.",
+  "incident": "agent-data-exfiltration-pattern",
+  "incident_name": "AI Agent Data Exfiltration via Tool Abuse",
+  "owasp_categories": ["A02-Sensitive-Data-Exposure", "A04-Tool-Call-Injection"],
+  "controls": {
+    "soc2": ["CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC7.2"],
+    "eu_ai_act": ["Art.9", "Art.12", "Art.13"],
+    "owasp_mcp": ["MCP-02", "MCP-04", "MCP-08", "MCP-09"],
+    "nist_ai_rmf": ["GOVERN-1.1", "MAP-3.1", "MEASURE-2.1"]
+  },
+  "tools": {
+    "*": {
+      "rate_limit": "60/minute"
+    },
+    "send_email": {
+      "block": true
+    },
+    "send_message": {
+      "block": true
+    },
+    "upload_file": {
+      "block": true
+    },
+    "http_request": {
+      "block": true
+    },
+    "http_post": {
+      "block": true
+    },
+    "webhook": {
+      "block": true
+    },
+    "publish": {
+      "block": true
+    },
+    "post_to_api": {
+      "block": true
+    },
+    "execute_command": {
+      "block": true
+    },
+    "read_file": {
+      "rate_limit": "20/minute",
+      "min_tier": "signed-known"
+    },
+    "search": {
+      "rate_limit": "30/minute"
+    },
+    "database_query": {
+      "rate_limit": "10/minute",
+      "min_tier": "signed-known"
+    }
+  },
+  "signing": {
+    "enabled": true
+  }
+}

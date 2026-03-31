@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.tomjwxf/protect-mcp",
+  "description": "Security gateway for MCP servers. Per-tool policies, Ed25519-signed receipts, shadow mode.",
+  "repository": {
+    "url": "https://github.com/scopeblind/ScopeBlindD2",
+    "source": "github"
+  },
+  "version": "0.4.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "protect-mcp",
+      "version": "0.4.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": []
+    }
+  ]
+}

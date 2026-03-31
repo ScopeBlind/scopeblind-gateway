@@ -1,225 +1,257 @@
-<p align="center">
-  <img src="https://www.scopeblind.com/scopeblind-logo-solarin.png" width="48" />
-</p>
+# protect-mcp
 
-<h1 align="center">ScopeBlind</h1>
+Security gateway for MCP servers. Shadow-mode logs by default, per-tool policies, optional local Ed25519 receipts, and verification-friendly audit output.
 
-<p align="center">
-  Security gateway for MCP servers.<br/>
-  Shadow-mode logs. Per-tool policies. Optional signed receipts.
-</p>
+**Current CLI path:** wrap any stdio MCP server as a transparent proxy. In shadow mode it logs every `tools/call` request and allows everything through. Add a policy file to enforce per-tool rules. Run `protect-mcp init` to generate local signing keys and config so the gateway can also emit signed receipts.
 
-<p align="center">
-  <a href="https://scopeblind.com">Website</a> &middot;
-  <a href="https://scopeblind.com/docs/mcp">MCP Docs</a> &middot;
-  <a href="https://www.npmjs.com/package/protect-mcp">npm</a> &middot;
-  <a href="https://scopeblind.com/verify">Verify a Receipt</a> &middot;
-  <a href="https://scopeblind.com/stack">The Stack</a>
-</p>
-
-<p align="center">
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-green.svg" />
-  <img alt="npm protect-mcp" src="https://img.shields.io/npm/v/protect-mcp?label=protect-mcp&color=cb3837&logo=npm" />
-  <img alt="Tests" src="https://img.shields.io/badge/tests-471%20passing-brightgreen" />
-  <a href="https://glama.ai/mcp/servers/scopeblind/scopeblind-gateway"><img alt="Glama" src="https://glama.ai/mcp/servers/scopeblind/scopeblind-gateway/badges/score.svg" /></a>
-</p>
-
-<p align="center">
-  <a href="https://smithery.ai/servers/scopeblind/protect-mcp">Smithery</a> &middot;
-  <a href="https://glama.ai/mcp/servers/scopeblind/scopeblind-gateway">Glama</a> &middot;
-  <a href="https://clawhub.ai/skills/scopeblind-passport">ClawHub</a> &middot;
-  <a href="https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/">IETF Draft</a>
-</p>
-
----
-
-## Progressive Adoption
-
-Start with visibility. Add control when ready. Sign when you want proof. Each step is independently valuable.
+## Quick Start
 
 ```bash
-# 1. Shadow — see what's happening (blocks nothing)
-npx protect-mcp -- node your-server.js
+# Wrap an existing OpenClaw / MCP config into a usable pack
+npx @scopeblind/passport wrap --runtime openclaw --config ./openclaw.json --policy email-safe
 
-# 2. Simulate — test a policy against recorded tool calls
-npx protect-mcp simulate --policy strict.json
+# Shadow mode — log every tool call, enforce nothing
+npx protect-mcp -- node my-server.js
 
-# 3. Enforce — apply the policy
-npx protect-mcp --policy strict.json --enforce -- node your-server.js
-
-# 4. Sign — generate keys, produce signed receipts
+# Generate keys + config template for local signing
 npx protect-mcp init
 
-# 5. Report — generate a compliance report
-npx protect-mcp report --period 30d --format md --output report.md
+# Shadow mode with local signing enabled
+npx protect-mcp --policy protect-mcp.json -- node my-server.js
 
-# 6. Verify — prove it to anyone, offline
-npx @veritasacta/verify --self-test
+# Enforce mode
+npx protect-mcp --policy protect-mcp.json --enforce -- node my-server.js
+
+# Export an offline-verifiable audit bundle
+npx protect-mcp bundle --output audit.json
 ```
 
----
+## What It Does
 
-## What ships today
+protect-mcp sits between your MCP client and server as a stdio proxy:
 
-- **Shadow mode** (default) — logs every tool call, blocks nothing
-- **Enforce mode** — per-tool policies: `block`, `rate_limit`, `min_tier`, `require_approval`
-- **Approval gates** — high-risk tools pause for human approval (non-blocking, request_id scoped)
-- **Optional local signing** — Ed25519-signed receipts for every decision
-- **Simulate** — dry-run a policy against your recorded log before enforcing
-- **Report** — compliance report from receipts (JSON or Markdown)
-- **Bundle export** — self-contained audit bundles with embedded verification keys
-- **Demo** — `npx protect-mcp demo` runs a built-in MCP server with the gateway
-- **Verification** — `npx @veritasacta/verify --self-test` (MIT, offline, no accounts)
+```
+MCP Client ←stdin/stdout→ protect-mcp ←stdin/stdout→ your MCP server
+```
 
-### Capability boundaries
+It intercepts `tools/call` JSON-RPC requests and:
+- **Shadow mode** (default): logs every tool call and allows everything through
+- **Enforce mode**: applies per-tool policy rules such as `block`, `rate_limit`, and `min_tier`
+- **Optional local signing**: when signing is configured, emits an Ed25519-signed receipt alongside the structured log
 
-- Bare `npx protect-mcp -- ...` logs decisions without signing. Run `protect-mcp init` for signed receipts.
-- Trust tiers are live but manifest admission defaults to `unknown` unless set programmatically.
-- External PDP adapters (OPA, Cerbos) and credential vault are exported as programmatic hooks.
+All other MCP messages (`initialize`, `tools/list`, notifications) pass through transparently.
 
-### Policy file
+## What Ships Today
+
+- **Per-tool policies** — block destructive tools, rate-limit expensive ones, and attach minimum-tier requirements
+- **Structured decision logs** — every decision is emitted to `stderr` with `[PROTECT_MCP]`
+- **Optional local signed receipts** — generated when you run with a policy containing `signing.key_path`, persisted to `.protect-mcp-receipts.jsonl`, and exposed at `http://127.0.0.1:9876/receipts`
+- **Offline verification** — verify receipts or bundles with `npx @veritasacta/verify`
+- **No account required** — local keys, local policy, local process
+
+## Current Capability Boundaries
+
+These are important before you roll this out or talk to users:
+
+- **Signing is not automatic on the bare `npx protect-mcp -- ...` path.** That path logs decisions in shadow mode. For local signing, run `npx protect-mcp init` and then start the gateway with the generated policy file.
+- **Tier-aware policy checks are live, but manifest admission is not wired into the default CLI/stdio path.** The CLI defaults sessions to `unknown` unless a host integration calls the admission API programmatically.
+- **Credential config currently validates env-backed credential references and records credential labels in logs/receipts.** Generic per-call injection into arbitrary stdio tools is adapter-specific and is not performed by the default proxy path.
+- **External PDP adapters and audit bundle helpers exist as exported utilities.** They are not yet fully wired into the default CLI path.
+
+## Policy File
 
 ```json
 {
+  "default_tier": "unknown",
   "tools": {
-    "delete_database": { "block": true },
-    "send_email": { "require_approval": true },
-    "write_file": { "min_tier": "signed-known", "rate_limit": "10/minute" },
-    "*": { "rate_limit": "100/hour" }
+    "dangerous_tool": { "block": true },
+    "admin_tool": { "min_tier": "signed-known", "rate_limit": "5/hour" },
+    "read_tool": { "require": "any", "rate_limit": "100/hour" },
+    "*": { "rate_limit": "500/hour" }
   },
   "signing": {
     "key_path": "./keys/gateway.json",
+    "issuer": "protect-mcp",
     "enabled": true
-  }
-}
-```
-
-### Claude Desktop / Cursor config
-
-```json
-{
-  "mcpServers": {
-    "my-server": {
-      "command": "npx",
-      "args": ["protect-mcp", "--policy", "protect-mcp.json", "--enforce", "--", "node", "my-server.js"]
+  },
+  "credentials": {
+    "internal_api": {
+      "inject": "env",
+      "name": "INTERNAL_API_KEY",
+      "value_env": "INTERNAL_API_KEY"
     }
   }
 }
 ```
 
-Works with Claude Desktop, Cursor, VS Code, OpenClaw — any client that speaks MCP over stdio.
+### Policy Rules
 
----
+| Field | Values | Description |
+|-------|--------|-------------|
+| `block` | `true` | Explicitly block this tool |
+| `require` | `"any"`, `"none"` | Basic access requirement |
+| `min_tier` | `"unknown"`, `"signed-known"`, `"evidenced"`, `"privileged"` | Minimum tier required if your host sets admission state |
+| `rate_limit` | `"N/unit"` | Rate limit (e.g. `"5/hour"`, `"100/day"`) |
 
-## The Trust Stack
+Tool names match exactly, with `"*"` as a wildcard fallback.
 
-ScopeBlind is part of a three-layer evidence infrastructure. Each layer is independently useful and survives the failure of every other layer.
+## MCP Client Configuration
 
-| Layer | What | License |
-|-------|------|---------|
-| **BlindLLM** | Coordination lab — blind AI battles, agent studio | [blindllm.com](https://blindllm.com) |
-| **ScopeBlind** | Commercial enforcement — policies, receipts, approval gates | MIT |
-| **Veritas Acta** | Open evidence protocol — format, verifier, constitution | MIT |
+### Claude Desktop
 
-[See the full stack &rarr;](https://scopeblind.com/stack)
+Add to `claude_desktop_config.json`:
 
-## Packages
-
-| Package | npm | Purpose |
-|---------|-----|---------|
-| `protect-mcp` | [![npm](https://img.shields.io/npm/v/protect-mcp)](https://www.npmjs.com/package/protect-mcp) | MCP security gateway |
-| `@scopeblind/passport` | [![npm](https://img.shields.io/npm/v/@scopeblind/passport)](https://www.npmjs.com/package/@scopeblind/passport) | Agent identity + pack builder |
-| `@scopeblind/red-team` | [![npm](https://img.shields.io/npm/v/@scopeblind/red-team)](https://www.npmjs.com/package/@scopeblind/red-team) | Policy benchmark runner |
-| `@veritasacta/protocol` | [![npm](https://img.shields.io/npm/v/@veritasacta/protocol)](https://www.npmjs.com/package/@veritasacta/protocol) | Evidence protocol (12 receipt types) |
-| `@veritasacta/verify` | [![npm](https://img.shields.io/npm/v/@veritasacta/verify)](https://www.npmjs.com/package/@veritasacta/verify) | MIT offline verifier |
-| `@scopeblind/verify-mcp` | [![npm](https://img.shields.io/npm/v/@scopeblind/verify-mcp)](https://www.npmjs.com/package/@scopeblind/verify-mcp) | MCP server for verification |
-
-## HTTP/SSE Transport
-
-Deploy protect-mcp as an HTTP server for remote MCP clients, Smithery, ChatGPT, and Glama:
-
-```bash
-npx protect-mcp --http --port 3000 -- node your-server.js
+```json
+{
+  "mcpServers": {
+    "my-protected-server": {
+      "command": "npx",
+      "args": [
+        "-y", "protect-mcp",
+        "--policy", "/path/to/protect-mcp.json",
+        "--enforce",
+        "--", "node", "my-server.js"
+      ]
+    }
+  }
+}
 ```
 
-Endpoints: `POST /mcp` (Streamable HTTP), `GET /mcp/sse` (SSE), `GET /health`, `DELETE /mcp`.
+### Cursor / VS Code
 
-## Cedar Policy Engine
+Same pattern — replace the server command with `protect-mcp` wrapping it.
 
-Use AWS Cedar policies as an alternative to JSON:
+## CLI Options
 
-```bash
-npx protect-mcp --cedar ./policies/cedar/ --enforce -- node your-server.js
+```
+protect-mcp [options] -- <command> [args...]
+protect-mcp init
+
+Commands:
+  init              Generate Ed25519 keypair + config template
+  status            Show decision stats and local passport identity
+  digest            Generate a local human-readable summary
+  receipts          Show recent persisted signed receipts
+  bundle            Export an offline-verifiable audit bundle
+
+Options:
+  --policy <path>   Policy/config JSON file
+  --slug <slug>     Service identifier for logs/receipts
+  --enforce         Enable enforcement mode (default: shadow)
+  --verbose         Enable debug logging
+  --help            Show help
 ```
 
-Local WASM evaluation — same engine as AWS Verified Permissions. All three policy engines (JSON, Cedar, external PDP) produce the same signed Acta receipts.
+## Programmatic Hooks
 
-## Install
+The library also exposes the primitives that are not yet wired into the default CLI path:
 
-```bash
-# npm (Node.js)
-npx protect-mcp -- node your-server.js
-
-# pip (Python)
-pip install protect-mcp && protect-mcp -- node your-server.js
+```typescript
+import {
+  ProtectGateway,
+  loadPolicy,
+  evaluateTier,
+  meetsMinTier,
+  resolveCredential,
+  initSigning,
+  signDecision,
+  queryExternalPDP,
+  buildDecisionContext,
+  createAuditBundle,
+} from 'protect-mcp';
 ```
 
-## Notifications (SMS, Slack, PagerDuty)
+Use these if you want to add:
+- manifest admission before a session starts
+- an external PDP (OPA, Cerbos, or a generic HTTP webhook)
+- custom credential-brokered integrations
+- audit bundle export around your own receipt store
 
-Get notified when agents need approval:
+## Decision Logs and Receipts
 
-```bash
-# Slack webhook
-export SCOPEBLIND_WEBHOOK_URL="https://hooks.slack.com/services/..."
-export SCOPEBLIND_WEBHOOK_TEMPLATE="slack"
+Every tool call emits structured JSON to `stderr`:
 
-# SMS via Twilio
-export SCOPEBLIND_SMS_TO="+1234567890"
-export TWILIO_ACCOUNT_SID="..."
-export TWILIO_AUTH_TOKEN="..."
-
-npx protect-mcp --policy policy.json --enforce -- node server.js
+```json
+[PROTECT_MCP] {"v":2,"tool":"read_file","decision":"allow","reason_code":"observe_mode","policy_digest":"none","mode":"shadow","timestamp":1710000000}
 ```
 
-## OpenTelemetry Export
+When signing is configured, a signed receipt follows:
 
-Receipts in your existing Datadog/Grafana:
-
-```bash
-npm install @scopeblind/otel-exporter
+```json
+[PROTECT_MCP_RECEIPT] {"v":2,"type":"decision_receipt","algorithm":"ed25519","kid":"...","issuer":"protect-mcp","issued_at":"2026-03-22T00:00:00Z","payload":{"tool":"read_file","decision":"allow","policy_digest":"...","mode":"shadow","request_id":"..."},"signature":"..."}
 ```
 
-See [@scopeblind/otel-exporter](https://npmjs.com/package/@scopeblind/otel-exporter).
+Verify with the CLI: `npx @veritasacta/verify receipt.json`
+Verify in browser: [scopeblind.com/verify](https://scopeblind.com/verify)
 
-## Example Integrations
+## Audit Bundles
 
-- [Karpathy's autoresearch](https://github.com/scopeblind/ScopeBlindD2/tree/main/examples/autoresearch) — safety policy for ML experiment agents
-- [Meta HyperAgents](https://github.com/scopeblind/ScopeBlindD2/tree/main/examples/hyperagents) — sandbox constraints for self-modifying agents
-- [Slack integration](https://github.com/scopeblind/ScopeBlindD2/tree/main/examples/slack-integration) — 2-minute webhook setup
+The package exports a helper for self-contained audit bundles:
 
-## Ecosystem
+```json
+{
+  "format": "scopeblind:audit-bundle",
+  "version": 1,
+  "tenant": "my-service",
+  "receipts": ["..."],
+  "verification": {
+    "algorithm": "ed25519",
+    "signing_keys": ["..."]
+  }
+}
+```
 
-| Package | Purpose |
-|---------|---------|
-| [protect-mcp](https://npmjs.com/package/protect-mcp) | MCP security gateway |
-| [@scopeblind/otel-exporter](https://npmjs.com/package/@scopeblind/otel-exporter) | Receipts in Datadog/Grafana |
-| [create-scopeblind-agent](https://npmjs.com/package/create-scopeblind-agent) | Scaffold governed agents |
-| [@veritasacta/verify](https://npmjs.com/package/@veritasacta/verify) | Offline receipt verifier |
-| [acta-sql](https://pypi.org/project/acta-sql/) | Query receipts with SQL (Python) |
+Use `createAuditBundle()` around your own collected signed receipts.
 
-## License
+## Philosophy
 
-MIT — free to use, modify, and redistribute.
+- **Shadow first.** See what agents are doing before you enforce anything.
+- **Receipts beat dashboard-only logs.** Signed artifacts should be independently verifiable.
+- **Keep the claims tight.** The default CLI path does not yet do everything the long-term architecture will support.
+- **Layer on top of existing auth.** Don't rip out your stack just to add control and evidence.
+
+## Incident-Anchored Policy Packs
+
+Ship with protect-mcp — each prevents a real attack:
+
+| Policy | Incident | OWASP Categories |
+|--------|----------|-----------------|
+| `clinejection.json` | CVE-2025-6514: MCP OAuth proxy hijack (437K environments) | A01, A03 |
+| `terraform-destroy.json` | Autonomous Terraform agent destroys production | A05, A06 |
+| `github-mcp-hijack.json` | Prompt injection via crafted GitHub issue | A01, A02, A03 |
+| `data-exfiltration.json` | Agent data theft via outbound tool abuse | A02, A04 |
+| `financial-safe.json` | Unauthorized financial transaction | A05, A06 |
+
+```bash
+npx protect-mcp --policy node_modules/protect-mcp/policies/clinejection.json -- node server.js
+```
+
+Full OWASP Agentic Top 10 mapping: [scopeblind.com/docs/owasp](https://scopeblind.com/docs/owasp)
+
+## BYOPE: External Policy Engines
+
+Supports OPA, Cerbos, Cedar (AWS AgentCore), and generic HTTP endpoints:
+
+```json
+{
+  "policy_engine": "hybrid",
+  "external": {
+    "endpoint": "http://localhost:8181/v1/data/mcp/allow",
+    "format": "cedar",
+    "timeout_ms": 200,
+    "fallback": "deny"
+  }
+}
+```
 
 ## Standards & IP
 
 - **IETF Internet-Draft**: [draft-farley-acta-signed-receipts-00](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) — Signed Decision Receipts for Machine-to-Machine Access Control
-- **Patent Status**: Australian provisional patents pending (2025-2026)
-- **Compliance**: [SOC 2](https://scopeblind.com/docs/soc2) · [EU AI Act](https://scopeblind.com/docs/eu-ai-act) · [OWASP Agentic Top 10](https://scopeblind.com/docs/owasp)
+- **Patent Status**: 4 Australian provisional patents pending (2025-2026) covering decision receipts with configurable disclosure, tool-calling gateway, agent manifests, and portable identity
 - **Verification**: MIT-licensed — `npx @veritasacta/verify --self-test`
 
----
+## License
 
-<p align="center">
-  Built by <a href="https://scopeblind.com">ScopeBlind</a>
-</p>
+MIT — free to use, modify, distribute, and build upon without restriction.
+
+[scopeblind.com](https://scopeblind.com) · [npm](https://www.npmjs.com/package/protect-mcp) · [GitHub](https://github.com/scopeblind/ScopeBlindD2) · [IETF Draft](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)
