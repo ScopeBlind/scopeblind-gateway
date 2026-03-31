@@ -364,8 +364,8 @@ export class ProtectGateway {
         sendApprovalNotification(this.notificationConfig, {
           requestId,
           toolName,
-          agentId: this.admissionResult?.agentId,
-          policyName: this.config.policy?.name || 'default',
+          agentId: this.admissionResult?.agent_id,
+          policyName: 'default',
           reason: `Policy requires human approval for "${toolName}"`,
           traceUrl: `https://scopeblind.com/trace`,
           approveUrl: undefined, // Approve URL provided when HTTP transport is active
