@@ -170,3 +170,35 @@ rl.on('line', (line: string) => {
 });
 
 process.stderr.write('[DEMO_SERVER] protect-mcp demo server started — 5 tools registered\n');
+
+/**
+ * Smithery sandbox server — returns a McpServer instance
+ * that Smithery can scan for tool/resource capabilities.
+ */
+export function createSandboxServer() {
+  const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
+  const { z } = require('zod');
+
+  const server = new McpServer({
+    name: 'protect-mcp',
+    version: '0.4.5',
+    description: 'Security gateway for MCP servers. Per-tool policies, Ed25519-signed receipts, human approval gates, trust tiers.',
+  });
+
+  server.tool('read_file', 'Read the contents of a file', { path: z.string().describe('File path to read') },
+    async (args: { path: string }) => ({ content: [{ type: 'text' as const, text: `[demo] Read file: ${args.path}` }] }));
+
+  server.tool('write_file', 'Write content to a file', { path: z.string().describe('File path'), content: z.string().describe('Content to write') },
+    async (args: { path: string; content: string }) => ({ content: [{ type: 'text' as const, text: `[demo] Wrote to ${args.path}` }] }));
+
+  server.tool('delete_file', 'Delete a file from the filesystem', { path: z.string().describe('File path to delete') },
+    async (args: { path: string }) => ({ content: [{ type: 'text' as const, text: `[demo] Deleted: ${args.path}` }] }));
+
+  server.tool('web_search', 'Search the web for information', { query: z.string().describe('Search query') },
+    async (args: { query: string }) => ({ content: [{ type: 'text' as const, text: `[demo] Search: ${args.query}` }] }));
+
+  server.tool('deploy', 'Deploy the application to production', { environment: z.enum(['staging', 'production']).describe('Target environment'), reason: z.string().optional().describe('Deployment reason') },
+    async (args: { environment: string; reason?: string }) => ({ content: [{ type: 'text' as const, text: `[demo] Deployed to ${args.environment}` }] }));
+
+  return server;
+}

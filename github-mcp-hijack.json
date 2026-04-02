@@ -1,0 +1,60 @@
+{
+  "$comment": "GitHub MCP server hijacked via crafted issue containing prompt injection (2025). Agent exfiltrated private repo data. Blocks outbound data tools, restricts git operations, requires approval for any push/publish.",
+  "incident": "github-mcp-issue-hijack-2025",
+  "incident_name": "GitHub MCP Server Prompt Injection via Crafted Issue",
+  "incident_date": "2025-08-20",
+  "owasp_categories": ["A01-Prompt-Injection", "A02-Sensitive-Data-Exposure", "A03-Supply-Chain"],
+  "controls": {
+    "soc2": ["CC6.1", "CC6.3", "CC6.6", "CC7.1", "CC7.2"],
+    "eu_ai_act": ["Art.9", "Art.12", "Art.13", "Art.14"],
+    "owasp_mcp": ["MCP-01", "MCP-02", "MCP-04", "MCP-08"],
+    "nist_ai_rmf": ["GOVERN-1.1", "MAP-3.1", "MEASURE-2.1", "MANAGE-2.1"]
+  },
+  "tools": {
+    "*": {
+      "rate_limit": "30/minute"
+    },
+    "git_push": {
+      "require_approval": true,
+      "min_tier": "evidenced"
+    },
+    "git_commit": {
+      "rate_limit": "10/minute"
+    },
+    "create_pull_request": {
+      "require_approval": true
+    },
+    "publish": {
+      "block": true
+    },
+    "npm_publish": {
+      "block": true
+    },
+    "send_email": {
+      "block": true
+    },
+    "send_message": {
+      "block": true
+    },
+    "upload_file": {
+      "require_approval": true,
+      "min_tier": "signed-known"
+    },
+    "http_request": {
+      "require_approval": true,
+      "rate_limit": "5/minute"
+    },
+    "webhook": {
+      "block": true
+    },
+    "read_file": {
+      "rate_limit": "30/minute"
+    },
+    "search_code": {
+      "rate_limit": "20/minute"
+    }
+  },
+  "signing": {
+    "enabled": true
+  }
+}

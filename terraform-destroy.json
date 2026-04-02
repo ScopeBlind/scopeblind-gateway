@@ -1,0 +1,56 @@
+{
+  "$comment": "Terraform agent destroyed production infrastructure (2025). Blocks all destructive infrastructure operations, requires human approval for any apply/deploy, rate-limits plan operations.",
+  "incident": "terraform-prod-destroy-2025",
+  "incident_name": "Autonomous Terraform Agent Destroys Production",
+  "incident_date": "2025-09-01",
+  "owasp_categories": ["A06-Excessive-Autonomy", "A05-Insufficient-Access-Control"],
+  "controls": {
+    "soc2": ["CC6.1", "CC6.6", "CC6.8", "CC7.2", "CC8.1"],
+    "eu_ai_act": ["Art.9", "Art.12", "Art.14", "Art.15"],
+    "owasp_mcp": ["MCP-03", "MCP-07", "MCP-09"],
+    "nist_ai_rmf": ["GOVERN-1.1", "GOVERN-6.1", "MAP-3.1", "MANAGE-2.1"]
+  },
+  "tools": {
+    "*": {
+      "rate_limit": "30/minute"
+    },
+    "terraform_apply": {
+      "require_approval": true,
+      "min_tier": "evidenced"
+    },
+    "terraform_destroy": {
+      "block": true
+    },
+    "terraform_plan": {
+      "rate_limit": "10/minute",
+      "min_tier": "signed-known"
+    },
+    "deploy": {
+      "require_approval": true,
+      "min_tier": "evidenced"
+    },
+    "kubectl_apply": {
+      "require_approval": true,
+      "min_tier": "evidenced"
+    },
+    "kubectl_delete": {
+      "block": true
+    },
+    "aws_cli": {
+      "require_approval": true,
+      "rate_limit": "5/minute"
+    },
+    "delete_resource": {
+      "block": true
+    },
+    "drop_database": {
+      "block": true
+    },
+    "truncate_table": {
+      "block": true
+    }
+  },
+  "signing": {
+    "enabled": true
+  }
+}

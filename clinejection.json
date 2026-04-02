@@ -1,0 +1,51 @@
+{
+  "$comment": "CVE-2025-6514: Clinejection — Malicious MCP OAuth proxy hijacked 437,000+ developer environments. Blocks shell execution, restricts file access to non-sensitive paths, requires approval for any write operation.",
+  "incident": "CVE-2025-6514",
+  "incident_name": "Clinejection MCP OAuth Proxy Hijack",
+  "incident_date": "2025-07-15",
+  "owasp_categories": ["A01-Prompt-Injection", "A03-Supply-Chain"],
+  "controls": {
+    "soc2": ["CC6.1", "CC6.8", "CC7.2", "CC8.1"],
+    "eu_ai_act": ["Art.9", "Art.12", "Art.14"],
+    "owasp_mcp": ["MCP-01", "MCP-03", "MCP-04"],
+    "nist_ai_rmf": ["GOVERN-1.1", "MAP-3.1", "MEASURE-2.1"]
+  },
+  "tools": {
+    "*": {
+      "rate_limit": "30/minute"
+    },
+    "execute_command": {
+      "block": true
+    },
+    "run_command": {
+      "block": true
+    },
+    "shell": {
+      "block": true
+    },
+    "bash": {
+      "block": true
+    },
+    "terminal": {
+      "block": true
+    },
+    "write_file": {
+      "require_approval": true,
+      "rate_limit": "10/minute"
+    },
+    "edit_file": {
+      "require_approval": true,
+      "rate_limit": "10/minute"
+    },
+    "read_file": {
+      "rate_limit": "30/minute",
+      "min_tier": "signed-known"
+    },
+    "list_files": {
+      "rate_limit": "60/minute"
+    }
+  },
+  "signing": {
+    "enabled": true
+  }
+}

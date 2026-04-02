@@ -1,6 +1,6 @@
 {
   "name": "protect-mcp",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "mcpName": "io.github.tomjwxf/protect-mcp",
   "description": "Enterprise security gateway for MCP servers and Claude Code hooks. Cedar policies, Ed25519-signed receipts, swarm tracking, and tamper detection. Shadow or enforce mode.",
   "main": "dist/index.js",

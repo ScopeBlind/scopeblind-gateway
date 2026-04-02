@@ -45,6 +45,14 @@ export type { HookServerOptions } from './hook-server.js';
 
 // ── Hook Patterns ──────────────────────────────────────────────
 export { BUILTIN_PATTERNS, generateHookSettings, generateSampleCedarPolicy, generateVerifyReceiptSkill } from './hook-patterns.js';
+
+// ── Cedar Schema Generation ──────────────────────────────────
+export { generateCedarSchema, generateSchemaStub } from './cedar-schema.js';
+export type { McpToolDescription, CedarSchemaResult, SchemaGeneratorConfig } from './cedar-schema.js';
+
+// ── Cedar Evaluator ──────────────────────────────────────────
+export { evaluateCedar, loadCedarPolicies, isCedarAvailable } from './cedar-evaluator.js';
+export type { CedarPolicySet, CedarEvalRequest, CedarSchema } from './cedar-evaluator.js';
 export type { HookPattern } from './hook-patterns.js';
 
 // ── Types ───────────────────────────────────────────────────────
