@@ -1,8 +1,8 @@
 {
   "name": "protect-mcp",
-  "version": "0.4.2",
+  "version": "0.5.1",
   "mcpName": "io.github.tomjwxf/protect-mcp",
-  "description": "Security gateway for MCP servers. Shadow-mode logs, per-tool policies, optional local Ed25519-signed receipts. Programmatic hooks for trust tiers, credential config, and external policy engines.",
+  "description": "Enterprise security gateway for MCP servers and Claude Code hooks. Cedar policies, Ed25519-signed receipts, swarm tracking, and tamper detection. Shadow or enforce mode.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.mjs",
@@ -17,7 +17,7 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts src/cli.ts src/demo-server.ts --format cjs,esm --dts --clean",
+    "build": "tsup src/index.ts src/cli.ts src/demo-server.ts src/hook-server.ts src/hook-patterns.ts --format cjs,esm --dts --clean",
     "test": "vitest run",
     "prepublishOnly": "npm run build"
   },
@@ -46,7 +46,10 @@
     "receipts",
     "trust-tiers",
     "agent-governance",
-    "claude-code"
+    "claude-code",
+    "hooks",
+    "swarm",
+    "compliance"
   ],
   "author": "Tom Farley <tommy@scopeblind.com>",
   "license": "MIT",
@@ -63,6 +66,7 @@
   },
   "optionalDependencies": {
     "@cedar-policy/cedar-wasm": "^4.9.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@noble/curves": "^1.8.0",
     "@noble/hashes": "^1.7.0"
   },

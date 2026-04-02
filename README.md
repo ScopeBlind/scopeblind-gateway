@@ -1,62 +1,127 @@
 # protect-mcp
 
-Security gateway for MCP servers. Shadow-mode logs by default, per-tool policies, optional local Ed25519 receipts, and verification-friendly audit output.
+Enterprise security gateway for MCP servers and Claude Code hooks. Signed receipts, Cedar policies, and swarm-aware audit trails.
 
-**Current CLI path:** wrap any stdio MCP server as a transparent proxy. In shadow mode it logs every `tools/call` request and allows everything through. Add a policy file to enforce per-tool rules. Run `protect-mcp init` to generate local signing keys and config so the gateway can also emit signed receipts.
+## Quick Start — Claude Code
 
-## Quick Start
+Two commands. Every tool call is receipted.
 
 ```bash
-# Wrap an existing OpenClaw / MCP config into a usable pack
-npx @scopeblind/passport wrap --runtime openclaw --config ./openclaw.json --policy email-safe
+# 1. Generate hooks, keys, Cedar policy, and /verify-receipt skill
+npx protect-mcp init-hooks
 
+# 2. Start the hook server
+npx protect-mcp serve
+```
+
+Open Claude Code in the same project. Every tool call is now intercepted, evaluated, and signed.
+
+### What `init-hooks` creates
+
+| File | Purpose |
+|------|---------|
+| `.claude/settings.json` | Hook config (PreToolUse, PostToolUse, + 9 lifecycle events) |
+| `keys/gateway.json` | Ed25519 signing keypair (auto-gitignored) |
+| `policies/agent.cedar` | Starter Cedar policy — customize to your needs |
+| `protect-mcp.json` | JSON policy with signing + rate limits |
+| `.claude/skills/verify-receipt/SKILL.md` | `/verify-receipt` skill for Claude Code |
+
+### Architecture
+
+```
+Claude Code  →  POST /hook  →  protect-mcp (Cedar + sign)  →  response
+                                    ↓
+                            .protect-mcp-log.jsonl
+                            .protect-mcp-receipts.jsonl
+```
+
+- **PreToolUse**: synchronous Cedar policy check → deny blocks the tool
+- **PostToolUse**: async receipt signing → zero latency impact
+- **deny is architecturally final** — it cannot be overridden by the model or other hooks
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST   | `/hook` | Claude Code hook endpoint |
+| GET    | `/health` | Server status, policy info, signer info |
+| GET    | `/receipts` | Recent signed receipts |
+| GET    | `/receipts/latest` | Most recent receipt |
+| GET    | `/suggestions` | Auto-generated Cedar policy fix suggestions |
+| GET    | `/alerts` | Config tamper detection alerts |
+
+### Verify receipts
+
+```bash
+# Inside Claude Code:
+/verify-receipt
+
+# From terminal:
+curl http://127.0.0.1:9377/receipts/latest | jq .
+npx protect-mcp receipts
+
+# Check policy suggestions:
+curl http://127.0.0.1:9377/suggestions | jq .
+```
+
+## Quick Start — MCP Server Wrapper
+
+Wrap any stdio MCP server as a transparent proxy:
+
+```bash
 # Shadow mode — log every tool call, enforce nothing
 npx protect-mcp -- node my-server.js
 
-# Generate keys + config template for local signing
-npx protect-mcp init
-
-# Shadow mode with local signing enabled
-npx protect-mcp --policy protect-mcp.json -- node my-server.js
-
-# Enforce mode
+# Enforce mode with policy
 npx protect-mcp --policy protect-mcp.json --enforce -- node my-server.js
 
-# Export an offline-verifiable audit bundle
-npx protect-mcp bundle --output audit.json
+# Generate keys + config template
+npx protect-mcp init
 ```
 
-## What It Does
+## How It Works
 
-protect-mcp sits between your MCP client and server as a stdio proxy:
+protect-mcp evaluates every tool call against a policy (JSON, Cedar, or external PDP), signs the decision as an Ed25519 receipt, and logs the result.
 
-```
-MCP Client ←stdin/stdout→ protect-mcp ←stdin/stdout→ your MCP server
-```
+**Two integration modes:**
 
-It intercepts `tools/call` JSON-RPC requests and:
-- **Shadow mode** (default): logs every tool call and allows everything through
-- **Enforce mode**: applies per-tool policy rules such as `block`, `rate_limit`, and `min_tier`
-- **Optional local signing**: when signing is configured, emits an Ed25519-signed receipt alongside the structured log
+| Mode | Transport | Use Case |
+|------|-----------|----------|
+| Hook Server | HTTP (`npx protect-mcp serve`) | Claude Code, agent swarms |
+| Stdio Proxy | stdin/stdout (`npx protect-mcp -- ...`) | Claude Desktop, Cursor, any MCP client |
 
-All other MCP messages (`initialize`, `tools/list`, notifications) pass through transparently.
+**Three policy engines:**
 
-## What Ships Today
+| Engine | Config | Notes |
+|--------|--------|-------|
+| JSON | `--policy policy.json` | Simple per-tool rules |
+| Cedar | `--cedar ./policies/` | Local WASM evaluation via `@cedar-policy/cedar-wasm` |
+| External PDP | `policy_engine: "external"` | OPA, Cerbos, or any HTTP PDP |
 
-- **Per-tool policies** — block destructive tools, rate-limit expensive ones, and attach minimum-tier requirements
-- **Structured decision logs** — every decision is emitted to `stderr` with `[PROTECT_MCP]`
-- **Optional local signed receipts** — generated when you run with a policy containing `signing.key_path`, persisted to `.protect-mcp-receipts.jsonl`, and exposed at `http://127.0.0.1:9876/receipts`
-- **Offline verification** — verify receipts or bundles with `npx @veritasacta/verify`
-- **No account required** — local keys, local policy, local process
+## Swarm Tracking
 
-## Current Capability Boundaries
+In multi-agent sessions, protect-mcp automatically tracks the swarm topology.
 
-These are important before you roll this out or talk to users:
+**11 hook events handled:**
 
-- **Signing is not automatic on the bare `npx protect-mcp -- ...` path.** That path logs decisions in shadow mode. For local signing, run `npx protect-mcp init` and then start the gateway with the generated policy file.
-- **Tier-aware policy checks are live, but manifest admission is not wired into the default CLI/stdio path.** The CLI defaults sessions to `unknown` unless a host integration calls the admission API programmatically.
-- **Credential config currently validates env-backed credential references and records credential labels in logs/receipts.** Generic per-call injection into arbitrary stdio tools is adapter-specific and is not performed by the default proxy path.
-- **External PDP adapters and audit bundle helpers exist as exported utilities.** They are not yet fully wired into the default CLI path.
+| Event | Type | Description |
+|-------|------|-------------|
+| `PreToolUse` | Sync | Cedar/policy evaluation before tool execution |
+| `PostToolUse` | Async | Receipt signing after tool execution |
+| `SubagentStart` / `SubagentStop` | Lifecycle | Worker agent spawn/completion |
+| `TaskCreated` / `TaskCompleted` | Lifecycle | Coordinator task assignment |
+| `SessionStart` / `SessionEnd` | Lifecycle | Session lifecycle with sandbox detection |
+| `TeammateIdle` | Lifecycle | Agent utilization monitoring |
+| `ConfigChange` | Security | Tamper detection for `.claude/settings.json` |
+| `Stop` | Lifecycle | Finalization + policy suggestion summary |
+
+Each receipt includes:
+- `swarm.agent_id`, `swarm.agent_type`, `swarm.team_name`
+- `timing.tool_duration_ms`, `timing.hook_latency_ms`
+- `payload_digest` (SHA-256 hash for payloads >1KB)
+- `deny_iteration` (retry count after denial)
+- `sandbox_state` (enabled/disabled/unavailable)
+- OpenTelemetry `otel_trace_id` and `otel_span_id`
 
 ## Policy File
 
@@ -73,33 +138,49 @@ These are important before you roll this out or talk to users:
     "key_path": "./keys/gateway.json",
     "issuer": "protect-mcp",
     "enabled": true
-  },
-  "credentials": {
-    "internal_api": {
-      "inject": "env",
-      "name": "INTERNAL_API_KEY",
-      "value_env": "INTERNAL_API_KEY"
-    }
   }
 }
 ```
 
-### Policy Rules
+### Cedar Policies
 
-| Field | Values | Description |
-|-------|--------|-------------|
-| `block` | `true` | Explicitly block this tool |
-| `require` | `"any"`, `"none"` | Basic access requirement |
-| `min_tier` | `"unknown"`, `"signed-known"`, `"evidenced"`, `"privileged"` | Minimum tier required if your host sets admission state |
-| `rate_limit` | `"N/unit"` | Rate limit (e.g. `"5/hour"`, `"100/day"`) |
+Cedar deny decisions are **authoritative** — they cannot be overridden.
 
-Tool names match exactly, with `"*"` as a wildcard fallback.
+```cedar
+// Allow read-only tools
+permit(
+  principal,
+  action == Action::"MCP::Tool::call",
+  resource == Tool::"Read"
+);
+
+// Block destructive tools
+forbid(
+  principal,
+  action == Action::"MCP::Tool::call",
+  resource == Tool::"delete_file"
+);
+```
+
+When a tool is denied, protect-mcp auto-suggests the minimal Cedar `permit()` rule via `GET /suggestions`.
+
+## CVE-Anchored Policy Packs
+
+Each prevents a real attack:
+
+| Policy | Incident | OWASP |
+|--------|----------|-------|
+| `clinejection.json` | CVE-2025-6514: MCP OAuth proxy hijack (437K environments) | A01, A03 |
+| `terraform-destroy.json` | Autonomous Terraform agent destroys production | A05, A06 |
+| `github-mcp-hijack.json` | Prompt injection via crafted GitHub issue | A01, A02, A03 |
+| `data-exfiltration.json` | Agent data theft via outbound tool abuse | A02, A04 |
+| `financial-safe.json` | Unauthorized financial transaction | A05, A06 |
+
+Cedar equivalents available in `policies/cedar/`.
 
 ## MCP Client Configuration
 
 ### Claude Desktop
-
-Add to `claude_desktop_config.json`:
 
 ```json
 {
@@ -121,137 +202,59 @@ Add to `claude_desktop_config.json`:
 
 Same pattern — replace the server command with `protect-mcp` wrapping it.
 
-## CLI Options
+## CLI Commands
 
 ```
-protect-mcp [options] -- <command> [args...]
-protect-mcp init
-
 Commands:
+  serve             Start HTTP hook server for Claude Code (port 9377)
+  init-hooks        Generate Claude Code hook config + skill + sample Cedar policy
+  quickstart        Zero-config onboarding: init + demo + show receipts
   init              Generate Ed25519 keypair + config template
-  status            Show decision stats and local passport identity
-  digest            Generate a local human-readable summary
+  demo              Start a demo server wrapped with protect-mcp
+  doctor            Check your setup: keys, policies, verifier, connectivity
+  trace <id>        Visualize the receipt DAG from a given receipt_id
+  status            Show tool call statistics from the decision log
+  digest            Generate a human-readable summary of agent activity
   receipts          Show recent persisted signed receipts
   bundle            Export an offline-verifiable audit bundle
+  simulate          Dry-run a policy against recorded tool calls
+  report            Generate a compliance report from an audit bundle
 
 Options:
   --policy <path>   Policy/config JSON file
-  --slug <slug>     Service identifier for logs/receipts
+  --cedar <dir>     Cedar policy directory
   --enforce         Enable enforcement mode (default: shadow)
+  --port <port>     HTTP server port (default: 9377 for serve)
   --verbose         Enable debug logging
-  --help            Show help
 ```
 
-## Programmatic Hooks
-
-The library also exposes the primitives that are not yet wired into the default CLI path:
-
-```typescript
-import {
-  ProtectGateway,
-  loadPolicy,
-  evaluateTier,
-  meetsMinTier,
-  resolveCredential,
-  initSigning,
-  signDecision,
-  queryExternalPDP,
-  buildDecisionContext,
-  createAuditBundle,
-} from 'protect-mcp';
-```
-
-Use these if you want to add:
-- manifest admission before a session starts
-- an external PDP (OPA, Cerbos, or a generic HTTP webhook)
-- custom credential-brokered integrations
-- audit bundle export around your own receipt store
-
-## Decision Logs and Receipts
+## Decision Logs
 
 Every tool call emits structured JSON to `stderr`:
 
 ```json
-[PROTECT_MCP] {"v":2,"tool":"read_file","decision":"allow","reason_code":"observe_mode","policy_digest":"none","mode":"shadow","timestamp":1710000000}
+[PROTECT_MCP] {"v":2,"tool":"read_file","decision":"allow","reason_code":"cedar_allow","policy_digest":"a1b2c3...","mode":"enforce","hook_event":"PreToolUse","timing":{"hook_latency_ms":1},"otel_trace_id":"..."}
 ```
 
-When signing is configured, a signed receipt follows:
-
-```json
-[PROTECT_MCP_RECEIPT] {"v":2,"type":"decision_receipt","algorithm":"ed25519","kid":"...","issuer":"protect-mcp","issued_at":"2026-03-22T00:00:00Z","payload":{"tool":"read_file","decision":"allow","policy_digest":"...","mode":"shadow","request_id":"..."},"signature":"..."}
-```
-
-Verify with the CLI: `npx @veritasacta/verify receipt.json`
-Verify in browser: [scopeblind.com/verify](https://scopeblind.com/verify)
+When signing is configured, a signed receipt is persisted to `.protect-mcp-receipts.jsonl`.
 
 ## Audit Bundles
 
-The package exports a helper for self-contained audit bundles:
-
-```json
-{
-  "format": "scopeblind:audit-bundle",
-  "version": 1,
-  "tenant": "my-service",
-  "receipts": ["..."],
-  "verification": {
-    "algorithm": "ed25519",
-    "signing_keys": ["..."]
-  }
-}
-```
-
-Use `createAuditBundle()` around your own collected signed receipts.
-
-## Philosophy
-
-- **Shadow first.** See what agents are doing before you enforce anything.
-- **Receipts beat dashboard-only logs.** Signed artifacts should be independently verifiable.
-- **Keep the claims tight.** The default CLI path does not yet do everything the long-term architecture will support.
-- **Layer on top of existing auth.** Don't rip out your stack just to add control and evidence.
-
-## Incident-Anchored Policy Packs
-
-Ship with protect-mcp — each prevents a real attack:
-
-| Policy | Incident | OWASP Categories |
-|--------|----------|-----------------|
-| `clinejection.json` | CVE-2025-6514: MCP OAuth proxy hijack (437K environments) | A01, A03 |
-| `terraform-destroy.json` | Autonomous Terraform agent destroys production | A05, A06 |
-| `github-mcp-hijack.json` | Prompt injection via crafted GitHub issue | A01, A02, A03 |
-| `data-exfiltration.json` | Agent data theft via outbound tool abuse | A02, A04 |
-| `financial-safe.json` | Unauthorized financial transaction | A05, A06 |
-
 ```bash
-npx protect-mcp --policy node_modules/protect-mcp/policies/clinejection.json -- node server.js
+npx protect-mcp bundle --output audit.json
 ```
 
-Full OWASP Agentic Top 10 mapping: [scopeblind.com/docs/owasp](https://scopeblind.com/docs/owasp)
-
-## BYOPE: External Policy Engines
-
-Supports OPA, Cerbos, Cedar (AWS AgentCore), and generic HTTP endpoints:
-
-```json
-{
-  "policy_engine": "hybrid",
-  "external": {
-    "endpoint": "http://localhost:8181/v1/data/mcp/allow",
-    "format": "cedar",
-    "timeout_ms": 200,
-    "fallback": "deny"
-  }
-}
-```
+Self-contained offline-verifiable bundle with receipts + signing keys. Verify with `npx @veritasacta/verify`.
 
 ## Standards & IP
 
 - **IETF Internet-Draft**: [draft-farley-acta-signed-receipts-00](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) — Signed Decision Receipts for Machine-to-Machine Access Control
 - **Patent Status**: 4 Australian provisional patents pending (2025-2026) covering decision receipts with configurable disclosure, tool-calling gateway, agent manifests, and portable identity
 - **Verification**: MIT-licensed — `npx @veritasacta/verify --self-test`
+- **Microsoft AGT Integration**: [PR #667](https://github.com/microsoft/agent-governance-toolkit/pull/667) — Cedar policy bridge for Agent Governance Toolkit
 
 ## License
 
 MIT — free to use, modify, distribute, and build upon without restriction.
 
-[scopeblind.com](https://scopeblind.com) · [npm](https://www.npmjs.com/package/protect-mcp) · [GitHub](https://github.com/scopeblind/ScopeBlindD2) · [IETF Draft](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)
+[scopeblind.com](https://scopeblind.com) · [npm](https://www.npmjs.com/package/protect-mcp) · [GitHub](https://github.com/scopeblind/scopeblind-gateway) · [IETF Draft](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)

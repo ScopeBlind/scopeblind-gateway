@@ -193,6 +193,76 @@ export interface DecisionLog {
     receipt_hash: string;
     verify_url: string;
   };
+
+  // ── Enterprise hardening fields (v0.5.0+) ──
+
+  /** Swarm context — present when running inside Claude Code coordinator mode */
+  swarm?: SwarmContext;
+  /** Operational timing — measures protect-mcp overhead and tool execution */
+  timing?: TimingMetrics;
+  /** Payload digest — hash of tool input/output when content exceeds 1KB */
+  payload_digest?: PayloadDigest;
+  /** Iteration count — how many times this tool was denied before allowing */
+  deny_iteration?: number;
+  /** Sandbox state — whether the calling process has OS-level containment */
+  sandbox_state?: 'enabled' | 'disabled' | 'unavailable';
+  /** Plan receipt reference — links tool calls back to the approved plan */
+  plan_receipt_id?: string;
+  /** Hook event that triggered this log entry */
+  hook_event?: HookEventName;
+}
+
+// ============================================================
+// Swarm context (multi-agent coordination)
+// ============================================================
+
+export interface SwarmContext {
+  /** Team name from CLAUDE_CODE_TEAM_NAME env var */
+  team_name?: string;
+  /** Agent ID from CLAUDE_CODE_AGENT_ID env var */
+  agent_id?: string;
+  /** Agent name from CLAUDE_CODE_AGENT_NAME env var */
+  agent_name?: string;
+  /** Whether this agent is the team leader */
+  is_leader?: boolean;
+  /** Parent receipt ID — links worker decisions to coordinator */
+  parent_receipt_id?: string;
+  /** Agent type classification */
+  agent_type?: 'coordinator' | 'worker' | 'teammate' | 'standalone';
+}
+
+// ============================================================
+// Timing metrics
+// ============================================================
+
+export interface TimingMetrics {
+  /** Time from PreToolUse to PostToolUse (ms) — tool execution duration */
+  tool_duration_ms?: number;
+  /** protect-mcp's own processing time (ms) — policy eval + receipt signing */
+  hook_latency_ms?: number;
+  /** Timestamp when the tool call started */
+  started_at?: number;
+  /** Timestamp when the tool call completed */
+  completed_at?: number;
+}
+
+// ============================================================
+// Payload digest (large content hashing)
+// ============================================================
+
+export interface PayloadDigest {
+  /** SHA-256 hash of the full tool input */
+  input_hash?: string;
+  /** SHA-256 hash of the full tool output */
+  output_hash?: string;
+  /** Size of tool input in bytes */
+  input_size?: number;
+  /** Size of tool output in bytes */
+  output_size?: number;
+  /** Whether the content was truncated in the receipt */
+  truncated: boolean;
+  /** First 256 chars of content (preview) */
+  preview?: string;
 }
 
 // ============================================================
@@ -240,4 +310,183 @@ export interface MultiAgentConfig {
   unknownAgentPolicy?: 'base' | 'deny' | 'shadow-only';
   /** Cache TTL for agent manifests in ms (default: 300000 = 5 min) */
   cacheTtlMs?: number;
+}
+
+// ============================================================
+// Claude Code Hook Types
+// ============================================================
+
+/** All supported hook event names from Claude Code's hook taxonomy */
+export type HookEventName =
+  // Tool lifecycle
+  | 'PreToolUse'
+  | 'PostToolUse'
+  // Permission lifecycle
+  | 'PermissionRequest'
+  | 'PermissionDenied'
+  // Subagent / swarm lifecycle
+  | 'SubagentStart'
+  | 'SubagentStop'
+  | 'TeammateIdle'
+  // Task lifecycle
+  | 'TaskCreated'
+  | 'TaskCompleted'
+  // Session lifecycle
+  | 'SessionStart'
+  | 'SessionEnd'
+  // Configuration
+  | 'ConfigChange'
+  // Content lifecycle
+  | 'InstructionsLoaded'
+  | 'FileChanged'
+  | 'CwdChanged'
+  // Stop event
+  | 'Stop';
+
+/** Input payload sent by Claude Code to an HTTP hook */
+export interface HookInput {
+  /** Which event triggered this hook */
+  hookEventName: HookEventName;
+  /** Tool name (for PreToolUse / PostToolUse) */
+  toolName?: string;
+  /** Tool input (JSON object) */
+  toolInput?: Record<string, unknown>;
+  /** Tool result (PostToolUse only) */
+  toolResult?: unknown;
+  /** Tool use ID (unique per invocation) */
+  toolUseId?: string;
+  /** Session ID */
+  sessionId?: string;
+  /** Agent ID (swarm workers) */
+  agentId?: string;
+  /** Agent name */
+  agentName?: string;
+  /** Team name (coordinator mode) */
+  teamName?: string;
+  /** Agent type (coordinator, worker, etc.) */
+  agentType?: string;
+  /** Task ID (for TaskCreated/TaskCompleted) */
+  taskId?: string;
+  /** Teammate name (for TaskCreated) */
+  teammateName?: string;
+  /** Config change source */
+  configSource?: string;
+  /** Config change path */
+  configPath?: string;
+  /** Agent transcript path (SubagentStop) */
+  agentTranscriptPath?: string;
+  /** File path (FileChanged, CwdChanged) */
+  filePath?: string;
+  /** Whether the session is stopping */
+  isStopping?: boolean;
+}
+
+/** Response from protect-mcp hook server to Claude Code.
+ *
+ * Matches Claude Code's SyncHookJSONOutputSchema (coreSchemas.ts line 907-935).
+ * The hookSpecificOutput shape varies by event — see the per-event schemas:
+ *   - PreToolUse: permissionDecision, permissionDecisionReason, updatedInput, additionalContext
+ *   - PostToolUse: additionalContext, updatedMCPToolOutput
+ *   - SubagentStart: additionalContext
+ *   - SessionStart: additionalContext, initialUserMessage, watchPaths
+ *
+ * IMPORTANT: additionalContext MUST be inside hookSpecificOutput, NOT at the top level.
+ * The async/sync output schemas are mutually exclusive (AsyncHookJSONOutputSchema vs
+ * SyncHookJSONOutputSchema). We always return sync responses.
+ */
+export interface HookResponse {
+  /** Whether Claude should continue (false = stop immediately) */
+  continue?: boolean;
+  /** Stop reason (when continue=false) */
+  stopReason?: string;
+  /** Top-level decision shorthand (approve/block) */
+  decision?: 'approve' | 'block';
+  /** Human-readable reason for the decision */
+  reason?: string;
+  /** System message shown to user (not injected into model context) */
+  systemMessage?: string;
+  /** Hook-specific output matching Claude Code's per-event schema */
+  hookSpecificOutput?: {
+    hookEventName: HookEventName;
+    /** Permission decision (PreToolUse only) */
+    permissionDecision?: 'allow' | 'deny' | 'ask';
+    /** Human-readable reason for the decision */
+    permissionDecisionReason?: string;
+    /** Modified tool input (PreToolUse allow with changes) */
+    updatedInput?: Record<string, unknown>;
+    /** Additional context injected into the model's conversation */
+    additionalContext?: string;
+    /** Modified MCP tool output (PostToolUse only) */
+    updatedMCPToolOutput?: unknown;
+  };
+}
+
+// ============================================================
+// Plan receipt (Ultraplan integration)
+// ============================================================
+
+export interface PlanReceipt {
+  /** SHA-256 hash of the approved plan text */
+  plan_hash: string;
+  /** Number of times the plan was rejected before approval */
+  reject_count: number;
+  /** Where the plan will execute */
+  execution_target: 'local' | 'remote';
+  /** When the plan was approved */
+  approved_at: string;
+  /** Receipt IDs of tool calls executed under this plan */
+  child_receipt_ids: string[];
+}
+
+// ============================================================
+// CCR Connector (Scheduled Remote Agents)
+// ============================================================
+
+export interface CCRConnectorConfig {
+  /** Connector UUID */
+  connector_uuid: string;
+  /** Display name */
+  name: string;
+  /** Connector endpoint URL */
+  url: string;
+  /** Required policy digest — reject sessions that don't match */
+  required_policy_digest?: string;
+}
+
+export interface CCRSessionContext {
+  /** Trigger ID that initiated this session */
+  trigger_id: string;
+  /** Environment ID (Anthropic cloud container) */
+  environment_id: string;
+  /** Model used */
+  model: string;
+  /** Git sources */
+  sources: Array<{ git_repository: { url: string } }>;
+  /** Allowed tools */
+  allowed_tools: string[];
+  /** MCP connections */
+  mcp_connections: CCRConnectorConfig[];
+}
+
+// ============================================================
+// XAA / RFC 7523 Compatibility
+// ============================================================
+
+export interface PassportTokenClaims {
+  /** Issuer (aisigil.id) */
+  iss: string;
+  /** Subject (agent kid) */
+  sub: string;
+  /** Audience (target MCP server) */
+  aud: string;
+  /** Expiration time */
+  exp: number;
+  /** Issued at */
+  iat: number;
+  /** JWT ID */
+  jti: string;
+  /** Trust tier at issuance */
+  tier: TrustTier;
+  /** DPoP thumbprint (RFC 9449) */
+  cnf?: { jkt: string };
 }

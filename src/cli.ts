@@ -33,10 +33,12 @@ import type { ProtectConfig } from './types.js';
 
 function printHelp(): void {
   process.stderr.write(`
-protect-mcp — Shadow-mode security gateway for MCP servers
+protect-mcp — Enterprise security gateway for MCP servers & Claude Code hooks
 
 Usage:
   protect-mcp [options] -- <command> [args...]
+  protect-mcp serve [--port <port>] [--enforce] [--policy <path>] [--cedar <dir>]
+  protect-mcp init-hooks [--dir <path>] [--port <port>]
   protect-mcp quickstart
   protect-mcp init [--dir <path>]
   protect-mcp demo
@@ -54,11 +56,13 @@ Options:
   --slug <slug>     ScopeBlind tenant slug (optional)
   --enforce         Enable enforcement mode (default: shadow mode)
   --http            Start HTTP/SSE server instead of stdio proxy
-  --port <port>     HTTP server port (default: 3000, requires --http)
+  --port <port>     HTTP server port (default: 3000 for --http, 9377 for serve)
   --verbose         Enable debug logging to stderr
   --help            Show this help
 
 Commands:
+  serve             Start HTTP hook server for Claude Code integration (port 9377)
+  init-hooks        Generate Claude Code hook config + skill + sample Cedar policy
   quickstart        Zero-config onboarding: init + demo + show receipts in one command
   init              Generate config template, Ed25519 keypair, and sample policy
   demo              Start a demo server wrapped with protect-mcp (see receipts instantly)
@@ -70,15 +74,15 @@ Commands:
   bundle            Export an offline-verifiable audit bundle
 
 Examples:
+  protect-mcp serve                           # Start hook server (Claude Code)
+  protect-mcp serve --enforce --cedar ./cedar  # Enforce Cedar policies
+  protect-mcp init-hooks                       # One-command Claude Code setup
   protect-mcp quickstart
   protect-mcp -- node my-server.js
-  protect-mcp --policy protect-mcp.json -- node my-server.js
   protect-mcp init
   protect-mcp demo
   protect-mcp trace sha256:abc123 --depth 5
   protect-mcp status
-  protect-mcp digest --today
-  protect-mcp receipts --last 10
   protect-mcp bundle --output audit.json
 
 `);
@@ -1021,12 +1025,183 @@ function getTypeEmoji(type: string | undefined): string {
 }
 
 
+/**
+ * Handle the `init-hooks` command: generate Claude Code hook integration files.
+ * Creates: .claude/settings.json hooks, sample Cedar policy, and /verify-receipt skill.
+ */
+async function handleInitHooks(argv: string[]): Promise<void> {
+  const { writeFileSync, existsSync, mkdirSync, readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { generateHookSettings, generateSampleCedarPolicy, generateVerifyReceiptSkill } = await import('./hook-patterns.js');
+
+  let dir = process.cwd();
+  const dirIdx = argv.indexOf('--dir');
+  if (dirIdx !== -1 && argv[dirIdx + 1]) dir = argv[dirIdx + 1];
+
+  const portIdx = argv.indexOf('--port');
+  const port = portIdx >= 0 && argv[portIdx + 1] ? parseInt(argv[portIdx + 1]) : 9377;
+
+  const hookUrl = `http://127.0.0.1:${port}/hook`;
+
+  process.stdout.write(`\n${bold('protect-mcp init-hooks')}\n`);
+  process.stdout.write(`${'─'.repeat(55)}\n\n`);
+
+  // 1. Generate .claude/settings.json hooks
+  const claudeDir = join(dir, '.claude');
+  const settingsPath = join(claudeDir, 'settings.json');
+  let existingSettings: Record<string, unknown> = {};
+
+  if (!existsSync(claudeDir)) {
+    mkdirSync(claudeDir, { recursive: true });
+  }
+
+  if (existsSync(settingsPath)) {
+    try {
+      existingSettings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+    } catch {
+      process.stderr.write(`[PROTECT_MCP] Warning: Could not parse existing ${settingsPath}\n`);
+    }
+  }
+
+  const hookSettings = generateHookSettings(hookUrl);
+  const mergedSettings = {
+    ...existingSettings,
+    hooks: {
+      ...(existingSettings.hooks as Record<string, unknown> || {}),
+      ...(hookSettings.hooks as Record<string, unknown>),
+    },
+  };
+
+  writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2) + '\n');
+  process.stdout.write(`  ${green('✓')} ${settingsPath}\n`);
+  process.stdout.write(`    Hook URL: ${dim(hookUrl)}\n`);
+  process.stdout.write(`    Events: PreToolUse, PostToolUse, SubagentStart/Stop, Task, Session, Config, Stop\n\n`);
+
+  // 2. Generate signing keys if not present
+  const keysDir = join(dir, 'keys');
+  const keyPath = join(keysDir, 'gateway.json');
+  if (!existsSync(keyPath)) {
+    if (!existsSync(keysDir)) mkdirSync(keysDir, { recursive: true });
+
+    const { randomBytes: rb } = await import('node:crypto');
+    try {
+      const { ed25519 } = await import('@noble/curves/ed25519');
+      const { bytesToHex } = await import('@noble/hashes/utils');
+      const privateKey = rb(32);
+      const publicKey = ed25519.getPublicKey(privateKey);
+
+      writeFileSync(keyPath, JSON.stringify({
+        privateKey: bytesToHex(privateKey),
+        publicKey: bytesToHex(publicKey),
+        kid: `hook-${Date.now()}`,
+        generated_at: new Date().toISOString(),
+        warning: 'KEEP THIS FILE SECRET. Never commit to version control.',
+      }, null, 2) + '\n');
+
+      const gitignorePath = join(keysDir, '.gitignore');
+      if (!existsSync(gitignorePath)) {
+        writeFileSync(gitignorePath, '# Never commit signing keys\n*.json\n');
+      }
+
+      process.stdout.write(`  ${green('✓')} ${keyPath} (Ed25519 keypair)\n\n`);
+    } catch {
+      process.stdout.write(`  ${yellow('⚠')} Could not generate Ed25519 keys — signing disabled\n\n`);
+    }
+  } else {
+    process.stdout.write(`  ${green('✓')} ${keyPath} (existing keys found)\n\n`);
+  }
+
+  // 3. Generate sample Cedar policy
+  const policiesDir = join(dir, 'policies');
+  const cedarPath = join(policiesDir, 'agent.cedar');
+  if (!existsSync(cedarPath)) {
+    if (!existsSync(policiesDir)) mkdirSync(policiesDir, { recursive: true });
+    writeFileSync(cedarPath, generateSampleCedarPolicy());
+    process.stdout.write(`  ${green('✓')} ${cedarPath}\n`);
+    process.stdout.write(`    Edit to customize tool permissions. Cedar deny is AUTHORITATIVE.\n\n`);
+  } else {
+    process.stdout.write(`  ${green('✓')} ${cedarPath} (existing policy found)\n\n`);
+  }
+
+  // 4. Generate JSON policy config with signing reference
+  const configPath = join(dir, 'protect-mcp.json');
+  if (!existsSync(configPath)) {
+    const config = {
+      tools: { '*': { rate_limit: '100/hour' } },
+      default_tier: 'unknown',
+      signing: {
+        key_path: './keys/gateway.json',
+        issuer: 'protect-mcp',
+        enabled: true,
+      },
+    };
+    writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+    process.stdout.write(`  ${green('✓')} ${configPath}\n\n`);
+  }
+
+  // 5. Generate /verify-receipt skill
+  const skillsDir = join(dir, '.claude', 'skills', 'verify-receipt');
+  const skillPath = join(skillsDir, 'SKILL.md');
+  if (!existsSync(skillPath)) {
+    mkdirSync(skillsDir, { recursive: true });
+    writeFileSync(skillPath, generateVerifyReceiptSkill());
+    process.stdout.write(`  ${green('✓')} ${skillPath}\n`);
+    process.stdout.write(`    Use ${dim('/verify-receipt')} in Claude Code to check audit trails.\n\n`);
+  } else {
+    process.stdout.write(`  ${green('✓')} ${skillPath} (existing skill found)\n\n`);
+  }
+
+  // Summary
+  process.stdout.write(`${'─'.repeat(55)}\n\n`);
+  process.stdout.write(`${bold('Next steps:')}\n\n`);
+  process.stdout.write(`  1. Start the hook server:\n`);
+  process.stdout.write(`     ${dim(`npx protect-mcp serve`)}\n\n`);
+  process.stdout.write(`  2. Open a Claude Code session in this project.\n`);
+  process.stdout.write(`     Every tool call will be receipted automatically.\n\n`);
+  process.stdout.write(`  3. Check receipts:\n`);
+  process.stdout.write(`     ${dim(`curl http://127.0.0.1:${port}/receipts/latest`)}\n`);
+  process.stdout.write(`     ${dim(`npx protect-mcp receipts`)}\n`);
+  process.stdout.write(`     Or use ${dim('/verify-receipt')} inside Claude Code.\n\n`);
+  process.stdout.write(`  4. View policy suggestions:\n`);
+  process.stdout.write(`     ${dim(`curl http://127.0.0.1:${port}/suggestions`)}\n\n`);
+  process.stdout.write(`${bold('Key facts:')}\n`);
+  process.stdout.write(`  • deny decisions are ${bold('AUTHORITATIVE')} — cannot be overridden\n`);
+  process.stdout.write(`  • PostToolUse runs ${bold('async')} — zero latency impact on tool execution\n`);
+  process.stdout.write(`  • Receipts are Ed25519-signed and append-only\n`);
+  process.stdout.write(`  • Swarm topology (coordinator/workers) is tracked automatically\n\n`);
+}
+
 async function main(): Promise<void> {
   // Skip node + script path
   const args = process.argv.slice(2);
 
   if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
     printHelp();
+    process.exit(0);
+  }
+
+  // Handle serve command — Claude Code Hook Server
+  if (args[0] === 'serve') {
+    const { startHookServer } = await import('./hook-server.js');
+    const portIdx = args.indexOf('--port');
+    const port = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 9377;
+    const policyIdx = args.indexOf('--policy');
+    const policyPath = policyIdx >= 0 && args[policyIdx + 1] ? args[policyIdx + 1] : undefined;
+    const cedarIdx = args.indexOf('--cedar');
+    const cedarDir = cedarIdx >= 0 && args[cedarIdx + 1] ? args[cedarIdx + 1] : undefined;
+    await startHookServer({
+      port,
+      policyPath,
+      cedarDir,
+      enforce: args.includes('--enforce'),
+      verbose: args.includes('--verbose') || args.includes('-v'),
+    });
+    return; // Server keeps running
+  }
+
+  // Handle init-hooks command — Claude Code integration setup
+  if (args[0] === 'init-hooks') {
+    await handleInitHooks(args.slice(1));
     process.exit(0);
   }
 

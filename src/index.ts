@@ -39,6 +39,14 @@ export {
   validateEvidenceReceipt,
 } from './manifest.js';
 
+// ── Hook Server (Claude Code Integration) ──────────────────────
+export { startHookServer } from './hook-server.js';
+export type { HookServerOptions } from './hook-server.js';
+
+// ── Hook Patterns ──────────────────────────────────────────────
+export { BUILTIN_PATTERNS, generateHookSettings, generateSampleCedarPolicy, generateVerifyReceiptSkill } from './hook-patterns.js';
+export type { HookPattern } from './hook-patterns.js';
+
 // ── Types ───────────────────────────────────────────────────────
 export type {
   ProtectPolicy,
@@ -55,6 +63,17 @@ export type {
   ExternalDecision,
   CredentialConfig,
   SigningConfig,
+  // Enterprise hardening types (v0.5.0+)
+  HookEventName,
+  HookInput,
+  HookResponse,
+  SwarmContext,
+  TimingMetrics,
+  PayloadDigest,
+  PlanReceipt,
+  CCRConnectorConfig,
+  CCRSessionContext,
+  PassportTokenClaims,
 } from './types.js';
 
 export type {
@@ -141,3 +160,7 @@ export type { DelegationReceipt, ActionReceipt, PropagatorConfig } from './agent
 // ── Confidential Computing (Beta / Enterprise) ──────────────────
 export { ConfidentialGate, confidentialInference } from './confidential.js';
 export type { AttestationDocument, AttestationResult, ConfidentialGateConfig, ConfidentialInferenceConfig, AttestationProvider } from './confidential.js';
+
+// ── Smithery Sandbox Server ────────────────────────────────────
+// Required by Smithery registry to scan server capabilities
+export { createSandboxServer } from './demo-server.js';
