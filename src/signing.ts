@@ -116,6 +116,13 @@ export function signDecision(entry: DecisionLog): {
       scope: entry.request_id, // request scope
       mode: entry.mode,
       request_id: entry.request_id,
+      // Spec version: ties every receipt to the IETF standard
+      spec: 'draft-farley-acta-signed-receipts-01',
+      // Issuer certification: distinguishes VOPRF-backed receipts from self-signed ones
+      // - scopeblind:verified  = issued via ScopeBlind VOPRF backend (paid tier)
+      // - self-signed          = signed with local Ed25519 key (free tier, protect-mcp default)
+      // - uncertified          = unsigned receipt (shadow mode, no signing configured)
+      issuer_certification: signerState ? 'self-signed' : 'uncertified',
     };
 
     if (entry.tier) payload.tier = entry.tier;
@@ -124,6 +131,14 @@ export function signDecision(entry: DecisionLog): {
       payload.rate_limit_remaining = entry.rate_limit_remaining;
     }
     if (entry.policy_engine) payload.policy_engine = entry.policy_engine;
+
+    // Extended fields from hook server
+    if (entry.hook_event) payload.hook_event = entry.hook_event;
+    if (entry.sandbox_state) payload.sandbox_state = entry.sandbox_state;
+    if (entry.timing) payload.timing = entry.timing;
+    if (entry.swarm) payload.swarm = entry.swarm;
+    if (entry.payload_digest) payload.payload_digest = entry.payload_digest;
+    if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
 
     const result = artifactsModule.createSignedArtifact(
       artifactType,

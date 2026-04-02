@@ -210,6 +210,16 @@ export interface DecisionLog {
   plan_receipt_id?: string;
   /** Hook event that triggered this log entry */
   hook_event?: HookEventName;
+
+  // ── Standard reference fields (v0.5.2+) ──
+
+  /** IETF specification version — ties every receipt to the standard */
+  spec?: string;
+  /** Issuer certification level:
+   *  - "scopeblind:verified" = VOPRF-backed issuance (paid tier)
+   *  - "self-signed"         = local Ed25519 key (free tier, protect-mcp default)
+   *  - "uncertified"         = unsigned receipt (shadow mode) */
+  issuer_certification?: 'scopeblind:verified' | 'self-signed' | 'uncertified';
 }
 
 // ============================================================
