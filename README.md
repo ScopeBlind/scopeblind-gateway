@@ -248,9 +248,9 @@ Self-contained offline-verifiable bundle with receipts + signing keys. Verify wi
 
 ## Standards & IP
 
-- **IETF Internet-Draft**: [draft-farley-acta-signed-receipts-00](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) — Signed Decision Receipts for Machine-to-Machine Access Control
+- **IETF Internet-Draft**: [draft-farley-acta-signed-receipts-01](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) — Signed Decision Receipts for Machine-to-Machine Access Control
 - **Patent Status**: 4 Australian provisional patents pending (2025-2026) covering decision receipts with configurable disclosure, tool-calling gateway, agent manifests, and portable identity
-- **Verification**: MIT-licensed — `npx @veritasacta/verify --self-test`
+- **Verification**: Apache-2.0 — `npx @veritasacta/verify --self-test`
 - **Microsoft AGT Integration**: [PR #667](https://github.com/microsoft/agent-governance-toolkit/pull/667) — Cedar policy bridge for Agent Governance Toolkit
 
 ## License
