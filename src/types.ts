@@ -211,6 +211,27 @@ export interface DecisionLog {
   /** Hook event that triggered this log entry */
   hook_event?: HookEventName;
 
+  // ── Iteration context (behavioral windowing) ──
+
+  /**
+   * Logical iteration identifier for multi-step agent workflows.
+   * Enables drift detectors and behavioral monitors to group receipts
+   * by execution phase rather than raw sequence.
+   *
+   * Format: opaque string. Recommended convention: dot-separated
+   * hierarchy for nested iterations (e.g., "run_7.sub_3").
+   * - Flat: "research_1", "synthesis_2"
+   * - Nested: "meta_1.sub_A_1" (parent = "meta_1", depth = 1)
+   *
+   * When present, consumers SHOULD group receipts by iteration_id
+   * prefix and compare within-iteration distributions against baselines.
+   * When null/absent, fall back to count-based windowing.
+   *
+   * Security: agent-declared metadata, not a security boundary.
+   * Receipt signatures cover this field (no post-hoc tampering).
+   */
+  iteration_id?: string | null;
+
   // ── Standard reference fields (v0.5.2+) ──
 
   /** IETF specification version — ties every receipt to the standard */
