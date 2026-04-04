@@ -2,6 +2,8 @@
 
 Enterprise security gateway for MCP servers and Claude Code hooks. Signed receipts, Cedar policies, and swarm-aware audit trails.
 
+**Integrated into [Microsoft Agent Governance Toolkit](https://github.com/AzureAI-Foundry/agent-governance-toolkit/pull/667)** | **[IETF Internet-Draft](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)** | **[Live demo: acta.today/wiki](https://acta.today/wiki)**
+
 ## Quick Start — Claude Code
 
 Two commands. Every tool call is receipted.
@@ -245,6 +247,37 @@ npx protect-mcp bundle --output audit.json
 ```
 
 Self-contained offline-verifiable bundle with receipts + signing keys. Verify with `npx @veritasacta/verify`.
+
+## Verified Knowledge Base (acta.today/wiki)
+
+protect-mcp's receipt signing powers the world's first verified multi-model knowledge base at [acta.today/wiki](https://acta.today/wiki).
+
+Every Knowledge Unit is produced by 4 frontier models deliberating in 3 adversarial rounds, with Ed25519 receipts on every model response. The current roster:
+
+| Model | Provider | Origin |
+|-------|----------|--------|
+| Claude Opus 4.6 | Anthropic | US |
+| GPT-5.4 | OpenAI | US |
+| Grok 4.20 | xAI | US |
+| Gemini 3.1 Pro | Google | US |
+| DeepSeek V3.2 | DeepSeek | CN |
+| MiniMax M2.7 | MiniMax | CN |
+| Kimi K2.5 | Moonshot | CN |
+| Qwen 2.5 72B | Alibaba | CN |
+
+Every KU is independently verifiable: `npx @veritasacta/verify receipt.json`
+
+## Ecosystem Integrations
+
+| Project | Stars | Integration | Status |
+|---------|-------|-------------|--------|
+| [Microsoft Agent Governance Toolkit](https://github.com/AzureAI-Foundry/agent-governance-toolkit) | 600+ | Cedar policy bridge + receipt signing | Merged (PR #667) |
+| [Mission Control](https://github.com/builderz-labs/mission-control) | 3,700+ | Ed25519 receipt signing for MCP audit pipeline | PR #556 submitted |
+| [Assay](https://github.com/Rul1an/assay) | — | Signed receipts as evidence source | Active discussion (#1029) |
+| [Hermes Agent](https://github.com/NousResearch/hermes-agent) | 24,500+ | Cryptographic audit trail for skill execution | Issue #5041 |
+| [DeerFlow](https://github.com/bytedance/deer-flow) | 57,600+ | Cryptographic integrity for persistence layer | Discussion #1855 |
+| [Pro-Workflow](https://github.com/rohitg00/pro-workflow) | 1,500+ | MCP config recommendation | PR #41 |
+| [Zeroshot](https://github.com/covibes/zeroshot) | 1,400+ | Cryptographic receipts for validator verdicts | Issue #464 |
 
 ## Standards & IP
 
