@@ -1,3 +1,9 @@
+[![npm version](https://img.shields.io/npm/v/protect-mcp)](https://www.npmjs.com/package/protect-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/protect-mcp)](https://www.npmjs.com/package/protect-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![IETF Draft](https://img.shields.io/badge/IETF-draft--farley--acta--signed--receipts--01-blue)](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)
+[![MCP Registry](https://img.shields.io/badge/MCP_Registry-com.scopeblind%2Fprotect--mcp-green)](https://registry.modelcontextprotocol.io)
+
 # protect-mcp
 
 Enterprise security gateway for MCP servers and Claude Code hooks. Signed receipts, Cedar policies, and swarm-aware audit trails.
@@ -281,13 +287,34 @@ Every KU is independently verifiable: `npx @veritasacta/verify receipt.json`
 
 ## Standards & IP
 
-- **IETF Internet-Draft**: [draft-farley-acta-signed-receipts-01](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) — Signed Decision Receipts for Machine-to-Machine Access Control
+- **IETF Internet-Drafts**:
+  - [draft-farley-acta-signed-receipts-01](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) — Signed Decision Receipts for Machine-to-Machine Access Control
+  - [draft-farley-acta-knowledge-units-00](https://datatracker.ietf.org/doc/draft-farley-acta-knowledge-units/) — Knowledge Units for Multi-Model Deliberation
+  - Source: [VeritasActa/drafts](https://github.com/VeritasActa/drafts)
 - **Patent Status**: 4 Australian provisional patents pending (2025-2026) covering decision receipts with configurable disclosure, tool-calling gateway, agent manifests, and portable identity
 - **Verification**: Apache-2.0 — `npx @veritasacta/verify --self-test`
 - **Microsoft AGT Integration**: [PR #667](https://github.com/microsoft/agent-governance-toolkit/pull/667) — Cedar policy bridge for Agent Governance Toolkit
+
+## Related Repositories
+
+| Repository | Description |
+|-----------|-------------|
+| [VeritasActa/Acta](https://github.com/VeritasActa/Acta) | Open protocol for contestable public records (Apache-2.0) |
+| [VeritasActa/drafts](https://github.com/VeritasActa/drafts) | IETF Internet-Draft source files |
+| [ScopeBlind/examples](https://github.com/ScopeBlind/examples) | Integration examples: Claude Code hooks, Express API, MCP server signing |
+| [@veritasacta/verify](https://www.npmjs.com/package/@veritasacta/verify) | Offline receipt verifier (Apache-2.0) |
+| [@scopeblind/passport](https://www.npmjs.com/package/@scopeblind/passport) | Agent identity SDK (Apache-2.0) |
+
+## Contributing
+
+Issues and pull requests are welcome. Please open an issue first for significant changes.
+
+- **Bug reports**: Include the protect-mcp version, Node.js version, and steps to reproduce
+- **Cedar policies**: Share reusable policies via PR to the `policies/cedar/` directory
+- **Integration examples**: Add to [ScopeBlind/examples](https://github.com/ScopeBlind/examples)
 
 ## License
 
 MIT — free to use, modify, distribute, and build upon without restriction.
 
-[scopeblind.com](https://scopeblind.com) · [npm](https://www.npmjs.com/package/protect-mcp) · [GitHub](https://github.com/scopeblind/scopeblind-gateway) · [IETF Draft](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)
+[scopeblind.com](https://scopeblind.com) · [npm](https://www.npmjs.com/package/protect-mcp) · [veritasacta.com](https://veritasacta.com) · [IETF Drafts](https://github.com/VeritasActa/drafts)
