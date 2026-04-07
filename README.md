@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![IETF Draft](https://img.shields.io/badge/IETF-draft--farley--acta--signed--receipts--01-blue)](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)
 [![MCP Registry](https://img.shields.io/badge/MCP_Registry-com.scopeblind%2Fprotect--mcp-green)](https://registry.modelcontextprotocol.io)
+[![PyPI: protect-mcp-adk](https://img.shields.io/pypi/v/protect-mcp-adk?label=protect-mcp-adk)](https://pypi.org/project/protect-mcp-adk/)
 
 # protect-mcp
 
@@ -304,6 +305,7 @@ Every KU is independently verifiable: `npx @veritasacta/verify receipt.json`
 | [ScopeBlind/examples](https://github.com/ScopeBlind/examples) | Integration examples: Claude Code hooks, Express API, MCP server signing |
 | [@veritasacta/verify](https://www.npmjs.com/package/@veritasacta/verify) | Offline receipt verifier (Apache-2.0) |
 | [@scopeblind/passport](https://www.npmjs.com/package/@scopeblind/passport) | Agent identity SDK (Apache-2.0) |
+| [protect-mcp-adk](https://pypi.org/project/protect-mcp-adk/) | Google ADK receipt signing plugin (MIT, Python) |
 
 ## Contributing
 
