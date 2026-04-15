@@ -6,6 +6,7 @@
  * Usage:
  *   npx protect-mcp [options] -- <command> [args...]
  *   npx protect-mcp init [--dir <path>]
+ *   npx protect-mcp connect
  *   npx protect-mcp demo
  *   npx protect-mcp status [--dir <path>]
  *   npx protect-mcp bundle [--output <path>] [--dir <path>]
@@ -39,7 +40,8 @@ Usage:
   protect-mcp [options] -- <command> [args...]
   protect-mcp serve [--port <port>] [--enforce] [--policy <path>] [--cedar <dir>]
   protect-mcp init-hooks [--dir <path>] [--port <port>]
-  protect-mcp quickstart
+  protect-mcp quickstart [--connect]
+  protect-mcp connect
   protect-mcp init [--dir <path>]
   protect-mcp demo
   protect-mcp trace <receipt_id> [--endpoint <url>] [--depth <n>]
@@ -64,6 +66,7 @@ Commands:
   serve             Start HTTP hook server for Claude Code integration (port 9377)
   init-hooks        Generate Claude Code hook config + skill + sample Cedar policy
   quickstart        Zero-config onboarding: init + demo + show receipts in one command
+  connect           Create a ScopeBlind sandbox dashboard and configure receipt upload
   init              Generate config template, Ed25519 keypair, and sample policy
   demo              Start a demo server wrapped with protect-mcp (see receipts instantly)
   doctor            Check your setup: keys, policies, verifier, API connectivity
@@ -78,12 +81,20 @@ Examples:
   protect-mcp serve --enforce --cedar ./cedar  # Enforce Cedar policies
   protect-mcp init-hooks                       # One-command Claude Code setup
   protect-mcp quickstart
+  protect-mcp quickstart --connect               # Quickstart + create dashboard
+  protect-mcp connect                             # Connect existing setup to dashboard
   protect-mcp -- node my-server.js
   protect-mcp init
   protect-mcp demo
   protect-mcp trace sha256:abc123 --depth 5
   protect-mcp status
   protect-mcp bundle --output audit.json
+
+Dashboard:
+  npx protect-mcp connect        Create a free ScopeBlind dashboard
+                                  Free up to 20,000 receipts/month
+
+  https://scopeblind.com          Docs, pricing, enterprise
 
 `);
 }
@@ -732,10 +743,89 @@ async function handleBundle(argv: string[]): Promise<void> {
 }
 
 /**
+ * Create a ScopeBlind sandbox and save config to ~/.protect-mcp/config.json.
+ * Returns the dashboard URL on success, or null on failure.
+ */
+async function createSandbox(): Promise<string | null> {
+  const { mkdirSync, writeFileSync, existsSync, readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { homedir } = await import('node:os');
+
+  let response: Response;
+  try {
+    response = await fetch('https://api.scopeblind.com/sandbox/create', { method: 'POST' });
+  } catch {
+    process.stderr.write(yellow('  ⚠ Could not create dashboard (offline or server unavailable).\n'));
+    process.stderr.write(`    Run 'npx protect-mcp connect' later to set up the dashboard.\n\n`);
+    return null;
+  }
+
+  if (!response.ok) {
+    process.stderr.write(yellow('  ⚠ Could not create dashboard (offline or server unavailable).\n'));
+    process.stderr.write(`    Run 'npx protect-mcp connect' later to set up the dashboard.\n\n`);
+    return null;
+  }
+
+  let data: { slug: string; mgmt_token?: string; password?: string };
+  try {
+    data = await response.json() as typeof data;
+  } catch {
+    process.stderr.write(yellow('  ⚠ Could not create dashboard (unexpected response).\n'));
+    process.stderr.write(`    Run 'npx protect-mcp connect' later to set up the dashboard.\n\n`);
+    return null;
+  }
+
+  const dashboardUrl = `https://scopeblind.com/t/${data.slug}`;
+
+  // Save to ~/.protect-mcp/config.json
+  const configDir = join(homedir(), '.protect-mcp');
+  if (!existsSync(configDir)) {
+    mkdirSync(configDir, { recursive: true });
+  }
+  const configPath = join(configDir, 'config.json');
+
+  // Merge with existing config if present
+  let existing: Record<string, unknown> = {};
+  if (existsSync(configPath)) {
+    try {
+      existing = JSON.parse(readFileSync(configPath, 'utf-8'));
+    } catch {
+      // Overwrite corrupt config
+    }
+  }
+
+  writeFileSync(configPath, JSON.stringify({
+    ...existing,
+    sandbox_slug: data.slug,
+    dashboard_url: dashboardUrl,
+  }, null, 2) + '\n');
+
+  return dashboardUrl;
+}
+
+/**
+ * Handle the `connect` command: create a ScopeBlind sandbox independently.
+ */
+async function handleConnect(): Promise<void> {
+  process.stderr.write(`\n${bold('protect-mcp connect')}\n`);
+  process.stderr.write(`${'─'.repeat(50)}\n\n`);
+  process.stderr.write(`  Creating ScopeBlind sandbox dashboard...\n\n`);
+
+  const dashboardUrl = await createSandbox();
+  if (dashboardUrl) {
+    process.stderr.write(green(`  ✓ Dashboard created: ${dashboardUrl}\n`));
+    process.stderr.write(`    Receipts will be uploaded automatically.\n`);
+    process.stderr.write(dim(`    Free tier: 20,000 receipts/month — no credit card required.\n`));
+    process.stderr.write(`\n${'─'.repeat(50)}\n\n`);
+  }
+}
+
+/**
  * Handle the `quickstart` command: zero-config onboarding.
  * Runs init (to tmpdir), then demo, automatically.
  */
-async function handleQuickstart(): Promise<void> {
+async function handleQuickstart(argv: string[]): Promise<void> {
+  const connectFlag = argv.includes('--connect');
   const { mkdtempSync, writeFileSync, existsSync, mkdirSync, readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
   const { tmpdir } = await import('node:os');
@@ -748,8 +838,11 @@ async function handleQuickstart(): Promise<void> {
   process.stdout.write(`  1. Generate an Ed25519 signing keypair\n`);
   process.stdout.write(`  2. Create a shadow-mode policy\n`);
   process.stdout.write(`  3. Start a demo MCP server with protect-mcp wrapping it\n`);
-  process.stdout.write(`  4. Log signed receipts for every tool call\n\n`);
-  process.stdout.write(`  Working dir: ${dir}\n\n`);
+  process.stdout.write(`  4. Log signed receipts for every tool call\n`);
+  if (connectFlag) {
+    process.stdout.write(`  5. Create a ScopeBlind dashboard for receipt viewing\n`);
+  }
+  process.stdout.write(`\n  Working dir: ${dir}\n\n`);
 
   // Generate keypair
   const keysDir = join(dir, 'keys');
@@ -802,6 +895,23 @@ async function handleQuickstart(): Promise<void> {
   process.stdout.write(`  ✓ Keypair generated (kid: ${keypair.kid})\n`);
   process.stdout.write(`  ✓ Policy created (shadow mode, all tools logged)\n`);
   process.stdout.write(`  ✓ Signing enabled (Ed25519)\n\n`);
+
+  // --connect: create sandbox dashboard and update config
+  if (connectFlag) {
+    process.stdout.write(`${bold('Connecting to ScopeBlind dashboard...')}\n\n`);
+    const dashboardUrl = await createSandbox();
+    if (dashboardUrl) {
+      // Add dashboard_url to the quickstart config
+      const updatedConfig = { ...config, dashboard_url: dashboardUrl };
+      writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2) + '\n');
+
+      process.stdout.write(green(`  ✓ Dashboard created: ${dashboardUrl}\n`));
+      process.stdout.write(`    Receipts will be uploaded automatically.\n`);
+      process.stdout.write(dim(`    Free tier: 20,000 receipts/month — no credit card required.\n`));
+      process.stdout.write(`\n`);
+    }
+  }
+
   process.stdout.write(`${bold('Starting demo server...')}\n\n`);
   process.stdout.write(`  Every tool call will produce a signed receipt.\n`);
   process.stdout.write(`  Try it with Claude Desktop or any MCP client.\n\n`);
@@ -1171,7 +1281,72 @@ async function handleInitHooks(argv: string[]): Promise<void> {
   process.stdout.write(`  • Swarm topology (coordinator/workers) is tracked automatically\n\n`);
 }
 
+/**
+ * Fire-and-forget install telemetry. Runs once per machine, opt-out via
+ * PROTECT_MCP_TELEMETRY=off. Errors are silently swallowed.
+ */
+async function sendInstallTelemetry(): Promise<void> {
+  try {
+    const { existsSync, mkdirSync, writeFileSync, readFileSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { homedir } = await import('node:os');
+    const { fileURLToPath } = await import('node:url');
+
+    const markerDir = join(homedir(), '.protect-mcp');
+    const markerFile = join(markerDir, '.telemetry-sent');
+
+    if (existsSync(markerFile) || process.env.PROTECT_MCP_TELEMETRY === 'off') {
+      return;
+    }
+
+    // Read version from package.json
+    let version = 'unknown';
+    try {
+      const thisDir = dirname(fileURLToPath(import.meta.url));
+      const pkgPath = join(thisDir, '..', 'package.json');
+      if (existsSync(pkgPath)) {
+        version = JSON.parse(readFileSync(pkgPath, 'utf-8')).version;
+      }
+    } catch { /* best-effort */ }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+
+    fetch('https://api.scopeblind.com/telemetry/install', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        package: 'protect-mcp',
+        version,
+        os: process.platform,
+        arch: process.arch,
+        node: process.version,
+        ts: Date.now(),
+      }),
+      signal: controller.signal,
+    })
+      .catch(() => {})
+      .finally(() => clearTimeout(timeout));
+
+    // Create marker directory and file
+    if (!existsSync(markerDir)) {
+      mkdirSync(markerDir, { recursive: true });
+    }
+    writeFileSync(markerFile, String(Date.now()), 'utf-8');
+
+    process.stderr.write(
+      '[protect-mcp] Thanks for installing! Anonymous telemetry sent (disable: PROTECT_MCP_TELEMETRY=off)\n' +
+      '[protect-mcp] Free dashboard: npx protect-mcp connect | https://scopeblind.com\n',
+    );
+  } catch {
+    // Never crash the CLI for telemetry
+  }
+}
+
 async function main(): Promise<void> {
+  // Fire-and-forget install telemetry (once per machine, opt-out via env)
+  sendInstallTelemetry().catch(() => {});
+
   // Skip node + script path
   const args = process.argv.slice(2);
 
@@ -1207,8 +1382,14 @@ async function main(): Promise<void> {
 
   // Handle quickstart command
   if (args[0] === 'quickstart') {
-    await handleQuickstart();
+    await handleQuickstart(args.slice(1));
     return; // demo keeps running
+  }
+
+  // Handle connect command
+  if (args[0] === 'connect') {
+    await handleConnect();
+    process.exit(0);
   }
 
   // Handle init command

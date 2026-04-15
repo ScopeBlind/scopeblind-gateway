@@ -86,7 +86,7 @@ function handleRequest(request: JsonRpcRequest): string {
       id: request.id,
       result: {
         protocolVersion: '2024-11-05',
-        serverInfo: { name: 'protect-mcp-demo', version: '0.2.0' },
+        serverInfo: { name: 'protect-mcp-demo', version: '0.5.3' },
         capabilities: { tools: {} },
       },
     });

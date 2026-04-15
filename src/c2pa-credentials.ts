@@ -17,7 +17,7 @@
  *   // Create a C2PA manifest from an Acta receipt chain
  *   const manifest = createC2PAManifest(receipts, {
  *     title: 'AI-generated report',
- *     generator: 'protect-mcp v0.3.3',
+ *     generator: 'protect-mcp v0.5.3',
  *   });
  *
  *   // The manifest can be embedded in images, PDFs, or documents

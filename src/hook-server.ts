@@ -921,27 +921,34 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
   });
 
   server.listen(port, '127.0.0.1', () => {
-    process.stderr.write(`\n`);
-    process.stderr.write(`[PROTECT_MCP] ┌─────────────────────────────────────────────────┐\n`);
-    process.stderr.write(`[PROTECT_MCP] │  protect-mcp Hook Server v0.5.0                │\n`);
-    process.stderr.write(`[PROTECT_MCP] ├─────────────────────────────────────────────────┤\n`);
-    process.stderr.write(`[PROTECT_MCP] │  Listening:  http://127.0.0.1:${String(port).padEnd(5)}             │\n`);
-    process.stderr.write(`[PROTECT_MCP] │  Mode:       ${(enforce ? 'enforce' : 'shadow').padEnd(36)}│\n`);
-    process.stderr.write(`[PROTECT_MCP] │  Policy:     ${(cedarPolicies ? `Cedar (${cedarPolicies.fileCount} files)` : (jsonPolicy ? 'JSON' : 'none')).padEnd(36)}│\n`);
-    process.stderr.write(`[PROTECT_MCP] │  Signing:    ${(isSigningEnabled() ? 'Ed25519 ✓' : 'disabled').padEnd(36)}│\n`);
-    process.stderr.write(`[PROTECT_MCP] │  Swarm:      ${(state.swarmContext.team_name ? `${state.swarmContext.team_name} (${state.swarmContext.agent_type})` : 'standalone').padEnd(36)}│\n`);
-    process.stderr.write(`[PROTECT_MCP] │  Sandbox:    ${detectSandboxState().padEnd(36)}│\n`);
-    process.stderr.write(`[PROTECT_MCP] └─────────────────────────────────────────────────┘\n`);
-    process.stderr.write(`\n`);
-    process.stderr.write(`[PROTECT_MCP] Endpoints:\n`);
-    process.stderr.write(`  POST /hook           — Claude Code hook receiver\n`);
-    process.stderr.write(`  GET  /health         — Health check + signer info\n`);
-    process.stderr.write(`  GET  /receipts       — Recent signed receipts\n`);
-    process.stderr.write(`  GET  /suggestions    — Auto-generated Cedar policy suggestions\n`);
-    process.stderr.write(`  GET  /alerts         — Config tamper alerts\n`);
-    process.stderr.write(`\n`);
-    process.stderr.write(`[PROTECT_MCP] deny decisions are AUTHORITATIVE — they cannot be overridden.\n`);
-    process.stderr.write(`\n`);
+    const w = (s: string) => process.stderr.write(s);
+    const pad = (s: string, n = 46) => s.padEnd(n);
+    w(`\n`);
+    w(`  protect-mcp v0.5.4\n`);
+    w(`  ScopeBlind — https://scopeblind.com\n`);
+    w(`\n`);
+    w(`  Listening     http://127.0.0.1:${port}\n`);
+    w(`  Mode          ${enforce ? 'enforce' : 'shadow'}\n`);
+    w(`  Policy        ${cedarPolicies ? `Cedar (${cedarPolicies.fileCount} files)` : (jsonPolicy ? 'JSON' : 'none')}\n`);
+    w(`  Signing       ${isSigningEnabled() ? 'Ed25519' : 'disabled'}\n`);
+    if (state.swarmContext.team_name) {
+      w(`  Swarm         ${state.swarmContext.team_name} (${state.swarmContext.agent_type})\n`);
+    }
+    w(`\n`);
+    w(`  POST /hook         Hook receiver\n`);
+    w(`  GET  /health       Health + signer info\n`);
+    w(`  GET  /receipts     Signed receipts\n`);
+    w(`  GET  /suggestions  Cedar policy suggestions\n`);
+    w(`\n`);
+    w(`  deny is authoritative — cannot be overridden.\n`);
+    w(`\n`);
+    // Dashboard hint — only show if not already connected
+    const hasSlug = process.env.SCOPEBLIND_SLUG || existsSync(join(process.cwd(), '.scopeblind'));
+    if (!hasSlug) {
+      w(`  Dashboard  npx protect-mcp connect\n`);
+      w(`             Free up to 20,000 receipts/month\n`);
+      w(`\n`);
+    }
   });
 
   // Graceful shutdown

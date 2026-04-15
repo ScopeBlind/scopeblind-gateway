@@ -325,6 +325,8 @@ context: inline
 
 # ScopeBlind Receipt Verification
 
+Every AI agent tool call gets a cryptographic receipt. Verify offline. No vendor trust required.
+
 When the user asks to verify receipts or check the audit trail:
 
 1. **Check for receipt files:**
