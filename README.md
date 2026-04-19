@@ -287,15 +287,26 @@ Every KU is independently verifiable: `npx @veritasacta/verify receipt.json`
 | [Pro-Workflow](https://github.com/rohitg00/pro-workflow) | 1,500+ | MCP config recommendation | PR #41 |
 | [Zeroshot](https://github.com/covibes/zeroshot) | 1,400+ | Cryptographic receipts for validator verdicts | Issue #464 |
 
+## Verification properties
+
+protect-mcp receipts are **offline-verifiable** and **tamper-evident** via `@veritasacta/verify`:
+
+- No server contacted during verification
+- Math runs against a public key provided externally (`--key` / `--jwks` / `--trust-anchor`)
+- Any tampering breaks the signature or chain; exit 1 is proven modification
+- No vendor trust — only Ed25519 (RFC 8032) and JCS (RFC 8785) are in the verification path
+
+What this does **not** provide: **issuer-blind / unlinkable verification** in the VOPRF sense. The Ed25519 signature identifies the signer. For use cases where the verifier must not be able to link multiple presentations to the same signer (privacy-preserving metered authorization, anonymous credentials, unlinkable rate limiting), see the [Veritas Acta VOPRF verifier](https://veritasacta.com/voprf) — a separate patent-adjacent product. protect-mcp doesn't require it for decision auditability; the two products solve different problems at different layers of the stack.
+
 ## Standards & IP
 
 - **IETF Internet-Drafts**:
-  - [draft-farley-acta-signed-receipts-01](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) — Signed Decision Receipts for Machine-to-Machine Access Control
+  - [draft-farley-acta-signed-receipts](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/) — Signed Decision Receipts for Machine-to-Machine Access Control (draft-02 pending with Security Considerations on key distribution)
   - [draft-farley-acta-knowledge-units-00](https://datatracker.ietf.org/doc/draft-farley-acta-knowledge-units/) — Knowledge Units for Multi-Model Deliberation
   - Source: [VeritasActa/drafts](https://github.com/VeritasActa/drafts)
-- **Patent Status**: 4 Australian provisional patents pending (2025-2026) covering decision receipts with configurable disclosure, tool-calling gateway, agent manifests, and portable identity
+- **Patent Status**: 5 Australian provisional patents pending (2025-2026) covering decision receipts with configurable disclosure, tool-calling gateway, agent manifests, portable identity, and Sigil visual commitments
 - **Verification**: Apache-2.0 — `npx @veritasacta/verify --self-test`
-- **Microsoft AGT Integration**: [PR #667](https://github.com/microsoft/agent-governance-toolkit/pull/667) — Cedar policy bridge for Agent Governance Toolkit
+- **Microsoft AGT Integration**: Tutorial 33 merged ([PR #1197](https://github.com/microsoft/agent-governance-toolkit/pull/1197)); sb-runtime integration ([PR #1202](https://github.com/microsoft/agent-governance-toolkit/pull/1202)) pending review; [AGT Integration Profile](https://github.com/VeritasActa/agt-integration-profile) formalizes the conformance surface.
 
 ## Related Repositories
 
