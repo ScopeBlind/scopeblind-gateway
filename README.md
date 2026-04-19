@@ -296,7 +296,12 @@ protect-mcp receipts are **offline-verifiable** and **tamper-evident** via `@ver
 - Any tampering breaks the signature or chain; exit 1 is proven modification
 - No vendor trust — only Ed25519 (RFC 8032) and JCS (RFC 8785) are in the verification path
 
-What this does **not** provide: **issuer-blind / unlinkable verification** in the VOPRF sense. The Ed25519 signature identifies the signer. For use cases where the verifier must not be able to link multiple presentations to the same signer (privacy-preserving metered authorization, anonymous credentials, unlinkable rate limiting), see the [Veritas Acta VOPRF verifier](https://veritasacta.com/voprf) — a separate patent-adjacent product. protect-mcp doesn't require it for decision auditability; the two products solve different problems at different layers of the stack.
+What this does **not** provide: **issuer-blind / unlinkable verification** in the VOPRF sense. The Ed25519 signature identifies the signer. If you need verification where the verifier cannot link multiple presentations to the same signer (privacy-preserving metered authorization, anonymous credentials, unlinkable rate limiting), that's a separate primitive with its own stack:
+
+- **Protocol and verifier**: open-source under [Veritas Acta](https://github.com/VeritasActa), Apache-2.0. Anyone can verify, no vendor dependency.
+- **Production issuer (commercial)**: **ScopeBlind** sells the managed VOPRF issuance API ([scopeblind.com](https://scopeblind.com)) — the revenue product that sits behind the open protocol. You can run your own issuer, but the cryptographic correctness, key rotation, and metering are hard enough that most teams use the managed service.
+
+protect-mcp doesn't require VOPRF for decision auditability — the Ed25519 receipts cover that. The VOPRF product solves a different problem (privacy-preserving verification at scale) for teams that need it.
 
 ## Standards & IP
 
