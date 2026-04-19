@@ -1,7 +1,8 @@
 [![npm version](https://img.shields.io/npm/v/protect-mcp)](https://www.npmjs.com/package/protect-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/protect-mcp)](https://www.npmjs.com/package/protect-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![IETF Draft](https://img.shields.io/badge/IETF-draft--farley--acta--signed--receipts--01-blue)](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)
+[![IETF Draft](https://img.shields.io/badge/IETF-draft--farley--acta--signed--receipts--02-blue)](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)
+[![AGT Integration Profile](https://img.shields.io/badge/AGT-integration--profile-blue)](https://github.com/VeritasActa/agt-integration-profile)
 [![MCP Registry](https://img.shields.io/badge/MCP_Registry-com.scopeblind%2Fprotect--mcp-green)](https://registry.modelcontextprotocol.io)
 [![PyPI: protect-mcp-adk](https://img.shields.io/pypi/v/protect-mcp-adk?label=protect-mcp-adk)](https://pypi.org/project/protect-mcp-adk/)
 
@@ -9,7 +10,7 @@
 
 Enterprise security gateway for MCP servers and Claude Code hooks. Signed receipts, Cedar policies, and swarm-aware audit trails.
 
-**Integrated into [Microsoft Agent Governance Toolkit](https://github.com/AzureAI-Foundry/agent-governance-toolkit/pull/667)** | **[IETF Internet-Draft](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)** | **[Live demo: acta.today/wiki](https://acta.today/wiki)**
+**Integrated into [Microsoft Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit)** (Tutorial 33 merged; sb-runtime integration PR #1202 open) | **[IETF Internet-Draft](https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/)** (draft-02 pending) | **[AGT Integration Profile](https://github.com/VeritasActa/agt-integration-profile)** | **[Live demo: acta.today/wiki](https://acta.today/wiki)**
 
 ## Quick Start — Claude Code
 
