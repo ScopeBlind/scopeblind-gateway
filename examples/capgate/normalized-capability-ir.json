@@ -1,0 +1,36 @@
+{
+  "capabilities": [
+    {
+      "actions": [
+        "read",
+        "write"
+      ],
+      "kind": "fs",
+      "path": "/workspace/**"
+    },
+    {
+      "action": "connect",
+      "host": "api.github.com",
+      "kind": "net",
+      "port": 443
+    },
+    {
+      "action": "spawn",
+      "binary": "chromium",
+      "constraints": {
+        "nestedSandbox": true
+      },
+      "kind": "exec"
+    },
+    {
+      "action": "inject",
+      "kind": "env",
+      "names": [
+        "GITHUB_TOKEN"
+      ],
+      "visibility": "secret"
+    }
+  ],
+  "schema": "scopeblind.capability-ir.v1",
+  "subject": "mcp-server:example-repo-agent"
+}
