@@ -1,0 +1,18 @@
+{
+  "v": 2,
+  "type": "decision_receipt",
+  "issuer": "protect-mcp:example",
+  "kid": "example-key",
+  "algorithm": "ed25519",
+  "payload": {
+    "tool": "github.create_pr",
+    "decision": "allow",
+    "reason_code": "cedar_allow",
+    "policy_digest": "sha256:1d249a04d50d529235784f532f6a00d7d021f8923ff71199c31b4710dbe1eb7d",
+    "policy_digest_alg": "scopeblind:policy-digest:v1",
+    "declared_capability_ir_hash": "sha256:1d249a04d50d529235784f532f6a00d7d021f8923ff71199c31b4710dbe1eb7d",
+    "scope": "request:example-001",
+    "mode": "shadow"
+  },
+  "signature": "example-only-not-signed"
+}
