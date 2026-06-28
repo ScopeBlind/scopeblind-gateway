@@ -4,9 +4,9 @@
  * Produces signed v2 artifact receipts for tool call decisions.
  * Uses @veritasacta/artifacts as a required dependency (Sprint 2+).
  *
- * If signing is configured, every decision produces a signed artifact.
- * If signing fails, the receipt is emitted unsigned with signature: null
- * and a warning — never crashes, never silently drops.
+ * If signing is configured, every decision must produce a signed artifact.
+ * Initialization and signing failures are returned as explicit errors so the
+ * enforce path can deny rather than silently proceeding without evidence.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -22,6 +22,8 @@ interface SignerState {
 
 let signerState: SignerState | null = null;
 let artifactsModule: any | null = null;
+let signingConfigured = false;
+let signingInitError: string | null = null;
 
 /**
  * Get the current signer identity (kid, publicKey, issuer).
@@ -46,43 +48,66 @@ export function getSignerIdentity(): { kid: string; publicKey: string; issuer: s
 export async function initSigning(config: SigningConfig | undefined): Promise<string[]> {
   const warnings: string[] = [];
 
+  // Initialization is replace-not-merge. A config reload that disables
+  // signing must not retain a previous key, and a failed reload must not fall
+  // back to the previous signer.
+  signerState = null;
+  artifactsModule = null;
+  signingConfigured = Boolean(config && config.enabled !== false);
+  signingInitError = null;
+
   if (!config || config.enabled === false) {
     return warnings;
   }
 
-  // Load @veritasacta/artifacts (dynamic, optional dependency)
-  try {
-    // Use a variable to prevent TypeScript from statically resolving the import
-    const moduleName = '@veritasacta/artifacts';
-    artifactsModule = await import(/* @vite-ignore */ moduleName);
-  } catch {
-    warnings.push('signing: @veritasacta/artifacts not available — receipts will be unsigned');
+  // Validate and load the configured key before importing the signing library
+  // so operators get the actionable configuration error first.
+  if (!config.key_path) {
+    signingInitError = 'signing enabled but key_path is not configured';
+    warnings.push(`signing: ${signingInitError}`);
+    return warnings;
+  }
+  if (!existsSync(config.key_path)) {
+    signingInitError = `key file not found at ${config.key_path}`;
+    warnings.push(`signing: ${signingInitError} — run "protect-mcp init" to generate`);
     return warnings;
   }
 
-  // Load key file
-  if (config.key_path) {
-    if (!existsSync(config.key_path)) {
-      warnings.push(`signing: key file not found at ${config.key_path} — run "protect-mcp init" to generate`);
+  let keyData: any;
+  try {
+    keyData = JSON.parse(readFileSync(config.key_path, 'utf-8'));
+    if (!keyData.privateKey || !keyData.publicKey) {
+      signingInitError = 'key file missing privateKey or publicKey fields';
+      warnings.push(`signing: ${signingInitError}`);
       return warnings;
     }
+  } catch (err) {
+    signingInitError = `failed to load key file: ${err instanceof Error ? err.message : err}`;
+    warnings.push(`signing: ${signingInitError}`);
+    return warnings;
+  }
 
-    try {
-      const keyData = JSON.parse(readFileSync(config.key_path, 'utf-8'));
-      if (!keyData.privateKey || !keyData.publicKey) {
-        warnings.push('signing: key file missing privateKey or publicKey fields');
-        return warnings;
-      }
+  // Load @veritasacta/artifacts only after the key configuration is sound.
+  try {
+    const moduleName = '@veritasacta/artifacts';
+    artifactsModule = await import(/* @vite-ignore */ moduleName);
+  } catch {
+    signingInitError = '@veritasacta/artifacts not available';
+    warnings.push(`signing: ${signingInitError} — enforce mode will fail closed`);
+    return warnings;
+  }
 
-      signerState = {
-        privateKey: keyData.privateKey,
-        publicKey: keyData.publicKey,
-        kid: keyData.kid || artifactsModule.computeKid(keyData.publicKey),
-        issuer: config.issuer || keyData.issuer || 'protect-mcp',
-      };
-    } catch (err) {
-      warnings.push(`signing: failed to load key file: ${err instanceof Error ? err.message : err}`);
-    }
+  try {
+    signerState = {
+      privateKey: keyData.privateKey,
+      publicKey: keyData.publicKey,
+      kid: keyData.kid || artifactsModule.computeKid(keyData.publicKey),
+      issuer: config.issuer || keyData.issuer || 'protect-mcp',
+    };
+  } catch (err) {
+    signingInitError = `failed to initialize signer: ${err instanceof Error ? err.message : err}`;
+    artifactsModule = null;
+    warnings.push(`signing: ${signingInitError} — enforce mode will fail closed`);
   }
 
   return warnings;
@@ -97,15 +122,40 @@ export async function initSigning(config: SigningConfig | undefined): Promise<st
  * @standard RFC 8032 (Ed25519), RFC 8785 (JCS)
  */
 export function signDecision(entry: DecisionLog): {
+  ok: boolean;            // true only when a signature was actually produced
   signed: string | null;
   artifact_type: string;
   warning?: string;
+  error?: string;         // set only when a signer IS configured but signing failed
 } {
-  if (!signerState || !artifactsModule) {
-    return { signed: null, artifact_type: 'none' };
+  const artifactType = entry.decision === 'deny' ? 'gateway_restraint' : 'decision_receipt';
+
+  if (signingConfigured && signingInitError) {
+    return {
+      ok: false,
+      signed: null,
+      artifact_type: artifactType,
+      warning: `signing initialization failed: ${signingInitError}`,
+      error: signingInitError,
+    };
   }
 
-  const artifactType = entry.decision === 'deny' ? 'gateway_restraint' : 'decision_receipt';
+  if (signingConfigured && (!signerState || !artifactsModule)) {
+    const error = 'signing was configured but no signer is ready';
+    return {
+      ok: false,
+      signed: null,
+      artifact_type: artifactType,
+      warning: error,
+      error,
+    };
+  }
+
+  if (!signerState || !artifactsModule) {
+    // No signer configured: legitimately unsigned (free/shadow tier). This is
+    // NOT a failure — callers must not fail closed on it.
+    return { ok: false, signed: null, artifact_type: 'none' };
+  }
 
   try {
     const payload: Record<string, unknown> = {
@@ -151,15 +201,22 @@ export function signDecision(entry: DecisionLog): {
     );
 
     return {
+      ok: true,
       signed: JSON.stringify(result.artifact),
       artifact_type: artifactType,
     };
   } catch (err) {
-    // Never crash on signing failure — emit unsigned with warning
+    // A signer IS configured but signing failed. Do not crash the process, but
+    // mark this as a real failure (error set) so the decision path can fail
+    // closed and the receipt log can record an auditable tombstone. A configured
+    // gateway that cannot prove an action must not silently let it pass.
+    const message = err instanceof Error ? err.message : 'unknown error';
     return {
+      ok: false,
       signed: null,
       artifact_type: artifactType,
-      warning: `signing failed: ${err instanceof Error ? err.message : 'unknown error'}`,
+      warning: `signing failed: ${message}`,
+      error: message,
     };
   }
 }
@@ -188,5 +245,5 @@ export function getSignerInfo(): {
  * @standard RFC 8032 (Ed25519), RFC 8785 (JCS)
  */
 export function isSigningEnabled(): boolean {
-  return signerState !== null && artifactsModule !== null;
+  return signingConfigured && signingInitError === null && signerState !== null && artifactsModule !== null;
 }

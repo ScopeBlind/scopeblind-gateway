@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { writeFileSync, mkdtempSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { loadCedarPolicies } from './cedar-evaluator.js';
+import { loadCedarPolicies, evaluateCedar, runEvaluatorSelfTest, policySetFromSource } from './cedar-evaluator.js';
 
 // ============================================================
 // loadCedarPolicies
@@ -78,5 +78,51 @@ describe('loadCedarPolicies', () => {
     const result = loadCedarPolicies(tmpDir);
     expect(result.fileCount).toBe(1);
     expect(result.files).toEqual(['policy.cedar']);
+  });
+});
+
+// ============================================================
+// evaluateCedar: fail-closed semantics (0.7.0 security release)
+// ============================================================
+
+const FORBID_RM = policySetFromSource(
+  'forbid(principal, action, resource) when { ["rm", "dd", "mkfs"].contains(context.command) };\npermit(principal, action, resource);',
+);
+// The 0.6.x advisory pattern: `in` on a String type-errors and Cedar silently
+// discards the rule, leaving a residual permit. The gate must NOT honor it.
+const BROKEN_IN_ON_STRING = policySetFromSource(
+  'forbid(principal, action, resource) when { context.command in ["rm", "dd"] };\npermit(principal, action, resource);',
+);
+const REQ = (command: string) => ({ tool: 'Bash', tier: 'unknown' as const, context: { command } });
+
+describe('evaluateCedar fail-closed semantics', () => {
+  it('a real forbid actually denies (Cedar evaluates, not a no-op)', async () => {
+    const d = await evaluateCedar(FORBID_RM, REQ('rm'));
+    expect(d.allowed).toBe(false);
+    expect(d.reason).toContain('cedar_deny');
+  });
+
+  it('a permit allows a non-forbidden command', async () => {
+    const d = await evaluateCedar(FORBID_RM, REQ('ls'));
+    expect(d.allowed).toBe(true);
+  });
+
+  it('an in-on-String policy DENIES instead of silently permit-all (regression for #598)', async () => {
+    const d = await evaluateCedar(BROKEN_IN_ON_STRING, REQ('rm'));
+    expect(d.allowed).toBe(false);
+    expect(d.reason).toMatch(/cedar_(policy_errored|eval_error|unparseable|failure)/);
+  });
+
+  it('observe mode (failClosed:false) allows on error but flags would_deny', async () => {
+    const d = await evaluateCedar(BROKEN_IN_ON_STRING, REQ('rm'), undefined, { failClosed: false });
+    expect(d.allowed).toBe(true);
+    expect(d.metadata).toMatchObject({ would_deny: true });
+    expect(d.reason).toContain('observe mode');
+  });
+
+  it('the proof-of-restraint self-test passes on the live engine', async () => {
+    const report = await runEvaluatorSelfTest();
+    expect(report.passed).toBe(true);
+    for (const c of report.cases) expect(c.pass, `${c.name}: expected ${c.expected}, got ${c.actual}`).toBe(true);
   });
 });

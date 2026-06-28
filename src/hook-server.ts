@@ -42,6 +42,7 @@ import { loadCedarPolicies, evaluateCedar, isCedarAvailable, type CedarPolicySet
 import { initSigning, signDecision, isSigningEnabled, getSignerInfo } from './signing.js';
 import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
 import { ReceiptBuffer } from './http-server.js';
+import { getScopeBlindBridge } from './scopeblind-bridge.js';
 
 // ============================================================
 // Constants
@@ -361,7 +362,7 @@ async function handlePreToolUse(
   const denyKey = `${toolName}:${input.sessionId || 'default'}`;
   state.denyCounter.delete(denyKey);
 
-  emitDecisionLog(state, {
+  const emit = emitDecisionLog(state, {
     tool: toolName,
     decision: 'allow',
     reason_code: state.cedarPolicies ? 'cedar_allow' : (state.jsonPolicy ? 'policy_allow' : 'observe_mode'),
@@ -373,6 +374,22 @@ async function handlePreToolUse(
     sandbox_state: detectSandboxState(),
     plan_receipt_id: state.activePlanReceiptId || undefined,
   });
+
+  // Fail closed: in enforce mode, a configured signer that could not produce a
+  // receipt means we cannot prove this action. Deny rather than allow an
+  // unprovable tool call. (Shadow mode observes; the unsigned-by-design free
+  // tier sets no signer and never reaches here.)
+  if (state.enforce && emit.signingFailed) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason:
+          `[ScopeBlind] "${toolName}" was blocked because its receipt could not be signed. ` +
+          `Failing closed: a governed action that cannot be proven is not allowed.`,
+      },
+    };
+  }
 
   // No hookSpecificOutput → Claude Code treats as implicit allow
   return {};
@@ -631,7 +648,7 @@ function handleStop(input: HookInput, state: HookServerState): HookResponse {
 // Decision Log Emission
 // ============================================================
 
-function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): void {
+function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): { signingFailed: boolean } {
   const mode = state.enforce ? 'enforce' : 'shadow';
   const otelTraceId = randomBytes(16).toString('hex');
   const otelSpanId = randomBytes(8).toString('hex');
@@ -667,10 +684,35 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): v
     if (signed.signed) {
       try { appendFileSync(state.receiptFilePath, signed.signed + '\n'); } catch { /* best-effort */ }
       state.receiptBuffer.add(log.request_id, signed.signed);
-    } else if (signed.warning) {
-      process.stderr.write(`[PROTECT_MCP] Warning: ${signed.warning}\n`);
+
+      // Forward to ScopeBlind tenant dashboard when SCOPEBLIND_TOKEN is set.
+      // Best-effort: failures never block local receipt emission.
+      try {
+        const bridge = getScopeBlindBridge();
+        if (bridge.enabled()) {
+          // signDecision returns the receipt as a JSON string; parse for upload.
+          // Local file is the authoritative copy regardless of forward success.
+          const parsed = typeof signed.signed === 'string' ? JSON.parse(signed.signed) : signed.signed;
+          bridge.forward(parsed);
+        }
+      } catch (err) {
+        process.stderr.write(`[PROTECT_MCP] ScopeBlind forward error: ${err instanceof Error ? err.message : err}\n`);
+      }
+    } else if (signed.error) {
+      // A signer is configured but signing FAILED. Never emit a silent gap:
+      // write an auditable tombstone to the receipt log and a distinct marker,
+      // then signal the caller so an allow can fail closed.
+      const tombstone = JSON.stringify({
+        type: 'scopeblind.signing_failure.v1',
+        request_id: log.request_id, tool: log.tool, decision: log.decision,
+        error: signed.error, at: new Date(log.timestamp).toISOString(),
+      });
+      try { appendFileSync(state.receiptFilePath, tombstone + '\n'); } catch { /* best-effort */ }
+      process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}\n`);
+      return { signingFailed: true };
     }
   }
+  return { signingFailed: false };
 }
 
 // ============================================================

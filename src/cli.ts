@@ -26,10 +26,12 @@
 
 import { ProtectGateway } from './gateway.js';
 import { loadPolicy } from './policy.js';
-import { initSigning } from './signing.js';
+import { initSigning, signDecision } from './signing.js';
 import { validateCredentials } from './credentials.js';
 import { parseLogFile, simulate, formatSimulation } from './simulate.js';
-import { loadCedarPolicies, isCedarAvailable } from './cedar-evaluator.js';
+import { loadCedarPolicies, isCedarAvailable, evaluateCedar, policySetFromSource, runEvaluatorSelfTest, type CedarPolicySet } from './cedar-evaluator.js';
+import { readFileSync as readFileSyncCli, existsSync as existsSyncCli, appendFileSync as appendFileSyncCli, mkdirSync as mkdirSyncCli } from 'node:fs';
+import { basename as basenameCli, join as joinCli } from 'node:path';
 import type { ProtectConfig } from './types.js';
 
 function printHelp(): void {
@@ -64,6 +66,8 @@ Options:
 
 Commands:
   serve             Start HTTP hook server for Claude Code integration (port 9377)
+  evaluate          Evaluate one tool call against a Cedar policy (PreToolUse gate; exit 2 = deny, fail-closed)
+  sign              Sign one tool call into a receipt (PostToolUse)
   init-hooks        Generate Claude Code hook config + skill + sample Cedar policy
   quickstart        Zero-config onboarding: init + demo + show receipts in one command
   connect           Create a ScopeBlind sandbox dashboard and configure receipt upload
@@ -1343,6 +1347,95 @@ async function sendInstallTelemetry(): Promise<void> {
   }
 }
 
+function flagValue(argv: string[], name: string): string | undefined {
+  const i = argv.indexOf(name);
+  return i >= 0 && argv[i + 1] ? argv[i + 1] : undefined;
+}
+
+/** Load a Cedar policy set from --cedar <dir> or --policy <file.cedar>. */
+function loadPolicyArg(argv: string[]): CedarPolicySet | null {
+  const cedarDir = flagValue(argv, '--cedar');
+  const policyFile = flagValue(argv, '--policy');
+  try {
+    if (cedarDir) return loadCedarPolicies(cedarDir);
+    if (policyFile && existsSyncCli(policyFile)) {
+      return policySetFromSource(readFileSyncCli(policyFile, 'utf-8'), basenameCli(policyFile));
+    }
+  } catch {
+    /* fall through to null */
+  }
+  return null;
+}
+
+/**
+ * One-shot Cedar evaluation for a PreToolUse hook. FAIL-CLOSED: a missing or
+ * unloadable policy denies (exit 2) unless --fail-on-missing-policy false is set.
+ * Exits 0 when allowed and 2 when denied (Claude Code blocks the tool on exit 2).
+ */
+async function handleEvaluate(argv: string[]): Promise<void> {
+  const tool = flagValue(argv, '--tool') || '';
+  const inputRaw = flagValue(argv, '--input') || '{}';
+  const contextRaw = flagValue(argv, '--context');
+  const failOnMissing = flagValue(argv, '--fail-on-missing-policy') !== 'false';
+
+  const policySet = loadPolicyArg(argv);
+  if (!policySet) {
+    if (failOnMissing) {
+      process.stderr.write('protect-mcp evaluate: policy not found; denying (fail-closed). Pass --fail-on-missing-policy false to allow.\n');
+      process.exit(2);
+    }
+    process.stdout.write(JSON.stringify({ allowed: true, reason: 'no_policy_configured' }) + '\n');
+    process.exit(0);
+  }
+
+  let input: Record<string, unknown> = {};
+  try { input = JSON.parse(inputRaw); } catch { /* tolerate non-JSON input */ }
+  let extra: Record<string, unknown> = {};
+  if (contextRaw) { try { extra = JSON.parse(contextRaw); } catch { /* ignore */ } }
+  const context: Record<string, unknown> = { ...input, ...extra };
+  // Convenience: expose the raw command as command_pattern when a policy expects it.
+  if (typeof input.command === 'string' && context.command_pattern === undefined) {
+    context.command_pattern = input.command;
+  }
+
+  const decision = await evaluateCedar(policySet, { tool, tier: 'unknown', context }, undefined, { failClosed: true });
+  process.stdout.write(JSON.stringify({ allowed: decision.allowed, reason: decision.reason, policy_digest: policySet.digest }) + '\n');
+  process.exit(decision.allowed ? 0 : 2);
+}
+
+/**
+ * One-shot signed receipt for a PostToolUse hook. Appends an Ed25519-signed
+ * receipt to the receipts directory when a key is configured. Never blocks the
+ * tool: a missing signer records an honest unsigned line rather than failing.
+ */
+async function handleSign(argv: string[]): Promise<void> {
+  const tool = flagValue(argv, '--tool') || '';
+  const receiptsDir = flagValue(argv, '--receipts') || './receipts/';
+  const keyPath = flagValue(argv, '--key');
+
+  if (keyPath && existsSyncCli(keyPath)) {
+    try { await initSigning({ enabled: true, key_path: keyPath } as any); } catch { /* unsigned fallback below */ }
+  }
+
+  const requestId = `tu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const signed = signDecision({
+    tool,
+    decision: 'allow',
+    reason_code: 'post_execution_receipt',
+    policy_digest: 'none',
+    request_id: requestId,
+    mode: 'enforce',
+    timestamp: Date.now(),
+  } as any);
+
+  try { mkdirSyncCli(receiptsDir, { recursive: true }); } catch { /* best-effort */ }
+  const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || 'no signer configured' });
+  try { appendFileSyncCli(joinCli(receiptsDir, 'receipts.jsonl'), line + '\n'); } catch { /* best-effort */ }
+
+  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), artifact_type: signed.artifact_type, request_id: requestId }) + '\n');
+  process.exit(0);
+}
+
 async function main(): Promise<void> {
   // Fire-and-forget install telemetry (once per machine, opt-out via env)
   sendInstallTelemetry().catch(() => {});
@@ -1355,6 +1448,11 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
+  // One-shot PreToolUse gate (fail-closed) and PostToolUse receipt signer. These
+  // are what hook configs invoke per tool call (exit 0 allow, exit 2 deny).
+  if (args[0] === 'evaluate') { await handleEvaluate(args.slice(1)); return; }
+  if (args[0] === 'sign') { await handleSign(args.slice(1)); return; }
+
   // Handle serve command — Claude Code Hook Server
   if (args[0] === 'serve') {
     const { startHookServer } = await import('./hook-server.js');
@@ -1364,13 +1462,25 @@ async function main(): Promise<void> {
     const policyPath = policyIdx >= 0 && args[policyIdx + 1] ? args[policyIdx + 1] : undefined;
     const cedarIdx = args.indexOf('--cedar');
     const cedarDir = cedarIdx >= 0 && args[cedarIdx + 1] ? args[cedarIdx + 1] : undefined;
-    await startHookServer({
-      port,
-      policyPath,
-      cedarDir,
-      enforce: args.includes('--enforce'),
-      verbose: args.includes('--verbose') || args.includes('-v'),
-    });
+    const enforce = args.includes('--enforce');
+    const verbose = args.includes('--verbose') || args.includes('-v');
+
+    // Proof of restraint: before arming an enforcing gate, prove it actually
+    // denies a known-forbidden vector. If it cannot, refuse to serve (fail-closed)
+    // rather than run a gate that might silently permit.
+    if (enforce) {
+      const selfTest = await runEvaluatorSelfTest();
+      if (!selfTest.passed) {
+        process.stderr.write('protect-mcp serve --enforce: the policy-engine restraint self-test FAILED. Refusing to arm the gate.\n');
+        for (const c of selfTest.cases.filter((c) => !c.pass)) {
+          process.stderr.write(`  [FAIL] ${c.name}: expected ${c.expected}, got ${c.actual}\n`);
+        }
+        process.exit(1);
+      }
+      if (verbose) process.stderr.write(`protect-mcp: restraint self-test passed (${selfTest.cases.length} vectors). Arming gate.\n`);
+    }
+
+    await startHookServer({ port, policyPath, cedarDir, enforce, verbose });
     return; // Server keeps running
   }
 
@@ -1736,6 +1846,24 @@ async function handleDoctor(): Promise<void> {
     }
   } catch {
     process.stdout.write(dim('  ScopeBlind API not reachable — offline mode (receipts stored locally)\n'));
+  }
+
+  // Proof of restraint: run the live engine against known deny/allow vectors so a
+  // gate that would silently permit is caught here rather than in production.
+  process.stdout.write('\nRestraint self-test:\n');
+  try {
+    const st = await runEvaluatorSelfTest();
+    if (!st.wasmAvailable) {
+      process.stdout.write(dim('  Cedar WASM not installed; the gate fails closed (denies) until it is.\n'));
+    }
+    for (const c of st.cases) {
+      process.stdout.write(c.pass ? green(`  ${c.name}\n`) : `\x1b[31m  FAIL: ${c.name} (expected ${c.expected}, got ${c.actual})\n\x1b[0m`);
+    }
+    if (!st.passed) issues++;
+    else process.stdout.write(green('  the gate denies what it should and allows what it should\n'));
+  } catch (err) {
+    process.stdout.write(yellow(`  self-test could not run: ${err instanceof Error ? err.message : 'unknown'}\n`));
+    issues++;
   }
 
   // Summary

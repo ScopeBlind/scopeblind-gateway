@@ -1,8 +1,8 @@
 {
   "name": "protect-mcp",
-  "version": "0.5.5",
+  "version": "0.7.1",
   "mcpName": "com.scopeblind/protect-mcp",
-  "description": "Enterprise security gateway for MCP servers and Claude Code hooks. Cedar policies, Ed25519-signed receipts, swarm tracking, and tamper detection. Shadow or enforce mode.",
+  "description": "Fail-closed Cedar policy gate + signed receipts for AI agent tool calls. Blocks what breaks the rules before it runs, denies on any policy error, and proves the gate is live with a startup self-test.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.mjs",
@@ -24,7 +24,9 @@
   "files": [
     "dist",
     "policies",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md",
+    "SECURITY.md"
   ],
   "keywords": [
     "scopeblind",
@@ -53,7 +55,7 @@
   ],
   "author": "Tom Farley <tommy@scopeblind.com>",
   "license": "MIT",
-  "homepage": "https://www.scopeblind.com",
+  "homepage": "https://scopeblind.com",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/scopeblind/scopeblind-gateway.git"
@@ -62,13 +64,14 @@
     "url": "https://github.com/scopeblind/scopeblind-gateway/issues"
   },
   "dependencies": {
+    "@veritasacta/artifacts": "^0.2.2",
     "@veritasacta/protocol": "^0.1.0"
   },
   "optionalDependencies": {
     "@cedar-policy/cedar-wasm": "^4.9.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@noble/curves": "^1.8.0",
-    "@noble/hashes": "^1.7.0"
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

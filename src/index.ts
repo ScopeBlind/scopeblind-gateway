@@ -14,6 +14,15 @@ export { resolveCredential, listCredentialLabels, validateCredentials } from './
 // ── Signing ─────────────────────────────────────────────────────
 export { initSigning, signDecision, getSignerInfo, isSigningEnabled } from './signing.js';
 
+// ── Commitment-mode signing (v0.6.0+) ──────────────────────────
+// draft-farley-acta-signed-receipts-01 §commitment-mode
+export { signCommittedDecision, discloseField } from './signing-committed.js';
+export type {
+  CommittedFieldOpening,
+  CommittedSignResult,
+  MinimalDisclosure,
+} from './signing-committed.js';
+
 // ── External PDP (BYOPE) ───────────────────────────────────────
 export { queryExternalPDP, buildDecisionContext } from './external-pdp.js';
 
@@ -51,8 +60,8 @@ export { generateCedarSchema, generateSchemaStub } from './cedar-schema.js';
 export type { McpToolDescription, CedarSchemaResult, SchemaGeneratorConfig } from './cedar-schema.js';
 
 // ── Cedar Evaluator ──────────────────────────────────────────
-export { evaluateCedar, loadCedarPolicies, isCedarAvailable } from './cedar-evaluator.js';
-export type { CedarPolicySet, CedarEvalRequest, CedarSchema } from './cedar-evaluator.js';
+export { evaluateCedar, loadCedarPolicies, isCedarAvailable, runEvaluatorSelfTest, policySetFromSource } from './cedar-evaluator.js';
+export type { CedarPolicySet, CedarEvalRequest, CedarSchema, CedarEvalOptions, SelfTestReport, SelfTestCase } from './cedar-evaluator.js';
 export type { HookPattern } from './hook-patterns.js';
 
 // ── Types ───────────────────────────────────────────────────────
@@ -172,3 +181,9 @@ export type { AttestationDocument, AttestationResult, ConfidentialGateConfig, Co
 // ── Smithery Sandbox Server ────────────────────────────────────
 // Required by Smithery registry to scan server capabilities
 export { createSandboxServer } from './demo-server.js';
+
+// ── ScopeBlind Tenant Bridge (Founding Plan integration) ────────
+// Optional bridge that forwards signed receipts to a paid ScopeBlind tenant
+// dashboard at https://scopeblind.com/console/<slug>. Activated when
+// SCOPEBLIND_TOKEN is set in env. Otherwise inert.
+export { ScopeBlindBridge, getScopeBlindBridge, forwardReceipt } from './scopeblind-bridge.js';

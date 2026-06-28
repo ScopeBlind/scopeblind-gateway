@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.tomjwxf/protect-mcp",
-  "description": "Security gateway for MCP servers. Per-tool policies, Ed25519-signed receipts, shadow mode.",
+  "name": "com.scopeblind/protect-mcp",
+  "description": "Signed receipts and Cedar policies for AI agent tool calls. Claude Code hooks, MCP gateway.",
   "repository": {
-    "url": "https://github.com/scopeblind/ScopeBlindD2",
+    "url": "https://github.com/scopeblind/scopeblind-gateway",
     "source": "github"
   },
-  "version": "0.4.0",
+  "version": "0.7.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "protect-mcp",
-      "version": "0.4.0",
+      "version": "0.7.0",
       "transport": {
         "type": "stdio"
       },

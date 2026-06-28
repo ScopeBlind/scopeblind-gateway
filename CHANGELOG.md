@@ -1,62 +1,54 @@
 # Changelog
 
-## v0.5.2 (2026-04-04)
+## 0.7.1: documentation and security policy
+
+No code change from 0.7.0. Rewrote the README to lead with the fail-closed and
+self-test guarantees, and added a `SECURITY.md` disclosure policy (supported
+versions, the affected 0.5.x/0.6.x range, the published advisory, and the
+coordinated-disclosure process). The package now ships `SECURITY.md`.
+
+## 0.7.0 (security release): the gate now fails closed and actually evaluates
+
+This release fixes the way the Cedar policy gate behaves when anything goes
+wrong, and a separate defect that meant Cedar policies were not being evaluated
+at all against the pinned engine. If you rely on protect-mcp to enforce a Cedar
+policy, upgrade.
+
+### Security
+
+- **Fail closed, not open.** Before 0.7.0, if the Cedar engine was unavailable,
+  the result was malformed, evaluation threw, or a policy errored, the evaluator
+  returned ALLOW. A security gate must do the opposite. Every error and
+  uncertainty path now DENIES. The allow-on-error behavior is reachable only by
+  explicitly passing `{ failClosed: false }` (observe mode), and even then the
+  decision is flagged `would_deny: true` so a failure is never silent.
+- **An errored policy can no longer permit-all.** Cedar silently discards a
+  policy that errors at evaluation (for example the `context.<string> in [list]`
+  type error in the 0.5.x and 0.6.x advisory), which could leave a residual
+  permit standing. The evaluator now treats any per-policy error as an
+  evaluation error and denies under enforcement.
+- **Cedar policies are actually evaluated now.** The `isAuthorized` call passed
+  the policy text as a bare string, but `@cedar-policy/cedar-wasm@4.x` requires a
+  structured `PolicySet`. As a result every Cedar evaluation errored against the
+  pinned engine and (with the old fail-open default) allowed everything. The call
+  shape and the response parser are corrected, so a `forbid` rule actually denies
+  and a `permit` actually allows.
 
 ### Added
-- Claude Code hook server: 11 event types, Cedar WASM policy eval, Ed25519 receipt signing
-- `init-hooks` command for one-command Claude Code integration
-- `issuer_certification` and `spec` fields on every receipt
-- Swarm tracking: agent_id, agent_type, team_name per receipt
-- Config tamper detection via ConfigChange event
-- `iteration_id` field for behavioral windowing (community contribution)
-- Open Plugins standard: skills/SKILL.md, mcp.json, hooks/hooks.json
-- Verified Knowledge Base: acta.today/wiki — 8 frontier models, 3 adversarial rounds
 
-### Changed
-- License: FSL-1.1-MIT to MIT
-- Repository: scopeblind/scopeblind-gateway
-- PostToolUse response updated to match Claude Code schema
+- **`protect-mcp evaluate`** and **`protect-mcp sign`**: one-shot per-call verbs
+  for PreToolUse and PostToolUse hooks. `evaluate` loads a Cedar policy, evaluates
+  one tool call fail-closed, and exits 2 on deny (so the tool is blocked) and 0 on
+  allow; a missing or unloadable policy denies unless `--fail-on-missing-policy
+  false` is set. This makes hook configs that invoke these verbs work as written.
+- **`runEvaluatorSelfTest()`** plus a startup gate: `serve --enforce` runs the
+  self-test before arming and refuses to start if the engine cannot prove it
+  denies a known-forbidden vector. `protect-mcp doctor` reports the same, so the
+  gate verifies its own restraint before it is trusted.
+- A CI tripwire test that fails the build if the discarded `in`-on-String pattern
+  is ever reintroduced into a shipped policy.
 
-### Integrations
-- Merged into Microsoft Agent Governance Toolkit (PR #667)
-- Mission Control: Ed25519 audit signing (PR #556)
-- Assay: signed receipts as evidence source (#1029)
-- IETF Internet-Draft: draft-farley-acta-signed-receipts-01
-- Claude Code + Cursor plugin marketplaces
+### Affected versions
 
-## v0.3.1 (2026-03-24)
-
-### Added
-- Per-tool policies: `block`, `rate_limit`, `min_tier`, `require_approval`
-- Non-blocking approval flow with request_id scoping and nonce authentication
-- Passport identity in `protect-mcp status` output
-- Signed decision receipts persisted to `.protect-mcp-receipts.jsonl`
-- Audit bundle export via `protect-mcp bundle`
-- `protect-mcp simulate` — dry-run policy evaluation against recorded tool calls
-- `protect-mcp report` — compliance report generation (JSON + Markdown)
-- Policy packs: shadow, web-browsing-safe, email-safe, strict
-- Local HTTP status server with receipt API and approval endpoints
-
-### Changed
-- Shadow mode is the default (renamed from "observe mode")
-- Decision logs use v2 format with tier and reason codes
-
-## v0.3.0 (2026-03-22)
-
-### Added
-- Trust-tier gating from agent manifests
-- Credential vault configuration
-- BYOPE hooks (OPA, Cerbos, generic HTTP)
-- `protect-mcp init` — generates Ed25519 signing keys and config template
-
-## v0.2.0 (2026-03-21)
-
-### Added
-- Artifact v2 envelope format with JCS canonicalization
-- JWK thumbprint-based key identifiers (kid)
-- Holder binding commitments
-
-## v0.1.0 (2026-03-08)
-
-### Added
-- Initial release: stdio proxy, shadow/enforce modes, per-tool policies, structured decision logs
+The fail-open behavior and the unevaluated-Cedar defect are present in the
+0.5.x and 0.6.x lines. Upgrade to 0.7.0.

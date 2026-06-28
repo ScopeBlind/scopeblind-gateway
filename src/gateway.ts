@@ -477,8 +477,17 @@ export class ProtectGateway {
             this.evidenceStore.save();
           }
         }
-      } else if (signed.warning) {
-        process.stderr.write(`[PROTECT_MCP] Warning: ${signed.warning}\n`);
+      } else if (signed.error) {
+        // A signer is configured but signing FAILED. Record an auditable
+        // tombstone in the receipt log so the gap is visible to anyone scanning
+        // it, rather than a silent absence that reads as "no governed action".
+        const tombstone = JSON.stringify({
+          type: 'scopeblind.signing_failure.v1',
+          request_id: log.request_id, tool: log.tool, decision: log.decision,
+          error: signed.error, at: new Date(log.timestamp).toISOString(),
+        });
+        try { appendFileSync(this.receiptFilePath, tombstone + '\n'); } catch { /* best-effort */ }
+        process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}\n`);
       }
     }
   }

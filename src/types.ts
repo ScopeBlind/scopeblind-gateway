@@ -117,6 +117,29 @@ export interface SigningConfig {
   issuer?: string;
   /** Whether signing is enabled (default: true when key_path is set) */
   enabled?: boolean;
+  /**
+   * Commitment-mode signing.
+   *
+   * When enabled, listed fields are committed via SHA-256(salt || JCS({name, salt, value}))
+   * and the receipt payload carries a single committed_fields_root (Merkle root) instead
+   * of the cleartext field values. Per draft-farley-acta-signed-receipts-01 §commitment-mode.
+   *
+   * The receipt issuer keeps the openings (value + salt per field) for later selective
+   * disclosure. A receipt holder can prove a field's value to an auditor without
+   * revealing other committed fields.
+   *
+   * @since 0.6.0
+   */
+  commitment_mode?: {
+    /** Whether commitment-mode signing is active. Default: false. */
+    enabled?: boolean;
+    /**
+     * Names of payload fields to commit.
+     * Recommended defaults: tool, scope, payload_digest, swarm.
+     * Other fields remain cleartext.
+     */
+    committed_field_names?: string[];
+  };
 }
 
 // ============================================================

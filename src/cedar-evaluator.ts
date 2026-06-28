@@ -150,26 +150,49 @@ function buildEntities(req: CedarEvalRequest): Array<Record<string, unknown>> {
 // Evaluation
 // ============================================================
 
+export interface CedarEvalOptions {
+  /**
+   * Default true (0.7.0+). When true, ANY evaluation error, engine
+   * unavailability, malformed result, or per-policy error DENIES. When false
+   * (explicit observe/shadow use only), those paths ALLOW but are flagged
+   * would_deny:true in the decision metadata so the failure is never silent.
+   */
+  failClosed?: boolean;
+}
+
+/**
+ * Map an evaluation error or uncertainty to a decision. FAIL-CLOSED (deny) by
+ * default; allow only when failClosed is explicitly false, and flag it loudly.
+ * This single chokepoint is why protect-mcp cannot silently permit on an error.
+ */
+function onEvalError(reason: string, failClosed: boolean, extra?: Record<string, unknown>): ExternalDecision {
+  return {
+    allowed: !failClosed,
+    reason: failClosed ? reason : `${reason} (observe mode; would DENY under enforcement)`,
+    metadata: { error: true, fail_closed: failClosed, would_deny: true, ...(extra || {}) },
+  };
+}
+
 /**
  * Evaluate a Cedar policy set against a tool call.
  *
- * Returns a standard ExternalDecision compatible with the gateway's
- * decision pipeline. If Cedar WASM is not available, returns a
- * fallback allow decision (fail-open, logged).
+ * FAIL-CLOSED by default (0.7.0+): if Cedar is unavailable, the engine API is
+ * unsupported, evaluation throws, the result is malformed, or ANY policy errored
+ * during evaluation (which Cedar otherwise silently discards, leaving a residual
+ * permit standing), this returns DENY. The allow-on-error behavior is reachable
+ * only by explicitly passing { failClosed: false }, and even then it is flagged.
  */
 export async function evaluateCedar(
   policySet: CedarPolicySet,
   req: CedarEvalRequest,
   schema?: CedarSchema,
+  options?: CedarEvalOptions,
 ): Promise<ExternalDecision> {
+  const failClosed = options?.failClosed ?? true;
   const available = await ensureCedarWasm();
 
   if (!available) {
-    return {
-      allowed: true,
-      reason: 'cedar_wasm_not_available',
-      metadata: { fallback: true },
-    };
+    return onEvalError('cedar_wasm_not_available', failClosed, { fallback: true });
   }
 
   try {
@@ -206,7 +229,7 @@ export async function evaluateCedar(
 
     if (typeof cedarWasm.isAuthorized === 'function') {
       result = cedarWasm.isAuthorized({
-        policies: policySet.source,
+        policies: { staticPolicies: policySet.source },
         entities,
         principal: authRequest.principal,
         action: authRequest.action,
@@ -225,7 +248,7 @@ export async function evaluateCedar(
       const cedarEngine = cedarWasm.default || cedarWasm;
       if (typeof cedarEngine.isAuthorized === 'function') {
         result = cedarEngine.isAuthorized({
-          policies: policySet.source,
+          policies: { staticPolicies: policySet.source },
           entities,
           principal: authRequest.principal,
           action: authRequest.action,
@@ -234,78 +257,96 @@ export async function evaluateCedar(
           schema: cedarSchema,
         });
       } else {
-        return {
-          allowed: true,
-          reason: 'cedar_wasm_api_unsupported',
-          metadata: { fallback: true, exports: Object.keys(cedarWasm) },
-        };
+        return onEvalError('cedar_wasm_api_unsupported', failClosed, { exports: Object.keys(cedarWasm) });
       }
     }
 
-    // Parse result — Cedar WASM returns:
-    //   { type: "allow" } or { type: "deny", ... }
-    //   or { decision: "Allow" } / { decision: "Deny" }
-    const decision = parseWasmResult(result);
+    // Parse and HARDEN the decision. A permit that survives only because a
+    // forbid rule errored (Cedar silently discards an erroring policy) is
+    // unsound, so any per-policy error is treated as an evaluation error and
+    // denied under fail-closed. This is the runtime catch for the 0.6.x
+    // in-on-String advisory: even a bad policy cannot silently permit-all.
+    const parsed = parseWasmResult(result);
+    const policyErrors = extractPolicyErrors(result);
+
+    if (parsed.kind === 'error') {
+      return onEvalError(`cedar_unparseable_result: ${parsed.diagnostics}`, failClosed);
+    }
+    if (policyErrors.length > 0) {
+      return onEvalError(
+        `cedar_policy_errored: ${policyErrors.length} policy error(s); decision is unsound`,
+        failClosed,
+        { policy_errors: policyErrors.slice(0, 5), policy_digest: policySet.digest },
+      );
+    }
 
     return {
-      allowed: decision.allowed,
-      reason: decision.allowed ? undefined : `cedar_deny${decision.diagnostics ? ': ' + decision.diagnostics : ''}`,
+      allowed: parsed.kind === 'allow',
+      reason: parsed.kind === 'allow' ? undefined : `cedar_deny${parsed.diagnostics ? ': ' + parsed.diagnostics : ''}`,
       metadata: {
         policy_digest: policySet.digest,
-        ...(decision.matchedPolicies ? { matched_policies: decision.matchedPolicies } : {}),
+        ...(parsed.matchedPolicies ? { matched_policies: parsed.matchedPolicies } : {}),
       },
     };
   } catch (err) {
-    return {
-      allowed: true,
-      reason: `cedar_eval_error: ${err instanceof Error ? err.message : 'unknown'}`,
-      metadata: { fallback: true, error: true },
-    };
+    return onEvalError(`cedar_eval_error: ${err instanceof Error ? err.message : 'unknown'}`, failClosed);
   }
 }
 
+type ParsedDecision =
+  | { kind: 'allow'; matchedPolicies?: string[] }
+  | { kind: 'deny'; diagnostics?: string; matchedPolicies?: string[] }
+  | { kind: 'error'; diagnostics: string };
+
 /**
- * Parse the WASM evaluation result into a normalized form.
+ * Parse the WASM evaluation result. A result we cannot interpret is an ERROR,
+ * never an allow, so the caller fails closed. (Pre-0.7.0 this returned allow for
+ * null/unknown, which is exactly how a malformed engine response opened the gate.)
  */
-function parseWasmResult(result: any): {
-  allowed: boolean;
-  diagnostics?: string;
-  matchedPolicies?: string[];
-} {
-  if (!result) {
-    return { allowed: true, diagnostics: 'null result from Cedar WASM' };
+function parseWasmResult(result: any): ParsedDecision {
+  if (!result) return { kind: 'error', diagnostics: 'null result from Cedar WASM' };
+
+  // Cedar WASM 4.x AuthorizationAnswer:
+  //   { type: "failure", errors: [...] }  -> request/policy errors, cannot decide
+  //   { type: "success", response: { decision: "allow"|"deny", diagnostics } }
+  if (result.type === 'failure') {
+    return { kind: 'error', diagnostics: `cedar failure: ${JSON.stringify(result.errors ?? [])}` };
+  }
+  if (result.type === 'success' && result.response) {
+    const dec = result.response.decision;
+    const reasons = result.response.diagnostics?.reason;
+    if (dec === 'allow' || dec === 'Allow') return { kind: 'allow', matchedPolicies: reasons };
+    if (dec === 'deny' || dec === 'Deny') {
+      return { kind: 'deny', diagnostics: result.response.diagnostics ? JSON.stringify(result.response.diagnostics) : undefined, matchedPolicies: reasons };
+    }
   }
 
-  // Cedar WASM v4.x format: { type: "allow" | "deny", diagnostics: {...} }
-  if (result.type === 'allow' || result.type === 'Allow') {
-    return { allowed: true };
-  }
-  if (result.type === 'deny' || result.type === 'Deny') {
-    return {
-      allowed: false,
-      diagnostics: result.diagnostics ? JSON.stringify(result.diagnostics) : undefined,
-      matchedPolicies: result.diagnostics?.reasons,
-    };
-  }
+  // Tolerated legacy shapes (older engines / direct decision field)
+  if (result.type === 'allow' || result.decision === 'Allow') return { kind: 'allow' };
+  if (result.type === 'deny' || result.decision === 'Deny') return { kind: 'deny' };
+  if (typeof result === 'boolean') return result ? { kind: 'allow' } : { kind: 'deny' };
 
-  // Alternative format: { decision: "Allow" | "Deny" }
-  if (result.decision === 'Allow') {
-    return { allowed: true };
-  }
-  if (result.decision === 'Deny') {
-    return {
-      allowed: false,
-      diagnostics: result.diagnostics ? JSON.stringify(result.diagnostics) : undefined,
-    };
-  }
+  return { kind: 'error', diagnostics: `unknown result format: ${JSON.stringify(result)}` };
+}
 
-  // Boolean fallback
-  if (typeof result === 'boolean') {
-    return { allowed: result };
-  }
-
-  // Unknown format — fail open but log
-  return { allowed: true, diagnostics: `unknown result format: ${JSON.stringify(result)}` };
+/**
+ * Extract per-policy evaluation errors from a Cedar WASM response across the
+ * shapes different engine versions use. A non-empty list means at least one
+ * policy was discarded due to an error, so any surviving permit is unsound.
+ */
+function extractPolicyErrors(result: any): string[] {
+  if (!result || typeof result !== 'object') return [];
+  // Cedar 4.x surfaces errors at the top level on a "failure" answer, and inside
+  // response.diagnostics.errors when a policy errored but a decision still formed.
+  const raw =
+    result.errors ??
+    result.response?.diagnostics?.errors ??
+    result.diagnostics?.errors ??
+    [];
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((e: any) => (typeof e === 'string' ? e : e?.message ?? e?.error ?? JSON.stringify(e)))
+    .filter(Boolean);
 }
 
 /**
@@ -314,4 +355,66 @@ function parseWasmResult(result: any): {
  */
 export async function isCedarAvailable(): Promise<boolean> {
   return ensureCedarWasm();
+}
+
+// ============================================================
+// Proof-of-restraint self-test (the gate proves itself)
+// ============================================================
+
+/** Build a CedarPolicySet from inline source (for the self-test). */
+export function policySetFromSource(source: string, name = 'inline'): CedarPolicySet {
+  const digest = createHash('sha256').update(source).digest('hex').slice(0, 16);
+  return { source, digest, fileCount: 1, files: [name] };
+}
+
+export interface SelfTestCase {
+  name: string;
+  expected: 'ALLOW' | 'DENY';
+  actual: 'ALLOW' | 'DENY';
+  pass: boolean;
+  reason?: string;
+}
+export interface SelfTestReport {
+  wasmAvailable: boolean;
+  passed: boolean;
+  cases: SelfTestCase[];
+}
+
+/**
+ * Run known deny/allow vectors through the LIVE evaluator before the gate is
+ * trusted. Always proves the fail-closed invariant (the engine being unable to
+ * decide must DENY). When Cedar WASM is present it also proves a real forbid
+ * denies, a permit allows, and a policy using the silently-discarded
+ * `in`-on-String pattern DENIES rather than permit-all (the 0.6.x regression).
+ */
+export async function runEvaluatorSelfTest(): Promise<SelfTestReport> {
+  const wasmAvailable = await isCedarAvailable();
+  const cases: SelfTestCase[] = [];
+
+  const run = async (name: string, expected: 'ALLOW' | 'DENY', policy: CedarPolicySet, context: Record<string, unknown>) => {
+    const d = await evaluateCedar(policy, { tool: 'Bash', tier: 'unknown', context }, undefined, { failClosed: true });
+    const actual: 'ALLOW' | 'DENY' = d.allowed ? 'ALLOW' : 'DENY';
+    cases.push({ name, expected, actual, pass: actual === expected, reason: d.reason });
+  };
+
+  if (!wasmAvailable) {
+    // The one universally-provable invariant: no engine means DENY, not allow.
+    await run('engine unavailable denies', 'DENY', policySetFromSource('permit(principal, action, resource);'), {});
+    return { wasmAvailable, passed: cases.every((c) => c.pass), cases };
+  }
+
+  const correct = policySetFromSource(
+    'forbid(principal, action, resource) when { ["rm", "dd", "mkfs"].contains(context.command) };\npermit(principal, action, resource);',
+  );
+  await run('forbid denies rm', 'DENY', correct, { command: 'rm' });
+  await run('permit allows ls', 'ALLOW', correct, { command: 'ls' });
+
+  // The advisory regression: an in-on-String forbid that Cedar silently discards
+  // must NOT leave a residual permit-all standing under fail-closed evaluation.
+  const broken = policySetFromSource(
+    'forbid(principal, action, resource) when { context.command in ["rm", "dd"] };\npermit(principal, action, resource);',
+  );
+  await run('in-on-String forbid does not permit-all', 'DENY', broken, { command: 'rm' });
+
+  return { wasmAvailable, passed: cases.every((c) => c.pass), cases };
 }
