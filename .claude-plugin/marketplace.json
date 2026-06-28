@@ -1,0 +1,35 @@
+{
+  "name": "scopeblind",
+  "owner": {
+    "name": "ScopeBlind",
+    "url": "https://scopeblind.com"
+  },
+  "metadata": {
+    "description": "ScopeBlind governance plugins for Claude Code: fail-closed policy gating and offline-verifiable signed receipts for agent tool calls.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "protect-mcp",
+      "source": "./",
+      "description": "Fail-closed Cedar policy gate plus Ed25519 signed receipts for every tool call. Denies on any policy error, and proves the gate is live with a startup self-test. Receipts verify offline with no vendor trust.",
+      "version": "0.7.1",
+      "author": {
+        "name": "ScopeBlind",
+        "url": "https://scopeblind.com"
+      },
+      "license": "MIT",
+      "homepage": "https://scopeblind.com",
+      "keywords": [
+        "security",
+        "mcp",
+        "cedar",
+        "policy",
+        "receipts",
+        "claude-code",
+        "fail-closed",
+        "agent-governance"
+      ]
+    }
+  ]
+}
