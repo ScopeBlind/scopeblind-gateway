@@ -1367,23 +1367,94 @@ function loadPolicyArg(argv: string[]): CedarPolicySet | null {
   return null;
 }
 
+/** Read a client hook payload from stdin (JSON) when one is piped. */
+async function readHookStdin(): Promise<Record<string, unknown> | null> {
+  if (process.stdin.isTTY) return null;
+  try {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+    const raw = Buffer.concat(chunks).toString('utf-8').trim();
+    return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Map a host hook stdin payload to (tool, input). Claude Code, Codex, Gemini,
+ * and Hermes all send tool_name + tool_input; Cursor's shell hook sends a bare
+ * command. Field-name variants are tolerated.
+ */
+function mapHookPayload(j: Record<string, unknown>): { tool?: string; input?: unknown } {
+  const tool = (j.tool_name ?? j.toolName) as string | undefined;
+  const input = (j.tool_input ?? j.toolInput) as unknown;
+  if (input === undefined && j.command !== undefined) {
+    return { tool: tool ?? 'Bash', input: { command: j.command } };
+  }
+  return { tool, input };
+}
+
+/**
+ * Emit a PreToolUse decision in the target host's hook contract and exit.
+ * Every supported host blocks on a non-zero exit code EXCEPT Hermes, which
+ * IGNORES exit codes and reads the verdict from stdout. A raw exit-2 would
+ * therefore silently fail open in Hermes, so it gets an explicit branch.
+ */
+function emitDecision(format: string | undefined, allowed: boolean, reason: string): never {
+  if (format === 'hermes') {
+    process.stdout.write(JSON.stringify(allowed ? {} : { decision: 'block', reason }) + '\n');
+    process.exit(0);
+  }
+  if (allowed) {
+    process.stdout.write(JSON.stringify({ allowed: true, reason }) + '\n');
+    process.exit(0);
+  }
+  // claude / codex / gemini / cursor / grok all block on exit code 2. For the
+  // hosts that ALSO accept a structured stdout verdict, emit it too so the deny
+  // holds even if a host stops honoring the exit code (belt and suspenders).
+  if (format === 'cursor') {
+    process.stdout.write(JSON.stringify({ permission: 'deny', userMessage: reason }) + '\n');
+  } else if (format === 'gemini') {
+    process.stdout.write(JSON.stringify({ decision: 'deny', reason }) + '\n');
+  }
+  process.stderr.write(`protect-mcp denied: ${reason}\n`);
+  process.exit(2);
+}
+
 /**
  * One-shot Cedar evaluation for a PreToolUse hook. FAIL-CLOSED: a missing or
  * unloadable policy denies (exit 2) unless --fail-on-missing-policy false is set.
- * Exits 0 when allowed and 2 when denied (Claude Code blocks the tool on exit 2).
+ * Exits 0 when allowed and 2 when denied (the host blocks the tool on exit 2).
+ *
+ * Pass --format <host> (claude|codex|gemini|cursor|hermes|grok) to read the
+ * host's hook payload from stdin and emit the deny verdict in that host's
+ * contract. Without --format it reads --tool/--input flags (the legacy mode).
  */
 async function handleEvaluate(argv: string[]): Promise<void> {
-  const tool = flagValue(argv, '--tool') || '';
-  const inputRaw = flagValue(argv, '--input') || '{}';
+  const format = flagValue(argv, '--format');
+  let tool = flagValue(argv, '--tool') || '';
+  let inputRaw = flagValue(argv, '--input') || '{}';
   const contextRaw = flagValue(argv, '--context');
   const failOnMissing = flagValue(argv, '--fail-on-missing-policy') !== 'false';
+
+  // With --format, accept the host's hook payload from stdin (overrides flags).
+  if (format) {
+    const j = await readHookStdin();
+    if (j) {
+      const m = mapHookPayload(j);
+      if (m.tool) tool = m.tool;
+      if (m.input !== undefined) inputRaw = JSON.stringify(m.input);
+    }
+  }
 
   const policySet = loadPolicyArg(argv);
   if (!policySet) {
     if (failOnMissing) {
+      if (format) emitDecision(format, false, 'policy not found (fail-closed)');
       process.stderr.write('protect-mcp evaluate: policy not found; denying (fail-closed). Pass --fail-on-missing-policy false to allow.\n');
       process.exit(2);
     }
+    if (format) emitDecision(format, true, 'no_policy_configured');
     process.stdout.write(JSON.stringify({ allowed: true, reason: 'no_policy_configured' }) + '\n');
     process.exit(0);
   }
@@ -1399,6 +1470,7 @@ async function handleEvaluate(argv: string[]): Promise<void> {
   }
 
   const decision = await evaluateCedar(policySet, { tool, tier: 'unknown', context }, undefined, { failClosed: true });
+  if (format) emitDecision(format, decision.allowed, decision.reason || (decision.allowed ? 'allowed' : 'denied by policy'));
   process.stdout.write(JSON.stringify({ allowed: decision.allowed, reason: decision.reason, policy_digest: policySet.digest }) + '\n');
   process.exit(decision.allowed ? 0 : 2);
 }
@@ -1407,11 +1479,24 @@ async function handleEvaluate(argv: string[]): Promise<void> {
  * One-shot signed receipt for a PostToolUse hook. Appends an Ed25519-signed
  * receipt to the receipts directory when a key is configured. Never blocks the
  * tool: a missing signer records an honest unsigned line rather than failing.
+ *
+ * Pass --format <host> to read the host's PostToolUse payload from stdin. Since
+ * PostToolUse never blocks, the only host-specific behavior is emitting a no-op
+ * verdict ({}) for Hermes, which reads stdout.
  */
 async function handleSign(argv: string[]): Promise<void> {
-  const tool = flagValue(argv, '--tool') || '';
+  const format = flagValue(argv, '--format');
+  let tool = flagValue(argv, '--tool') || '';
   const receiptsDir = flagValue(argv, '--receipts') || './receipts/';
   const keyPath = flagValue(argv, '--key');
+
+  if (format) {
+    const j = await readHookStdin();
+    if (j) {
+      const m = mapHookPayload(j);
+      if (m.tool) tool = m.tool;
+    }
+  }
 
   if (keyPath && existsSyncCli(keyPath)) {
     try { await initSigning({ enabled: true, key_path: keyPath } as any); } catch { /* unsigned fallback below */ }
@@ -1432,6 +1517,8 @@ async function handleSign(argv: string[]): Promise<void> {
   const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || 'no signer configured' });
   try { appendFileSyncCli(joinCli(receiptsDir, 'receipts.jsonl'), line + '\n'); } catch { /* best-effort */ }
 
+  // PostToolUse never blocks; Hermes reads stdout, so emit a no-op verdict there.
+  if (format === 'hermes') { process.stdout.write('{}\n'); process.exit(0); }
   process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), artifact_type: signed.artifact_type, request_id: requestId }) + '\n');
   process.exit(0);
 }

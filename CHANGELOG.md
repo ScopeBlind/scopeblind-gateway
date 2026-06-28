@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.2: run the gate in other agents (Codex, Cursor, Gemini, Hermes)
+
+The `evaluate` and `sign` verbs now accept `--format <host>`
+(claude | codex | gemini | cursor | hermes | grok). With it, the verb reads the
+host's hook payload from stdin (tool name and input) and emits the deny verdict
+in that host's hook contract, so the same fail-closed Cedar gate works as a
+PreToolUse/PostToolUse hook outside Claude Code.
+
+The load-bearing detail: **Hermes ignores hook exit codes** and reads the verdict
+from stdout, so `--format hermes` denies via `{"decision":"block"}` on stdout. A
+raw exit-2 (which every other host honors) would have silently failed open there.
+Cursor and Gemini receive their structured stdout deny verdict in addition to
+exit 2. Without `--format`, the verbs behave exactly as before (the
+`--tool`/`--input` flag mode is unchanged).
+
 ## 0.7.1: documentation and security policy
 
 No code change from 0.7.0. Rewrote the README to lead with the fail-closed and

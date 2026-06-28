@@ -93,6 +93,26 @@ session always runs the gate you tested:
 configured, and if no signer is available it records an honest unsigned line
 (`"signed": false`) rather than failing the tool.
 
+## Use it in other agents (Codex, Cursor, Gemini, Hermes)
+
+The same fail-closed gate runs as a tool hook in any agent that supports them. Add
+`--format <host>` so the verb reads that host's hook payload from stdin and denies
+in its contract:
+
+```bash
+# the PreToolUse / before-tool command for each host
+npx -y protect-mcp@latest evaluate --format codex  --cedar ./cedar   # OpenAI Codex
+npx -y protect-mcp@latest evaluate --format gemini --cedar ./cedar   # Gemini CLI BeforeTool
+npx -y protect-mcp@latest evaluate --format cursor --cedar ./cedar   # Cursor beforeShellExecution
+npx -y protect-mcp@latest evaluate --format hermes --cedar ./cedar   # Hermes pre_tool_call
+```
+
+Pair each with `sign --format <host>` on the post-tool event for receipts. The
+important case is **Hermes**, which ignores hook exit codes and reads the verdict
+from stdout, so `--format hermes` denies via `{"decision":"block"}` rather than
+exit 2 (a raw exit-2 would silently fail open there). Without `--format`, the
+verbs read `--tool`/`--input` flags exactly as in the Claude Code section above.
+
 ## Write a policy
 
 Cedar policies live in a directory you point at with `--cedar`. A `forbid` rule
