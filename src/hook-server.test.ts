@@ -16,16 +16,24 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer, type Server } from 'node:http';
+import { writeFileSync, mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 // We test the normalizer and handler logic by making actual HTTP requests
 // to a running hook server instance.
 
 const HOOK_URL = 'http://127.0.0.1:19377/hook';
 const HEALTH_URL = 'http://127.0.0.1:19377/health';
+const CEDAR_HOOK_URL = 'http://127.0.0.1:19378/hook';
 
 // Helper to POST JSON to the hook server
 async function postHook(body: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
-  const res = await fetch(HOOK_URL, {
+  return postHookTo(HOOK_URL, body);
+}
+
+async function postHookTo(url: string, body: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -66,16 +74,29 @@ function makePostToolUse(toolName: string, toolResponse: unknown = {}): Record<s
 // ============================================================
 
 let hookServer: Server | undefined;
+let cedarHookServer: Server | undefined;
+const noPolicyDir = mkdtempSync(join(tmpdir(), 'pmcp-hook-empty-'));
+const cedarDir = mkdtempSync(join(tmpdir(), 'pmcp-hook-cedar-'));
+writeFileSync(
+  join(cedarDir, 'policy.cedar'),
+  'forbid(principal, action, resource) when { context has "input" && context.input has "path" && context.input.path like "*/.env*" };\npermit(principal, action, resource);\n',
+);
 
 beforeAll(async () => {
   // Dynamically import and start the hook server on test port
   const { startHookServer } = await import('./hook-server.js');
-  hookServer = await startHookServer({
-    port: 19377,
-    verbose: false,
-    enforce: true,
-    // No cedar dir or policy path — runs in observe/allow-all mode
-  });
+  const originalCwd = process.cwd();
+  process.chdir(noPolicyDir);
+  try {
+    hookServer = await startHookServer({
+      port: 19377,
+      verbose: false,
+      enforce: true,
+      // No cedar dir or policy path — runs in observe/allow-all mode
+    });
+  } finally {
+    process.chdir(originalCwd);
+  }
   // Give server time to bind
   await new Promise(r => setTimeout(r, 200));
 }, 10_000);
@@ -83,6 +104,9 @@ beforeAll(async () => {
 afterAll(() => {
   if (hookServer) {
     hookServer.close();
+  }
+  if (cedarHookServer) {
+    cedarHookServer.close();
   }
 });
 
@@ -140,6 +164,35 @@ describe('PreToolUse handler', () => {
       team_name: 'test-team',
     });
     expect(result.status).toBe(200);
+  });
+});
+
+describe('PreToolUse handler with Cedar policies', () => {
+  beforeAll(async () => {
+    const { startHookServer } = await import('./hook-server.js');
+    cedarHookServer = await startHookServer({
+      port: 19378,
+      verbose: false,
+      enforce: true,
+      cedarDir,
+    });
+    await new Promise(r => setTimeout(r, 200));
+  }, 10_000);
+
+  it('exposes tool input under context.input for Cedar policies', async () => {
+    const result = await postHookTo(CEDAR_HOOK_URL, makePreToolUse('read_file', { path: '/tmp/.env' }));
+    expect(result.status).toBe(200);
+    const output = result.body.hookSpecificOutput as Record<string, unknown>;
+    expect(output.permissionDecision).toBe('deny');
+    expect(String(output.permissionDecisionReason)).toContain('Denied by Cedar policy');
+  });
+
+  it('allows safe tool input through the same Cedar policy', async () => {
+    const result = await postHookTo(CEDAR_HOOK_URL, makePreToolUse('read_file', { path: '/tmp/safe.txt' }));
+    expect(result.status).toBe(200);
+    if (result.body.hookSpecificOutput) {
+      expect((result.body.hookSpecificOutput as Record<string, unknown>).permissionDecision).not.toBe('deny');
+    }
   });
 });
 

@@ -217,6 +217,7 @@ async function handlePreToolUse(
           hook_event: 'PreToolUse',
           ...(input.toolInput || {}),
         },
+        toolInput: input.toolInput || {},
       });
 
       if (!cedarDecision.allowed) {

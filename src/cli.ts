@@ -1469,7 +1469,7 @@ async function handleEvaluate(argv: string[]): Promise<void> {
     context.command_pattern = input.command;
   }
 
-  const decision = await evaluateCedar(policySet, { tool, tier: 'unknown', context }, undefined, { failClosed: true });
+  const decision = await evaluateCedar(policySet, { tool, tier: 'unknown', context, toolInput: input }, undefined, { failClosed: true });
   if (format) emitDecision(format, decision.allowed, decision.reason || (decision.allowed ? 'allowed' : 'denied by policy'));
   process.stdout.write(JSON.stringify({ allowed: decision.allowed, reason: decision.reason, policy_digest: policySet.digest }) + '\n');
   process.exit(decision.allowed ? 0 : 2);
