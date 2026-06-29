@@ -16,22 +16,31 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createServer, type Server } from 'node:http';
+import { writeFileSync, mkdtempSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 // We test the normalizer and handler logic by making actual HTTP requests
 // to a running hook server instance.
 
 const HOOK_URL = 'http://127.0.0.1:19377/hook';
 const HEALTH_URL = 'http://127.0.0.1:19377/health';
+const CEDAR_HOOK_URL = 'http://127.0.0.1:19378/hook';
 
-// Helper to POST JSON to the hook server
-async function postHook(body: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
-  const res = await fetch(HOOK_URL, {
+// Helper to POST JSON to a hook server at any URL.
+async function postHookTo(url: string, body: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   const json = await res.json() as Record<string, unknown>;
   return { status: res.status, body: json };
+}
+
+// Helper to POST JSON to the default (observe-mode) hook server.
+async function postHook(body: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  return postHookTo(HOOK_URL, body);
 }
 
 // Helper: minimal PreToolUse event in Claude Code's snake_case format
@@ -66,16 +75,35 @@ function makePostToolUse(toolName: string, toolResponse: unknown = {}): Record<s
 // ============================================================
 
 let hookServer: Server | undefined;
+let cedarHookServer: Server | undefined;
+// A real Cedar policy keyed on the nested `context.input.*` shape, to prove the
+// hook path now exposes tool input to policies (regression for the toolInput fix).
+const cedarDir = mkdtempSync(join(tmpdir(), 'pmcp-hook-cedar-'));
+writeFileSync(
+  join(cedarDir, 'policy.cedar'),
+  'forbid(principal, action, resource) when { context has "input" && context.input has "path" && context.input.path like "*/.env*" };\npermit(principal, action, resource);\n',
+);
+// Empty dir to start the observe-mode server from, so findCedarDir() cannot pick
+// up a policy set from the test runner's cwd. The published gateway repo has a
+// cedar/ dir at its root, which would otherwise leak in and break the no-policy
+// tests. (Restored from koriyoshi2041's PR; necessary for cwd-independent tests.)
+const noPolicyDir = mkdtempSync(join(tmpdir(), 'pmcp-hook-empty-'));
 
 beforeAll(async () => {
   // Dynamically import and start the hook server on test port
   const { startHookServer } = await import('./hook-server.js');
-  hookServer = await startHookServer({
-    port: 19377,
-    verbose: false,
-    enforce: true,
-    // No cedar dir or policy path — runs in observe/allow-all mode
-  });
+  const originalCwd = process.cwd();
+  process.chdir(noPolicyDir);
+  try {
+    hookServer = await startHookServer({
+      port: 19377,
+      verbose: false,
+      enforce: true,
+      // No cedar dir or policy path — runs in observe/allow-all mode
+    });
+  } finally {
+    process.chdir(originalCwd);
+  }
   // Give server time to bind
   await new Promise(r => setTimeout(r, 200));
 }, 10_000);
@@ -84,6 +112,43 @@ afterAll(() => {
   if (hookServer) {
     hookServer.close();
   }
+  if (cedarHookServer) {
+    cedarHookServer.close();
+  }
+});
+
+// ============================================================
+// 0. Cedar policies see tool input under context.input (regression)
+// ============================================================
+
+describe('PreToolUse handler with Cedar policies', () => {
+  beforeAll(async () => {
+    const { startHookServer } = await import('./hook-server.js');
+    cedarHookServer = await startHookServer({
+      port: 19378,
+      verbose: false,
+      enforce: true,
+      cedarDir,
+    });
+    await new Promise(r => setTimeout(r, 200));
+  }, 10_000);
+
+  it('exposes tool input under context.input so a nested-shape policy denies', async () => {
+    const result = await postHookTo(CEDAR_HOOK_URL, makePreToolUse('read_file', { path: '/tmp/.env' }));
+    expect(result.status).toBe(200);
+    const output = result.body.hookSpecificOutput as Record<string, unknown> | undefined;
+    expect(output?.permissionDecision).toBe('deny');
+    expect(String(output?.permissionDecisionReason)).toContain('Denied by Cedar policy');
+  });
+
+  it('allows safe tool input through the same Cedar policy', async () => {
+    const result = await postHookTo(CEDAR_HOOK_URL, makePreToolUse('read_file', { path: '/tmp/safe.txt' }));
+    expect(result.status).toBe(200);
+    const output = result.body.hookSpecificOutput as Record<string, unknown> | undefined;
+    if (output) {
+      expect(output.permissionDecision).not.toBe('deny');
+    }
+  });
 });
 
 // ============================================================

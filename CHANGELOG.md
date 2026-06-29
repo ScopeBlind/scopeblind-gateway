@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.7.3: tool input reaches `context.input`, and the hook path fails closed
+
+Two correctness fixes for policy authors who rely on the documented Cedar shape.
+
+The evaluator maps tool input to Cedar `context.input`, and the bundled policy
+examples are written against `context.input.*`, but the `evaluate` CLI path and
+the HTTP hook server only flattened tool input into top-level context fields. So
+a policy keyed on `context.input.path` silently saw nothing on those paths: a
+`forbid` that should have denied never fired, and the call was allowed. Both
+paths now pass the tool input through, so nested-shape policies match. The
+existing flattened fields are kept for back-compat. (Thanks to @koriyoshi2041,
+scopeblind-gateway#8, for the report and repro.)
+
+Separately, the hook server's Cedar evaluation fell through to **allow** on an
+unexpected evaluator throw, which contradicted the "denies on any error"
+guarantee from 0.7.0 (the CLI path already failed closed). The hook path now
+denies on an unexpected eval error while a policy is configured.
+
+Regression coverage added on all three paths; `npm ci` from a clean clone also
+works again (the lockfile was out of sync).
+
 ## 0.7.2: run the gate in other agents (Codex, Cursor, Gemini, Hermes)
 
 The `evaluate` and `sign` verbs now accept `--format <host>`

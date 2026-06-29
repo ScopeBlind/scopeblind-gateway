@@ -217,6 +217,9 @@ async function handlePreToolUse(
           hook_event: 'PreToolUse',
           ...(input.toolInput || {}),
         },
+        // Also expose the raw tool input under context.input so policies written
+        // against the documented nested shape match on the hook path too.
+        toolInput: input.toolInput || {},
       });
 
       if (!cedarDecision.allowed) {
@@ -266,10 +269,37 @@ async function handlePreToolUse(
         };
       }
     } catch (err) {
-      if (state.verbose) {
-        process.stderr.write(`[PROTECT_MCP] Cedar eval error: ${err instanceof Error ? err.message : err}\n`);
-      }
-      // Fall through to allow on Cedar errors (fail-open)
+      // evaluateCedar maps normal eval failures (WASM unavailable, unparseable
+      // result, eval error) to a fail-closed DENY by default, so those already
+      // return above. This catch only fires on an UNEXPECTED throw, and while a
+      // policy is configured that must NOT silently allow a tool call. Fail
+      // closed, consistent with the policy-deny path above and the "deny on any
+      // error" guarantee.
+      const hookLatency = Date.now() - hookStart;
+      process.stderr.write(
+        `[PROTECT_MCP] Cedar eval threw for "${toolName}", failing closed: ` +
+        `${err instanceof Error ? err.message : err}\n`,
+      );
+      emitDecisionLog(state, {
+        tool: toolName,
+        decision: 'deny',
+        reason_code: 'cedar_eval_error',
+        request_id: requestId,
+        hook_event: 'PreToolUse',
+        swarm: swarm.team_name ? swarm : undefined,
+        timing: { hook_latency_ms: hookLatency, started_at: hookStart },
+        payload_digest: payloadDigest,
+        sandbox_state: detectSandboxState(),
+      });
+      return {
+        hookSpecificOutput: {
+          hookEventName: 'PreToolUse',
+          permissionDecision: 'deny',
+          permissionDecisionReason:
+            `[ScopeBlind] Denied: the policy engine errored while evaluating "${toolName}", ` +
+            `so the gate fails closed rather than allow an unverified call. Check the policy set and server logs.`,
+        },
+      };
     }
   }
 
