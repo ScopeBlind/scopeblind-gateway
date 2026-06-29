@@ -65,7 +65,8 @@
   },
   "dependencies": {
     "@veritasacta/artifacts": "^0.2.2",
-    "@veritasacta/protocol": "^0.1.0"
+    "@veritasacta/protocol": "^0.1.0",
+    "zod": "^4.4.3"
   },
   "optionalDependencies": {
     "@cedar-policy/cedar-wasm": "^4.9.1",
