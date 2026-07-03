@@ -110,6 +110,42 @@ describe('createAuditBundle', () => {
 
     expect(bundle.anchors).toHaveLength(1);
   });
+
+  it('includes selective disclosure packages and committed receipts', () => {
+    const committedReceipt = {
+      type: 'scopeblind.receipt.committed.v1',
+      timestamp: '2026-03-21T13:00:00Z',
+      committed_fields_root: 'a'.repeat(64),
+      committed_field_names: ['tool', 'payload_digest'],
+      signature: { alg: 'EdDSA', kid: 'test-kid-123', sig: 'x', public_key: 'b'.repeat(64) },
+    };
+    const disclosure = {
+      type: 'scopeblind.selective_disclosure.v0' as const,
+      version: 0 as const,
+      parent_receipt_hash: 'c'.repeat(64),
+      committed_fields_root: 'a'.repeat(64),
+      disclosed_fields: ['tool'],
+      hidden_fields: ['payload_digest'],
+      disclosures: [],
+      verifier_explanation: {
+        summary: 'Selected fields disclosed.',
+        disclosed: 'Disclosed fields: tool.',
+        hidden: 'Hidden committed fields: payload_digest.',
+        limitation: 'Not full zero-knowledge.',
+      },
+    };
+    const bundle = createAuditBundle({
+      tenant: 'test',
+      receipts: [committedReceipt],
+      selectiveDisclosures: [disclosure],
+      signingKeys: [mockKey],
+    });
+
+    expect(bundle.receipts).toHaveLength(1);
+    expect(bundle.selective_disclosures).toHaveLength(1);
+    expect(bundle.privacy.selective_disclosure.statement).toContain('Undisclosed committed fields remain hidden');
+    expect(bundle.verification.instructions).toContain('scopeblind.selective_disclosure.v0');
+  });
 });
 
 describe('collectSignedReceipts', () => {

@@ -12,7 +12,12 @@ import { describe, it, expect } from 'vitest';
 import { ed25519 } from '@noble/curves/ed25519';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
-import { signCommittedDecision, discloseField } from './signing-committed.js';
+import {
+  createSelectiveDisclosurePackage,
+  signCommittedDecision,
+  discloseField,
+  verifySelectiveDisclosurePackage,
+} from './signing-committed.js';
 import { hashLeaf, verifyProof } from './commitments/merkle.js';
 import { encodeLeaf, base64urlNoPad } from './commitments/leaf.js';
 import { jcs } from './commitments/primitives.js';
@@ -178,6 +183,54 @@ describe('signCommittedDecision', () => {
         disclosure.proof,
       ),
     ).toBe(false);
+  });
+
+  it('creates a v0 selective disclosure package with disclosed vs hidden fields', () => {
+    const { skHex, pkHex } = makeKeyPair();
+    const result = signCommittedDecision(
+      sampleEntry(),
+      ['tool', 'payload_digest', 'scope'],
+      skHex,
+      pkHex,
+      'kid',
+      'issuer',
+    );
+    const receipt = JSON.parse(result.signed);
+    const disclosure = createSelectiveDisclosurePackage(
+      receipt,
+      ['tool', 'scope'],
+      result.openings,
+    );
+    const verification = verifySelectiveDisclosurePackage(receipt, disclosure);
+
+    expect(disclosure.type).toBe('scopeblind.selective_disclosure.v0');
+    expect(disclosure.committed_fields_root).toBe(receipt.committed_fields_root);
+    expect(disclosure.disclosed_fields.sort()).toEqual(['scope', 'tool']);
+    expect(disclosure.hidden_fields).toEqual(['payload_digest']);
+    expect(verification.valid).toBe(true);
+    expect(verification.signature_valid).toBe(true);
+    expect(verification.disclosed_fields.sort()).toEqual(['scope', 'tool']);
+    expect(verification.hidden_fields).toEqual(['payload_digest']);
+    expect(verification.explanation.join(' ')).toContain('Hidden fields: payload_digest');
+  });
+
+  it('rejects tampered v0 selective disclosure packages', () => {
+    const { skHex, pkHex } = makeKeyPair();
+    const result = signCommittedDecision(
+      sampleEntry(),
+      ['tool', 'payload_digest'],
+      skHex,
+      pkHex,
+      'kid',
+      'issuer',
+    );
+    const receipt = JSON.parse(result.signed);
+    const disclosure = createSelectiveDisclosurePackage(receipt, ['tool'], result.openings);
+    disclosure.disclosures[0].value = 'not_lookup_flights';
+    const verification = verifySelectiveDisclosurePackage(receipt, disclosure);
+
+    expect(verification.valid).toBe(false);
+    expect(verification.errors.join(' ')).toContain('failed Merkle inclusion');
   });
 
   it('handles empty committedFieldNames list (no commitment mode)', () => {

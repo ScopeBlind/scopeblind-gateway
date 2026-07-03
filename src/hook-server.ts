@@ -43,6 +43,7 @@ import { initSigning, signDecision, isSigningEnabled, getSignerInfo } from './si
 import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
 import { ReceiptBuffer } from './http-server.js';
 import { getScopeBlindBridge } from './scopeblind-bridge.js';
+import { buildActionReadback } from './action-readback.js';
 
 // ============================================================
 // Constants
@@ -196,6 +197,7 @@ async function handlePreToolUse(
 
   // Compute payload digest for large inputs
   const payloadDigest = computePayloadDigest(input.toolInput);
+  const actionReadback = buildActionReadback(toolName, input.toolInput || {});
 
   // Build swarm context from hook input (override env detection)
   const swarm: SwarmContext = {
@@ -244,6 +246,7 @@ async function handlePreToolUse(
           swarm: swarm.team_name ? swarm : undefined,
           timing: { hook_latency_ms: hookLatency, started_at: hookStart },
           payload_digest: payloadDigest,
+          action_readback: actionReadback,
           deny_iteration: denyCount,
           sandbox_state: detectSandboxState(),
           plan_receipt_id: state.activePlanReceiptId || undefined,
@@ -289,6 +292,7 @@ async function handlePreToolUse(
         swarm: swarm.team_name ? swarm : undefined,
         timing: { hook_latency_ms: hookLatency, started_at: hookStart },
         payload_digest: payloadDigest,
+        action_readback: actionReadback,
         sandbox_state: detectSandboxState(),
       });
       return {
@@ -318,6 +322,7 @@ async function handlePreToolUse(
         swarm: swarm.team_name ? swarm : undefined,
         timing: { hook_latency_ms: hookLatency, started_at: hookStart },
         payload_digest: payloadDigest,
+        action_readback: actionReadback,
         sandbox_state: detectSandboxState(),
       });
 
@@ -340,6 +345,8 @@ async function handlePreToolUse(
         hook_event: 'PreToolUse',
         swarm: swarm.team_name ? swarm : undefined,
         timing: { hook_latency_ms: hookLatency, started_at: hookStart },
+        payload_digest: payloadDigest,
+        action_readback: actionReadback,
         sandbox_state: detectSandboxState(),
       });
 
@@ -348,7 +355,8 @@ async function handlePreToolUse(
           hookEventName: 'PreToolUse',
           permissionDecision: 'ask',
           permissionDecisionReason:
-            `[ScopeBlind] "${toolName}" requires human approval. Policy: ${state.policyDigest}`,
+            `[ScopeBlind] Approval required for exactly this action: ${actionReadback.summary}. ` +
+            `Payload hash: ${actionReadback.payload_hash.slice(0, 16)}… Policy: ${state.policyDigest}`,
         },
       };
     }
@@ -401,6 +409,7 @@ async function handlePreToolUse(
     swarm: swarm.team_name ? swarm : undefined,
     timing: { hook_latency_ms: hookLatency, started_at: hookStart },
     payload_digest: payloadDigest,
+    action_readback: actionReadback,
     sandbox_state: detectSandboxState(),
     plan_receipt_id: state.activePlanReceiptId || undefined,
   });

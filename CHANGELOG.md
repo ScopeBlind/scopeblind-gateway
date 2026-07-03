@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.7.4: the self-serve trial path
+
+Everything the scopeblind.com trial and docs pages describe now ships in the
+published package: wrap, dashboard, trial, policy packs, connectors, the
+registry client, and selective disclosure v0.
+
+- Added `protect-mcp trial`, a guided ten-minute local trial: run the demo
+  tool server, watch risky calls, install a policy pack, require an approval,
+  and export a signed receipt you can verify offline.
+- Added `protect-mcp connectors`, dry-run connector pilots for GitHub, email,
+  filesystem/Git, Slack or Teams, and a mock-to-real PMS adapter
+  (`connectors list|show|init|doctor`). These are scaffolds with policies and
+  config, not a managed marketplace; GitHub, Slack/Teams, and real PMS mode
+  still need customer tokens or adapters.
+- Added `protect-mcp wrap` for install-to-aha onboarding. It prints a protected
+  MCP command, can patch Claude Desktop MCP server config in dry-run mode, and
+  writes only when `--write` is passed.
+- Added `protect-mcp dashboard`, a local-only `127.0.0.1` dashboard for
+  shadow-mode inventory, risk review, receipts, and next policy moves.
+- Added exact-action readbacks to decision logs and signed receipts: tool,
+  action, destination, redacted payload preview, payload hash, disclosed fields,
+  and redacted fields.
+- Upgraded the local dashboard into an action-control surface: policy coverage,
+  one-click `Require approval`/`Block`/`Observe` drafting, pending approval
+  queue, reason capture, desktop approval forwarding, receipt-chain view, and
+  audit-bundle export with explicit signed-receipt preflight.
+- Added `protect-mcp recommend`, which drafts a reviewable JSON policy from
+  observed local tool calls before users flip wrappers into `--enforce`.
+- Added `protect-mcp registry`, a paid-boundary MVP for hosted org identity,
+  receipt digest anchoring, org public-key directory, billing-account metadata,
+  and a static verifier page. Hosted mode uploads digests only, not raw prompts,
+  payloads, outputs, private keys, or raw receipts.
+- Added `protect-mcp killer-demo`, which generates a three-minute
+  shadow-mode → policy → exact approval → gateway execution → signed receipt →
+  tamper failure → selective-disclosure demo pack.
+- Added Selective Disclosure v0 on committed receipts: `committed_fields_root`,
+  multi-field disclosure packages, verifier explanations for disclosed versus
+  hidden fields, CLI verification via `protect-mcp verify-disclosure`, and audit
+  bundle inclusion. This is salted commitments + Merkle proofs, not full ZK.
+- Added `protect-mcp policy-packs`, a starter Cedar template library for
+  filesystem-safe, Git-safe, email-safe, database-safe, cloud-spend-safe,
+  secrets-safe, and finance-mandate-safe rollouts.
+- Expanded the built-in demo MCP server with GitHub PR, email, and mock PMS
+  booking tools so the demo maps to agent actions a hedge fund actually cares
+  about.
+- Reworked the README quickstart around the practical path: initialize, wrap,
+  inspect, draft policy, then enforce.
+
 ## 0.7.3: tool input reaches `context.input`, and the hook path fails closed
 
 Two correctness fixes for policy authors who rely on the documented Cedar shape.

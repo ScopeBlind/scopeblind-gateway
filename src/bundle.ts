@@ -23,6 +23,7 @@
  */
 
 import type { DecisionLog } from './types.js';
+import type { SelectiveDisclosurePackageV0 } from './signing-committed.js';
 
 export interface AuditBundleOptions {
   /** Tenant/service identifier */
@@ -33,6 +34,8 @@ export interface AuditBundleOptions {
   receipts: Record<string, unknown>[];
   /** Optional audit anchors */
   anchors?: Record<string, unknown>[];
+  /** Optional selective-disclosure packages opening selected committed fields */
+  selectiveDisclosures?: SelectiveDisclosurePackageV0[];
   /** JWK signing keys used by the receipts */
   signingKeys: Array<{
     kty: string;
@@ -51,6 +54,14 @@ export interface AuditBundle {
   time_range: { from: string; to: string } | null;
   receipts: Record<string, unknown>[];
   anchors: Record<string, unknown>[];
+  selective_disclosures: SelectiveDisclosurePackageV0[];
+  privacy: {
+    selective_disclosure: {
+      supported: true;
+      model: 'salted_commitments_merkle_v0';
+      statement: string;
+    };
+  };
   verification: {
     algorithm: 'ed25519';
     signing_keys: Array<{
@@ -76,7 +87,10 @@ export interface AuditBundle {
  */
 export function createAuditBundle(opts: AuditBundleOptions): AuditBundle {
   const receipts = opts.receipts.filter(
-    (r) => r && typeof r === 'object' && typeof r.signature === 'string',
+    (r) => r && typeof r === 'object' && (
+      typeof r.signature === 'string' ||
+      (r.signature !== null && typeof r.signature === 'object')
+    ),
   );
 
   if (receipts.length === 0) {
@@ -115,6 +129,16 @@ export function createAuditBundle(opts: AuditBundleOptions): AuditBundle {
     time_range: timeRange,
     receipts,
     anchors: opts.anchors || [],
+    selective_disclosures: opts.selectiveDisclosures || [],
+    privacy: {
+      selective_disclosure: {
+        supported: true,
+        model: 'salted_commitments_merkle_v0',
+        statement:
+          'Committed receipts may disclose selected fields with salted Merkle openings. ' +
+          'Undisclosed committed fields remain hidden while staying bound to the signed commitment root.',
+      },
+    },
     verification: {
       algorithm: 'ed25519',
       signing_keys: Array.from(keyMap.values()),
@@ -123,6 +147,7 @@ export function createAuditBundle(opts: AuditBundleOptions): AuditBundle {
         '(2) canonicalize the remaining object with JCS (sorted keys at every level), ' +
         '(3) encode as UTF-8 bytes, ' +
         '(4) verify the Ed25519 signature using the signing key matching the receipt\'s "kid" field. ' +
+        'For scopeblind.selective_disclosure.v0 packages, recompute each disclosed leaf and verify it against the receipt committed_fields_root; fields not disclosed remain hidden. ' +
         'CLI: npx @veritasacta/verify bundle.json --bundle',
     },
   };

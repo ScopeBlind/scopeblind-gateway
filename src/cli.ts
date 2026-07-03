@@ -6,7 +6,12 @@
  * Usage:
  *   npx protect-mcp [options] -- <command> [args...]
  *   npx protect-mcp init [--dir <path>]
+ *   npx protect-mcp wrap [--write] [--claude-desktop] [-- <command>]
+ *   npx protect-mcp dashboard [--port <port>] [--dir <path>] [--open]
+ *   npx protect-mcp recommend [--dir <path>] [--output <path>] [--write]
  *   npx protect-mcp connect
+ *   npx protect-mcp trial [--dir <path>] [--hosted]
+ *   npx protect-mcp connectors list|show|init|doctor [connector|all] [--dir <path>] [--force]
  *   npx protect-mcp demo
  *   npx protect-mcp status [--dir <path>]
  *   npx protect-mcp bundle [--output <path>] [--dir <path>]
@@ -29,10 +34,15 @@ import { loadPolicy } from './policy.js';
 import { initSigning, signDecision } from './signing.js';
 import { validateCredentials } from './credentials.js';
 import { parseLogFile, simulate, formatSimulation } from './simulate.js';
+import { buildActionReadback } from './action-readback.js';
 import { loadCedarPolicies, isCedarAvailable, evaluateCedar, policySetFromSource, runEvaluatorSelfTest, type CedarPolicySet } from './cedar-evaluator.js';
-import { readFileSync as readFileSyncCli, existsSync as existsSyncCli, appendFileSync as appendFileSyncCli, mkdirSync as mkdirSyncCli } from 'node:fs';
-import { basename as basenameCli, join as joinCli } from 'node:path';
-import type { ProtectConfig } from './types.js';
+import { POLICY_PACKS, getPolicyPack, policyPackIds } from './policy-packs.js';
+import { CONNECTOR_PILOTS, connectorDoctor, getConnectorPilot, readInstalledConnectorPilots, writeConnectorPilots } from './connector-pilots.js';
+import { createHash as createHashCli } from 'node:crypto';
+import { readFileSync as readFileSyncCli, existsSync as existsSyncCli, appendFileSync as appendFileSyncCli, mkdirSync as mkdirSyncCli, readdirSync as readdirSyncCli, writeFileSync as writeFileSyncCli } from 'node:fs';
+import { basename as basenameCli, dirname as dirnameCli, join as joinCli, resolve as resolveCli } from 'node:path';
+import { homedir as homedirCli } from 'node:os';
+import type { ProtectConfig, ToolPolicy } from './types.js';
 
 function printHelp(): void {
   process.stderr.write(`
@@ -43,6 +53,15 @@ Usage:
   protect-mcp serve [--port <port>] [--enforce] [--policy <path>] [--cedar <dir>]
   protect-mcp init-hooks [--dir <path>] [--port <port>]
   protect-mcp quickstart [--connect]
+  protect-mcp wrap [--write] [--claude-desktop] [-- <command>]
+  protect-mcp dashboard [--port <port>] [--dir <path>] [--open]
+  protect-mcp recommend [--dir <path>] [--output <path>] [--write]
+  protect-mcp registry init|anchor|status [--dir <path>] [--org <name>] [--hosted]
+  protect-mcp trial [--dir <path>] [--hosted]
+  protect-mcp killer-demo [--dir <path>] [--hosted]
+  protect-mcp connectors list|show|init|doctor [connector|all] [--dir <path>] [--force]
+  protect-mcp verify-disclosure --receipt <path> --disclosure <path>
+  protect-mcp policy-packs list|show|install [pack] [--dir ./cedar] [--force]
   protect-mcp connect
   protect-mcp init [--dir <path>]
   protect-mcp demo
@@ -70,6 +89,15 @@ Commands:
   sign              Sign one tool call into a receipt (PostToolUse)
   init-hooks        Generate Claude Code hook config + skill + sample Cedar policy
   quickstart        Zero-config onboarding: init + demo + show receipts in one command
+  wrap              Print or install a protect-mcp wrapper for MCP servers
+  dashboard         Start a local-only action dashboard from logs/receipts
+  recommend         Draft a policy from shadow-mode call inventory
+  registry          Paid-boundary receipt digest registry and verifier page
+  trial             Build the 10-minute self-serve proof path locally
+  killer-demo       Build a 3-minute shadow→policy→approval→receipt demo pack
+  connectors        Install and inspect real connector pilots
+  verify-disclosure Verify a v0 selective-disclosure package and explain hidden fields
+  policy-packs      List, inspect, or install starter Cedar policy packs
   connect           Create a ScopeBlind sandbox dashboard and configure receipt upload
   init              Generate config template, Ed25519 keypair, and sample policy
   demo              Start a demo server wrapped with protect-mcp (see receipts instantly)
@@ -86,6 +114,17 @@ Examples:
   protect-mcp init-hooks                       # One-command Claude Code setup
   protect-mcp quickstart
   protect-mcp quickstart --connect               # Quickstart + create dashboard
+  protect-mcp wrap -- node my-server.js          # Print wrapped MCP command
+  protect-mcp wrap --claude-desktop --write      # Patch Claude Desktop MCP config
+  protect-mcp dashboard --open                   # Local risk/inventory dashboard
+  protect-mcp recommend --write                  # Draft a policy from observed calls
+  protect-mcp registry anchor --hosted           # Upload only receipt digests for anchoring
+  protect-mcp trial --dir ./scopeblind-trial     # Generate self-serve trial artifacts
+  protect-mcp killer-demo --dir ./scopeblind-demo # Generate sales-demo artifacts
+  protect-mcp connectors init all --force        # Install connector pilot configs
+  protect-mcp connectors doctor                  # Check connector credentials safely
+  protect-mcp verify-disclosure --receipt committed.json --disclosure tool-only.json
+  protect-mcp policy-packs install filesystem-safe --dir ./cedar
   protect-mcp connect                             # Connect existing setup to dashboard
   protect-mcp -- node my-server.js
   protect-mcp init
@@ -95,6 +134,7 @@ Examples:
   protect-mcp bundle --output audit.json
 
 Dashboard:
+  npx protect-mcp dashboard      Local-only dashboard (127.0.0.1; no account)
   npx protect-mcp connect        Create a free ScopeBlind dashboard
                                   Free up to 20,000 receipts/month
 
@@ -536,6 +576,1374 @@ async function handleStatus(argv: string[]): Promise<void> {
   process.stdout.write(`\n  Log file: ${dim(logPath)}\n\n`);
 }
 
+type DashboardEntry = {
+  tool?: string;
+  decision?: string;
+  reason_code?: string;
+  timestamp?: number;
+  mode?: string;
+  tier?: string;
+  policy_digest?: string;
+  request_id?: string;
+  issuer_certification?: string;
+  action_readback?: {
+    tool?: string;
+    action?: string;
+    destination?: string;
+    payload_preview?: unknown;
+    payload_hash?: string;
+    payload_bytes?: number;
+    disclosed_fields?: string[];
+    redacted_fields?: string[];
+    summary?: string;
+  };
+};
+
+type ToolRisk = 'high' | 'medium' | 'low';
+
+type SuggestedGuardrail = {
+  action: string;
+  reason: string;
+  policy: ToolPolicy;
+};
+
+type PolicyCoverage = {
+  status: 'exact' | 'wildcard' | 'none';
+  label: string;
+  policy?: ToolPolicy;
+};
+
+type JsonlRecord = {
+  value: Record<string, unknown>;
+  raw: string;
+  hash: string;
+};
+
+type ClaudeDesktopServer = {
+  command?: string;
+  args?: string[];
+  [key: string]: unknown;
+};
+
+type ClaudeDesktopConfig = {
+  mcpServers?: Record<string, ClaudeDesktopServer>;
+  [key: string]: unknown;
+};
+
+function commandNeedsValue(argv: string[], flag: string): boolean {
+  const value = flagValue(argv, flag);
+  return Boolean(value && !value.startsWith('--'));
+}
+
+function absoluteOrCwd(pathValue: string): string {
+  return resolveCli(process.cwd(), pathValue);
+}
+
+function shellQuoteArg(arg: string): string {
+  if (/^[A-Za-z0-9_./:@%+=,-]+$/.test(arg)) return arg;
+  return `'${arg.replace(/'/g, `'\\''`)}'`;
+}
+
+function shellCommand(command: string, args: string[]): string {
+  return [command, ...args].map(shellQuoteArg).join(' ');
+}
+
+function wrapperArgsFor(command: string[], opts: { configPath?: string; cedarDir?: string; enforce?: boolean }): string[] {
+  const args = ['-y', 'protect-mcp@latest'];
+  if (opts.cedarDir) args.push('--cedar', opts.cedarDir);
+  else args.push('--policy', opts.configPath || absoluteOrCwd('protect-mcp.json'));
+  if (opts.enforce) args.push('--enforce');
+  args.push('--', ...command);
+  return args;
+}
+
+function claudeDesktopConfigPath(): string {
+  if (process.platform === 'darwin') {
+    return joinCli(homedirCli(), 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+  }
+  if (process.platform === 'win32') {
+    return joinCli(process.env.APPDATA || joinCli(homedirCli(), 'AppData', 'Roaming'), 'Claude', 'claude_desktop_config.json');
+  }
+  return joinCli(homedirCli(), '.config', 'Claude', 'claude_desktop_config.json');
+}
+
+async function ensureLocalConfig(dir = process.cwd()): Promise<string> {
+  const { existsSync } = await import('node:fs');
+  const { join, resolve } = await import('node:path');
+  const configPath = join(dir, 'protect-mcp.json');
+  if (!existsSync(configPath)) {
+    process.stderr.write(`${bold('protect-mcp wrap')}\n\nNo protect-mcp.json found; creating local shadow-mode config first.\n\n`);
+    await handleInit(['--dir', dir]);
+  }
+  return resolve(configPath);
+}
+
+function parseJsonlFile(pathValue: string): DashboardEntry[] {
+  try {
+    const raw = readFileSyncCli(pathValue, 'utf-8');
+    return raw
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .flatMap((line) => {
+        try { return [JSON.parse(line) as DashboardEntry]; } catch { return []; }
+      });
+  } catch {
+    return [];
+  }
+}
+
+function parseJsonlRecords(pathValue: string): JsonlRecord[] {
+  try {
+    const raw = readFileSyncCli(pathValue, 'utf-8');
+    return raw
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .flatMap((line) => {
+        try {
+          return [{
+            value: JSON.parse(line) as Record<string, unknown>,
+            raw: line,
+            hash: createHashCli('sha256').update(line).digest('hex'),
+          }];
+        } catch {
+          return [];
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
+function loadPolicyJson(policyPath: string): Record<string, unknown> | null {
+  try {
+    if (!existsSyncCli(policyPath)) return null;
+    return JSON.parse(readFileSyncCli(policyPath, 'utf-8')) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function policyCoverageForTool(tool: string, policy: Record<string, unknown> | null): PolicyCoverage {
+  const tools = policy?.tools && typeof policy.tools === 'object'
+    ? policy.tools as Record<string, ToolPolicy>
+    : {};
+  if (tools[tool]) {
+    return { status: 'exact', label: 'Exact rule', policy: tools[tool] };
+  }
+  if (tools['*']) {
+    return { status: 'wildcard', label: 'Wildcard fallback', policy: tools['*'] };
+  }
+  return { status: 'none', label: 'No rule' };
+}
+
+function receiptRequestId(receipt: Record<string, unknown>): string | undefined {
+  const direct = receipt.request_id || receipt.scope;
+  if (typeof direct === 'string') return direct;
+  const payload = receipt.payload;
+  if (payload && typeof payload === 'object') {
+    const candidate = (payload as Record<string, unknown>).request_id || (payload as Record<string, unknown>).scope;
+    if (typeof candidate === 'string') return candidate;
+  }
+  const claims = receipt.signed_claims;
+  if (claims && typeof claims === 'object') {
+    const nestedClaims = (claims as Record<string, unknown>).claims;
+    if (nestedClaims && typeof nestedClaims === 'object') {
+      const candidate = (nestedClaims as Record<string, unknown>).request_id || (nestedClaims as Record<string, unknown>).scope;
+      if (typeof candidate === 'string') return candidate;
+    }
+  }
+  return undefined;
+}
+
+function buildReceiptChains(entries: DashboardEntry[], receipts: JsonlRecord[]): Array<Record<string, unknown>> {
+  const receiptMap = new Map<string, JsonlRecord[]>();
+  for (const receipt of receipts) {
+    const requestId = receiptRequestId(receipt.value);
+    if (!requestId) continue;
+    const rows = receiptMap.get(requestId) || [];
+    rows.push(receipt);
+    receiptMap.set(requestId, rows);
+  }
+  const logMap = new Map<string, DashboardEntry[]>();
+  for (const entry of entries) {
+    if (!entry.request_id) continue;
+    const rows = logMap.get(entry.request_id) || [];
+    rows.push(entry);
+    logMap.set(entry.request_id, rows);
+  }
+  return [...logMap.entries()]
+    .map(([requestId, logs]) => {
+      const relatedReceipts = receiptMap.get(requestId) || [];
+      const latest = logs[logs.length - 1];
+      return {
+        request_id: requestId,
+        tool: latest?.tool || 'unknown',
+        decision: latest?.decision || 'unknown',
+        reason_code: latest?.reason_code || '',
+        action_readback: latest?.action_readback,
+        log_events: logs.map((log) => ({
+          decision: log.decision,
+          reason_code: log.reason_code,
+          timestamp: log.timestamp,
+          hook_event: (log as Record<string, unknown>).hook_event,
+        })),
+        receipts: relatedReceipts.map((receipt) => ({
+          hash: receipt.hash,
+          type: String(receipt.value.type || receipt.value.artifact_type || 'receipt'),
+        })),
+        complete: relatedReceipts.length > 0,
+      };
+    })
+    .sort((a, b) => {
+      const at = ((a.log_events as Array<{ timestamp?: number }>)[0]?.timestamp || 0);
+      const bt = ((b.log_events as Array<{ timestamp?: number }>)[0]?.timestamp || 0);
+      return bt - at;
+    })
+    .slice(0, 80);
+}
+
+function riskForTool(toolRaw: string): { tier: ToolRisk; reasons: string[] } {
+  const tool = toolRaw.toLowerCase();
+  const reasons: string[] = [];
+  const highPatterns = [
+    ['delete', 'delete/destructive'],
+    ['remove', 'delete/destructive'],
+    ['rm', 'delete/destructive'],
+    ['write', 'writes data'],
+    ['send', 'external send'],
+    ['email', 'external comms'],
+    ['slack', 'external comms'],
+    ['teams', 'external comms'],
+    ['github', 'source-control mutation'],
+    ['commit', 'source-control mutation'],
+    ['push', 'source-control mutation'],
+    ['deploy', 'deployment'],
+    ['terraform', 'cloud infrastructure'],
+    ['aws', 'cloud infrastructure'],
+    ['gcp', 'cloud infrastructure'],
+    ['azure', 'cloud infrastructure'],
+    ['sql', 'database access'],
+    ['database', 'database access'],
+    ['payment', 'spend/payment'],
+    ['order', 'order/transaction'],
+    ['trade', 'trade/transaction'],
+    ['pms', 'portfolio-system mutation'],
+    ['book', 'portfolio-system mutation'],
+    ['fill', 'portfolio-system mutation'],
+    ['secret', 'secrets'],
+    ['token', 'secrets'],
+  ] as const;
+  for (const [needle, label] of highPatterns) {
+    if (tool.includes(needle) && !reasons.includes(label)) reasons.push(label);
+  }
+  if (reasons.length > 0) return { tier: 'high', reasons };
+  if (tool.includes('read') || tool.includes('search') || tool.includes('list') || tool.includes('fetch')) {
+    return { tier: 'medium', reasons: ['data access'] };
+  }
+  return { tier: 'low', reasons: ['observed'] };
+}
+
+function suggestedGuardrailFor(_tool: string, risk: ToolRisk, reasons: string[]): SuggestedGuardrail {
+  const reasonSet = new Set(reasons);
+  if (reasonSet.has('delete/destructive') || reasonSet.has('secrets')) {
+    return {
+      action: 'Block by default',
+      reason: 'Destructive and secret-handling tools should start deny-first.',
+      policy: { block: true, min_tier: 'privileged' },
+    };
+  }
+  if (
+    reasonSet.has('order/transaction') ||
+    reasonSet.has('trade/transaction') ||
+    reasonSet.has('spend/payment') ||
+    reasonSet.has('portfolio-system mutation') ||
+    reasonSet.has('deployment') ||
+    reasonSet.has('cloud infrastructure') ||
+    reasonSet.has('database access') ||
+    reasonSet.has('external send') ||
+    reasonSet.has('source-control mutation')
+  ) {
+    return {
+      action: 'Require approval',
+      reason: 'Consequential tools should require a human approval receipt before enforce mode.',
+      policy: { require_approval: true, min_tier: 'signed-known', rate_limit: '10/hour' },
+    };
+  }
+  if (risk === 'medium') {
+    return {
+      action: 'Rate-limit and identify',
+      reason: 'Read/search/fetch tools can leak data at scale; keep them visible and bounded.',
+      policy: { min_tier: 'signed-known', rate_limit: '60/hour' },
+    };
+  }
+  return {
+    action: 'Observe',
+    reason: 'Low-risk observed tool. Keep receipts and a broad rate limit.',
+    policy: { rate_limit: '100/hour' },
+  };
+}
+
+function buildDashboardSummary(dir: string, policyPath = joinCli(dir, 'protect-mcp.json')): Record<string, unknown> {
+  const logPath = joinCli(dir, '.protect-mcp-log.jsonl');
+  const receiptPath = joinCli(dir, '.protect-mcp-receipts.jsonl');
+  const keyPath = joinCli(dir, 'keys', 'gateway.json');
+  const entries = parseJsonlFile(logPath);
+  const receiptRecords = parseJsonlRecords(receiptPath);
+  const receipts = receiptRecords.map((record) => record.value);
+  const activePolicy = loadPolicyJson(policyPath);
+
+  const tools = new Map<string, {
+    tool: string;
+    calls: number;
+    allows: number;
+    denies: number;
+    reviews: number;
+    risk: ToolRisk;
+    reasons: string[];
+    suggestion?: SuggestedGuardrail;
+    policy_coverage?: PolicyCoverage;
+    last_seen?: string;
+  }>();
+
+  for (const entry of entries) {
+    const tool = String(entry.tool || 'unknown');
+    const risk = riskForTool(tool);
+    const current = tools.get(tool) || {
+      tool,
+      calls: 0,
+      allows: 0,
+      denies: 0,
+      reviews: 0,
+      risk: risk.tier,
+      reasons: risk.reasons,
+    };
+    current.calls += 1;
+    if (entry.decision === 'allow') current.allows += 1;
+    else if (entry.decision === 'deny') current.denies += 1;
+    else if (entry.decision === 'require_approval') current.reviews += 1;
+    if (risk.tier === 'high' || (risk.tier === 'medium' && current.risk === 'low')) current.risk = risk.tier;
+    current.reasons = [...new Set([...current.reasons, ...risk.reasons])];
+    if (typeof entry.timestamp === 'number') current.last_seen = new Date(entry.timestamp).toISOString();
+    tools.set(tool, current);
+  }
+
+  const toolRows = [...tools.values()].sort((a, b) => {
+    const order = { high: 0, medium: 1, low: 2 };
+    return order[a.risk] - order[b.risk] || b.calls - a.calls || a.tool.localeCompare(b.tool);
+  }).map((tool) => ({
+    ...tool,
+    suggestion: suggestedGuardrailFor(tool.tool, tool.risk, tool.reasons),
+    policy_coverage: policyCoverageForTool(tool.tool, activePolicy),
+  }));
+
+  const highRisk = toolRows.filter((t) => t.risk === 'high');
+  const uncovered = toolRows.filter((t) => t.policy_coverage.status === 'none').length;
+  const exactCovered = toolRows.filter((t) => t.policy_coverage.status === 'exact').length;
+  const wildcardCovered = toolRows.filter((t) => t.policy_coverage.status === 'wildcard').length;
+  const allowed = entries.filter((e) => e.decision === 'allow').length;
+  const denied = entries.filter((e) => e.decision === 'deny').length;
+  const review = entries.filter((e) => e.decision === 'require_approval').length;
+  const pendingApprovals = entries
+    .filter((e) => e.decision === 'require_approval')
+    .slice(-25)
+    .reverse();
+  const chains = buildReceiptChains(entries, receiptRecords);
+  let key: Record<string, unknown> | null = null;
+  if (existsSyncCli(keyPath)) {
+    try {
+      const parsed = JSON.parse(readFileSyncCli(keyPath, 'utf-8')) as Record<string, unknown>;
+      key = {
+        kid: parsed.kid || null,
+        issuer: parsed.issuer || 'protect-mcp',
+        publicKeyPrefix: typeof parsed.publicKey === 'string' ? `${parsed.publicKey.slice(0, 16)}...` : null,
+      };
+    } catch { /* ignore */ }
+  }
+
+  return {
+    generated_at: new Date().toISOString(),
+    dir,
+    files: {
+      log: logPath,
+      receipts: receiptPath,
+      key: keyPath,
+      policy: policyPath,
+      log_exists: existsSyncCli(logPath),
+      receipts_exist: existsSyncCli(receiptPath),
+      key_exists: existsSyncCli(keyPath),
+      policy_exists: existsSyncCli(policyPath),
+    },
+    totals: {
+      decisions: entries.length,
+      receipts: receipts.length,
+      tools: toolRows.length,
+      high_risk_tools: highRisk.length,
+      exact_covered: exactCovered,
+      wildcard_covered: wildcardCovered,
+      uncovered,
+      allowed,
+      denied,
+      review,
+    },
+    key,
+    policy: activePolicy ? {
+      path: policyPath,
+      digest: createHashCli('sha256').update(JSON.stringify(activePolicy)).digest('hex').slice(0, 16),
+      default_tier: activePolicy.default_tier || 'unknown',
+      tools: activePolicy.tools || {},
+    } : null,
+    tools: toolRows,
+    pending_approvals: pendingApprovals,
+    receipt_chains: chains,
+    recent: entries.slice(-50).reverse(),
+    policy_packs: {
+      directory: policyPackDirectory(dir),
+      installed: installedPolicyPackIds(dir),
+      available: POLICY_PACKS.map((pack) => ({
+        id: pack.id,
+        name: pack.name,
+        description: pack.description,
+        recommendedMode: pack.recommendedMode,
+        files: pack.files.map((file) => ({ path: file.path, contents: file.contents })),
+      })),
+    },
+    connector_pilots: {
+      directory: joinCli(dir, '.protect-mcp', 'connectors'),
+      installed: readInstalledConnectorPilots(dir),
+      doctor: connectorDoctor(dir),
+      available: CONNECTOR_PILOTS.map((pilot) => ({
+        id: pilot.id,
+        name: pilot.name,
+        category: pilot.category,
+        description: pilot.description,
+        value: pilot.value,
+        tools: pilot.tools,
+        actions: pilot.actions,
+        setup: pilot.setup,
+      })),
+    },
+    registry: dashboardRegistryStatus(dir),
+    recommendations: [
+      entries.length === 0 ? 'Run in shadow mode first: npx protect-mcp -- node your-mcp-server.js' : '',
+      highRisk.length > 0 ? 'Run npx protect-mcp recommend --write, review the generated policy, then restart your wrapper with --enforce.' : '',
+      receipts.length === 0 ? 'Run npx protect-mcp init so decisions are signed into local receipts.' : '',
+      'Install a starter policy pack from this dashboard when you know the tool class: filesystem, Git, email, database, cloud spend, secrets, or finance.',
+      'Create a registry preview locally, then use hosted digest anchoring when you need independent timestamp evidence.',
+      'Export an audit bundle with: npx protect-mcp bundle --output audit.json',
+    ].filter(Boolean),
+  };
+}
+
+function dashboardHtml(): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>protect-mcp local action dashboard</title>
+<style>
+:root {
+  color-scheme: light;
+  --ink:#12110e; --muted:#6f6b61; --soft:#9a9488; --line:#ded7c9;
+  --paper:#f7f3ea; --card:#fffdf7; --black:#11110f;
+  --bad:#8f241c; --warn:#8d620f; --ok:#2f6f4e;
+  --shadow: 0 22px 70px rgba(36,30,18,.10);
+}
+* { box-sizing: border-box; }
+body { margin:0; background:radial-gradient(circle at top left,#fffdf7 0,#f7f3ea 34%,#e8dfce 100%); color:var(--ink); font:14px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+main { width:min(1380px, calc(100vw - 32px)); margin:24px auto 60px; }
+.hero { display:grid; grid-template-columns:1.35fr .65fr; gap:16px; align-items:stretch; }
+.card { background:rgba(255,253,247,.92); border:1px solid var(--line); border-radius:24px; padding:22px; box-shadow:var(--shadow); }
+.kicker { text-transform:uppercase; letter-spacing:.18em; font-size:11px; color:var(--muted); font-weight:800; }
+h1 { font-family: ui-serif, Georgia, serif; font-weight:520; font-size:clamp(38px,5vw,76px); line-height:.92; letter-spacing:-.045em; margin:12px 0 14px; max-width:980px; }
+h2 { margin:0 0 12px; font-size:17px; letter-spacing:-.01em; }
+h3 { margin:0 0 8px; font-size:14px; }
+p { color:var(--muted); margin:0; }
+small { color:var(--muted); }
+.layout { display:grid; grid-template-columns:1.28fr .72fr; gap:16px; margin-top:16px; }
+.stack { display:grid; gap:16px; }
+.stats { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:16px 0; }
+.stat { background:#fffaf0; border:1px solid var(--line); border-radius:18px; padding:13px; min-height:86px; }
+.stat strong { display:block; font-size:26px; letter-spacing:-.04em; }
+.actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:16px; }
+button, a.btn { appearance:none; border:1px solid var(--black); background:var(--black); color:#fff; text-decoration:none; border-radius:999px; padding:9px 12px; cursor:pointer; font-weight:800; font-size:13px; }
+button.secondary, a.btn.secondary { background:transparent; color:var(--black); }
+button.ghost { border-color:var(--line); background:#fffaf0; color:var(--ink); }
+button.danger { background:#7f1d18; border-color:#7f1d18; }
+table { width:100%; border-collapse:collapse; }
+th, td { text-align:left; padding:12px 9px; border-bottom:1px solid var(--line); vertical-align:top; }
+th { color:var(--muted); font-size:11px; letter-spacing:.09em; text-transform:uppercase; }
+.pill { display:inline-flex; align-items:center; border-radius:999px; padding:4px 9px; font-size:11px; font-weight:900; white-space:nowrap; }
+.high { background:#f7d9d3; color:var(--bad); }
+.medium { background:#f4e5bd; color:var(--warn); }
+.low { background:#dcebdd; color:var(--ok); }
+.exact { background:#dcebdd; color:var(--ok); }
+.wildcard { background:#e5decc; color:#5e5545; }
+.none { background:#f7d9d3; color:var(--bad); }
+.allow { color:var(--ok); } .deny { color:var(--bad); } .require_approval { color:var(--warn); }
+code { background:#f2eadc; border:1px solid var(--line); border-radius:8px; padding:2px 6px; }
+pre { white-space:pre-wrap; background:#181712; color:#f8f1df; border-radius:16px; padding:14px; overflow:auto; font-size:12px; }
+.muted { color:var(--muted); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.approval { border:1px solid var(--line); background:#fffaf0; border-radius:18px; padding:14px; margin-bottom:10px; }
+.readback { background:#181712; color:#f8f1df; border-radius:16px; padding:12px; margin:10px 0; }
+.readback .label { color:#bdb49f; font-size:11px; text-transform:uppercase; letter-spacing:.12em; }
+.preview { max-height:180px; overflow:auto; }
+.row-actions { display:flex; flex-wrap:wrap; gap:6px; }
+.chain { display:grid; gap:8px; }
+.chain-item { border:1px solid var(--line); border-radius:16px; padding:12px; background:#fffaf0; }
+.pack-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-top:12px; }
+.pack { border:1px solid var(--line); border-radius:16px; padding:12px; background:#fffaf0; display:grid; gap:8px; }
+.pack.installed { border-color:rgba(47,111,78,.35); background:#f3f8ef; }
+.divider { border:0; border-top:1px solid var(--line); margin:14px 0; }
+.field { display:grid; gap:5px; margin-top:9px; }
+.field label { font-size:11px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); font-weight:900; }
+input { border:1px solid var(--line); border-radius:12px; background:#fffaf0; color:var(--ink); padding:10px; font:13px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+.toast { position:fixed; right:18px; bottom:18px; background:#111; color:#fff; padding:12px 14px; border-radius:14px; box-shadow:var(--shadow); display:none; max-width:360px; }
+@media (max-width: 980px) { .hero,.layout { grid-template-columns:1fr; } .stats { grid-template-columns:repeat(2,1fr); } main { width:min(100vw - 20px, 1380px); margin-top:14px; } }
+</style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <div class="card">
+      <div class="kicker">Local Action Dashboard</div>
+      <h1>See what agents can do. Control dangerous actions. Prove what happened.</h1>
+      <p>Runs on <code>127.0.0.1</code>. Start in shadow mode, switch risky tools to exact-action approval, then export signed evidence without uploading sensitive data.</p>
+      <div class="actions">
+        <button onclick="refresh()">Refresh</button>
+        <button class="secondary" onclick="exportBundle()">Export audit bundle</button>
+        <a class="btn secondary" href="/api/summary">Raw JSON</a>
+      </div>
+    </div>
+    <div class="card">
+      <div class="kicker">Next move</div>
+      <h2>Shadow, review, then enforce</h2>
+      <pre>npx protect-mcp wrap -- node your-server.js
+npx protect-mcp dashboard --open
+npx protect-mcp recommend --write
+npx protect-mcp --policy protect-mcp.json --enforce -- node your-server.js</pre>
+      <p class="muted" id="dir"></p>
+      <p class="muted" id="policy"></p>
+    </div>
+  </section>
+
+  <section class="stats" id="stats"></section>
+
+  <section class="layout">
+    <div class="stack">
+      <section class="card">
+        <h2>Tool Inventory</h2>
+        <p>Risk, policy coverage, and one-click guardrail drafting for each observed tool.</p>
+        <div style="overflow:auto; margin-top:12px"><table id="tools"></table></div>
+      </section>
+      <section class="card">
+        <h2>Policy Packs</h2>
+        <p>Install a starter Cedar pack from the dashboard. This removes the blank-policy problem while keeping final enforcement local and reviewable.</p>
+        <div id="policy-packs" class="pack-grid"></div>
+      </section>
+      <section class="card">
+        <h2>Connector Pilots</h2>
+        <p>Real tool categories teams already use: GitHub, Gmail/email, filesystem/Git, Slack or Teams, and finance/PMS. Install a pilot, check credentials, then watch those tools in the dashboard.</p>
+        <div id="connector-pilots" class="pack-grid"></div>
+      </section>
+      <section class="card">
+        <h2>Call History</h2>
+        <p>What agents actually tried to do, including exact-action readbacks when available.</p>
+        <div id="recent" style="margin-top:12px"></div>
+      </section>
+    </div>
+    <div class="stack">
+      <section class="card">
+        <h2>Approval Queue</h2>
+        <p>Desktop fallback approval surface. If you start this dashboard with <code>--approval-endpoint</code> and <code>--approval-nonce</code>, Approve forwards to the live local gateway.</p>
+        <div id="approvals" style="margin-top:12px"></div>
+      </section>
+      <section class="card">
+        <h2>Receipt Chain</h2>
+        <p>Decision logs correlated with signed receipts by request id.</p>
+        <div id="chains" class="chain" style="margin-top:12px"></div>
+      </section>
+      <section class="card">
+        <h2>Paid Boundary</h2>
+        <p>Free local receipts stay local. The paid line starts when a ScopeBlind org identity independently timestamps receipt digests without raw prompt, payload, or receipt upload.</p>
+        <div id="registry" style="margin-top:12px"></div>
+      </section>
+      <section class="card">
+        <h2>Recommendations</h2>
+        <div id="recommendations"></div>
+      </section>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+var state = null;
+async function refresh(){
+  state = await fetch('/api/summary').then(function(r){ return r.json(); });
+  render(state);
+}
+function render(data){
+  document.getElementById('dir').textContent = 'Reading: ' + data.dir;
+  document.getElementById('policy').textContent = 'Policy: ' + ((data.files || {}).policy || 'protect-mcp.json');
+  var t = data.totals || {};
+  document.getElementById('stats').innerHTML = [
+    ['Decisions', t.decisions || 0, 'All observed tool decisions'],
+    ['High risk', t.high_risk_tools || 0, 'Tools that can mutate, send, trade, deploy, or expose secrets'],
+    ['Exact rules', t.exact_covered || 0, 'Tools with explicit policy entries'],
+    ['Uncovered', t.uncovered || 0, 'Tools falling through without exact policy'],
+    ['Receipts', t.receipts || 0, 'Signed proof records available for audit']
+  ].map(function(x){ return '<div class="stat"><span class="muted">'+escapeHtml(x[0])+'</span><strong>'+x[1]+'</strong><small>'+escapeHtml(x[2])+'</small></div>'; }).join('');
+  renderTools(data.tools || []);
+  renderApprovals(data.pending_approvals || []);
+  renderRecent(data.recent || []);
+  renderChains(data.receipt_chains || []);
+  renderPolicyPacks(data.policy_packs || {});
+  renderConnectorPilots(data.connector_pilots || {});
+  renderRegistry(data.registry || {});
+  document.getElementById('recommendations').innerHTML = (data.recommendations || []).map(function(r){ return '<p style="margin:0 0 10px">* '+escapeHtml(r)+'</p>'; }).join('') || '<p class="muted">No recommendations yet.</p>';
+}
+function renderTools(tools){
+  document.getElementById('tools').innerHTML = '<thead><tr><th>Risk</th><th>Tool</th><th>Coverage</th><th>Observed</th><th>Suggested guardrail</th><th>Actions</th></tr></thead><tbody>' +
+    tools.map(function(t){
+      var cov = t.policy_coverage || { status:'none', label:'No rule' };
+      var s = t.suggestion || { action:'Observe', reason:'' };
+      return '<tr><td><span class="pill '+t.risk+'">'+escapeHtml(t.risk)+'</span></td>'+
+        '<td><strong>'+escapeHtml(t.tool)+'</strong><br><span class="muted">'+escapeHtml((t.reasons || []).join(', '))+'</span></td>'+
+        '<td><span class="pill '+escapeHtml(cov.status)+'">'+escapeHtml(cov.label)+'</span><br><span class="muted mono">'+escapeHtml(JSON.stringify(cov.policy || {}))+'</span></td>'+
+        '<td>'+t.calls+' calls<br><span class="allow">'+t.allows+' allow</span> · <span class="deny">'+t.denies+' deny</span> · <span class="require_approval">'+t.reviews+' review</span></td>'+
+        '<td><strong>'+escapeHtml(s.action)+'</strong><br><span class="muted">'+escapeHtml(s.reason)+'</span></td>'+
+        '<td><div class="row-actions"><button data-policy-tool="'+escapeHtml(t.tool)+'" data-policy-action="require_approval">Require approval</button><button class="danger" data-policy-tool="'+escapeHtml(t.tool)+'" data-policy-action="block">Block</button><button class="ghost" data-policy-tool="'+escapeHtml(t.tool)+'" data-policy-action="observe">Observe</button></div></td></tr>';
+    }).join('') + (tools.length ? '' : '<tr><td colspan="6" class="muted">No tool calls yet. Wrap an MCP server or run the demo.</td></tr>') + '</tbody>';
+}
+function renderApprovals(rows){
+  document.getElementById('approvals').innerHTML = rows.map(function(r){
+    var rb = r.action_readback || {};
+    var id = r.request_id || '';
+    return '<div class="approval"><div class="kicker">Pending exact-action review</div><h3>'+escapeHtml(rb.summary || r.tool || 'Unknown action')+'</h3>'+
+      '<div class="readback"><div class="label">You are approving exactly this</div><div><strong>Tool</strong>: '+escapeHtml(r.tool || 'unknown')+'</div><div><strong>Action</strong>: '+escapeHtml(rb.action || r.tool || 'unknown')+'</div><div><strong>Destination</strong>: '+escapeHtml(rb.destination || 'not declared')+'</div><div><strong>Payload hash</strong>: <span class="mono">'+escapeHtml(rb.payload_hash || 'not available')+'</span></div><div><strong>Policy basis</strong>: '+escapeHtml(r.reason_code || 'requires approval')+'</div><div class="preview"><pre>'+escapeHtml(JSON.stringify(rb.payload_preview || {}, null, 2))+'</pre></div></div>'+
+      '<textarea id="reason-'+escapeAttr(id)+'" placeholder="Reason or instruction" style="width:100%; min-height:64px; border:1px solid var(--line); border-radius:12px; padding:10px"></textarea>'+
+      '<div class="row-actions" style="margin-top:10px"><button data-approval-id="'+escapeHtml(id)+'" data-approval-tool="'+escapeHtml(r.tool || '')+'" data-approval-resolution="approve">Approve</button><button class="danger" data-approval-id="'+escapeHtml(id)+'" data-approval-tool="'+escapeHtml(r.tool || '')+'" data-approval-resolution="deny">Deny</button><button class="ghost" data-approval-id="'+escapeHtml(id)+'" data-approval-tool="'+escapeHtml(r.tool || '')+'" data-approval-resolution="edit">Edit</button><button class="ghost" data-approval-id="'+escapeHtml(id)+'" data-approval-tool="'+escapeHtml(r.tool || '')+'" data-approval-resolution="take_over">Take over</button></div></div>';
+  }).join('') || '<p class="muted">No approval-required calls in the local log yet.</p>';
+}
+function renderRecent(rows){
+  document.getElementById('recent').innerHTML = rows.slice(0,20).map(function(r){
+    var rb = r.action_readback || {};
+    return '<div class="chain-item"><strong class="'+escapeHtml(r.decision || '')+'">'+escapeHtml(r.decision || 'unknown')+'</strong> · '+escapeHtml(r.tool || 'unknown')+'<br><span class="muted">'+escapeHtml(rb.summary || r.reason_code || '')+'</span><br><span class="muted mono">'+escapeHtml(r.request_id || '')+'</span></div>';
+  }).join('') || '<p class="muted">No decisions yet.</p>';
+}
+function renderChains(rows){
+  document.getElementById('chains').innerHTML = rows.slice(0,12).map(function(c){
+    var hashes = (c.receipts || []).map(function(r){ return '<span class="mono">'+escapeHtml((r.hash || '').slice(0,16))+'...</span>'; }).join('<br>');
+    return '<div class="chain-item"><strong>'+escapeHtml(c.tool || 'unknown')+'</strong> <span class="pill '+(c.complete ? 'exact' : 'none')+'">'+(c.complete ? 'receipt linked' : 'no receipt')+'</span><br><span class="muted">'+escapeHtml(((c.action_readback || {}).summary) || c.reason_code || '')+'</span><br><span class="muted mono">request '+escapeHtml(c.request_id || '')+'</span><div style="margin-top:8px">'+(hashes || '<span class="muted">No signed receipt hash found</span>')+'</div></div>';
+  }).join('') || '<p class="muted">No receipt chains yet.</p>';
+}
+function renderPolicyPacks(info){
+  var available = info.available || [];
+  var installed = new Set(info.installed || []);
+  document.getElementById('policy-packs').innerHTML = available.map(function(pack){
+    var isInstalled = installed.has(pack.id);
+    var files = (pack.files || []).map(function(f){ return f.path; }).join(', ');
+    return '<div class="pack '+(isInstalled ? 'installed' : '')+'">'+
+      '<div style="display:flex;gap:8px;align-items:center"><strong>'+escapeHtml(pack.name)+'</strong><span class="pill '+(isInstalled ? 'exact' : 'wildcard')+'">'+(isInstalled ? 'installed' : escapeHtml(pack.recommendedMode || 'shadow-first'))+'</span></div>'+
+      '<p>'+escapeHtml(pack.description || '')+'</p>'+
+      '<small>Writes to <code>'+escapeHtml((info.directory || './cedar') + '/' + files)+'</code></small>'+
+      '<div class="row-actions"><button data-pack-install="'+escapeHtml(pack.id)+'">'+(isInstalled ? 'Reinstall' : 'Install')+'</button><button class="ghost" data-pack-preview="'+escapeHtml(pack.id)+'">Preview</button></div>'+
+      '<pre id="pack-preview-'+escapeAttr(pack.id)+'" style="display:none;max-height:240px">'+escapeHtml((pack.files || []).map(function(f){ return '--- '+f.path+' ---\\n'+f.contents; }).join('\\n\\n'))+'</pre>'+
+    '</div>';
+  }).join('') || '<p class="muted">No policy packs bundled.</p>';
+}
+function renderConnectorPilots(info){
+  var available = info.available || [];
+  var installed = new Set((info.installed || []).map(function(row){ return row.id; }));
+  var doctor = {};
+  (info.doctor || []).forEach(function(row){ doctor[row.id] = row; });
+  document.getElementById('connector-pilots').innerHTML = available.map(function(pilot){
+    var row = doctor[pilot.id] || {};
+    var isInstalled = installed.has(pilot.id);
+    var status = row.installed ? (row.usable ? 'installed' : 'needs env') : 'not installed';
+    var statusClass = row.installed ? (row.usable ? 'exact' : 'wildcard') : 'none';
+    var missing = (row.missing_required || []).join(', ');
+    var tools = (pilot.tools || []).slice(0,4).map(function(tool){ return '<code>'+escapeHtml(tool)+'</code>'; }).join(' ');
+    return '<div class="pack '+(isInstalled ? 'installed' : '')+'">'+
+      '<div style="display:flex;gap:8px;align-items:center"><strong>'+escapeHtml(pilot.name)+'</strong><span class="pill '+statusClass+'">'+escapeHtml(status)+'</span></div>'+
+      '<p>'+escapeHtml(pilot.description || '')+'</p>'+
+      '<small>'+escapeHtml(pilot.value || '')+'</small>'+
+      '<div>'+tools+'</div>'+
+      (missing ? '<small>Missing: <code>'+escapeHtml(missing)+'</code></small>' : '<small>'+escapeHtml(row.next || 'Ready for shadow-mode review.')+'</small>')+
+      '<details><summary>Details</summary><pre>'+escapeHtml(JSON.stringify({ setup: pilot.setup, actions: pilot.actions, doctor: row }, null, 2))+'</pre></details>'+
+      '<div class="row-actions"><button data-connector-install="'+escapeHtml(pilot.id)+'">'+(isInstalled ? 'Reinstall' : 'Install')+'</button><button class="ghost" data-connector-doctor="1">Run doctor</button></div>'+
+    '</div>';
+  }).join('') || '<p class="muted">No connector pilots bundled.</p>';
+}
+function renderRegistry(reg){
+  var boundaryClass = reg.hosted ? 'exact' : reg.registry_exists ? 'wildcard' : 'none';
+  document.getElementById('registry').innerHTML =
+    '<div class="chain-item"><span class="pill '+boundaryClass+'">'+escapeHtml(reg.boundary || 'not configured')+'</span>'+
+    '<p style="margin-top:8px"><strong>'+escapeHtml(reg.org_name || 'No org identity yet')+'</strong></p>'+
+    '<p class="muted">Digests: '+(reg.records || 0)+' · Anchors: '+(reg.anchors || 0)+'</p>'+
+    '<p class="muted mono" style="margin-top:6px">'+escapeHtml(reg.registry_path || '')+'</p></div>'+
+    '<div class="field"><label>Org name</label><input id="registry-org" placeholder="Meridian Global Macro" value="'+escapeHtml(reg.org_name || '')+'"></div>'+
+    '<div class="field"><label>Hosted token (optional, not stored)</label><input id="registry-token" type="password" placeholder="SCOPEBLIND_TOKEN for hosted digest anchoring"></div>'+
+    '<div class="row-actions" style="margin-top:10px"><button data-registry-anchor="local">Create local registry preview</button><button class="secondary" data-registry-anchor="hosted">Hosted digest anchor</button></div>'+
+    '<small style="display:block;margin-top:8px">Hosted mode uploads digest metadata only: receipt hash, byte count, receipt type, request id, local issuer/kid, org id, billing account, and public keys. It does not upload prompts, tool payloads, outputs, raw receipts, or private keys.</small>';
+}
+async function setPolicy(tool, action){
+  var res = await fetch('/api/tool-policy', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ tool: tool, action: action }) });
+  if(!res.ok){ toast('Policy update failed'); return; }
+  toast('Policy updated: '+tool+' -> '+action+'. Restart the wrapper to apply.');
+  await refresh();
+}
+async function resolveApproval(requestId, tool, resolution){
+  var reasonEl = document.getElementById('reason-'+escapeAttr(requestId));
+  var reason = reasonEl ? reasonEl.value : '';
+  var edited = undefined;
+  if(resolution === 'edit'){
+    var raw = prompt('Paste edited JSON payload. This records the edit instruction; rerun the tool with the edited payload.');
+    if(raw){ try { edited = JSON.parse(raw); } catch(e){ toast('Edit payload is not valid JSON'); return; } }
+  }
+  var res = await fetch('/api/approval/resolve', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ request_id: requestId, tool: tool, resolution: resolution, reason: reason, edited_payload: edited }) });
+  var body = await res.json().catch(function(){ return {}; });
+  toast(resolution+' recorded'+(body.forwarded && body.forwarded.ok ? ' and forwarded to live gateway' : ' locally'));
+}
+async function installPack(pack){
+  var res = await fetch('/api/policy-packs/install', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ pack: pack, force: true }) });
+  var body = await res.json().catch(function(){ return {}; });
+  if(!res.ok){ toast(body.error || 'Policy pack install failed'); return; }
+  toast('Installed '+pack+' into '+body.dir);
+  await refresh();
+}
+async function installConnector(pilot){
+  var res = await fetch('/api/connectors/install', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ pilot: pilot, force: true }) });
+  var body = await res.json().catch(function(){ return {}; });
+  if(!res.ok){ toast(body.error || 'Connector install failed'); return; }
+  toast('Installed '+pilot+' into '+body.dir);
+  await refresh();
+}
+function togglePackPreview(pack){
+  var el = document.getElementById('pack-preview-'+escapeAttr(pack));
+  if(el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+async function anchorRegistry(mode){
+  var org = document.getElementById('registry-org') ? document.getElementById('registry-org').value : '';
+  var token = document.getElementById('registry-token') ? document.getElementById('registry-token').value : '';
+  var body = { org_name: org, hosted: mode === 'hosted', token: token };
+  var res = await fetch('/api/registry/anchor', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(body) });
+  var out = await res.json().catch(function(){ return {}; });
+  if(!res.ok){ toast(out.error || 'Registry anchor failed'); return; }
+  toast((out.uploaded ? 'Hosted anchor complete' : 'Local registry preview written') + ': ' + out.records + ' digest(s)');
+  await refresh();
+}
+async function exportBundle(){
+  var res = await fetch('/api/audit-bundle');
+  if(!res.ok){
+    var err = await res.json().catch(function(){ return {}; });
+    toast(err.message || 'Audit bundle export requires signed receipts');
+    return;
+  }
+  var blob = await res.blob();
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'protect-mcp-audit-bundle.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+}
+document.addEventListener('click', function(ev){
+  var target = ev.target && ev.target.closest ? ev.target.closest('[data-policy-tool],[data-approval-id],[data-pack-install],[data-pack-preview],[data-registry-anchor],[data-connector-install],[data-connector-doctor]') : null;
+  if(!target) return;
+  var connectorInstall = target.getAttribute('data-connector-install');
+  if(connectorInstall){ installConnector(connectorInstall); return; }
+  if(target.getAttribute('data-connector-doctor')){ toast('Connector doctor refreshed. Missing secrets are shown as names only, never values.'); refresh(); return; }
+  var packInstall = target.getAttribute('data-pack-install');
+  if(packInstall){ installPack(packInstall); return; }
+  var packPreview = target.getAttribute('data-pack-preview');
+  if(packPreview){ togglePackPreview(packPreview); return; }
+  var anchorMode = target.getAttribute('data-registry-anchor');
+  if(anchorMode){ anchorRegistry(anchorMode); return; }
+  var policyTool = target.getAttribute('data-policy-tool');
+  if(policyTool){
+    setPolicy(policyTool, target.getAttribute('data-policy-action') || 'require_approval');
+    return;
+  }
+  var approvalId = target.getAttribute('data-approval-id');
+  if(approvalId){
+    resolveApproval(approvalId, target.getAttribute('data-approval-tool') || '', target.getAttribute('data-approval-resolution') || 'deny');
+  }
+});
+function toast(msg){ var el=document.getElementById('toast'); el.textContent=msg; el.style.display='block'; setTimeout(function(){el.style.display='none';}, 4200); }
+function escapeHtml(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function escapeAttr(v){ return String(v || '').replace(/[^A-Za-z0-9_-]/g,'_'); }
+refresh();
+</script>
+</body>
+</html>`;
+}
+
+async function handleDashboard(argv: string[]): Promise<void> {
+  const { createServer } = await import('node:http');
+  const { execFile } = await import('node:child_process');
+  const { resolve } = await import('node:path');
+  const port = commandNeedsValue(argv, '--port') ? parseInt(flagValue(argv, '--port') || '9877', 10) : 9877;
+  const dir = resolve(commandNeedsValue(argv, '--dir') ? flagValue(argv, '--dir') || process.cwd() : process.cwd());
+  const policyPath = resolve(flagValue(argv, '--policy') || joinCli(dir, 'protect-mcp.json'));
+  const approvalEndpoint = flagValue(argv, '--approval-endpoint');
+  const approvalNonce = flagValue(argv, '--approval-nonce');
+  const open = argv.includes('--open');
+
+  const server = createServer((req, res) => {
+    void (async () => {
+      try {
+        const url = new URL(req.url || '/', 'http://127.0.0.1');
+        if (url.pathname === '/api/summary') {
+          const body = JSON.stringify(buildDashboardSummary(dir, policyPath), null, 2);
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+          res.end(body);
+          return;
+        }
+        if (url.pathname === '/api/tool-policy' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          const tool = typeof body.tool === 'string' ? body.tool : '';
+          const action = body.action === 'block' || body.action === 'observe' ? body.action : 'require_approval';
+          if (!tool) {
+            res.writeHead(400, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ error: 'missing_tool' }));
+            return;
+          }
+          const policy = writeToolPolicy(policyPath, tool, action);
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, policy_path: policyPath, policy }));
+          return;
+        }
+        if (url.pathname === '/api/policy-packs/install' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          const pack = typeof body.pack === 'string' ? body.pack : '';
+          if (!pack) {
+            res.writeHead(400, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ error: 'missing_policy_pack' }));
+            return;
+          }
+          const installed = installPolicyPackToDir(dir, pack, Boolean(body.force));
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({
+            ok: true,
+            ...installed,
+            installed: installedPolicyPackIds(dir),
+          }));
+          return;
+        }
+        if (url.pathname === '/api/connectors/install' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          const pilot = typeof body.pilot === 'string' ? body.pilot : '';
+          if (!pilot) {
+            res.writeHead(400, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ error: 'missing_connector_pilot' }));
+            return;
+          }
+          const installed = writeConnectorPilots({ dir, ids: [pilot], force: Boolean(body.force) });
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({
+            ok: true,
+            dir: installed.directory,
+            written: installed.written,
+            installed: readInstalledConnectorPilots(dir),
+            doctor: connectorDoctor(dir),
+          }));
+          return;
+        }
+        if (url.pathname === '/api/registry/anchor' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          const { createReceiptRegistry } = await import('./receipt-registry.js');
+          try {
+            const hosted = Boolean(body.hosted);
+            const result = await createReceiptRegistry({
+              dir,
+              orgName: typeof body.org_name === 'string' && body.org_name.trim() ? body.org_name.trim() : undefined,
+              orgId: typeof body.org_id === 'string' && body.org_id.trim() ? body.org_id.trim() : undefined,
+              billingAccountId: typeof body.billing_account_id === 'string' && body.billing_account_id.trim() ? body.billing_account_id.trim() : undefined,
+              hosted,
+              token: typeof body.token === 'string' && body.token.trim() ? body.token.trim() : process.env.SCOPEBLIND_TOKEN,
+              endpoint: typeof body.endpoint === 'string' && body.endpoint.trim()
+                ? body.endpoint.trim()
+                : hosted ? (process.env.SCOPEBLIND_REGISTRY_ENDPOINT || 'https://api.scopeblind.com') : undefined,
+              verifierBaseUrl: typeof body.verifier_base === 'string' && body.verifier_base.trim()
+                ? body.verifier_base.trim()
+                : (process.env.SCOPEBLIND_VERIFIER_BASE || 'https://legate.scopeblind.com'),
+            });
+            res.writeHead(200, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({
+              ok: true,
+              uploaded: result.uploaded,
+              records: result.registry.records.length,
+              anchors: result.registry.anchors.length,
+              registry_path: result.registryPath,
+              verifier_path: result.verifierPath,
+              registry: dashboardRegistryStatus(dir),
+            }));
+          } catch (err) {
+            res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+            res.end(JSON.stringify({
+              error: 'registry_anchor_unavailable',
+              message: err instanceof Error ? err.message : String(err),
+              next_step: 'Run protect-mcp with signing enabled so decisions are written as signed receipts, then try again.',
+            }));
+          }
+          return;
+        }
+        if (url.pathname === '/api/approval/resolve' && req.method === 'POST') {
+          const body = await readJsonBody(req);
+          const result = await recordApprovalResolution({ dir, approvalEndpoint, approvalNonce, body });
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify(result));
+          return;
+        }
+        if (url.pathname === '/api/audit-bundle') {
+          let bundle: unknown;
+          try {
+            bundle = await buildAuditBundleForDir(dir);
+          } catch (err) {
+            res.writeHead(409, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+            res.end(JSON.stringify({
+              error: 'audit_bundle_unavailable',
+              message: err instanceof Error ? err.message : String(err),
+              next_step: 'Run protect-mcp with signing enabled so decisions are written as signed receipts, then export again.',
+            }));
+            return;
+          }
+          res.writeHead(200, {
+            'content-type': 'application/json; charset=utf-8',
+            'content-disposition': 'attachment; filename="protect-mcp-audit-bundle.json"',
+            'cache-control': 'no-store',
+          });
+          res.end(JSON.stringify(bundle, null, 2) + '\n');
+          return;
+        }
+        res.writeHead(200, {
+          'content-type': 'text/html; charset=utf-8',
+          'cache-control': 'no-store',
+          'content-security-policy': "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'",
+        });
+        res.end(dashboardHtml());
+      } catch (err) {
+        res.writeHead(500, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }));
+      }
+    })();
+  });
+
+  await new Promise<void>((resolveListen, rejectListen) => {
+    server.once('error', rejectListen);
+    server.listen(port, '127.0.0.1', () => resolveListen());
+  });
+  const url = `http://127.0.0.1:${port}`;
+  process.stderr.write(`\n${bold('protect-mcp dashboard')}\n\n`);
+  process.stderr.write(`  Local URL: ${url}\n`);
+  process.stderr.write(`  Reading:   ${dir}\n`);
+  process.stderr.write(`  Policy:    ${policyPath}\n`);
+  process.stderr.write(`  Network:   127.0.0.1 only; no uploads\n\n`);
+  if (open) {
+    const opener = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'cmd' : 'xdg-open';
+    const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
+    execFile(opener, args, () => {});
+  }
+}
+
+function draftPolicyFromSummary(summary: Record<string, unknown>): Record<string, unknown> {
+  const files = (summary.files || {}) as Record<string, unknown>;
+  const rows = Array.isArray(summary.tools) ? summary.tools as Array<{
+    tool?: string;
+    risk?: ToolRisk;
+    reasons?: string[];
+    suggestion?: SuggestedGuardrail;
+  }> : [];
+  const tools: Record<string, ToolPolicy> = {
+    '*': { rate_limit: '100/hour' },
+  };
+  for (const row of rows) {
+    if (!row.tool || row.tool === 'unknown') continue;
+    const suggestion = row.suggestion || suggestedGuardrailFor(row.tool, row.risk || 'low', row.reasons || []);
+    tools[row.tool] = suggestion.policy;
+  }
+  return {
+    tools,
+    default_tier: 'unknown',
+    signing: files.key_exists ? {
+      key_path: './keys/gateway.json',
+      issuer: 'protect-mcp',
+    } : undefined,
+    notes: [
+      'Generated from local shadow-mode inventory.',
+      'Review before running with --enforce.',
+      'High-risk transaction, deployment, external-send, and database tools require approval.',
+      'Destructive and secret-handling tools are blocked by default.',
+    ],
+  };
+}
+
+function writeToolPolicy(policyPath: string, tool: string, action: 'require_approval' | 'block' | 'observe'): Record<string, unknown> {
+  const existing = loadPolicyJson(policyPath) || { tools: {}, default_tier: 'unknown' };
+  const tools = existing.tools && typeof existing.tools === 'object'
+    ? { ...(existing.tools as Record<string, ToolPolicy>) }
+    : {};
+  if (action === 'require_approval') {
+    tools[tool] = { require_approval: true, min_tier: 'signed-known', rate_limit: '10/hour' };
+  } else if (action === 'block') {
+    tools[tool] = { block: true, min_tier: 'privileged' };
+  } else {
+    tools[tool] = { rate_limit: '100/hour' };
+  }
+  const next = {
+    ...existing,
+    tools,
+    default_tier: existing.default_tier || 'unknown',
+  };
+  writeFileSyncCli(policyPath, JSON.stringify(next, null, 2) + '\n');
+  return next;
+}
+
+function policyPackDirectory(dir: string): string {
+  return joinCli(dir, 'cedar');
+}
+
+function installedPolicyPackIds(dir: string): string[] {
+  const cedarDir = policyPackDirectory(dir);
+  return POLICY_PACKS.filter((pack) =>
+    pack.files.every((file) => existsSyncCli(joinCli(cedarDir, file.path)))
+  ).map((pack) => pack.id);
+}
+
+function installPolicyPackToDir(dir: string, packId: string, force = false): { dir: string; written: string[]; packs: string[] } {
+  const packs = packId === 'all'
+    ? POLICY_PACKS
+    : [getPolicyPack(packId)].filter(Boolean) as typeof POLICY_PACKS;
+  if (packs.length === 0) throw new Error(`Unknown policy pack: ${packId}`);
+  const outDir = policyPackDirectory(dir);
+  mkdirSyncCli(outDir, { recursive: true });
+  const written: string[] = [];
+  for (const pack of packs) {
+    for (const file of pack.files) {
+      const outPath = joinCli(outDir, file.path);
+      if (existsSyncCli(outPath) && !force) {
+        throw new Error(`Refusing to overwrite ${outPath}. Pass force=true if intentional.`);
+      }
+      mkdirSyncCli(dirnameCli(outPath), { recursive: true });
+      writeFileSyncCli(outPath, file.contents.endsWith('\n') ? file.contents : `${file.contents}\n`);
+      written.push(outPath);
+    }
+  }
+  return { dir: outDir, written, packs: packs.map((pack) => pack.id) };
+}
+
+function dashboardRegistryStatus(dir: string): Record<string, unknown> {
+  const identityPath = joinCli(dir, '.protect-mcp-org.json');
+  const registryPath = joinCli(dir, '.protect-mcp-registry.json');
+  const verifierPath = joinCli(dir, 'scopeblind-verifier.html');
+  const identity = existsSyncCli(identityPath)
+    ? (() => { try { return JSON.parse(readFileSyncCli(identityPath, 'utf-8')) as Record<string, unknown>; } catch { return null; } })()
+    : null;
+  const registry = existsSyncCli(registryPath)
+    ? (() => { try { return JSON.parse(readFileSyncCli(registryPath, 'utf-8')) as Record<string, unknown>; } catch { return null; } })()
+    : null;
+  const anchors = Array.isArray(registry?.anchors) ? registry.anchors as Array<Record<string, unknown>> : [];
+  const hosted = anchors.some((anchor) => anchor.timestamp_source === 'scopeblind-hosted');
+  return {
+    identity_exists: existsSyncCli(identityPath),
+    registry_exists: existsSyncCli(registryPath),
+    verifier_exists: existsSyncCli(verifierPath),
+    identity_path: identityPath,
+    registry_path: registryPath,
+    verifier_path: verifierPath,
+    org_name: identity?.org_name || (registry?.org && typeof registry.org === 'object' ? (registry.org as Record<string, unknown>).org_name : null),
+    org_id: identity?.org_id || (registry?.org && typeof registry.org === 'object' ? (registry.org as Record<string, unknown>).org_id : null),
+    billing_account_id: identity?.billing_account_id || (registry?.billing && typeof registry.billing === 'object' ? (registry.billing as Record<string, unknown>).billing_account_id : null),
+    records: Array.isArray(registry?.records) ? registry.records.length : 0,
+    anchors: anchors.length,
+    hosted,
+    boundary: hosted ? 'hosted digest anchor' : registry ? 'local preview only' : 'not configured',
+  };
+}
+
+async function readJsonBody(req: import('node:http').IncomingMessage): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+  const raw = Buffer.concat(chunks).toString('utf-8').trim();
+  return raw ? JSON.parse(raw) as Record<string, unknown> : {};
+}
+
+async function buildAuditBundleForDir(dir: string): Promise<unknown> {
+  const { createAuditBundle } = await import('./bundle.js');
+  const receiptPath = joinCli(dir, '.protect-mcp-receipts.jsonl');
+  const keyPath = joinCli(dir, 'keys', 'gateway.json');
+  if (!existsSyncCli(receiptPath)) throw new Error('No receipt file found.');
+  if (!existsSyncCli(keyPath)) throw new Error('No signing key found.');
+  const receipts = parseJsonlFile(receiptPath);
+  if (receipts.length === 0) throw new Error('No signed receipts found.');
+  const keyData = JSON.parse(readFileSyncCli(keyPath, 'utf-8')) as Record<string, string>;
+  return createAuditBundle({
+    tenant: keyData.issuer || 'protect-mcp',
+    receipts,
+    selectiveDisclosures: collectSelectiveDisclosurePackages(dir),
+    signingKeys: [{
+      kty: 'OKP',
+      crv: 'Ed25519',
+      kid: keyData.kid || 'unknown',
+      x: Buffer.from(keyData.publicKey || '', 'hex').toString('base64url'),
+      use: 'sig',
+    }],
+  });
+}
+
+function collectSelectiveDisclosurePackages(dir: string): any[] {
+  const out: any[] = [];
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+  const receiptsDir = joinCli(dir, 'receipts');
+  if (existsSyncCli(receiptsDir)) {
+    for (const name of readdirSyncCli(receiptsDir)) {
+      if (name.includes('selective-disclosure') && name.endsWith('.json')) {
+        candidates.push(joinCli(receiptsDir, name));
+      }
+    }
+  }
+  const jsonlPath = joinCli(dir, '.protect-mcp-selective-disclosures.jsonl');
+  if (existsSyncCli(jsonlPath)) {
+    for (const line of readFileSyncCli(jsonlPath, 'utf-8').split('\n').map((s) => s.trim()).filter(Boolean)) {
+      try {
+        const parsed = JSON.parse(line);
+        addSelectiveDisclosure(out, seen, parsed);
+      } catch {
+        // Ignore malformed optional disclosure rows.
+      }
+    }
+  }
+  for (const path of candidates) {
+    try {
+      const parsed = JSON.parse(readFileSyncCli(path, 'utf-8'));
+      addSelectiveDisclosure(out, seen, parsed);
+    } catch {
+      // Ignore non-v0 or malformed optional disclosure files.
+    }
+  }
+  return out;
+}
+
+function addSelectiveDisclosure(out: any[], seen: Set<string>, parsed: any): void {
+  if (parsed?.type !== 'scopeblind.selective_disclosure.v0') return;
+  const key = [
+    parsed.parent_receipt_hash || '',
+    Array.isArray(parsed.disclosed_fields) ? parsed.disclosed_fields.slice().sort().join(',') : '',
+    Array.isArray(parsed.hidden_fields) ? parsed.hidden_fields.slice().sort().join(',') : '',
+  ].join('|');
+  if (seen.has(key)) return;
+  seen.add(key);
+  out.push(parsed);
+}
+
+async function recordApprovalResolution(opts: {
+  dir: string;
+  approvalEndpoint?: string;
+  approvalNonce?: string;
+  body: Record<string, unknown>;
+}): Promise<Record<string, unknown>> {
+  const resolution = String(opts.body.resolution || 'deny');
+  const requestId = String(opts.body.request_id || '');
+  const tool = String(opts.body.tool || 'unknown');
+  const record = {
+    type: 'scopeblind.approval_resolution.v1',
+    at: new Date().toISOString(),
+    request_id: requestId,
+    tool,
+    resolution,
+    reason: typeof opts.body.reason === 'string' ? opts.body.reason.slice(0, 1000) : '',
+    edited_payload: opts.body.edited_payload || undefined,
+    takeover_note: opts.body.takeover_note || undefined,
+    payload_hash: opts.body.payload_hash || undefined,
+  };
+  appendFileSyncCli(joinCli(opts.dir, '.protect-mcp-approval-resolutions.jsonl'), JSON.stringify(record) + '\n');
+
+  let forwarded: Record<string, unknown> | null = null;
+  if (resolution === 'approve' && opts.approvalEndpoint && opts.approvalNonce) {
+    const endpoint = opts.approvalEndpoint.replace(/\/$/, '') + '/approve';
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        request_id: requestId,
+        tool,
+        mode: 'once',
+        nonce: opts.approvalNonce,
+      }),
+    });
+    forwarded = {
+      ok: response.ok,
+      status: response.status,
+      body: await response.text().catch(() => ''),
+    };
+  }
+
+  return { recorded: true, resolution: record, forwarded };
+}
+
+async function handleRecommend(argv: string[]): Promise<void> {
+  const { writeFileSync } = await import('node:fs');
+  const { resolve } = await import('node:path');
+  const dir = resolve(commandNeedsValue(argv, '--dir') ? flagValue(argv, '--dir') || process.cwd() : process.cwd());
+  const outputPath = resolve(flagValue(argv, '--output') || 'protect-mcp.recommended.json');
+  const write = argv.includes('--write');
+  const summary = buildDashboardSummary(dir);
+  const totals = summary.totals as Record<string, number>;
+  const policy = draftPolicyFromSummary(summary);
+  const rows = Array.isArray(summary.tools) ? summary.tools as Array<{
+    tool: string;
+    risk: ToolRisk;
+    reasons: string[];
+    suggestion?: SuggestedGuardrail;
+  }> : [];
+
+  process.stdout.write(`\n${bold('protect-mcp recommend')}\n\n`);
+  process.stdout.write(`  Source:    ${dir}\n`);
+  process.stdout.write(`  Decisions: ${totals.decisions || 0}\n`);
+  process.stdout.write(`  Tools:     ${totals.tools || 0}\n\n`);
+
+  if (rows.length === 0) {
+    process.stdout.write(`No tool calls found yet. First run:\n\n`);
+    process.stdout.write(`  ${dim('npx protect-mcp wrap -- node your-mcp-server.js')}\n`);
+    process.stdout.write(`  ${dim('npx protect-mcp dashboard --open')}\n\n`);
+    return;
+  }
+
+  for (const row of rows) {
+    const suggestion = row.suggestion || suggestedGuardrailFor(row.tool, row.risk, row.reasons);
+    process.stdout.write(`  - ${row.tool}: ${bold(suggestion.action)} (${row.risk})\n`);
+    process.stdout.write(`    ${dim(suggestion.reason)}\n`);
+  }
+
+  const body = JSON.stringify(policy, null, 2) + '\n';
+  if (!write) {
+    process.stdout.write(`\nDry run only. Write the policy with:\n`);
+    process.stdout.write(`  ${dim('npx protect-mcp recommend --write')}\n\n`);
+    process.stdout.write(dim(body));
+    return;
+  }
+
+  writeFileSync(outputPath, body);
+  process.stdout.write(`\n${green('✓ Wrote recommended policy')}\n`);
+  process.stdout.write(`  Output: ${outputPath}\n`);
+  process.stdout.write(`  Review it, then restart your wrapper with:\n`);
+  process.stdout.write(`  ${dim(shellCommand('npx', ['protect-mcp', '--policy', outputPath, '--enforce', '--', 'node', 'your-mcp-server.js']))}\n\n`);
+}
+
+async function handleWrap(argv: string[]): Promise<void> {
+  const { existsSync, readFileSync, writeFileSync } = await import('node:fs');
+  const { resolve } = await import('node:path');
+  const configFlag = flagValue(argv, '--config');
+  const cedarFlag = flagValue(argv, '--cedar');
+  const enforce = argv.includes('--enforce');
+  const write = argv.includes('--write');
+  const claudeDesktop = argv.includes('--claude-desktop') || argv.includes('--claude');
+  const serverName = flagValue(argv, '--server');
+  const separator = argv.indexOf('--');
+  const childCommand = separator >= 0 ? argv.slice(separator + 1).filter(Boolean) : [];
+
+  const configPath = cedarFlag ? undefined : resolve(configFlag || await ensureLocalConfig(process.cwd()));
+  const cedarDir = cedarFlag ? resolve(cedarFlag) : undefined;
+
+  if (childCommand.length > 0) {
+    const args = wrapperArgsFor(childCommand, { configPath, cedarDir, enforce });
+    process.stdout.write(`\n${bold('protect-mcp wrap')}\n\n`);
+    process.stdout.write(`Use this command in your MCP client config:\n\n`);
+    process.stdout.write(`  ${shellCommand('npx', args)}\n\n`);
+    process.stdout.write(`Claude Desktop JSON snippet:\n\n`);
+    process.stdout.write(dim(JSON.stringify({
+      command: 'npx',
+      args,
+    }, null, 2)) + '\n\n');
+    process.stdout.write(`Then inspect calls with: ${dim('npx protect-mcp dashboard --open')}\n\n`);
+    return;
+  }
+
+  const claudePath = resolve(flagValue(argv, '--path') || claudeDesktopConfigPath());
+  if (!claudeDesktop && !existsSync(claudePath)) {
+    process.stdout.write(`\n${bold('protect-mcp wrap')}\n\n`);
+    process.stdout.write(`No command was passed after "--" and no Claude Desktop config was found.\n\n`);
+    process.stdout.write(`Examples:\n`);
+    process.stdout.write(`  ${dim('npx protect-mcp wrap -- node server.js')}\n`);
+    process.stdout.write(`  ${dim('npx protect-mcp wrap --claude-desktop --write')}\n\n`);
+    return;
+  }
+
+  if (!existsSync(claudePath)) {
+    process.stderr.write(`protect-mcp wrap: Claude Desktop config not found at ${claudePath}\n`);
+    process.exit(1);
+  }
+
+  let parsed: ClaudeDesktopConfig;
+  try {
+    parsed = JSON.parse(readFileSync(claudePath, 'utf-8')) as ClaudeDesktopConfig;
+  } catch (err) {
+    process.stderr.write(`protect-mcp wrap: could not parse ${claudePath}: ${err instanceof Error ? err.message : err}\n`);
+    process.exit(1);
+  }
+
+  const servers = parsed.mcpServers || {};
+  const names = Object.keys(servers).filter((name) => !serverName || name === serverName);
+  if (names.length === 0) {
+    process.stderr.write(`protect-mcp wrap: no MCP servers found${serverName ? ` matching "${serverName}"` : ''}.\n`);
+    process.exit(1);
+  }
+
+  const next: ClaudeDesktopConfig = { ...parsed, mcpServers: { ...servers } };
+  const changes: Array<{ name: string; before: ClaudeDesktopServer; after: ClaudeDesktopServer; skipped?: string }> = [];
+
+  for (const name of names) {
+    const before = servers[name] || {};
+    const originalCommand = before.command;
+    const originalArgs = Array.isArray(before.args) ? before.args : [];
+    if (!originalCommand) {
+      changes.push({ name, before, after: before, skipped: 'missing command' });
+      continue;
+    }
+    if (originalCommand === 'npx' && originalArgs.some((arg) => String(arg).includes('protect-mcp'))) {
+      changes.push({ name, before, after: before, skipped: 'already wrapped' });
+      continue;
+    }
+    const wrappedArgs = wrapperArgsFor([originalCommand, ...originalArgs], { configPath, cedarDir, enforce });
+    const after = { ...before, command: 'npx', args: wrappedArgs };
+    next.mcpServers![name] = after;
+    changes.push({ name, before, after });
+  }
+
+  process.stdout.write(`\n${bold('protect-mcp wrap: Claude Desktop')}\n\n`);
+  process.stdout.write(`Config: ${claudePath}\n`);
+  process.stdout.write(`Mode:   ${enforce ? 'enforce' : 'shadow'}\n\n`);
+  for (const change of changes) {
+    if (change.skipped) {
+      process.stdout.write(`  - ${change.name}: ${yellow(change.skipped)}\n`);
+    } else {
+      process.stdout.write(`  - ${change.name}: ${green('will wrap')}\n`);
+      process.stdout.write(`    ${dim(`${change.before.command || ''} ${(change.before.args || []).join(' ')}`)}\n`);
+      process.stdout.write(`    ${dim(shellCommand('npx', change.after.args || []))}\n`);
+    }
+  }
+
+  if (!write) {
+    process.stdout.write(`\nDry run only. Apply with:\n`);
+    process.stdout.write(`  ${dim('npx protect-mcp wrap --claude-desktop --write')}\n\n`);
+    return;
+  }
+
+  const backupPath = `${claudePath}.bak.${Date.now()}`;
+  writeFileSync(backupPath, readFileSync(claudePath, 'utf-8'));
+  writeFileSync(claudePath, JSON.stringify(next, null, 2) + '\n');
+  process.stdout.write(`\n${green('✓ Claude Desktop config updated')}\n`);
+  process.stdout.write(`  Backup: ${backupPath}\n`);
+  process.stdout.write(`  Restart Claude Desktop, then run: ${dim('npx protect-mcp dashboard --open')}\n\n`);
+}
+
 function bold(s: string): string {
   return process.env.NO_COLOR ? s : `\x1b[1m${s}\x1b[0m`;
 }
@@ -729,6 +2137,7 @@ async function handleBundle(argv: string[]): Promise<void> {
   const bundle = createAuditBundle({
     tenant: keyData.issuer || 'protect-mcp',
     receipts,
+    selectiveDisclosures: collectSelectiveDisclosurePackages(dir),
     signingKeys: [{
       kty: 'OKP',
       crv: 'Ed25519',
@@ -742,6 +2151,7 @@ async function handleBundle(argv: string[]): Promise<void> {
 
   process.stdout.write(`\n${bold('protect-mcp bundle')}\n\n`);
   process.stdout.write(`  Receipts: ${receipts.length}\n`);
+  process.stdout.write(`  Disclosures: ${collectSelectiveDisclosurePackages(dir).length}\n`);
   process.stdout.write(`  Output:   ${outputPath}\n`);
   process.stdout.write(`  Verify:   npx @veritasacta/verify ${outputPath} --bundle\n\n`);
 }
@@ -928,6 +2338,540 @@ async function handleQuickstart(argv: string[]): Promise<void> {
   // Set env and run demo
   process.env.PROTECT_MCP_CONFIG = configPath;
   await handleDemo();
+}
+
+async function handleRegistry(argv: string[]): Promise<void> {
+  const subcommand = argv[0] || 'status';
+  const dir = resolveCli(flagValue(argv, '--dir') || process.cwd());
+  const orgName = flagValue(argv, '--org') || process.env.SCOPEBLIND_ORG;
+  const orgId = flagValue(argv, '--org-id') || process.env.SCOPEBLIND_ORG_ID;
+  const billingAccountId = flagValue(argv, '--billing-account') || process.env.SCOPEBLIND_BILLING_ACCOUNT;
+  const endpoint = flagValue(argv, '--endpoint') || process.env.SCOPEBLIND_REGISTRY_ENDPOINT || (argv.includes('--hosted') ? 'https://api.scopeblind.com' : undefined);
+  const token = flagValue(argv, '--token') || process.env.SCOPEBLIND_TOKEN;
+  const verifierBaseUrl = flagValue(argv, '--verifier-base') || process.env.SCOPEBLIND_VERIFIER_BASE || 'https://legate.scopeblind.com';
+
+  const registryMod = await import('./receipt-registry.js');
+
+  if (subcommand === 'init') {
+    const identity = registryMod.createOrgIdentity({
+      dir,
+      orgName,
+      orgId,
+      billingAccountId,
+    });
+    const path = registryMod.writeOrgIdentity(dir, identity);
+    process.stdout.write(`\n${bold('protect-mcp registry init')}\n\n`);
+    process.stdout.write(`  Org:              ${identity.org_name}\n`);
+    process.stdout.write(`  Org ID:           ${identity.org_id}\n`);
+    process.stdout.write(`  Billing account:  ${identity.billing_account_id}\n`);
+    process.stdout.write(`  Public keys:      ${identity.public_key_directory.length}\n`);
+    process.stdout.write(`  Wrote:            ${path}\n\n`);
+    process.stdout.write(`${dim('No prompts, tool payloads, raw receipts, or private keys are included.')}\n\n`);
+    return;
+  }
+
+  if (subcommand === 'anchor') {
+    process.stdout.write(`\n${bold('protect-mcp registry anchor')}\n\n`);
+    const result = await registryMod.createReceiptRegistry({
+      dir,
+      orgName,
+      orgId,
+      billingAccountId,
+      endpoint,
+      token,
+      hosted: argv.includes('--hosted') || Boolean(endpoint || token),
+      verifierBaseUrl,
+      outPath: flagValue(argv, '--output'),
+    });
+    process.stdout.write(`  Org:              ${result.registry.org.org_name}\n`);
+    process.stdout.write(`  Billing account:  ${result.registry.billing.billing_account_id}\n`);
+    process.stdout.write(`  Digests:          ${result.registry.records.length}\n`);
+    process.stdout.write(`  Anchors:          ${result.registry.anchors.length}\n`);
+    process.stdout.write(`  Boundary:         ${result.uploaded ? green('hosted digest anchor') : yellow('local preview only')}\n`);
+    process.stdout.write(`  Registry:         ${result.registryPath}\n`);
+    process.stdout.write(`  Verifier page:    ${result.verifierPath}\n\n`);
+    process.stdout.write(`  Uploaded fields:  ${result.registry.privacy.uploaded_fields.join(', ')}\n`);
+    process.stdout.write(`  Excluded fields:  ${result.registry.privacy.excluded_fields.join(', ')}\n\n`);
+    if (!result.uploaded) {
+      process.stdout.write(`${yellow('  This is not an independent timestamp yet.')}\n`);
+      process.stdout.write(`  Run with ${dim('--hosted --token $SCOPEBLIND_TOKEN')} to make the paid boundary real.\n\n`);
+    }
+    return;
+  }
+
+  if (subcommand === 'status') {
+    const registryPath = joinCli(dir, registryMod.REGISTRY_FILE);
+    const identityPath = joinCli(dir, registryMod.ORG_IDENTITY_FILE);
+    process.stdout.write(`\n${bold('protect-mcp registry status')}\n\n`);
+    if (existsSyncCli(identityPath)) {
+      const identity = JSON.parse(readFileSyncCli(identityPath, 'utf-8')) as Record<string, unknown>;
+      process.stdout.write(`  Org:              ${identity.org_name || 'unknown'}\n`);
+      process.stdout.write(`  Org ID:           ${identity.org_id || 'unknown'}\n`);
+      process.stdout.write(`  Billing account:  ${identity.billing_account_id || 'unknown'}\n`);
+    } else {
+      process.stdout.write(`  Org identity:     ${yellow('missing')} (${identityPath})\n`);
+    }
+    if (existsSyncCli(registryPath)) {
+      const registry = JSON.parse(readFileSyncCli(registryPath, 'utf-8')) as Record<string, any>;
+      const hosted = Array.isArray(registry.anchors) && registry.anchors.some((a: any) => a.timestamp_source === 'scopeblind-hosted');
+      process.stdout.write(`  Registry:         ${registryPath}\n`);
+      process.stdout.write(`  Digests:          ${registry.records?.length || 0}\n`);
+      process.stdout.write(`  Anchors:          ${registry.anchors?.length || 0}\n`);
+      process.stdout.write(`  Boundary:         ${hosted ? green('hosted digest anchor') : yellow('local preview only')}\n`);
+      process.stdout.write(`  Verifier page:    ${joinCli(dir, registryMod.VERIFIER_PAGE_FILE)}\n`);
+    } else {
+      process.stdout.write(`  Registry:         ${yellow('missing')} (${registryPath})\n`);
+      process.stdout.write(`  Next:             ${dim('npx protect-mcp registry anchor --hosted')}\n`);
+    }
+    process.stdout.write(`\n`);
+    return;
+  }
+
+  process.stderr.write('Usage: protect-mcp registry init|anchor|status [--dir <path>] [--org <name>] [--hosted]\\n');
+  process.exit(1);
+}
+
+async function handleKillerDemo(argv: string[]): Promise<void> {
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { ed25519 } = await import('@noble/curves/ed25519');
+  const { bytesToHex } = await import('@noble/hashes/utils');
+  const { randomBytes } = await import('node:crypto');
+  const artifacts = await import('@veritasacta/artifacts');
+  const {
+    createSelectiveDisclosurePackage,
+    signCommittedDecision,
+    verifySelectiveDisclosurePackage,
+  } = await import('./signing-committed.js');
+  const registryMod = await import('./receipt-registry.js');
+
+  const dir = resolveCli(flagValue(argv, '--dir') || mkdtempSync(joinCli(tmpdir(), 'scopeblind-killer-demo-')));
+  mkdirSyncCli(dir, { recursive: true });
+  mkdirSyncCli(joinCli(dir, 'keys'), { recursive: true });
+  mkdirSyncCli(joinCli(dir, 'receipts'), { recursive: true });
+
+  const privateKeyBytes = randomBytes(32);
+  const publicKeyBytes = ed25519.getPublicKey(privateKeyBytes);
+  const keypair = {
+    privateKey: bytesToHex(privateKeyBytes),
+    publicKey: bytesToHex(publicKeyBytes),
+    kid: `killer-demo-${Date.now()}`,
+    issuer: 'scopeblind-killer-demo',
+  };
+  const keyPath = joinCli(dir, 'keys', 'gateway.json');
+  writeFileSyncCli(keyPath, JSON.stringify({
+    ...keypair,
+    generated_at: new Date().toISOString(),
+    warning: 'Demo key only. Do not use for production.',
+  }, null, 2) + '\n');
+
+  const shadowConfigPath = joinCli(dir, 'protect-mcp.shadow.json');
+  const policyPackPath = joinCli(dir, 'protect-mcp.policy-pack.json');
+  const config = {
+    tools: { '*': { rate_limit: '100/hour' } },
+    default_tier: 'signed-known',
+    signing: { key_path: keyPath, issuer: keypair.issuer, enabled: true },
+  };
+  const policyPack = {
+    tools: {
+      '*': { rate_limit: '100/hour' },
+      read_file: { rate_limit: '60/hour' },
+      github_create_pr: { require_approval: true, min_tier: 'signed-known', rate_limit: '10/hour' },
+      send_email: { require_approval: true, min_tier: 'signed-known', rate_limit: '10/hour' },
+      pms_book_fill: { require_approval: true, min_tier: 'signed-known', rate_limit: '10/hour' },
+      delete_file: { block: true, min_tier: 'privileged' },
+    },
+    default_tier: 'signed-known',
+    signing: { key_path: keyPath, issuer: keypair.issuer, enabled: true },
+    notes: ['Demo policy pack: approvals for GitHub, email, and PMS booking; destructive tools blocked.'],
+  };
+  writeFileSyncCli(shadowConfigPath, JSON.stringify(config, null, 2) + '\n');
+  writeFileSyncCli(policyPackPath, JSON.stringify(policyPack, null, 2) + '\n');
+
+  await initSigning({ enabled: true, key_path: keyPath, issuer: keypair.issuer });
+  const logPath = joinCli(dir, '.protect-mcp-log.jsonl');
+  const receiptPath = joinCli(dir, '.protect-mcp-receipts.jsonl');
+
+  const shadowCalls = [
+    { tool: 'read_file', input: { path: '/research/macro-notes.md' }, reason: 'observe_mode' },
+    { tool: 'github_create_pr', input: { repo: 'scopeblind/legate', branch: 'agent/pms-adapter', title: 'Wire mock PMS adapter' }, reason: 'observe_mode' },
+    { tool: 'send_email', input: { to: 'ops@examplefund.com', subject: 'Booking update', body: 'Draft only', api_key: 'demo-secret' }, reason: 'observe_mode' },
+    { tool: 'pms_book_fill', input: { account: 'Meridian Global Macro', symbol: 'AAPL', side: 'BUY', quantity: 50, price: 182.4, strategy: 'US Large Cap Tactical', bearerToken: 'demo-secret' }, reason: 'observe_mode' },
+  ];
+
+  for (const [idx, call] of shadowCalls.entries()) {
+    const requestId = `demo-shadow-${idx + 1}`;
+    appendFileSyncCli(logPath, JSON.stringify({
+      v: 2,
+      tool: call.tool,
+      decision: 'allow',
+      reason_code: call.reason,
+      request_id: requestId,
+      timestamp: Date.now() + idx,
+      mode: 'shadow',
+      policy_digest: 'shadow-policy',
+      action_readback: buildActionReadback(call.tool, call.input),
+    }) + '\n');
+  }
+
+  const sensitiveInput = {
+    account: 'Meridian Global Macro',
+    symbol: 'AAPL',
+    side: 'BUY',
+    quantity: 50,
+    price: 182.4,
+    strategy: 'US Large Cap Tactical',
+    trader_note: 'Do not reveal portfolio context outside the desk.',
+    api_key: 'demo-pms-secret',
+  };
+  const readback = buildActionReadback('pms_book_fill', sensitiveInput);
+  const requestId = 'demo-sensitive-pms-booking';
+  const requireApprovalEntry = {
+    v: 2,
+    tool: 'pms_book_fill',
+    decision: 'require_approval',
+    reason_code: 'requires_human_approval',
+    request_id: requestId,
+    timestamp: Date.now() + 10,
+    mode: 'enforce',
+    policy_digest: createHashCli('sha256').update(JSON.stringify(policyPack)).digest('hex').slice(0, 16),
+    action_readback: readback,
+  };
+  appendFileSyncCli(logPath, JSON.stringify(requireApprovalEntry) + '\n');
+  appendFileSyncCli(joinCli(dir, '.protect-mcp-approval-resolutions.jsonl'), JSON.stringify({
+    type: 'scopeblind.approval_resolution.v1',
+    at: new Date().toISOString(),
+    request_id: requestId,
+    tool: 'pms_book_fill',
+    resolution: 'approve',
+    reason: 'Matches the ticket and stays inside mandate.',
+    payload_hash: readback.payload_hash,
+  }) + '\n');
+
+  const executedEntry = {
+    ...requireApprovalEntry,
+    decision: 'allow',
+    reason_code: 'approval_granted',
+    timestamp: Date.now() + 20,
+    payload_digest: {
+      output_hash: createHashCli('sha256').update('mock-pms-booking-confirmed').digest('hex'),
+      output_size: 26,
+      truncated: false,
+    },
+  };
+  appendFileSyncCli(logPath, JSON.stringify(executedEntry) + '\n');
+  const signed = signDecision(executedEntry as any);
+  if (!signed.signed) throw new Error(`demo signing failed: ${signed.warning || signed.error || 'unknown'}`);
+  appendFileSyncCli(receiptPath, signed.signed + '\n');
+  writeFileSyncCli(joinCli(dir, 'receipts', 'approved-pms-booking.receipt.json'), JSON.stringify(JSON.parse(signed.signed), null, 2) + '\n');
+
+  const receiptArtifact = JSON.parse(signed.signed);
+  const tamperedArtifact = JSON.parse(signed.signed);
+  if (tamperedArtifact.payload && typeof tamperedArtifact.payload === 'object') {
+    tamperedArtifact.payload.decision = 'deny';
+    tamperedArtifact.payload.tool = 'send_email';
+  } else {
+    tamperedArtifact.tool = 'send_email';
+  }
+  const validOriginal = artifacts.verifyArtifact(receiptArtifact, keypair.publicKey);
+  const validTampered = artifacts.verifyArtifact(tamperedArtifact, keypair.publicKey);
+  writeFileSyncCli(joinCli(dir, 'receipts', 'tampered.receipt.json'), JSON.stringify(tamperedArtifact, null, 2) + '\n');
+
+  const committed = signCommittedDecision(
+    executedEntry as any,
+    ['tool', 'payload_digest', 'swarm'],
+    keypair.privateKey,
+    keypair.publicKey,
+    keypair.kid,
+    keypair.issuer,
+  );
+  const committedReceipt = JSON.parse(committed.signed);
+  const disclosurePackage = createSelectiveDisclosurePackage(committedReceipt, ['tool'], committed.openings);
+  const disclosureVerification = verifySelectiveDisclosurePackage(committedReceipt, disclosurePackage);
+  appendFileSyncCli(receiptPath, committed.signed + '\n');
+  writeFileSyncCli(joinCli(dir, 'receipts', 'selective-disclosure.receipt.json'), JSON.stringify(committedReceipt, null, 2) + '\n');
+  writeFileSyncCli(joinCli(dir, 'receipts', 'selective-disclosure.package.json'), JSON.stringify(disclosurePackage, null, 2) + '\n');
+  writeFileSyncCli(joinCli(dir, 'receipts', 'selective-disclosure.tool-only.json'), JSON.stringify(disclosurePackage, null, 2) + '\n');
+  writeFileSyncCli(joinCli(dir, 'verification-results.json'), JSON.stringify({
+    original_receipt_valid: validOriginal,
+    tampered_receipt_valid: validTampered,
+    selective_disclosure_valid: disclosureVerification.valid,
+    selective_disclosure_explanation: disclosureVerification.explanation,
+  }, null, 2) + '\n');
+
+  const registry = await registryMod.createReceiptRegistry({
+    dir,
+    orgName: flagValue(argv, '--org') || 'Meridian Global Macro Demo',
+    billingAccountId: flagValue(argv, '--billing-account') || 'demo_billing_digest_only',
+    hosted: argv.includes('--hosted'),
+    endpoint: flagValue(argv, '--endpoint') || process.env.SCOPEBLIND_REGISTRY_ENDPOINT || (argv.includes('--hosted') ? 'https://api.scopeblind.com' : undefined),
+    token: flagValue(argv, '--token') || process.env.SCOPEBLIND_TOKEN,
+    verifierBaseUrl: flagValue(argv, '--verifier-base') || 'https://legate.scopeblind.com',
+  });
+
+  const runbook = [
+    '# ScopeBlind Killer Demo',
+    '',
+    'Three-minute flow, generated locally.',
+    '',
+    '## 1. Agent has tools',
+    '',
+    'Mock tools represented: filesystem `read_file`, GitHub `github_create_pr`, email `send_email`, and PMS `pms_book_fill`.',
+    '',
+    '## 2. Shadow mode shows risk',
+    '',
+    'Open the dashboard against this directory:',
+    '',
+    '```bash',
+    `npx protect-mcp dashboard --dir ${dir} --policy ${policyPackPath} --open`,
+    '```',
+    '',
+    'You will see GitHub, email, and PMS calls ranked as high risk.',
+    '',
+    '## 3. Apply policy pack',
+    '',
+    `Policy pack: \`${policyPackPath}\`.`,
+    '',
+    'It requires approval for GitHub PRs, outbound email, and PMS booking; destructive file deletion is blocked.',
+    '',
+    '## 4. Sensitive action requires exact approval',
+    '',
+    `Request id: \`${requestId}\``,
+    '',
+    `Exact readback summary: \`${readback.summary}\``,
+    '',
+    `Payload hash: \`${readback.payload_hash}\``,
+    '',
+    'Secret-like fields are redacted from the approval preview but still affect the hash.',
+    '',
+    '## 5. User approves; tool executes through gateway',
+    '',
+    'Approval resolution: `.protect-mcp-approval-resolutions.jsonl`',
+    '',
+    'Signed receipt: `receipts/approved-pms-booking.receipt.json`',
+    '',
+    '## 6. Offline verification and tamper failure',
+    '',
+    'Verification result: `verification-results.json`.',
+    '',
+    'Expected: original valid, tampered invalid.',
+    '',
+    '## 7. Selective disclosure',
+    '',
+    'Committed receipt: `receipts/selective-disclosure.receipt.json`',
+    '',
+    'Tool-only v0 disclosure package: `receipts/selective-disclosure.tool-only.json`',
+    '',
+    'The disclosure opens only the committed `tool` field. Other committed fields, such as `payload_digest`, remain hidden but bound to the signed `committed_fields_root`.',
+    '',
+    'This demonstrates hiding sensitive context while revealing the minimum needed proof. It is salted commitment disclosure, not full zero-knowledge.',
+    '',
+    '## 8. Paid boundary MVP',
+    '',
+    `Registry: \`${registry.registryPath}\``,
+    '',
+    `Verifier page: \`${registry.verifierPath}\``,
+    '',
+    `Boundary: ${registry.uploaded ? 'hosted digest anchor with independent timestamp' : 'local preview only; hosted anchoring not used'}.`,
+    '',
+    'No raw prompt, payload, output, private key, or raw receipt is uploaded by the registry flow. Hosted mode submits receipt digests, request ids, org public keys, and billing account metadata only.',
+    '',
+  ].join('\n');
+  writeFileSyncCli(joinCli(dir, 'DEMO-RUNBOOK.md'), runbook);
+  writeFileSyncCli(joinCli(dir, 'demo-summary.json'), JSON.stringify({
+    dir,
+    dashboard_command: `npx protect-mcp dashboard --dir ${dir} --policy ${policyPackPath} --open`,
+    policy_pack: policyPackPath,
+    receipt: joinCli(dir, 'receipts', 'approved-pms-booking.receipt.json'),
+    tampered_receipt: joinCli(dir, 'receipts', 'tampered.receipt.json'),
+    selective_disclosure_receipt: joinCli(dir, 'receipts', 'selective-disclosure.receipt.json'),
+    selective_disclosure_package: joinCli(dir, 'receipts', 'selective-disclosure.tool-only.json'),
+    verification_results: joinCli(dir, 'verification-results.json'),
+    registry: registry.registryPath,
+    verifier_page: registry.verifierPath,
+    runbook: joinCli(dir, 'DEMO-RUNBOOK.md'),
+    original_valid: validOriginal.valid,
+    tampered_valid: validTampered.valid,
+    selective_disclosure_valid: disclosureVerification.valid,
+  }, null, 2) + '\n');
+
+  process.stdout.write(`\n${bold('protect-mcp killer-demo')}\n\n`);
+  process.stdout.write(`  Demo dir:          ${dir}\n`);
+  process.stdout.write(`  Dashboard:         ${dim(`npx protect-mcp dashboard --dir ${dir} --policy ${policyPackPath} --open`)}\n`);
+  process.stdout.write(`  Runbook:           ${joinCli(dir, 'DEMO-RUNBOOK.md')}\n`);
+  process.stdout.write(`  Signed receipt:    ${joinCli(dir, 'receipts', 'approved-pms-booking.receipt.json')}\n`);
+  process.stdout.write(`  Tamper check:      original=${validOriginal.valid ? green('valid') : red('invalid')} tampered=${validTampered.valid ? red('valid') : green('invalid')}\n`);
+  process.stdout.write(`  Registry:          ${registry.registryPath}\n`);
+  process.stdout.write(`  Verifier page:     ${registry.verifierPath}\n`);
+  process.stdout.write(`  Boundary:          ${registry.uploaded ? green('hosted digest anchor') : yellow('local preview only')}\n\n`);
+}
+
+async function handleVerifyDisclosure(argv: string[]): Promise<void> {
+  const receiptPath = flagValue(argv, '--receipt');
+  const disclosurePath = flagValue(argv, '--disclosure');
+  if (!receiptPath || !disclosurePath) {
+    process.stderr.write('Usage: protect-mcp verify-disclosure --receipt <committed-receipt.json> --disclosure <selective-disclosure.json>\\n');
+    process.exit(1);
+  }
+  const { verifySelectiveDisclosurePackage } = await import('./signing-committed.js');
+  const receipt = JSON.parse(readFileSyncCli(resolveCli(receiptPath), 'utf-8')) as Record<string, unknown>;
+  const disclosure = JSON.parse(readFileSyncCli(resolveCli(disclosurePath), 'utf-8')) as any;
+  const result = verifySelectiveDisclosurePackage(receipt, disclosure);
+
+  process.stdout.write(`\n${bold('protect-mcp verify-disclosure')}\n\n`);
+  process.stdout.write(`  Result:           ${result.valid ? green('valid') : red('invalid')}\n`);
+  process.stdout.write(`  Receipt hash:     ${result.receipt_hash_valid ? green('matches') : red('mismatch')}\n`);
+  process.stdout.write(`  Signature:        ${result.signature_valid === true ? green('valid') : result.signature_valid === null ? yellow('not checked') : red('invalid')}\n`);
+  process.stdout.write(`  Commitment root:  ${result.commitment_root_valid ? green('matches') : red('mismatch')}\n`);
+  process.stdout.write(`  Disclosed fields: ${result.disclosed_fields.length ? result.disclosed_fields.join(', ') : 'none'}\n`);
+  process.stdout.write(`  Hidden fields:    ${result.hidden_fields.length ? result.hidden_fields.join(', ') : 'none'}\n\n`);
+  for (const line of result.explanation) {
+    process.stdout.write(`  - ${line}\n`);
+  }
+  if (result.errors.length > 0) {
+    process.stdout.write(`\n${red('Errors:')}\n`);
+    for (const err of result.errors) process.stdout.write(`  - ${err}\n`);
+  }
+  process.stdout.write('\n');
+  if (!result.valid) process.exit(2);
+}
+
+async function handlePolicyPacks(argv: string[]): Promise<void> {
+  const subcommand = argv[0] || 'list';
+  const packArg = argv[1];
+  const dir = resolveCli(flagValue(argv, '--dir') || './cedar');
+  const force = argv.includes('--force');
+
+  if (subcommand === 'list') {
+    process.stdout.write(`\n${bold('protect-mcp policy-packs')}\n\n`);
+    for (const pack of POLICY_PACKS) {
+      process.stdout.write(`  ${bold(pack.id.padEnd(22))} ${pack.name}\n`);
+      process.stdout.write(`  ${dim(' '.repeat(24) + pack.description)}\n`);
+      process.stdout.write(`  ${dim(' '.repeat(24) + `recommended: ${pack.recommendedMode}`)}\n\n`);
+    }
+    process.stdout.write(`Install one: ${dim('protect-mcp policy-packs install filesystem-safe --dir ./cedar')}\n`);
+    process.stdout.write(`Install all: ${dim('protect-mcp policy-packs install all --dir ./cedar')}\n\n`);
+    return;
+  }
+
+  if (subcommand === 'show') {
+    const pack = getPolicyPack(packArg || '');
+    if (!pack) {
+      process.stderr.write(`Unknown policy pack "${packArg || ''}". Available: ${policyPackIds().join(', ')}\n`);
+      process.exit(1);
+    }
+    process.stdout.write(`\n${bold(pack.name)} (${pack.id})\n\n`);
+    process.stdout.write(`${pack.description}\n`);
+    process.stdout.write(`Recommended rollout: ${pack.recommendedMode}\n\n`);
+    for (const file of pack.files) {
+      process.stdout.write(`${dim(`--- ${file.path} ---`)}\n`);
+      process.stdout.write(file.contents.endsWith('\n') ? file.contents : `${file.contents}\n`);
+      process.stdout.write('\n');
+    }
+    return;
+  }
+
+  if (subcommand === 'install') {
+    const packs = packArg === 'all'
+      ? POLICY_PACKS
+      : [getPolicyPack(packArg || '')].filter(Boolean) as typeof POLICY_PACKS;
+    if (packs.length === 0) {
+      process.stderr.write(`Usage: protect-mcp policy-packs install <${policyPackIds().join('|')}|all> [--dir ./cedar] [--force]\n`);
+      process.exit(1);
+    }
+    mkdirSyncCli(dir, { recursive: true });
+    const written: string[] = [];
+    for (const pack of packs) {
+      for (const file of pack.files) {
+        const outPath = joinCli(dir, file.path);
+        if (existsSyncCli(outPath) && !force) {
+          process.stderr.write(`Refusing to overwrite ${outPath}. Re-run with --force if intentional.\n`);
+          process.exit(1);
+        }
+        writeFileSyncCli(outPath, file.contents.endsWith('\n') ? file.contents : `${file.contents}\n`);
+        written.push(outPath);
+      }
+    }
+    process.stdout.write(`\n${bold('protect-mcp policy-packs install')}\n\n`);
+    process.stdout.write(`  Directory: ${dir}\n`);
+    for (const outPath of written) process.stdout.write(`  Wrote:     ${outPath}\n`);
+    process.stdout.write(`\nNext: ${dim(`protect-mcp serve --cedar ${dir}`)} for shadow mode, then add ${dim('--enforce')} after reviewing receipts.\n\n`);
+    return;
+  }
+
+  process.stderr.write('Usage: protect-mcp policy-packs list|show|install [pack] [--dir ./cedar] [--force]\n');
+  process.exit(1);
+}
+
+async function handleConnectors(argv: string[]): Promise<void> {
+  const subcommand = argv[0] || 'list';
+  const pilotArg = argv[1];
+  const dir = resolveCli(flagValue(argv, '--dir') || process.cwd());
+  const force = argv.includes('--force');
+
+  if (subcommand === 'list') {
+    process.stdout.write(`\n${bold('protect-mcp connector pilots')}\n\n`);
+    for (const pilot of CONNECTOR_PILOTS) {
+      process.stdout.write(`  ${bold(pilot.id.padEnd(18))} ${pilot.name}\n`);
+      process.stdout.write(`  ${dim(' '.repeat(20) + pilot.description)}\n`);
+      process.stdout.write(`  ${dim(' '.repeat(20) + `tools: ${pilot.tools.join(', ')}`)}\n\n`);
+    }
+    process.stdout.write(`Install all: ${dim('protect-mcp connectors init all --force')}\n`);
+    process.stdout.write(`Check credentials: ${dim('protect-mcp connectors doctor')}\n\n`);
+    return;
+  }
+
+  if (subcommand === 'show') {
+    const pilot = getConnectorPilot(pilotArg || '');
+    if (!pilot) {
+      process.stderr.write(`Unknown connector pilot "${pilotArg || ''}". Available: ${CONNECTOR_PILOTS.map((p) => p.id).join(', ')}\n`);
+      process.exit(1);
+    }
+    process.stdout.write(`\n${bold(pilot.name)} (${pilot.id})\n\n`);
+    process.stdout.write(`${pilot.description}\n\n`);
+    process.stdout.write(`${bold('Why it matters:')} ${pilot.value}\n\n`);
+    process.stdout.write(`${bold('Tools:')} ${pilot.tools.join(', ')}\n\n`);
+    process.stdout.write(`${bold('Setup:')}\n`);
+    for (const step of pilot.setup) process.stdout.write(`  - ${step}\n`);
+    process.stdout.write(`\n${bold('Starter policy:')}\n${pilot.cedar}\n`);
+    return;
+  }
+
+  if (subcommand === 'init') {
+    const ids = pilotArg ? [pilotArg] : ['all'];
+    const installed = writeConnectorPilots({ dir, ids, force });
+    process.stdout.write(`\n${bold('protect-mcp connectors init')}\n\n`);
+    process.stdout.write(`  Directory: ${installed.directory}\n`);
+    for (const outPath of installed.written) process.stdout.write(`  Wrote:     ${outPath}\n`);
+    process.stdout.write(`\nNext: ${dim('protect-mcp connectors doctor')} then ${dim('protect-mcp dashboard --open')}.\n\n`);
+    return;
+  }
+
+  if (subcommand === 'doctor') {
+    let rows = connectorDoctor(dir);
+    if (pilotArg && pilotArg !== 'all') {
+      const pilot = getConnectorPilot(pilotArg);
+      if (!pilot) {
+        process.stderr.write(`Unknown connector pilot "${pilotArg}". Available: ${CONNECTOR_PILOTS.map((p) => p.id).join(', ')}\n`);
+        process.exit(1);
+      }
+      rows = rows.filter((row) => row.id === pilot.id);
+    }
+    process.stdout.write(`\n${bold('protect-mcp connectors doctor')}\n\n`);
+    for (const row of rows) {
+      const missing = Array.isArray(row.missing_required) && row.missing_required.length > 0 ? row.missing_required.join(', ') : '';
+      const status = row.installed ? (row.usable ? green('ready') : yellow('needs setup')) : dim('not installed');
+      process.stdout.write(`  ${bold(String(row.id).padEnd(18))} ${status}\n`);
+      process.stdout.write(`  ${dim(' '.repeat(20) + `mode: ${String(row.mode || 'unknown')}`)}\n`);
+      if (missing) process.stdout.write(`  ${yellow(' '.repeat(20) + `missing: ${missing}`)}\n`);
+      process.stdout.write(`  ${dim(' '.repeat(20) + String(row.next || ''))}\n\n`);
+    }
+    process.stdout.write(`${dim('Secret values are never printed; only missing variable names are shown.')}\n\n`);
+    return;
+  }
+
+  process.stderr.write('Usage: protect-mcp connectors list|show|init|doctor [connector|all] [--dir <path>] [--force]\n');
+  process.exit(1);
 }
 
 /**
@@ -1584,6 +3528,63 @@ async function main(): Promise<void> {
   if (args[0] === 'quickstart') {
     await handleQuickstart(args.slice(1));
     return; // demo keeps running
+  }
+
+  // Handle wrap command
+  if (args[0] === 'wrap') {
+    await handleWrap(args.slice(1));
+    process.exit(0);
+  }
+
+  // Handle dashboard command
+  if (args[0] === 'dashboard') {
+    await handleDashboard(args.slice(1));
+    return; // server keeps running
+  }
+
+  // Handle recommend command
+  if (args[0] === 'recommend') {
+    await handleRecommend(args.slice(1));
+    process.exit(0);
+  }
+
+  // Handle registry command
+  if (args[0] === 'registry') {
+    await handleRegistry(args.slice(1));
+    process.exit(0);
+  }
+
+  // Handle trial command — buyer-friendly alias for the complete proof pack.
+  if (args[0] === 'trial') {
+    await handleKillerDemo(args.slice(1));
+    process.stdout.write(`${bold('Next: open the local dashboard')}\n`);
+    process.stdout.write(`  npx protect-mcp dashboard --dir ${dim(flagValue(args.slice(1), '--dir') || '<demo dir printed above>')} --open\n\n`);
+    process.stdout.write(`${dim('No ScopeBlind account is required for local receipts. Add --hosted with SCOPEBLIND_TOKEN when you want independent digest anchoring.')}\n\n`);
+    process.exit(0);
+  }
+
+  // Handle killer-demo command
+  if (args[0] === 'killer-demo') {
+    await handleKillerDemo(args.slice(1));
+    process.exit(0);
+  }
+
+  // Handle selective-disclosure verifier command
+  if (args[0] === 'verify-disclosure') {
+    await handleVerifyDisclosure(args.slice(1));
+    process.exit(0);
+  }
+
+  // Handle starter Cedar policy packs
+  if (args[0] === 'policy-packs') {
+    await handlePolicyPacks(args.slice(1));
+    process.exit(0);
+  }
+
+  // Handle real connector pilots
+  if (args[0] === 'connectors') {
+    await handleConnectors(args.slice(1));
+    process.exit(0);
   }
 
   // Handle connect command

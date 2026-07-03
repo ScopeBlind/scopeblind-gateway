@@ -233,6 +233,18 @@ export interface DecisionLog {
   plan_receipt_id?: string;
   /** Hook event that triggered this log entry */
   hook_event?: HookEventName;
+  /** Redacted exact-action readback shown to humans before approving */
+  action_readback?: {
+    tool: string;
+    action: string;
+    destination?: string;
+    payload_preview: unknown;
+    payload_hash: string;
+    payload_bytes: number;
+    disclosed_fields: string[];
+    redacted_fields: string[];
+    summary: string;
+  };
 
   // ── Standard reference fields (v0.5.2+) ──
 

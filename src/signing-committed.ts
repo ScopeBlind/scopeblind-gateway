@@ -25,8 +25,8 @@
 import { ed25519 } from '@noble/curves/ed25519';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes, randomBytes } from '@noble/hashes/utils';
-import { hashLeaf, merkleRoot, generateProof, type MerkleProof } from './commitments/merkle.js';
-import { encodeLeaf, leavesFromFields, base64urlNoPad, type CommittedField } from './commitments/leaf.js';
+import { hashLeaf, merkleRoot, generateProof, verifyProof, type MerkleProof } from './commitments/merkle.js';
+import { encodeLeaf, leavesFromFields, base64urlDecode, base64urlNoPad, type CommittedField } from './commitments/leaf.js';
 import { jcs } from './commitments/primitives.js';
 import type { DecisionLog } from './types.js';
 
@@ -88,6 +88,33 @@ export interface MinimalDisclosure {
   salt: string;
   /** Merkle inclusion proof. */
   proof: MerkleProof;
+}
+
+export interface SelectiveDisclosurePackageV0 {
+  type: 'scopeblind.selective_disclosure.v0';
+  version: 0;
+  parent_receipt_hash: string;
+  committed_fields_root: string;
+  disclosed_fields: string[];
+  hidden_fields: string[];
+  disclosures: MinimalDisclosure[];
+  verifier_explanation: {
+    summary: string;
+    disclosed: string;
+    hidden: string;
+    limitation: string;
+  };
+}
+
+export interface SelectiveDisclosureVerification {
+  valid: boolean;
+  receipt_hash_valid: boolean;
+  signature_valid: boolean | null;
+  commitment_root_valid: boolean;
+  disclosed_fields: string[];
+  hidden_fields: string[];
+  errors: string[];
+  explanation: string[];
 }
 
 // ============================================================
@@ -271,4 +298,159 @@ export function discloseField(
     salt: base64urlNoPad(o.salt),
     proof,
   };
+}
+
+export function createSelectiveDisclosurePackage(
+  receipt: Record<string, unknown>,
+  fieldNames: string[],
+  openings: Record<string, CommittedFieldOpening>,
+): SelectiveDisclosurePackageV0 {
+  const receiptHash = receiptHashHex(receipt);
+  const committedFieldsRoot = typeof receipt.committed_fields_root === 'string'
+    ? receipt.committed_fields_root
+    : '';
+  if (!committedFieldsRoot) {
+    throw new Error('selective disclosure requires a committed receipt with committed_fields_root');
+  }
+  const committedFieldNames = committedFieldNamesFromReceipt(receipt, openings);
+  const uniqueFields = Array.from(new Set(fieldNames));
+  for (const fieldName of uniqueFields) {
+    if (!committedFieldNames.includes(fieldName)) {
+      throw new Error(`selective disclosure: field "${fieldName}" is not committed by this receipt`);
+    }
+  }
+  const disclosures = uniqueFields.map((fieldName) => discloseField(receiptHash, fieldName, openings));
+  const hiddenFields = committedFieldNames.filter((fieldName) => !uniqueFields.includes(fieldName));
+  return {
+    type: 'scopeblind.selective_disclosure.v0',
+    version: 0,
+    parent_receipt_hash: receiptHash,
+    committed_fields_root: committedFieldsRoot,
+    disclosed_fields: uniqueFields,
+    hidden_fields: hiddenFields,
+    disclosures,
+    verifier_explanation: {
+      summary: 'This package opens selected committed receipt fields and leaves the rest hidden.',
+      disclosed: uniqueFields.length
+        ? `Disclosed fields: ${uniqueFields.join(', ')}.`
+        : 'No fields were disclosed.',
+      hidden: hiddenFields.length
+        ? `Hidden committed fields: ${hiddenFields.join(', ')}. Their salted commitments remain bound to the signed receipt root.`
+        : 'No committed fields remain hidden.',
+      limitation: 'Selective Disclosure v0 uses salted SHA-256 commitments and Merkle proofs. It is not a full zero-knowledge proof.',
+    },
+  };
+}
+
+export function verifySelectiveDisclosurePackage(
+  receipt: Record<string, unknown>,
+  disclosure: SelectiveDisclosurePackageV0,
+): SelectiveDisclosureVerification {
+  const errors: string[] = [];
+  if (disclosure.type !== 'scopeblind.selective_disclosure.v0') {
+    errors.push('disclosure.type is not scopeblind.selective_disclosure.v0');
+  }
+  const actualReceiptHash = receiptHashHex(receipt);
+  const receiptHashValid = disclosure.parent_receipt_hash === actualReceiptHash;
+  if (!receiptHashValid) {
+    errors.push('parent_receipt_hash does not match the supplied receipt');
+  }
+
+  const root = typeof receipt.committed_fields_root === 'string' ? receipt.committed_fields_root : '';
+  const commitmentRootValid = Boolean(root) && disclosure.committed_fields_root === root;
+  if (!commitmentRootValid) {
+    errors.push('committed_fields_root does not match the supplied receipt');
+  }
+
+  const signatureValid = verifyCommittedReceiptSignature(receipt);
+  if (signatureValid === false) {
+    errors.push('receipt signature failed verification');
+  }
+
+  const committedFieldNames = committedFieldNamesFromReceipt(receipt, {});
+  const disclosed = new Set<string>();
+  for (const item of disclosure.disclosures || []) {
+    if (item.parent_receipt_hash !== disclosure.parent_receipt_hash) {
+      errors.push(`disclosure for "${item.name}" targets a different receipt hash`);
+      continue;
+    }
+    if (!committedFieldNames.includes(item.name)) {
+      errors.push(`field "${item.name}" is not listed in committed_field_names`);
+      continue;
+    }
+    const leafBytes = encodeLeaf({
+      name: item.name,
+      salt: base64urlDecode(item.salt),
+      value: item.value,
+    });
+    const ok = root ? verifyProof(root, hashLeaf(leafBytes), item.proof) : false;
+    if (!ok) {
+      errors.push(`field "${item.name}" failed Merkle inclusion verification`);
+    } else {
+      disclosed.add(item.name);
+    }
+  }
+
+  const disclosedFields = Array.from(disclosed);
+  const hiddenFields = committedFieldNames.filter((fieldName) => !disclosed.has(fieldName));
+  const valid = errors.length === 0 && receiptHashValid && commitmentRootValid && signatureValid !== false;
+  const explanation = [
+    valid
+      ? 'Selective disclosure verified: the disclosed fields open to the signed receipt commitment root.'
+      : 'Selective disclosure failed verification.',
+    signatureValid === true
+      ? 'Receipt signature verified against the embedded Ed25519 public key.'
+      : signatureValid === null
+        ? 'Receipt signature was not checked because the committed receipt did not carry an embedded Ed25519 signature object.'
+        : 'Receipt signature did not verify.',
+    disclosedFields.length
+      ? `Disclosed fields: ${disclosedFields.join(', ')}.`
+      : 'No fields were disclosed.',
+    hiddenFields.length
+      ? `Hidden fields: ${hiddenFields.join(', ')}. These remain private but bound to the same commitment root.`
+      : 'No committed fields remain hidden.',
+    'Limitation: this is salted commitment disclosure, not full zero-knowledge.',
+  ];
+
+  return {
+    valid,
+    receipt_hash_valid: receiptHashValid,
+    signature_valid: signatureValid,
+    commitment_root_valid: commitmentRootValid,
+    disclosed_fields: disclosedFields,
+    hidden_fields: hiddenFields,
+    errors,
+    explanation,
+  };
+}
+
+function committedFieldNamesFromReceipt(
+  receipt: Record<string, unknown>,
+  openings: Record<string, CommittedFieldOpening>,
+): string[] {
+  const fromReceipt = Array.isArray(receipt.committed_field_names)
+    ? receipt.committed_field_names.filter((fieldName): fieldName is string => typeof fieldName === 'string')
+    : [];
+  const names = fromReceipt.length ? fromReceipt : Object.keys(openings);
+  return Array.from(new Set(names)).sort();
+}
+
+function receiptHashHex(receipt: Record<string, unknown>): string {
+  return bytesToHex(sha256(new TextEncoder().encode(jcs(receipt))));
+}
+
+function verifyCommittedReceiptSignature(receipt: Record<string, unknown>): boolean | null {
+  const signature = receipt.signature;
+  if (!signature || typeof signature !== 'object') return null;
+  const sig = signature as Record<string, unknown>;
+  if (sig.alg !== 'EdDSA' || typeof sig.sig !== 'string' || typeof sig.public_key !== 'string') {
+    return null;
+  }
+  const { signature: _signature, ...payloadWithoutSig } = receipt;
+  const messageHash = sha256(new TextEncoder().encode(jcs(payloadWithoutSig)));
+  try {
+    return ed25519.verify(base64urlDecode(sig.sig), messageHash, hexToBytes(sig.public_key));
+  } catch {
+    return false;
+  }
 }

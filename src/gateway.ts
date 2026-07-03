@@ -20,6 +20,7 @@ import { evaluateCedar, type CedarPolicySet } from './cedar-evaluator.js';
 import { EvidenceStore } from './evidence-store.js';
 import { sendApprovalNotification, parseNotificationConfigFromEnv, type NotificationConfig } from './notifications.js';
 import { ReceiptBuffer, startStatusServer } from './http-server.js';
+import { buildActionReadback } from './action-readback.js';
 
 /** JSONL log file name written to cwd */
 const LOG_FILE = '.protect-mcp-log.jsonl';
@@ -224,6 +225,10 @@ export class ProtectGateway {
     const toolName = (request.params?.name as string) || 'unknown';
     const requestId = randomUUID().slice(0, 12);
     const mode = this.config.enforce ? 'enforce' : 'shadow';
+    const toolInput = (request.params?.arguments && typeof request.params.arguments === 'object')
+      ? request.params.arguments
+      : request.params || {};
+    const actionReadback = buildActionReadback(toolName, toolInput);
 
     // ── Multi-agent resolution ──
     // When multi-agent mode is enabled, resolve the calling agent's kid
@@ -246,7 +251,7 @@ export class ProtectGateway {
         effectiveToolPolicy = { ...getToolPolicy(toolName, this.config.policy), ...agentOverrides[toolName] };
       } else if (!resolvedAgentKid && this.config.multiAgent.unknownAgentPolicy === 'deny') {
         // Unknown agent + deny policy
-        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'unknown_agent_denied', request_id: requestId, tier: this.currentTier });
+        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'unknown_agent_denied', request_id: requestId, tier: this.currentTier, action_readback: actionReadback });
         if (this.config.enforce) {
           return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied: unidentified agent`);
         }
@@ -270,7 +275,7 @@ export class ProtectGateway {
       if (cred.resolved) {
         credentialRef = cred.label;
       } else if (cred.error && !cred.error.includes('not configured')) {
-        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'credential_error', request_id: requestId, tier: this.currentTier, credential_ref: toolName });
+        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'credential_error', request_id: requestId, tier: this.currentTier, credential_ref: toolName, action_readback: actionReadback });
         if (this.config.enforce) {
           return this.makeErrorResponse(request.id, -32600, `Credential error for tool "${toolName}"`);
         }
@@ -287,14 +292,14 @@ export class ProtectGateway {
         });
         if (!cedarDecision.allowed) {
           const reason = cedarDecision.reason || 'cedar_deny';
-          this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef });
+          this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) {
             return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied by Cedar policy`);
           }
           return null;
         }
         // Cedar allowed — emit allow log and continue
-        this.emitDecisionLog({ tool: toolName, decision: 'allow', reason_code: 'cedar_allow', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef });
+        this.emitDecisionLog({ tool: toolName, decision: 'allow', reason_code: 'cedar_allow', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
         return null;
       } catch (err) {
         if (this.config.verbose) this.log(`Cedar evaluation error: ${err instanceof Error ? err.message : err}`);
@@ -313,7 +318,7 @@ export class ProtectGateway {
         const externalDecision = await queryExternalPDP(ctx, this.config.policy.external);
         if (!externalDecision.allowed) {
           const reason = `external_pdp_deny${externalDecision.reason ? ': ' + externalDecision.reason : ''}`;
-          this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef });
+          this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) {
             return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied by external policy engine`);
           }
@@ -327,7 +332,7 @@ export class ProtectGateway {
     // Check minimum tier
     if (toolPolicy.min_tier) {
       if (!meetsMinTier(this.currentTier, toolPolicy.min_tier)) {
-        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'tier_insufficient', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef });
+        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'tier_insufficient', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
         if (this.config.enforce) {
           return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" requires tier "${toolPolicy.min_tier}"`);
         }
@@ -337,7 +342,7 @@ export class ProtectGateway {
 
     // Check if blocked
     if (toolPolicy.block) {
-      this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'policy_block', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef });
+      this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'policy_block', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
       if (this.config.enforce) {
         return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" is blocked by policy`);
       }
@@ -353,11 +358,11 @@ export class ProtectGateway {
       if ((grant && Date.now() < grant.expires_at) || (alwaysGrant && Date.now() < alwaysGrant.expires_at)) {
         // Consume 'once' grants
         if (grant && grant.mode === 'once') this.approvalStore.delete(requestId);
-        this.emitDecisionLog({ tool: toolName, decision: 'allow', reason_code: 'approval_granted', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef });
+        this.emitDecisionLog({ tool: toolName, decision: 'allow', reason_code: 'approval_granted', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
         return null; // Allow through
       }
 
-      this.emitDecisionLog({ tool: toolName, decision: 'require_approval', reason_code: 'requires_human_approval', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef });
+      this.emitDecisionLog({ tool: toolName, decision: 'require_approval', reason_code: 'requires_human_approval', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
 
       // Send notification (non-blocking — errors are logged, not thrown)
       if (this.notificationConfig) {
@@ -384,6 +389,7 @@ export class ProtectGateway {
               {
                 type: 'text',
                 text: `REQUIRES_APPROVAL: The tool "${toolName}" requires human approval before execution. ` +
+                  `Exact action: ${actionReadback.summary}. Payload hash: ${actionReadback.payload_hash.slice(0, 16)}… ` +
                   `Request ID: ${requestId}. Approval nonce: ${this.approvalNonce}. ` +
                   `Tell the user you need their approval to use "${toolName}" and will retry when granted. ` +
                   `Do NOT retry this tool call until the user explicitly approves it.`,
@@ -404,19 +410,19 @@ export class ProtectGateway {
         const key = `tool:${toolName}:${this.currentTier}`;
         const { allowed, remaining } = checkRateLimit(key, limit, this.rateLimitStore);
         if (!allowed) {
-          this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'rate_limit_exceeded', request_id: requestId, rate_limit_remaining: 0, tier: this.currentTier, credential_ref: credentialRef });
+          this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'rate_limit_exceeded', request_id: requestId, rate_limit_remaining: 0, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) {
             return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" rate limit exceeded (${rateSpec})`);
           }
           return null;
         }
-        this.emitDecisionLog({ tool: toolName, decision: 'allow', reason_code: 'policy_allow', request_id: requestId, rate_limit_remaining: remaining, tier: this.currentTier, credential_ref: credentialRef });
+        this.emitDecisionLog({ tool: toolName, decision: 'allow', reason_code: 'policy_allow', request_id: requestId, rate_limit_remaining: remaining, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
       } catch {
-        this.emitDecisionLog({ tool: toolName, decision: 'allow', reason_code: 'default_allow', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef });
+        this.emitDecisionLog({ tool: toolName, decision: 'allow', reason_code: 'default_allow', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
       }
     } else {
       const reasonCode = this.config.enforce ? 'policy_allow' : 'observe_mode';
-      this.emitDecisionLog({ tool: toolName, decision: 'allow', reason_code: reasonCode, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef });
+      this.emitDecisionLog({ tool: toolName, decision: 'allow', reason_code: reasonCode, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
     }
 
     return null;
@@ -455,6 +461,7 @@ export class ProtectGateway {
       ...(entry.rate_limit_remaining !== undefined && { rate_limit_remaining: entry.rate_limit_remaining }),
       ...(entry.tier && { tier: entry.tier }),
       ...(entry.credential_ref && { credential_ref: entry.credential_ref }),
+      ...(entry.action_readback && { action_readback: entry.action_readback }),
       otel_trace_id: otelTraceId,
       otel_span_id: otelSpanId,
     };

@@ -26,15 +26,136 @@ telemetry of your decisions anywhere, and is MIT licensed.
   and verifiable offline with [`@veritasacta/verify`](https://www.npmjs.com/package/@veritasacta/verify).
   No vendor trust required: the math does not care who runs it.
 
-## Quickstart (30 seconds)
+## Quickstart: install to first useful proof
 
 ```bash
-# 1. Generate an Ed25519 keypair, a config template, and a sample policy.
+# 1. Generate an Ed25519 keypair, config template, and sample policy.
 npx protect-mcp init
 
-# 2. Put a Cedar policy in ./cedar (see "Write a policy" below), then serve
-#    the Claude Code hook gate in enforce mode. It runs a restraint self-test
-#    first and refuses to start if it cannot prove it denies a forbidden vector.
+# 2. Wrap any MCP server in shadow mode. Nothing is blocked yet; calls are logged.
+npx protect-mcp wrap -- node your-mcp-server.js
+
+# 3. Inspect the local-only dashboard: tool inventory, risk, approvals, receipts.
+npx protect-mcp dashboard --open
+
+# 4. Draft a reviewable policy from observed calls.
+npx protect-mcp recommend --write
+
+# 5. When reviewed, restart the wrapper in enforce mode with that policy.
+npx protect-mcp --policy protect-mcp.recommended.json --enforce -- node your-mcp-server.js
+```
+
+For Claude Desktop, run a dry-run config patch first, then apply it:
+
+```bash
+npx protect-mcp wrap --claude-desktop
+npx protect-mcp wrap --claude-desktop --write
+npx protect-mcp dashboard --open
+```
+
+The dashboard binds to `127.0.0.1`, reads only local log/receipt files, and does
+not upload anything. Use `npx protect-mcp connect` only if you explicitly want a
+hosted ScopeBlind dashboard.
+
+### Local Action Dashboard
+
+`protect-mcp dashboard` is the operator view for moving from visibility to
+enforcement:
+
+- **Tool inventory:** every observed tool, call count, high/medium/low risk, and
+  whether the active policy has an exact rule, a wildcard fallback, or no rule.
+- **Policy coverage:** one-click local policy edits for `Require approval`,
+  `Block`, or `Observe`. Restart the wrapper after reviewing changes.
+- **Exact-action approval queue:** the exact tool, action, destination, redacted
+  payload preview, payload hash, policy basis, and reason capture before a human
+  approves, denies, edits, or takes over.
+- **Receipt chain:** request ids correlated with signed receipt hashes, so an
+  audit reviewer can see which decisions have cryptographic proof.
+- **Audit export:** downloads the offline-verifiable audit bundle when signed
+  receipts exist. If only unsigned local logs exist, the dashboard explains that
+  signing must be enabled first.
+
+For live desktop fallback approvals, start the dashboard with the local gateway
+approval endpoint and nonce printed by the wrapper:
+
+```bash
+npx protect-mcp dashboard --open \
+  --approval-endpoint http://127.0.0.1:9876 \
+  --approval-nonce "$PROTECT_MCP_APPROVAL_NONCE"
+```
+
+`Approve` forwards to the live local gateway when those flags are present.
+`Deny`, `Edit`, and `Take over` are recorded locally as approval-resolution
+records; use them as the operator instruction and rerun the tool when needed.
+
+### Paid Boundary MVP: digest anchoring, not data upload
+
+Local self-signed receipts stay free and offline-verifiable. The paid boundary is
+independent evidence that ScopeBlind saw a receipt digest at a time, under an org
+identity, without receiving the raw prompt, tool payload, output, private key, or
+raw receipt.
+
+```bash
+# Create or refresh a local org identity and public-key directory.
+npx protect-mcp registry init --org "Meridian Global Macro" --billing-account acct_meridian
+
+# Local preview: writes a digest registry and shareable static verifier page.
+npx protect-mcp registry anchor
+
+# Hosted mode: uploads receipt digests only for independent anchoring.
+SCOPEBLIND_TOKEN=... npx protect-mcp registry anchor \
+  --hosted \
+  --endpoint https://api.scopeblind.com \
+  --verifier-base https://legate.scopeblind.com
+```
+
+The local preview is deliberately labeled `local-preview-not-independent`.
+Hosted mode anchors only receipt hashes, request ids, org public keys, and
+billing metadata. It does not upload raw receipts or sensitive context.
+
+### Killer Demo: shadow to policy to proof
+
+`protect-mcp killer-demo` generates a complete three-minute sales/demo pack:
+
+```bash
+npx protect-mcp killer-demo --dir ./scopeblind-demo
+```
+
+It creates mock filesystem, GitHub, email, and PMS activity; shows risky calls in
+shadow mode; applies a policy pack; requires approval for a sensitive PMS booking;
+executes through the gateway; writes a signed receipt; proves the original
+receipt verifies; proves a tampered receipt fails; and creates a selective
+disclosure package that hides sensitive context while showing the minimum proof.
+
+Open the generated `DEMO-RUNBOOK.md` first. Then run the printed dashboard
+command to walk a customer through the exact sequence.
+
+### Selective Disclosure v0
+
+Commitment-mode receipts can carry a `committed_fields_root` instead of exposing
+every field in cleartext. Later, the holder can disclose selected fields only:
+
+```bash
+npx protect-mcp verify-disclosure \
+  --receipt ./receipts/selective-disclosure.receipt.json \
+  --disclosure ./receipts/selective-disclosure.tool-only.json
+```
+
+The verifier checks the parent receipt hash, Ed25519 signature, commitment root,
+and each disclosed field's Merkle proof. It then explains which fields were
+disclosed and which committed fields remain hidden. This is salted commitment
+disclosure, not full zero-knowledge, but it makes the privacy claim concrete:
+auditors can verify selected facts without receiving the full tool payload or
+sensitive desk context.
+
+## Claude Code hook quickstart
+
+```bash
+# Generate hook config and a sample Cedar policy.
+npx protect-mcp init-hooks
+
+# Serve the Claude Code hook gate in enforce mode. It runs a restraint self-test
+# first and refuses to start if it cannot prove it denies a forbidden vector.
 npx protect-mcp serve --enforce --cedar ./cedar
 ```
 
@@ -153,8 +274,28 @@ forbid(
 > CI tripwire test fails the build if the pattern is reintroduced into a shipped
 > policy. See [GHSA-hm46-7j72-rpv9](https://github.com/ScopeBlind/scopeblind-gateway/security/advisories/GHSA-hm46-7j72-rpv9).
 
-Ready-to-use Cedar packs ship in `policies/cedar/` (Clinejection / CVE-2025-6514,
-Terraform destroy, secret-file exfiltration, spending authority).
+### Starter policy packs
+
+Most teams should not write Cedar from scratch on day one. Install a starter
+pack, run in shadow mode, inspect receipts, then tighten or enforce:
+
+```bash
+npx protect-mcp policy-packs list
+npx protect-mcp policy-packs show secrets-safe
+npx protect-mcp policy-packs install filesystem-safe --dir ./cedar
+npx protect-mcp policy-packs install all --dir ./cedar
+npx protect-mcp serve --cedar ./cedar
+```
+
+Built-in packs:
+
+- `filesystem-safe`: destructive file actions and secret-like path reads.
+- `git-safe`: force pushes, hard resets, destructive cleanup, repo deletion.
+- `email-safe`: allow drafting, block unattended sends.
+- `database-safe`: read-oriented DB posture, block write/admin SQL.
+- `cloud-spend-safe`: obvious cloud spend creation and infrastructure destruction.
+- `secrets-safe`: common file, env, shell, and cloud secret exfiltration.
+- `finance-mandate-safe`: restricted-list and concentration breaches in booking flows.
 
 ## Verify a receipt
 
@@ -190,6 +331,13 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 |---------|-------------|
 | `serve` | Start the HTTP hook server for Claude Code (port 9377). `--enforce` runs the restraint self-test first; `--cedar <dir>` and `--policy <path>` select the policy. |
 | `init` | Generate an Ed25519 keypair (`keys/gateway.json`), a config template, and a sample policy. |
+| `wrap` | Print a protected MCP command or patch Claude Desktop MCP servers. Dry-run by default; use `--write` to update Claude Desktop config. |
+| `dashboard` | Start a local-only dashboard on `127.0.0.1` showing tool inventory, risk, policy coverage, exact-action approvals, receipt chains, and audit export. |
+| `recommend` | Draft a reviewable JSON policy from observed local calls. Dry-run by default; use `--write` to create `protect-mcp.recommended.json`. |
+| `registry` | Create an org identity, anchor receipt digests, and write a static verifier page. Hosted mode uploads digests only. |
+| `killer-demo` | Generate a complete shadow-mode to policy to approval to signed-receipt demo pack. |
+| `verify-disclosure` | Verify a `scopeblind.selective_disclosure.v0` package and explain disclosed versus hidden fields. |
+| `policy-packs` | List, inspect, and install starter Cedar policy packs. |
 | `evaluate` | Evaluate one tool call against a Cedar policy (PreToolUse gate). Exit 2 = deny (fail-closed), exit 0 = allow. |
 | `sign` | Sign one tool call into a receipt (PostToolUse). Best-effort: records an honest unsigned line if no key. |
 | `simulate` | Dry-run a policy against a recorded decision log to see what it would have blocked. |

@@ -16,11 +16,18 @@ export { initSigning, signDecision, getSignerInfo, isSigningEnabled } from './si
 
 // ── Commitment-mode signing (v0.6.0+) ──────────────────────────
 // draft-farley-acta-signed-receipts-01 §commitment-mode
-export { signCommittedDecision, discloseField } from './signing-committed.js';
+export {
+  createSelectiveDisclosurePackage,
+  signCommittedDecision,
+  discloseField,
+  verifySelectiveDisclosurePackage,
+} from './signing-committed.js';
 export type {
   CommittedFieldOpening,
   CommittedSignResult,
   MinimalDisclosure,
+  SelectiveDisclosurePackageV0,
+  SelectiveDisclosureVerification,
 } from './signing-committed.js';
 
 // ── External PDP (BYOPE) ───────────────────────────────────────
@@ -63,6 +70,28 @@ export type { McpToolDescription, CedarSchemaResult, SchemaGeneratorConfig } fro
 export { evaluateCedar, loadCedarPolicies, isCedarAvailable, runEvaluatorSelfTest, policySetFromSource } from './cedar-evaluator.js';
 export type { CedarPolicySet, CedarEvalRequest, CedarSchema, CedarEvalOptions, SelfTestReport, SelfTestCase } from './cedar-evaluator.js';
 export type { HookPattern } from './hook-patterns.js';
+
+// ── Starter Policy Packs ─────────────────────────────────────
+export { POLICY_PACKS, getPolicyPack, policyPackIds } from './policy-packs.js';
+export type { PolicyPack } from './policy-packs.js';
+
+// ── Real Connector Pilots ─────────────────────────────────────
+export {
+  CONNECTOR_PILOTS,
+  connectorDoctor,
+  connectorDirectory,
+  connectorPilotIds,
+  getConnectorPilot,
+  readInstalledConnectorPilots,
+  writeConnectorPilots,
+} from './connector-pilots.js';
+export type {
+  ConnectorAction,
+  ConnectorEnvVar,
+  ConnectorPilot,
+  ConnectorPilotId,
+  InstalledConnectorPilot,
+} from './connector-pilots.js';
 
 // ── Types ───────────────────────────────────────────────────────
 export type {

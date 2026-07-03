@@ -13,6 +13,9 @@
  *  - delete_file  (destructive, blocked by default policy)
  *  - web_search   (rate-limited)
  *  - deploy       (high-privilege)
+ *  - github_create_pr (source-control mutation)
+ *  - send_email   (external communication)
+ *  - pms_book_fill (mock portfolio-management booking)
  */
 
 import { createInterface } from 'node:readline';
@@ -76,6 +79,48 @@ const TOOLS = [
       required: ['environment'],
     },
   },
+  {
+    name: 'github_create_pr',
+    description: 'Create a GitHub pull request',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repo: { type: 'string', description: 'Repository name' },
+        branch: { type: 'string', description: 'Source branch' },
+        title: { type: 'string', description: 'Pull request title' },
+      },
+      required: ['repo', 'branch', 'title'],
+    },
+  },
+  {
+    name: 'send_email',
+    description: 'Send an email',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        to: { type: 'string', description: 'Recipient email address' },
+        subject: { type: 'string', description: 'Subject line' },
+        body: { type: 'string', description: 'Message body' },
+      },
+      required: ['to', 'subject'],
+    },
+  },
+  {
+    name: 'pms_book_fill',
+    description: 'Book a fill into the mock portfolio management system',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account: { type: 'string', description: 'Portfolio or fund account' },
+        symbol: { type: 'string', description: 'Instrument symbol' },
+        side: { type: 'string', enum: ['BUY', 'SELL'] },
+        quantity: { type: 'number' },
+        price: { type: 'number' },
+        strategy: { type: 'string' },
+      },
+      required: ['account', 'symbol', 'side', 'quantity', 'price'],
+    },
+  },
 ];
 
 function handleRequest(request: JsonRpcRequest): string {
@@ -125,6 +170,15 @@ function handleRequest(request: JsonRpcRequest): string {
         break;
       case 'deploy':
         resultText = `[demo] Deployed to ${args.environment || 'staging'}${args.reason ? ` (reason: ${args.reason})` : ''}`;
+        break;
+      case 'github_create_pr':
+        resultText = `[demo] Created PR in ${args.repo || 'scopeblind/demo'} from ${args.branch || 'agent/demo'}: ${args.title || 'Agent change'}`;
+        break;
+      case 'send_email':
+        resultText = `[demo] Drafted email to ${args.to || 'pm@example.com'}: ${args.subject || 'Agent update'}`;
+        break;
+      case 'pms_book_fill':
+        resultText = `[demo] Booked ${args.side || 'BUY'} ${args.quantity || 0} ${args.symbol || 'AAPL'} @ ${args.price || 0} into ${args.account || 'Demo Fund'} (${args.strategy || 'Unassigned'})`;
         break;
       default:
         resultText = `[demo] Unknown tool: ${toolName}`;
@@ -199,6 +253,33 @@ export function createSandboxServer() {
 
   server.tool('deploy', 'Deploy the application to production', { environment: z.enum(['staging', 'production']).describe('Target environment'), reason: z.string().optional().describe('Deployment reason') },
     async (args: { environment: string; reason?: string }) => ({ content: [{ type: 'text' as const, text: `[demo] Deployed to ${args.environment}` }] }));
+
+  server.tool('github_create_pr', 'Create a GitHub pull request', {
+    repo: z.string(),
+    branch: z.string(),
+    title: z.string(),
+  }, async (args: { repo: string; branch: string; title: string }) => ({
+    content: [{ type: 'text' as const, text: `[demo] PR created in ${args.repo} from ${args.branch}: ${args.title}` }],
+  }));
+
+  server.tool('send_email', 'Send an email', {
+    to: z.string(),
+    subject: z.string(),
+    body: z.string().optional(),
+  }, async (args: { to: string; subject: string; body?: string }) => ({
+    content: [{ type: 'text' as const, text: `[demo] Email prepared for ${args.to}: ${args.subject}` }],
+  }));
+
+  server.tool('pms_book_fill', 'Book a fill into a mock PMS', {
+    account: z.string(),
+    symbol: z.string(),
+    side: z.enum(['BUY', 'SELL']),
+    quantity: z.number(),
+    price: z.number(),
+    strategy: z.string().optional(),
+  }, async (args: { account: string; symbol: string; side: 'BUY' | 'SELL'; quantity: number; price: number; strategy?: string }) => ({
+    content: [{ type: 'text' as const, text: `[demo] Booked ${args.side} ${args.quantity} ${args.symbol} @ ${args.price} into ${args.account}` }],
+  }));
 
   return server;
 }
