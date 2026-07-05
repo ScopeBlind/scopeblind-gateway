@@ -65,7 +65,7 @@ export async function startHttpTransport(options: HttpTransportOptions): Promise
       res.end(JSON.stringify({
         status: 'ok',
         server: 'protect-mcp',
-        version: '0.4.0',
+        version: process.env.PROTECT_MCP_VERSION || 'unknown',
         transport: 'streamable-http',
         mode: config.policy ? (config.enforce ? 'enforce' : 'shadow') : 'shadow',
         wrapping: serverCommand.join(' '),

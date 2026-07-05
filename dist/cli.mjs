@@ -11,11 +11,11 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-36UID5WY.mjs";
+} from "./chunk-JCMDLN5I.mjs";
 import {
   ProtectGateway,
   validateCredentials
-} from "./chunk-UBZJ3VI2.mjs";
+} from "./chunk-VTPZ4G5I.mjs";
 import {
   buildActionReadback,
   evaluateCedar,
@@ -26,7 +26,7 @@ import {
   policySetFromSource,
   runEvaluatorSelfTest,
   signDecision
-} from "./chunk-D2RDY2JR.mjs";
+} from "./chunk-WIPWNWMJ.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/cli.ts
@@ -36,7 +36,7 @@ import { basename as basenameCli, dirname as dirnameCli, join as joinCli, resolv
 import { homedir as homedirCli } from "os";
 function printHelp() {
   process.stderr.write(`
-protect-mcp \u2014 Enterprise security gateway for MCP servers & Claude Code hooks
+protect-mcp: Enterprise security gateway for MCP servers & Claude Code hooks
 
 Usage:
   protect-mcp [options] -- <command> [args...]
@@ -59,6 +59,7 @@ Usage:
   protect-mcp status [--dir <path>]
   protect-mcp digest [--today] [--dir <path>]
   protect-mcp receipts [--last <n>] [--dir <path>]
+  protect-mcp record [--dir <path>] [--no-open]
   protect-mcp bundle [--output <path>] [--dir <path>]
   protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]
   protect-mcp report [--period <days>d] [--format md|json] [--output <path>] [--dir <path>]
@@ -96,6 +97,7 @@ Commands:
   status            Show tool call statistics from the local decision log
   digest            Generate a human-readable summary of agent activity
   receipts          Show recent persisted signed receipts
+  record            Open a local, searchable view of your record in the browser
   bundle            Export an offline-verifiable audit bundle
 
 Examples:
@@ -194,7 +196,7 @@ async function handleInit(argv) {
   let keypair;
   {
     const { randomBytes } = await import("crypto");
-    const { ed25519 } = await import("./ed25519-DZMMNNVE.mjs");
+    const { ed25519 } = await import("./ed25519-BSHMMVNX.mjs");
     const { bytesToHex } = await import("./utils-6AYZFE5A.mjs");
     const privateKey = randomBytes(32);
     const publicKey = ed25519.getPublicKey(privateKey);
@@ -1942,6 +1944,167 @@ ${bold("\u{1F6E1}\uFE0F Recent Receipts")} (last ${recent.length})
   process.stdout.write(`
 `);
 }
+var _pkgV = null;
+async function pkgVersion() {
+  if (_pkgV) return _pkgV;
+  let v = "0.0.0";
+  try {
+    const { readFileSync, existsSync, realpathSync } = await import("fs");
+    const { dirname, join, resolve } = await import("path");
+    let base = "";
+    try {
+      base = dirname(realpathSync(resolve(process.argv[1] || "")));
+    } catch {
+    }
+    const candidates = [
+      base ? join(base, "..", "package.json") : "",
+      base ? join(base, "package.json") : ""
+    ].filter(Boolean);
+    for (const p of candidates) {
+      if (existsSync(p)) {
+        const parsed = JSON.parse(readFileSync(p, "utf-8"));
+        if (parsed && parsed.name === "protect-mcp" && parsed.version) {
+          v = parsed.version;
+          break;
+        }
+      }
+    }
+  } catch {
+  }
+  _pkgV = v;
+  return v;
+}
+function mapRecordEntry(e) {
+  const p = e && e.payload && typeof e.payload === "object" ? e.payload : e;
+  const dec = String(p.decision || e.decision || "").toLowerCase();
+  const verdict = /den|block|reject|refus/.test(dec) ? "blocked" : /ask|approv|hold|escal|review|pending/.test(dec) ? "held" : "allowed";
+  const tsRaw = e.issued_at || e.timestamp || p.timestamp || p.issued_at;
+  const ms = typeof tsRaw === "number" ? tsRaw : typeof tsRaw === "string" ? Date.parse(tsRaw) : NaN;
+  const ts = isFinite(ms) ? new Date(ms).toISOString() : "";
+  const tool = String(p.tool || e.tool || "action");
+  const reason = String(p.reason_code || e.reason_code || p.policy_engine || "signed");
+  const hook = String(p.hook_event || e.hook_event || "");
+  const signed = !!(e.signature || e.sig || e.receipt_hash || typeof e.type === "string" && e.type.indexOf("receipt") >= 0);
+  let digest = "";
+  if (e.receipt_hash) digest = String(e.receipt_hash);
+  else if (e.digest) digest = String(e.digest);
+  else if (p.payload_digest && p.payload_digest.output_hash) digest = String(p.payload_digest.output_hash);
+  return { ts, tool, verdict, reason, hook, signed, id: String(e.request_id || p.request_id || ""), digest };
+}
+async function handleRecord(argv) {
+  const { readFileSync, existsSync, writeFileSync } = await import("fs");
+  const { join } = await import("path");
+  const osMod = await import("os");
+  const cp = await import("child_process");
+  let dir = process.cwd();
+  const di = argv.indexOf("--dir");
+  if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
+  const recPath = join(dir, ".protect-mcp-receipts.jsonl");
+  const logPath = join(dir, ".protect-mcp-log.jsonl");
+  const chosen = existsSync(recPath) ? recPath : existsSync(logPath) ? logPath : null;
+  if (!chosen) {
+    process.stderr.write(`
+${bold("protect-mcp record")}
+
+No record found in ${dir}.
+Start the gate with ${bold("npx protect-mcp serve")}, use your agent, then run this again.
+
+`);
+    process.exit(0);
+    return;
+  }
+  const raw = readFileSync(chosen, "utf-8");
+  const recs = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+    try {
+      return JSON.parse(l);
+    } catch {
+      return null;
+    }
+  }).filter((x) => x !== null).map(mapRecordEntry);
+  const meta = { file: chosen, signed: chosen === recPath, count: recs.length };
+  const html = RECORD_HTML.replace("__DATA__", () => JSON.stringify(recs)).replace("__META__", () => JSON.stringify(meta));
+  const out = join(osMod.tmpdir(), "protect-mcp-record-" + Date.now() + ".html");
+  writeFileSync(out, html);
+  if (!argv.includes("--no-open")) {
+    const platform = process.platform;
+    const opener = platform === "darwin" ? "open" : platform === "win32" ? "cmd" : "xdg-open";
+    const openArgs = platform === "win32" ? ["/c", "start", "", out] : [out];
+    try {
+      const child = cp.spawn(opener, openArgs, { stdio: "ignore", detached: true });
+      child.unref();
+    } catch {
+    }
+  }
+  process.stdout.write(`
+${bold("\u{1F6E1}\uFE0F  Your record")} ${dim("\xB7")} ${recs.length} decision${recs.length === 1 ? "" : "s"}, all on this machine
+`);
+  if (!meta.signed) process.stdout.write(`  ${dim("(decision log; signed receipts appear in .protect-mcp-receipts.jsonl once signing is on)")}
+`);
+  const fileUrl = "file://" + encodeURI(out);
+  if (process.stdout.isTTY) {
+    process.stdout.write(`  Opened in your browser. If it did not open, click: \x1B]8;;${fileUrl}\x1B\\${bold("your record")}\x1B]8;;\x1B\\
+
+`);
+  } else {
+    process.stdout.write(`  Opened in your browser. If it did not open, open: ${out}
+
+`);
+  }
+  process.exit(0);
+}
+var RECORD_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>protect-mcp record</title>
+<style>
+:root{--paper:#f6f4ef;--ink:#1b1815;--soft:#524d46;--faint:#8a837a;--line:#ddd7c9;--g:#3f6146;--gb:#e7eee3;--a:#8f6216;--ab:#f2e8d3;--r:#7d3535;--rb:#f2e0dc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1000px;margin:0 auto;padding:26px 22px 60px}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:-.012em}
+.meta{color:var(--faint);font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.bar{margin:18px 0 12px}
+input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9px;background:#fff;font:inherit}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{cursor:pointer;font-size:12px;padding:3px 10px;border-radius:100px;border:1px solid var(--line);background:#fff;color:var(--soft)}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.count{color:var(--faint);font-size:12px;font-family:ui-monospace,Menlo,monospace;margin-bottom:8px}
+.row{border:1px solid var(--line);border-radius:9px;background:#fcfbf7;padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.top{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.pill{font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px}
+.pill.allowed{background:var(--gb);color:var(--g)}.pill.held{background:var(--ab);color:var(--a)}.pill.blocked{background:var(--rb);color:var(--r)}
+.tag{font-size:11px;padding:1px 7px;border-radius:100px;background:var(--paper);border:1px solid var(--line);color:var(--faint)}
+.when{margin-left:auto;font-size:12px;color:var(--faint);font-family:ui-monospace,Menlo,monospace}
+.det{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;color:var(--soft);font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all;display:none}
+.row.open .det{display:block}
+.foot{margin-top:22px;color:var(--faint);font-size:12px;line-height:1.6;border-top:1px solid var(--line);padding-top:14px}
+.foot b{color:var(--soft)}
+</style></head><body><div class="wrap">
+<h1>Your record</h1>
+<div class="meta" id="meta"></div>
+<div class="bar"><input id="q" placeholder="Search your record: tool, reason, verdict"></div>
+<div class="chips" id="chips"></div>
+<div class="count" id="count"></div>
+<div id="list"></div>
+<div class="foot">Signed decisions from your own gate. This page is local and nothing was uploaded. Verify authoritatively with <b>npx protect-mcp receipts</b> or the open verifier. protect-mcp governs proposed actions before they run.</div>
+</div>
+<script>
+var RECORDS=__DATA__;var META=__META__;var Q="",ACT={};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function vlabel(v){return v==="allowed"?"Allowed":v==="held"?"Held":"Blocked"}
+function when(ts){if(!ts)return"";var d=new Date(ts);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}
+function fvals(key){var m={};RECORDS.forEach(function(r){var v=key==="Decision"?vlabel(r.verdict):r[key.toLowerCase()];if(v){m[v]=(m[v]||0)+1}});return Object.keys(m).sort(function(a,b){return m[b]-m[a]}).slice(0,8).map(function(v){return[v,m[v]]})}
+function match(r){if(ACT.Decision&&vlabel(r.verdict)!==ACT.Decision)return false;if(ACT.Tool&&r.tool!==ACT.Tool)return false;if(ACT.Reason&&r.reason!==ACT.Reason)return false;if(Q){var h=(r.tool+" "+r.reason+" "+vlabel(r.verdict)+" "+r.hook).toLowerCase();if(h.indexOf(Q)<0)return false}return true}
+function render(){
+document.getElementById("meta").textContent=META.count+" decisions from "+META.file+(META.signed?" (signed)":" (decision log)")+" - all local";
+var chips="";["Decision","Tool","Reason"].forEach(function(key){fvals(key).forEach(function(p){var on=ACT[key]===p[0];chips+='<span class="chip'+(on?" on":"")+'" data-k="'+key+'" data-v="'+esc(p[0])+'">'+esc(p[0])+" "+p[1]+"</span>"})});
+document.getElementById("chips").innerHTML=chips;
+var rows=RECORDS.filter(match);
+document.getElementById("count").textContent=rows.length+" of "+RECORDS.length+" records";
+var html="";rows.slice(0,800).forEach(function(r){html+='<div class="row"><div class="top"><span class="pill '+r.verdict+'">'+vlabel(r.verdict)+"</span><b>"+esc(r.tool)+'</b><span class="tag">'+esc(r.reason)+"</span>"+(r.hook?'<span class="tag">'+esc(r.hook)+"</span>":"")+'<span class="tag">'+(r.signed?"signed":"log")+'</span><span class="when">'+esc(when(r.ts))+'</span></div><div class="det">'+esc(JSON.stringify(r,null,2))+"</div></div>"});
+document.getElementById("list").innerHTML=html||'<p style="color:#8a837a">No records match.</p>'}
+document.getElementById("q").addEventListener("input",function(e){Q=e.target.value.toLowerCase().trim();render()});
+document.getElementById("chips").addEventListener("click",function(e){var c=e.target.closest(".chip");if(!c)return;var k=c.getAttribute("data-k"),v=c.getAttribute("data-v");ACT[k]=ACT[k]===v?undefined:v;render()});
+document.getElementById("list").addEventListener("click",function(e){var row=e.target.closest(".row");if(row)row.classList.toggle("open")});
+render();
+</script></body></html>`;
 async function handleBundle(argv) {
   const { readFileSync, writeFileSync, existsSync } = await import("fs");
   const { join } = await import("path");
@@ -2063,7 +2226,7 @@ ${bold("protect-mcp connect")}
 `));
     process.stderr.write(`    Receipts will be uploaded automatically.
 `);
-    process.stderr.write(dim(`    Free tier: 20,000 receipts/month \u2014 no credit card required.
+    process.stderr.write(dim(`    Free tier: 20,000 receipts/month, no credit card required.
 `));
     process.stderr.write(`
 ${"\u2500".repeat(50)}
@@ -2106,7 +2269,7 @@ ${bold("protect-mcp quickstart")}
   const { randomBytes } = await import("crypto");
   let keypair;
   try {
-    const { ed25519 } = await import("./ed25519-DZMMNNVE.mjs");
+    const { ed25519 } = await import("./ed25519-BSHMMVNX.mjs");
     const { bytesToHex } = await import("./utils-6AYZFE5A.mjs");
     const privateKey = randomBytes(32);
     const publicKey = ed25519.getPublicKey(privateKey);
@@ -2161,7 +2324,7 @@ ${bold("protect-mcp quickstart")}
 `));
       process.stdout.write(`    Receipts will be uploaded automatically.
 `);
-      process.stdout.write(dim(`    Free tier: 20,000 receipts/month \u2014 no credit card required.
+      process.stdout.write(dim(`    Free tier: 20,000 receipts/month, no credit card required.
 `));
       process.stdout.write(`
 `);
@@ -2321,7 +2484,7 @@ ${bold("protect-mcp registry status")}
 async function handleKillerDemo(argv) {
   const { mkdtempSync } = await import("fs");
   const { tmpdir } = await import("os");
-  const { ed25519 } = await import("./ed25519-DZMMNNVE.mjs");
+  const { ed25519 } = await import("./ed25519-BSHMMVNX.mjs");
   const { bytesToHex } = await import("./utils-6AYZFE5A.mjs");
   const { randomBytes } = await import("crypto");
   const artifacts = await import("@veritasacta/artifacts");
@@ -2329,7 +2492,7 @@ async function handleKillerDemo(argv) {
     createSelectiveDisclosurePackage,
     signCommittedDecision,
     verifySelectiveDisclosurePackage
-  } = await import("./signing-committed-MMLJ6OGG.mjs");
+  } = await import("./signing-committed-QXCW24RF.mjs");
   const registryMod = await import("./receipt-registry-6CAOY6RP.mjs");
   const dir = resolveCli(flagValue(argv, "--dir") || mkdtempSync(joinCli(tmpdir(), "scopeblind-killer-demo-")));
   mkdirSyncCli(dir, { recursive: true });
@@ -2598,7 +2761,7 @@ async function handleVerifyDisclosure(argv) {
     process.stderr.write("Usage: protect-mcp verify-disclosure --receipt <committed-receipt.json> --disclosure <selective-disclosure.json>\\n");
     process.exit(1);
   }
-  const { verifySelectiveDisclosurePackage } = await import("./signing-committed-MMLJ6OGG.mjs");
+  const { verifySelectiveDisclosurePackage } = await import("./signing-committed-QXCW24RF.mjs");
   const receipt = JSON.parse(readFileSyncCli(resolveCli(receiptPath), "utf-8"));
   const disclosure = JSON.parse(readFileSyncCli(resolveCli(disclosurePath), "utf-8"));
   const result = verifySelectiveDisclosurePackage(receipt, disclosure);
@@ -2910,7 +3073,7 @@ ${bold("protect-mcp trace")}
     process.stdout.write(`${prefix}${connector}${typeEmoji} ${bold(type)} ${dim(shortId)} ${dim(time)}
 `);
     if (rendered.has(id)) {
-      process.stdout.write(`${prefix}${childPrefix}${dim("(cycle \u2014 already rendered)")}
+      process.stdout.write(`${prefix}${childPrefix}${dim("(cycle: already rendered)")}
 `);
       return;
     }
@@ -3094,7 +3257,7 @@ ${bold("protect-mcp init-hooks")}
     if (!existsSync(keysDir)) mkdirSync(keysDir, { recursive: true });
     const { randomBytes: rb } = await import("crypto");
     try {
-      const { ed25519 } = await import("./ed25519-DZMMNNVE.mjs");
+      const { ed25519 } = await import("./ed25519-BSHMMVNX.mjs");
       const { bytesToHex } = await import("./utils-6AYZFE5A.mjs");
       const privateKey = rb(32);
       const publicKey = ed25519.getPublicKey(privateKey);
@@ -3113,7 +3276,7 @@ ${bold("protect-mcp init-hooks")}
 
 `);
     } catch {
-      process.stdout.write(`  ${yellow("\u26A0")} Could not generate Ed25519 keys \u2014 signing disabled
+      process.stdout.write(`  ${yellow("\u26A0")} Could not generate Ed25519 keys, signing disabled
 
 `);
     }
@@ -3184,13 +3347,14 @@ ${bold("protect-mcp init-hooks")}
   process.stdout.write(`     Every tool call will be receipted automatically.
 
 `);
-  process.stdout.write(`  3. Check receipts:
+  process.stdout.write(`  3. See your record: a searchable view of every decision.
 `);
-  process.stdout.write(`     ${dim(`curl http://127.0.0.1:${port}/receipts/latest`)}
+  process.stdout.write(`     ${dim(`npx protect-mcp record`)}
 `);
-  process.stdout.write(`     ${dim(`npx protect-mcp receipts`)}
+  process.stdout.write(`     ${dim(`Everything stays on this machine. Nothing is uploaded.`)}
+
 `);
-  process.stdout.write(`     Or use ${dim("/verify-receipt")} inside Claude Code.
+  process.stdout.write(`     Prefer the terminal? ${dim(`npx protect-mcp receipts`)}, or ${dim("/verify-receipt")} in Claude Code.
 
 `);
   process.stdout.write(`  4. View policy suggestions:
@@ -3200,9 +3364,9 @@ ${bold("protect-mcp init-hooks")}
 `);
   process.stdout.write(`${bold("Key facts:")}
 `);
-  process.stdout.write(`  \u2022 deny decisions are ${bold("AUTHORITATIVE")} \u2014 cannot be overridden
+  process.stdout.write(`  \u2022 deny decisions are ${bold("AUTHORITATIVE")}: they cannot be overridden
 `);
-  process.stdout.write(`  \u2022 PostToolUse runs ${bold("async")} \u2014 zero latency impact on tool execution
+  process.stdout.write(`  \u2022 PostToolUse runs ${bold("async")}, so there is zero latency impact on tool execution
 `);
   process.stdout.write(`  \u2022 Receipts are Ed25519-signed and append-only
 `);
@@ -3221,15 +3385,7 @@ async function sendInstallTelemetry() {
     if (existsSync(markerFile) || process.env.PROTECT_MCP_TELEMETRY === "off") {
       return;
     }
-    let version = "unknown";
-    try {
-      const thisDir = dirname(fileURLToPath(import.meta.url));
-      const pkgPath = join(thisDir, "..", "package.json");
-      if (existsSync(pkgPath)) {
-        version = JSON.parse(readFileSync(pkgPath, "utf-8")).version;
-      }
-    } catch {
-    }
+    const version = await pkgVersion();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3e3);
     fetch("https://api.scopeblind.com/telemetry/install", {
@@ -3403,6 +3559,7 @@ async function main() {
   sendInstallTelemetry().catch(() => {
   });
   const args = process.argv.slice(2);
+  process.env.PROTECT_MCP_VERSION = process.env.PROTECT_MCP_VERSION || await pkgVersion();
   if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
     printHelp();
     process.exit(0);
@@ -3440,6 +3597,10 @@ async function main() {
     }
     await startHookServer({ port, policyPath: policyPath2, cedarDir: cedarDir2, enforce: enforce2, verbose: verbose2 });
     return;
+  }
+  if (args[0] === "record") {
+    await handleRecord(args.slice(1));
+    process.exit(0);
   }
   if (args[0] === "init-hooks") {
     await handleInitHooks(args.slice(1));
@@ -3629,7 +3790,7 @@ async function main() {
   if (useHttp) {
     const portIdx = args.indexOf("--port");
     const httpPort = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 3e3;
-    const { startHttpTransport } = await import("./http-transport-4GMMRPW7.mjs");
+    const { startHttpTransport } = await import("./http-transport-JBORN27G.mjs");
     startHttpTransport({ port: httpPort, config, serverCommand: childCommand });
     return;
   }
@@ -3698,7 +3859,7 @@ async function handleDoctor() {
     process.stdout.write(green2(`Node.js ${nodeVersion}
 `));
   } else {
-    process.stdout.write(red2(`Node.js ${nodeVersion} \u2014 requires >= 18
+    process.stdout.write(red2(`Node.js ${nodeVersion}, requires >= 18
 `));
     issues++;
   }
@@ -3709,7 +3870,7 @@ async function handleDoctor() {
       if (config.signing?.private_key || config.signing?.key_file) {
         process.stdout.write(green2("Signing keys configured\n"));
       } else {
-        process.stdout.write(yellow2("Config found but no signing keys \u2014 run: protect-mcp init\n"));
+        process.stdout.write(yellow2("Config found but no signing keys. Run: protect-mcp init\n"));
         issues++;
       }
     } catch {
@@ -3717,7 +3878,7 @@ async function handleDoctor() {
       issues++;
     }
   } else {
-    process.stdout.write(yellow2("No scopeblind.config.json \u2014 run: protect-mcp init\n"));
+    process.stdout.write(yellow2("No scopeblind.config.json. Run: protect-mcp init\n"));
   }
   let policyFound = false;
   for (const dir of ["cedar", "policies", "."]) {
@@ -3742,14 +3903,14 @@ async function handleDoctor() {
     }
   }
   if (!policyFound) {
-    process.stdout.write(yellow2("No policy files found \u2014 running in shadow mode (allow all)\n"));
+    process.stdout.write(yellow2("No policy files found, running in shadow mode (allow all)\n"));
   }
   try {
     const cedarAvailable = await isCedarAvailable();
     if (cedarAvailable) {
       process.stdout.write(green2("Cedar WASM engine available\n"));
     } else {
-      process.stdout.write(dim2("  Cedar WASM not installed \u2014 install: npm install @cedar-policy/cedar-wasm\n"));
+      process.stdout.write(dim2("  Cedar WASM not installed. Install: npm install @cedar-policy/cedar-wasm\n"));
     }
   } catch {
     process.stdout.write(dim2("  Cedar WASM not installed\n"));
@@ -3765,7 +3926,7 @@ async function handleDoctor() {
       process.stdout.write(green2("Decision log exists\n"));
     }
   } else {
-    process.stdout.write(dim2("  No decision log yet \u2014 will be created on first tool call\n"));
+    process.stdout.write(dim2("  No decision log yet, will be created on first tool call\n"));
   }
   if (existsSync(receiptFile)) {
     try {
@@ -3780,17 +3941,17 @@ async function handleDoctor() {
     execSync("npx @veritasacta/verify --version 2>/dev/null", { stdio: "pipe", timeout: 1e4 });
     process.stdout.write(green2("Verifier available: @veritasacta/verify\n"));
   } catch {
-    process.stdout.write(dim2("  Verifier not cached \u2014 install: npm install -g @veritasacta/verify\n"));
+    process.stdout.write(dim2("  Verifier not cached. Install: npm install -g @veritasacta/verify\n"));
   }
   try {
     const res = await fetch("https://api.scopeblind.com/health", { signal: AbortSignal.timeout(5e3) });
     if (res.ok) {
       process.stdout.write(green2("ScopeBlind API reachable\n"));
     } else {
-      process.stdout.write(yellow2("ScopeBlind API returned non-200 \u2014 receipts will be stored locally\n"));
+      process.stdout.write(yellow2("ScopeBlind API returned non-200, receipts will be stored locally\n"));
     }
   } catch {
-    process.stdout.write(dim2("  ScopeBlind API not reachable \u2014 offline mode (receipts stored locally)\n"));
+    process.stdout.write(dim2("  ScopeBlind API not reachable, offline mode (receipts stored locally)\n"));
   }
   process.stdout.write("\nRestraint self-test:\n");
   try {

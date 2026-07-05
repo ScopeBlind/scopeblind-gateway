@@ -28476,8 +28476,8 @@ var require_resolve = __commonJS({
       }
       return count;
     }
-    function getFullPath(resolver, id = "", normalize) {
-      if (normalize !== false)
+    function getFullPath(resolver, id = "", normalize2) {
+      if (normalize2 !== false)
         id = normalizeId(id);
       const p = resolver.parse(id);
       return _getFullPath(resolver, p);
@@ -29817,7 +29817,7 @@ var require_fast_uri = __commonJS({
     "use strict";
     var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizeComponentEncoding, isIPv4, nonSimpleDomain } = require_utils();
     var { SCHEMES, getSchemeHandler } = require_schemes();
-    function normalize(uri, options) {
+    function normalize2(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
         serialize(parse(uri, options), options);
@@ -30053,7 +30053,7 @@ var require_fast_uri = __commonJS({
     }
     var fastUri = {
       SCHEMES,
-      normalize,
+      normalize: normalize2,
       resolve,
       resolveComponent,
       equal,
@@ -36227,7 +36227,7 @@ function handleHealth(res, startTime, config) {
     status: "ok",
     uptime_ms: Date.now() - startTime,
     mode: config.mode,
-    version: "0.3.1"
+    version: process.env.PROTECT_MCP_VERSION || "unknown"
   }));
 }
 function handleStatus(res, logDir) {
@@ -36999,6 +36999,12 @@ function abytes(b, ...lengths) {
   if (lengths.length > 0 && !lengths.includes(b.length))
     throw new Error("Uint8Array expected of length " + lengths + ", got length=" + b.length);
 }
+function ahash(h) {
+  if (typeof h !== "function" || typeof h.create !== "function")
+    throw new Error("Hash should be wrapped by utils.createHasher");
+  anumber(h.outputLen);
+  anumber(h.blockLen);
+}
 function aexists(instance, checkFinished = true) {
   if (instance.destroyed)
     throw new Error("Hash instance has been destroyed");
@@ -37233,6 +37239,24 @@ var SHA256_IV = /* @__PURE__ */ Uint32Array.from([
   2600822924,
   528734635,
   1541459225
+]);
+var SHA384_IV = /* @__PURE__ */ Uint32Array.from([
+  3418070365,
+  3238371032,
+  1654270250,
+  914150663,
+  2438529370,
+  812702999,
+  355462360,
+  4144912697,
+  1731405415,
+  4290775857,
+  2394180231,
+  1750603025,
+  3675008525,
+  1694076839,
+  1203062813,
+  3204075428
 ]);
 var SHA512_IV = /* @__PURE__ */ Uint32Array.from([
   1779033703,
@@ -37623,8 +37647,30 @@ var SHA512 = class extends HashMD {
     this.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
   }
 };
+var SHA384 = class extends SHA512 {
+  constructor() {
+    super(48);
+    this.Ah = SHA384_IV[0] | 0;
+    this.Al = SHA384_IV[1] | 0;
+    this.Bh = SHA384_IV[2] | 0;
+    this.Bl = SHA384_IV[3] | 0;
+    this.Ch = SHA384_IV[4] | 0;
+    this.Cl = SHA384_IV[5] | 0;
+    this.Dh = SHA384_IV[6] | 0;
+    this.Dl = SHA384_IV[7] | 0;
+    this.Eh = SHA384_IV[8] | 0;
+    this.El = SHA384_IV[9] | 0;
+    this.Fh = SHA384_IV[10] | 0;
+    this.Fl = SHA384_IV[11] | 0;
+    this.Gh = SHA384_IV[12] | 0;
+    this.Gl = SHA384_IV[13] | 0;
+    this.Hh = SHA384_IV[14] | 0;
+    this.Hl = SHA384_IV[15] | 0;
+  }
+};
 var sha256 = /* @__PURE__ */ createHasher(() => new SHA256());
 var sha512 = /* @__PURE__ */ createHasher(() => new SHA512());
+var sha384 = /* @__PURE__ */ createHasher(() => new SHA384());
 
 // node_modules/@noble/curves/esm/utils.js
 var _0n = /* @__PURE__ */ BigInt(0);
@@ -37647,6 +37693,10 @@ function _abytes2(value, length, title = "") {
     throw new Error(prefix + "expected Uint8Array" + ofLen + ", got " + got);
   }
   return value;
+}
+function numberToHexUnpadded(num) {
+  const hex = num.toString(16);
+  return hex.length & 1 ? "0" + hex : hex;
 }
 function hexToNumber(hex) {
   if (typeof hex !== "string")
@@ -37710,6 +37760,56 @@ function bitLen(n) {
   return len;
 }
 var bitMask = (n) => (_1n << BigInt(n)) - _1n;
+function createHmacDrbg(hashLen, qByteLen, hmacFn) {
+  if (typeof hashLen !== "number" || hashLen < 2)
+    throw new Error("hashLen must be a number");
+  if (typeof qByteLen !== "number" || qByteLen < 2)
+    throw new Error("qByteLen must be a number");
+  if (typeof hmacFn !== "function")
+    throw new Error("hmacFn must be a function");
+  const u8n = (len) => new Uint8Array(len);
+  const u8of = (byte) => Uint8Array.of(byte);
+  let v = u8n(hashLen);
+  let k = u8n(hashLen);
+  let i = 0;
+  const reset = () => {
+    v.fill(1);
+    k.fill(0);
+    i = 0;
+  };
+  const h = (...b) => hmacFn(k, v, ...b);
+  const reseed = (seed = u8n(0)) => {
+    k = h(u8of(0), seed);
+    v = h();
+    if (seed.length === 0)
+      return;
+    k = h(u8of(1), seed);
+    v = h();
+  };
+  const gen = () => {
+    if (i++ >= 1e3)
+      throw new Error("drbg: tried 1000 values");
+    let len = 0;
+    const out = [];
+    while (len < qByteLen) {
+      v = h();
+      const sl = v.slice();
+      out.push(sl);
+      len += v.length;
+    }
+    return concatBytes(...out);
+  };
+  const genUntil = (seed, pred) => {
+    reset();
+    reseed(seed);
+    let res = void 0;
+    while (!(res = pred(gen())))
+      reseed();
+    reset();
+    return res;
+  };
+  return genUntil;
+}
 function _validateObject(object, fields, optFields = {}) {
   if (!object || typeof object !== "object")
     throw new Error("expected valid options object");
@@ -38064,6 +38164,26 @@ function Field(ORDER, bitLenOrOpts, isLE = false, opts = {}) {
   });
   return Object.freeze(f);
 }
+function getFieldBytesLength(fieldOrder) {
+  if (typeof fieldOrder !== "bigint")
+    throw new Error("field order must be bigint");
+  const bitLength = fieldOrder.toString(2).length;
+  return Math.ceil(bitLength / 8);
+}
+function getMinHashLength(fieldOrder) {
+  const length = getFieldBytesLength(fieldOrder);
+  return length + Math.ceil(length / 2);
+}
+function mapHashToField(key, fieldOrder, isLE = false) {
+  const len = key.length;
+  const fieldLen = getFieldBytesLength(fieldOrder);
+  const minLen = getMinHashLength(fieldOrder);
+  if (len < 16 || len < minLen || len > 1024)
+    throw new Error("expected " + minLen + "-1024 bytes of input, got " + len);
+  const num = isLE ? bytesToNumberLE(key) : bytesToNumberBE(key);
+  const reduced = mod(num, fieldOrder - _1n2) + _1n2;
+  return isLE ? numberToBytesLE(reduced, fieldLen) : numberToBytesBE(reduced, fieldLen);
+}
 
 // node_modules/@noble/curves/esm/abstract/curve.js
 var _0n3 = BigInt(0);
@@ -38257,6 +38377,21 @@ var wNAF = class {
     return getW(elm) !== 1;
   }
 };
+function mulEndoUnsafe(Point, point, k1, k2) {
+  let acc = point;
+  let p1 = Point.ZERO;
+  let p2 = Point.ZERO;
+  while (k1 > _0n3 || k2 > _0n3) {
+    if (k1 & _1n3)
+      p1 = p1.add(acc);
+    if (k2 & _1n3)
+      p2 = p2.add(acc);
+    acc = acc.double();
+    k1 >>= _1n3;
+    k2 >>= _1n3;
+  }
+  return { p1, p2 };
+}
 function pippenger(c, fieldN, points, scalars) {
   validateMSMPoints(points, c);
   validateMSMScalars(scalars, fieldN);
@@ -39215,6 +39350,74 @@ function largestPowerOfTwoLessThan(n) {
   while (k * 2 < n) k *= 2;
   return k;
 }
+
+// node_modules/@noble/hashes/esm/hmac.js
+var HMAC = class extends Hash {
+  constructor(hash, _key) {
+    super();
+    this.finished = false;
+    this.destroyed = false;
+    ahash(hash);
+    const key = toBytes(_key);
+    this.iHash = hash.create();
+    if (typeof this.iHash.update !== "function")
+      throw new Error("Expected instance of class which extends utils.Hash");
+    this.blockLen = this.iHash.blockLen;
+    this.outputLen = this.iHash.outputLen;
+    const blockLen = this.blockLen;
+    const pad = new Uint8Array(blockLen);
+    pad.set(key.length > blockLen ? hash.create().update(key).digest() : key);
+    for (let i = 0; i < pad.length; i++)
+      pad[i] ^= 54;
+    this.iHash.update(pad);
+    this.oHash = hash.create();
+    for (let i = 0; i < pad.length; i++)
+      pad[i] ^= 54 ^ 92;
+    this.oHash.update(pad);
+    clean(pad);
+  }
+  update(buf) {
+    aexists(this);
+    this.iHash.update(buf);
+    return this;
+  }
+  digestInto(out) {
+    aexists(this);
+    abytes(out, this.outputLen);
+    this.finished = true;
+    this.iHash.digestInto(out);
+    this.oHash.update(out);
+    this.oHash.digestInto(out);
+    this.destroy();
+  }
+  digest() {
+    const out = new Uint8Array(this.oHash.outputLen);
+    this.digestInto(out);
+    return out;
+  }
+  _cloneInto(to) {
+    to || (to = Object.create(Object.getPrototypeOf(this), {}));
+    const { oHash, iHash, finished, destroyed, blockLen, outputLen } = this;
+    to = to;
+    to.finished = finished;
+    to.destroyed = destroyed;
+    to.blockLen = blockLen;
+    to.outputLen = outputLen;
+    to.oHash = oHash._cloneInto(to.oHash);
+    to.iHash = iHash._cloneInto(to.iHash);
+    return to;
+  }
+  clone() {
+    return this._cloneInto();
+  }
+  destroy() {
+    this.destroyed = true;
+    this.oHash.destroy();
+    this.iHash.destroy();
+  }
+};
+var hmac = (hash, key, message) => new HMAC(hash, key).update(message).digest();
+hmac.create = (hash, key) => new HMAC(hash, key);
 
 // src/commitments/primitives.ts
 function jcs(value) {
@@ -40815,7 +41018,7 @@ async function startHookServer(options = {}) {
       res.end(JSON.stringify({
         status: "ok",
         server: "protect-mcp-hooks",
-        version: "0.5.0",
+        version: process.env.PROTECT_MCP_VERSION || "unknown",
         uptime_ms: Date.now() - state.startTime,
         mode: enforce ? "enforce" : "shadow",
         policy_digest: policyDigest,
@@ -40902,9 +41105,10 @@ async function startHookServer(options = {}) {
     const pad = (s, n = 46) => s.padEnd(n);
     w(`
 `);
-    w(`  protect-mcp v0.5.4
+    w(process.env.PROTECT_MCP_VERSION ? `  protect-mcp v${process.env.PROTECT_MCP_VERSION}
+` : `  protect-mcp
 `);
-    w(`  ScopeBlind \u2014 https://scopeblind.com
+    w(`  ScopeBlind \xB7 https://scopeblind.com
 `);
     w(`
 `);
@@ -40932,7 +41136,13 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    w(`  deny is authoritative \u2014 cannot be overridden.
+    w(`  deny is authoritative: it cannot be overridden.
+`);
+    w(`
+`);
+    w(`  See your record   npx protect-mcp record
+`);
+    w(`                    a searchable view of every decision, all on this machine
 `);
     w(`
 `);
@@ -41812,6 +42022,292 @@ var defaultPermit2 = `
 // Default posture: observe all non-matching tools so the connector can be piloted in shadow mode.
 permit(principal, action == Action::"MCP::Tool::call", resource);
 `;
+var nautilusBridgePy = String.raw`#!/usr/bin/env python3
+"""
+ScopeBlind external bridge for NautilusTrader-compatible pilots.
+
+This file is intentionally outside NautilusTrader. It gives protect-mcp a stable
+JSONL command boundary for staging, approval-gated submission, cancellation, and
+event export while keeping the trading engine customer-owned.
+
+Mock mode runs without NautilusTrader installed. Real mode is enabled by setting
+NAUTILUS_BRIDGE_MODULE to "module.path:ClassName"; the class may implement:
+  submit_order(order), modify_order(order), cancel_order(order), reconcile(order),
+  export_events(since=None)
+"""
+
+from __future__ import annotations
+
+import hashlib
+import importlib
+import json
+import os
+import sys
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable
+
+
+def canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def sha256_json(value: Any) -> str:
+    return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+@dataclass
+class BridgeState:
+    root: Path = field(default_factory=lambda: Path(os.environ.get("SCOPEBLIND_NAUTILUS_STATE_DIR", ".protect-mcp/nautilus")))
+
+    def __post_init__(self) -> None:
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.orders_path.touch(exist_ok=True)
+        self.events_path.touch(exist_ok=True)
+
+    @property
+    def orders_path(self) -> Path:
+        return self.root / "orders.jsonl"
+
+    @property
+    def events_path(self) -> Path:
+        return self.root / "events.jsonl"
+
+    def append_order(self, order: dict[str, Any]) -> None:
+        with self.orders_path.open("a", encoding="utf-8") as handle:
+            handle.write(canonical_json(order) + "\n")
+
+    def append_event(self, event: dict[str, Any]) -> dict[str, Any]:
+        enriched = {
+            "event_id": event.get("event_id") or f"nt-{now_ms()}-{len(event)}",
+            "observed_at_ms": now_ms(),
+            **event,
+        }
+        enriched["event_digest"] = sha256_json(enriched)
+        with self.events_path.open("a", encoding="utf-8") as handle:
+            handle.write(canonical_json(enriched) + "\n")
+        return enriched
+
+    def events(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        with self.events_path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if line.strip():
+                    rows.append(json.loads(line))
+        return rows
+
+
+class ScopeBlindNautilusBridge:
+    def __init__(self) -> None:
+        self.state = BridgeState()
+        self.real = self._load_real_bridge()
+
+    def _load_real_bridge(self) -> Any | None:
+        target = os.environ.get("NAUTILUS_BRIDGE_MODULE")
+        if not target:
+            return None
+        module_name, _, class_name = target.partition(":")
+        if not module_name or not class_name:
+            raise ValueError("NAUTILUS_BRIDGE_MODULE must be module.path:ClassName")
+        module = importlib.import_module(module_name)
+        return getattr(module, class_name)()
+
+    def handle(self, command: dict[str, Any]) -> dict[str, Any]:
+        action = command.get("action")
+        handlers: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
+            "stage_order": self.stage_order,
+            "submit_order": self.submit_order,
+            "modify_order": self.modify_order,
+            "cancel_order": self.cancel_order,
+            "reconcile": self.reconcile,
+            "export_events": self.export_events,
+        }
+        if action not in handlers:
+            return self.error(command, "unknown_action", f"Unsupported action: {action}")
+        try:
+            return handlers[action](command)
+        except Exception as exc:
+            return self.error(command, "bridge_error", str(exc))
+
+    def require(self, command: dict[str, Any], *fields: str) -> None:
+        missing = [field for field in fields if command.get(field) in (None, "")]
+        if missing:
+            raise ValueError(f"missing required field(s): {', '.join(missing)}")
+
+    def require_approved(self, command: dict[str, Any]) -> None:
+        self.require(command, "approval_receipt")
+        if command.get("mandate_passed") is not True:
+            raise ValueError("mandate_passed must be true before live order mutation")
+
+    def stage_order(self, command: dict[str, Any]) -> dict[str, Any]:
+        self.require(command, "client_order_id", "instrument_id", "side", "quantity")
+        order = self.order_projection(command, status="staged")
+        self.state.append_order(order)
+        event = self.state.append_event({
+            "type": "scopeblind.nautilus.order_staged.v1",
+            "client_order_id": order["client_order_id"],
+            "order_digest": sha256_json(order),
+            "disclosure": "position_blind",
+        })
+        return self.ok(command, {"status": "staged", "order": order, "event": event})
+
+    def submit_order(self, command: dict[str, Any]) -> dict[str, Any]:
+        self.require_approved(command)
+        order = self.order_projection(command, status="submitted")
+        if self.real and hasattr(self.real, "submit_order"):
+            external = self.real.submit_order(order)
+        else:
+            external = {"mode": "mock", "external_order_id": f"MOCK-{order['client_order_id']}"}
+        event = self.state.append_event({
+            "type": "scopeblind.nautilus.order_submitted.v1",
+            "client_order_id": order["client_order_id"],
+            "order_digest": sha256_json(order),
+            "external_digest": sha256_json(external),
+            "disclosure": "position_blind",
+        })
+        return self.ok(command, {"status": "submitted", "order": order, "external": external, "event": event})
+
+    def modify_order(self, command: dict[str, Any]) -> dict[str, Any]:
+        self.require_approved(command)
+        self.require(command, "client_order_id")
+        if self.real and hasattr(self.real, "modify_order"):
+            external = self.real.modify_order(command)
+        else:
+            external = {"mode": "mock", "modified": command["client_order_id"]}
+        event = self.state.append_event({
+            "type": "scopeblind.nautilus.order_modified.v1",
+            "client_order_id": command["client_order_id"],
+            "command_digest": sha256_json(command),
+            "external_digest": sha256_json(external),
+            "disclosure": "position_blind",
+        })
+        return self.ok(command, {"status": "modified", "external": external, "event": event})
+
+    def cancel_order(self, command: dict[str, Any]) -> dict[str, Any]:
+        self.require_approved(command)
+        self.require(command, "client_order_id")
+        if self.real and hasattr(self.real, "cancel_order"):
+            external = self.real.cancel_order(command)
+        else:
+            external = {"mode": "mock", "cancelled": command["client_order_id"]}
+        event = self.state.append_event({
+            "type": "scopeblind.nautilus.order_cancelled.v1",
+            "client_order_id": command["client_order_id"],
+            "command_digest": sha256_json(command),
+            "external_digest": sha256_json(external),
+            "disclosure": "position_blind",
+        })
+        return self.ok(command, {"status": "cancelled", "external": external, "event": event})
+
+    def reconcile(self, command: dict[str, Any]) -> dict[str, Any]:
+        self.require(command, "client_order_id")
+        if self.real and hasattr(self.real, "reconcile"):
+            external = self.real.reconcile(command)
+        else:
+            external = {"mode": "mock", "client_order_id": command["client_order_id"], "state": "accepted"}
+        event = self.state.append_event({
+            "type": "scopeblind.nautilus.reconciled.v1",
+            "client_order_id": command["client_order_id"],
+            "external_digest": sha256_json(external),
+            "disclosure": "position_blind",
+        })
+        return self.ok(command, {"status": "reconciled", "external": external, "event": event})
+
+    def export_events(self, command: dict[str, Any]) -> dict[str, Any]:
+        if self.real and hasattr(self.real, "export_events"):
+            external_events = self.real.export_events(command.get("since"))
+        else:
+            external_events = self.state.events()
+        return self.ok(command, {
+            "status": "exported",
+            "event_count": len(external_events),
+            "commitment_root": sha256_json(external_events),
+            "events": external_events,
+        })
+
+    def order_projection(self, command: dict[str, Any], status: str) -> dict[str, Any]:
+        return {
+            "client_order_id": command["client_order_id"],
+            "instrument_id": command["instrument_id"],
+            "side": command["side"],
+            "quantity": command["quantity"],
+            "price": command.get("price"),
+            "time_in_force": command.get("time_in_force", "GTC"),
+            "strategy_id": command.get("strategy_id"),
+            "mandate_digest": command.get("mandate_digest"),
+            "approval_receipt": command.get("approval_receipt"),
+            "status": status,
+            "created_at_ms": now_ms(),
+        }
+
+    def ok(self, command: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "ok": True,
+            "bridge": "scopeblind.nautilus.external.v1",
+            "mode": "real" if self.real else "mock",
+            "request_digest": sha256_json(command),
+            **result,
+        }
+
+    def error(self, command: dict[str, Any], code: str, message: str) -> dict[str, Any]:
+        return {
+            "ok": False,
+            "bridge": "scopeblind.nautilus.external.v1",
+            "mode": "real" if self.real else "mock",
+            "error": {"code": code, "message": message},
+            "request_digest": sha256_json(command),
+        }
+
+
+def main() -> int:
+    bridge = ScopeBlindNautilusBridge()
+    for line in sys.stdin:
+        if not line.strip():
+            continue
+        command = json.loads(line)
+        print(canonical_json(bridge.handle(command)), flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+`;
+var nautilusAdapterReadme = `# NautilusTrader-compatible external bridge
+
+This connector is intentionally external to NautilusTrader. It lets protect-mcp
+control and receipt high-risk order actions while a customer-owned Nautilus
+process remains the trading engine.
+
+## Local mock run
+
+\`\`\`bash
+python3 .protect-mcp/connectors/nautilus-trader/bridge.py <<'JSONL'
+{"action":"stage_order","client_order_id":"SB-1","instrument_id":"AAPL.NASDAQ","side":"BUY","quantity":"50","price":"182.40","mandate_digest":"demo"}
+{"action":"submit_order","client_order_id":"SB-1","instrument_id":"AAPL.NASDAQ","side":"BUY","quantity":"50","price":"182.40","mandate_digest":"demo","mandate_passed":true,"approval_receipt":"receipt-demo"}
+{"action":"export_events"}
+JSONL
+\`\`\`
+
+## Real mode
+
+Set \`NAUTILUS_BRIDGE_MODULE=customer_module:BridgeClass\`. The class can
+implement \`submit_order\`, \`modify_order\`, \`cancel_order\`, \`reconcile\`,
+and \`export_events\`. Keep that glue in the customer's repository so Nautilus
+licensing, credentials, and trading logic stay outside ScopeBlind.
+
+## Upstream contribution posture
+
+The best NautilusTrader contribution is not this bridge or a UI. It is a small,
+vendor-neutral audit/event sink RFC: a documented way to export normalized order
+commands, execution reports, fills, cancels, and reconciliation events so
+external compliance wrappers can prove what happened without mutating the
+engine.
+`;
 var CONNECTOR_PILOTS = [
   {
     id: "github",
@@ -42016,6 +42512,93 @@ when { ["pms.order.stage", "pms.order.book", "pms.order.cancel"].contains(contex
 forbid(principal, action == Action::"MCP::Tool::call", resource)
 when { context.tool == "pms.order.book" && context.mandate_passed != true };
 `
+  },
+  {
+    id: "nautilus-trader",
+    category: "finance",
+    name: "NautilusTrader-compatible external bridge",
+    status: "usable-pilot",
+    description: "Controls NautilusTrader-compatible staged orders through an external JSONL bridge, with local mock mode and customer-owned real mode.",
+    value: "Turns Nautilus into a strong Legate demo target: mandate-check, exact approval, external order event, position-blind audit bundle, and later reconciliation.",
+    env: [
+      { name: "NAUTILUS_BRIDGE_MODULE", required: false, description: "Optional customer glue in module.path:ClassName form for real Nautilus submission." },
+      { name: "SCOPEBLIND_NAUTILUS_STATE_DIR", required: false, description: "Optional state directory for local mock events. Defaults to .protect-mcp/nautilus." },
+      { name: "NAUTILUS_TRADER_PROJECT", required: false, description: "Optional path to the customer Nautilus project when running real mode." }
+    ],
+    tools: [
+      "nautilus.order.stage",
+      "nautilus.order.submit",
+      "nautilus.order.modify",
+      "nautilus.order.cancel",
+      "nautilus.strategy.deploy",
+      "nautilus.event.export",
+      "nautilus.reconcile"
+    ],
+    actions: [
+      { name: "Stage order", tool: "nautilus.order.stage", risk: "medium", mode: "require_approval", description: "Creates a position-blind booking intent and event commitment." },
+      { name: "Submit order", tool: "nautilus.order.submit", risk: "high", mode: "require_approval", description: "Requires mandate pass plus exact approval before live order mutation." },
+      { name: "Modify or cancel order", tool: "nautilus.order.modify", risk: "high", mode: "require_approval", description: "Mutates live order state and must carry a fresh approval receipt." },
+      { name: "Deploy strategy", tool: "nautilus.strategy.deploy", risk: "high", mode: "require_approval", description: "Requires signed strategy pack, mandate scope, and operator approval." },
+      { name: "Export event log", tool: "nautilus.event.export", risk: "low", mode: "observe", description: "Exports normalized event commitments for receipt corroboration." }
+    ],
+    setup: [
+      "Run mock mode first: protect-mcp connectors init nautilus-trader --force.",
+      "Pipe stage/submit/reconcile JSONL through .protect-mcp/connectors/nautilus-trader/bridge.py.",
+      "For real mode, set NAUTILUS_BRIDGE_MODULE to customer-owned glue that calls NautilusTrader APIs.",
+      "Open an upstream NautilusTrader RFC for a neutral audit/event sink before proposing any PR."
+    ],
+    config: {
+      type: "scopeblind.connector_pilot.v1",
+      provider: "nautilus-trader-compatible",
+      mode: "external-bridge-mock-first",
+      license_boundary: "No NautilusTrader code is bundled. Real mode calls a customer-owned process/module.",
+      adapter_contract: {
+        protocol: "stdin/stdout JSONL",
+        bridge: ".protect-mcp/connectors/nautilus-trader/bridge.py",
+        real_mode_env: "NAUTILUS_BRIDGE_MODULE=module.path:ClassName",
+        actions: ["stage_order", "submit_order", "modify_order", "cancel_order", "reconcile", "export_events"]
+      },
+      controlled_tools: [
+        "nautilus.order.stage",
+        "nautilus.order.submit",
+        "nautilus.order.modify",
+        "nautilus.order.cancel",
+        "nautilus.strategy.deploy",
+        "nautilus.event.export",
+        "nautilus.reconcile"
+      ],
+      approval_required_for: ["submit_order", "modify_order", "cancel_order", "strategy_deploy"],
+      receipt_fields: [
+        "client_order_id",
+        "instrument_id_hash",
+        "side",
+        "quantity",
+        "price",
+        "mandate_digest",
+        "approval_receipt",
+        "external_event_digest",
+        "commitment_root"
+      ],
+      upstream_rfc: {
+        title: "[RFC] Add a vendor-neutral order/execution audit event sink",
+        non_goals: ["ScopeBlind dependency", "UI dashboard", "AI tooling", "new venue adapter"]
+      }
+    },
+    artifacts: [
+      { path: "nautilus-trader/bridge.py", contents: nautilusBridgePy, executable: true },
+      { path: "nautilus-trader/README.md", contents: nautilusAdapterReadme }
+    ],
+    cedar: `${defaultPermit2}
+// NautilusTrader-compatible pilot: stage can be observed, but any live mutation requires exact approval.
+forbid(principal, action == Action::"MCP::Tool::call", resource)
+when { ["nautilus.order.submit", "nautilus.order.modify", "nautilus.order.cancel", "nautilus.strategy.deploy"].contains(context.tool) && !context.approved };
+
+forbid(principal, action == Action::"MCP::Tool::call", resource)
+when { ["nautilus.order.submit", "nautilus.order.modify", "nautilus.order.cancel"].contains(context.tool) && context.mandate_passed != true };
+
+forbid(principal, action == Action::"MCP::Tool::call", resource)
+when { context.tool == "nautilus.strategy.deploy" && context.strategy_pack_signed != true };
+`
   }
 ];
 function connectorPilotIds() {
@@ -42046,10 +42629,25 @@ function writeConnectorPilots(opts) {
     (0, import_node_fs10.writeFileSync)(policyPath, pilot.cedar.endsWith("\n") ? pilot.cedar : `${pilot.cedar}
 `);
     written.push(configPath, policyPath);
+    for (const artifact of pilot.artifacts || []) {
+      const artifactPath = connectorArtifactPath(directory, artifact.path);
+      (0, import_node_fs10.mkdirSync)((0, import_node_path6.dirname)(artifactPath), { recursive: true });
+      (0, import_node_fs10.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
+`);
+      if (artifact.executable) (0, import_node_fs10.chmodSync)(artifactPath, 493);
+      written.push(artifactPath);
+    }
   }
   (0, import_node_fs10.writeFileSync)((0, import_node_path6.join)(directory, "README.md"), renderConnectorReadme(selected));
   written.push((0, import_node_path6.join)(directory, "README.md"));
   return { written, pilots: selected, directory };
+}
+function connectorArtifactPath(directory, relativePath) {
+  const clean2 = (0, import_node_path6.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
+  if (clean2.startsWith("/") || clean2.includes("..")) {
+    throw new Error(`Unsafe connector artifact path: ${relativePath}`);
+  }
+  return (0, import_node_path6.join)(directory, clean2);
 }
 function readInstalledConnectorPilots(dir) {
   const directory = connectorDirectory(dir);
@@ -42084,15 +42682,15 @@ function connectorDoctor(dir, env = process.env) {
     }));
     const missingRequired = envRows.filter((item) => item.required && !item.present).map((item) => item.name);
     const optionalPresent = envRows.filter((item) => !item.required && item.present).map((item) => item.name);
-    const optionalProviderReady = pilot.id === "slack-teams" ? Boolean(env.SLACK_BOT_TOKEN || env.TEAMS_WEBHOOK_URL) : pilot.id === "finance-pms" ? Boolean(env.PMS_ADAPTER_URL) : false;
-    const mockModeReady = pilot.id === "finance-pms";
+    const optionalProviderReady = pilot.id === "slack-teams" ? Boolean(env.SLACK_BOT_TOKEN || env.TEAMS_WEBHOOK_URL) : pilot.id === "finance-pms" ? Boolean(env.PMS_ADAPTER_URL) : pilot.id === "nautilus-trader" ? Boolean(env.NAUTILUS_BRIDGE_MODULE || env.NAUTILUS_TRADER_PROJECT) : false;
+    const mockModeReady = pilot.id === "finance-pms" || pilot.id === "nautilus-trader";
     return {
       id: pilot.id,
       name: pilot.name,
       category: pilot.category,
       installed: installed.has(pilot.id),
       usable: missingRequired.length === 0 && (pilot.env.some((item) => item.required) || pilot.env.length === 0 || optionalProviderReady || mockModeReady),
-      mode: pilot.id === "finance-pms" && !env.PMS_ADAPTER_URL ? "mock" : pilot.id === "slack-teams" && !env.SLACK_BOT_TOKEN && !env.TEAMS_WEBHOOK_URL ? "needs_provider_choice" : "configured_or_local",
+      mode: pilot.id === "finance-pms" && !env.PMS_ADAPTER_URL ? "mock" : pilot.id === "nautilus-trader" && !env.NAUTILUS_BRIDGE_MODULE ? "mock_bridge" : pilot.id === "slack-teams" && !env.SLACK_BOT_TOKEN && !env.TEAMS_WEBHOOK_URL ? "needs_provider_choice" : "configured_or_local",
       missing_required: missingRequired,
       optional_present: optionalPresent,
       tools: pilot.tools,
@@ -42115,7 +42713,10 @@ Tools: ${pilot.tools.map((tool) => `\`${tool}\``).join(", ")}
 
 Setup:
 ${pilot.setup.map((step) => `- ${step}`).join("\n")}
-`).join("\n")}
+${pilot.artifacts?.length ? `
+Generated files:
+${pilot.artifacts.map((artifact) => `- \`${artifact.path}\``).join("\n")}
+` : ""}`).join("\n")}
 Next: run \`npx protect-mcp dashboard --open\` and review tool inventory, policy coverage, approvals, and receipts.
 `;
 }
@@ -42437,6 +43038,1066 @@ MIT
 
 // src/webauthn-approval.ts
 var import_node_crypto8 = require("crypto");
+
+// node_modules/@noble/curves/esm/abstract/weierstrass.js
+var divNearest = (num, den) => (num + (num >= 0 ? den : -den) / _2n4) / den;
+function _splitEndoScalar(k, basis, n) {
+  const [[a1, b1], [a2, b2]] = basis;
+  const c1 = divNearest(b2 * k, n);
+  const c2 = divNearest(-b1 * k, n);
+  let k1 = k - c1 * a1 - c2 * a2;
+  let k2 = -c1 * b1 - c2 * b2;
+  const k1neg = k1 < _0n6;
+  const k2neg = k2 < _0n6;
+  if (k1neg)
+    k1 = -k1;
+  if (k2neg)
+    k2 = -k2;
+  const MAX_NUM = bitMask(Math.ceil(bitLen(n) / 2)) + _1n6;
+  if (k1 < _0n6 || k1 >= MAX_NUM || k2 < _0n6 || k2 >= MAX_NUM) {
+    throw new Error("splitScalar (endomorphism): failed, k=" + k);
+  }
+  return { k1neg, k1, k2neg, k2 };
+}
+function validateSigFormat(format) {
+  if (!["compact", "recovered", "der"].includes(format))
+    throw new Error('Signature format must be "compact", "recovered", or "der"');
+  return format;
+}
+function validateSigOpts(opts, def) {
+  const optsn = {};
+  for (let optName of Object.keys(def)) {
+    optsn[optName] = opts[optName] === void 0 ? def[optName] : opts[optName];
+  }
+  _abool2(optsn.lowS, "lowS");
+  _abool2(optsn.prehash, "prehash");
+  if (optsn.format !== void 0)
+    validateSigFormat(optsn.format);
+  return optsn;
+}
+var DERErr = class extends Error {
+  constructor(m = "") {
+    super(m);
+  }
+};
+var DER = {
+  // asn.1 DER encoding utils
+  Err: DERErr,
+  // Basic building block is TLV (Tag-Length-Value)
+  _tlv: {
+    encode: (tag, data) => {
+      const { Err: E } = DER;
+      if (tag < 0 || tag > 256)
+        throw new E("tlv.encode: wrong tag");
+      if (data.length & 1)
+        throw new E("tlv.encode: unpadded data");
+      const dataLen = data.length / 2;
+      const len = numberToHexUnpadded(dataLen);
+      if (len.length / 2 & 128)
+        throw new E("tlv.encode: long form length too big");
+      const lenLen = dataLen > 127 ? numberToHexUnpadded(len.length / 2 | 128) : "";
+      const t = numberToHexUnpadded(tag);
+      return t + lenLen + len + data;
+    },
+    // v - value, l - left bytes (unparsed)
+    decode(tag, data) {
+      const { Err: E } = DER;
+      let pos = 0;
+      if (tag < 0 || tag > 256)
+        throw new E("tlv.encode: wrong tag");
+      if (data.length < 2 || data[pos++] !== tag)
+        throw new E("tlv.decode: wrong tlv");
+      const first = data[pos++];
+      const isLong = !!(first & 128);
+      let length = 0;
+      if (!isLong)
+        length = first;
+      else {
+        const lenLen = first & 127;
+        if (!lenLen)
+          throw new E("tlv.decode(long): indefinite length not supported");
+        if (lenLen > 4)
+          throw new E("tlv.decode(long): byte length is too big");
+        const lengthBytes = data.subarray(pos, pos + lenLen);
+        if (lengthBytes.length !== lenLen)
+          throw new E("tlv.decode: length bytes not complete");
+        if (lengthBytes[0] === 0)
+          throw new E("tlv.decode(long): zero leftmost byte");
+        for (const b of lengthBytes)
+          length = length << 8 | b;
+        pos += lenLen;
+        if (length < 128)
+          throw new E("tlv.decode(long): not minimal encoding");
+      }
+      const v = data.subarray(pos, pos + length);
+      if (v.length !== length)
+        throw new E("tlv.decode: wrong value length");
+      return { v, l: data.subarray(pos + length) };
+    }
+  },
+  // https://crypto.stackexchange.com/a/57734 Leftmost bit of first byte is 'negative' flag,
+  // since we always use positive integers here. It must always be empty:
+  // - add zero byte if exists
+  // - if next byte doesn't have a flag, leading zero is not allowed (minimal encoding)
+  _int: {
+    encode(num) {
+      const { Err: E } = DER;
+      if (num < _0n6)
+        throw new E("integer: negative integers are not allowed");
+      let hex = numberToHexUnpadded(num);
+      if (Number.parseInt(hex[0], 16) & 8)
+        hex = "00" + hex;
+      if (hex.length & 1)
+        throw new E("unexpected DER parsing assertion: unpadded hex");
+      return hex;
+    },
+    decode(data) {
+      const { Err: E } = DER;
+      if (data[0] & 128)
+        throw new E("invalid signature integer: negative");
+      if (data[0] === 0 && !(data[1] & 128))
+        throw new E("invalid signature integer: unnecessary leading zero");
+      return bytesToNumberBE(data);
+    }
+  },
+  toSig(hex) {
+    const { Err: E, _int: int, _tlv: tlv } = DER;
+    const data = ensureBytes("signature", hex);
+    const { v: seqBytes, l: seqLeftBytes } = tlv.decode(48, data);
+    if (seqLeftBytes.length)
+      throw new E("invalid signature: left bytes after parsing");
+    const { v: rBytes, l: rLeftBytes } = tlv.decode(2, seqBytes);
+    const { v: sBytes, l: sLeftBytes } = tlv.decode(2, rLeftBytes);
+    if (sLeftBytes.length)
+      throw new E("invalid signature: left bytes after parsing");
+    return { r: int.decode(rBytes), s: int.decode(sBytes) };
+  },
+  hexFromSig(sig) {
+    const { _tlv: tlv, _int: int } = DER;
+    const rs = tlv.encode(2, int.encode(sig.r));
+    const ss = tlv.encode(2, int.encode(sig.s));
+    const seq = rs + ss;
+    return tlv.encode(48, seq);
+  }
+};
+var _0n6 = BigInt(0);
+var _1n6 = BigInt(1);
+var _2n4 = BigInt(2);
+var _3n3 = BigInt(3);
+var _4n2 = BigInt(4);
+function _normFnElement(Fn2, key) {
+  const { BYTES: expected } = Fn2;
+  let num;
+  if (typeof key === "bigint") {
+    num = key;
+  } else {
+    let bytes = ensureBytes("private key", key);
+    try {
+      num = Fn2.fromBytes(bytes);
+    } catch (error) {
+      throw new Error(`invalid private key: expected ui8a of size ${expected}, got ${typeof key}`);
+    }
+  }
+  if (!Fn2.isValidNot0(num))
+    throw new Error("invalid private key: out of range [1..N-1]");
+  return num;
+}
+function weierstrassN(params, extraOpts = {}) {
+  const validated = _createCurveFields("weierstrass", params, extraOpts);
+  const { Fp: Fp2, Fn: Fn2 } = validated;
+  let CURVE = validated.CURVE;
+  const { h: cofactor, n: CURVE_ORDER } = CURVE;
+  _validateObject(extraOpts, {}, {
+    allowInfinityPoint: "boolean",
+    clearCofactor: "function",
+    isTorsionFree: "function",
+    fromBytes: "function",
+    toBytes: "function",
+    endo: "object",
+    wrapPrivateKey: "boolean"
+  });
+  const { endo } = extraOpts;
+  if (endo) {
+    if (!Fp2.is0(CURVE.a) || typeof endo.beta !== "bigint" || !Array.isArray(endo.basises)) {
+      throw new Error('invalid endo: expected "beta": bigint and "basises": array');
+    }
+  }
+  const lengths = getWLengths(Fp2, Fn2);
+  function assertCompressionIsSupported() {
+    if (!Fp2.isOdd)
+      throw new Error("compression is not supported: Field does not have .isOdd()");
+  }
+  function pointToBytes(_c, point, isCompressed) {
+    const { x, y } = point.toAffine();
+    const bx = Fp2.toBytes(x);
+    _abool2(isCompressed, "isCompressed");
+    if (isCompressed) {
+      assertCompressionIsSupported();
+      const hasEvenY = !Fp2.isOdd(y);
+      return concatBytes(pprefix(hasEvenY), bx);
+    } else {
+      return concatBytes(Uint8Array.of(4), bx, Fp2.toBytes(y));
+    }
+  }
+  function pointFromBytes(bytes) {
+    _abytes2(bytes, void 0, "Point");
+    const { publicKey: comp, publicKeyUncompressed: uncomp } = lengths;
+    const length = bytes.length;
+    const head = bytes[0];
+    const tail = bytes.subarray(1);
+    if (length === comp && (head === 2 || head === 3)) {
+      const x = Fp2.fromBytes(tail);
+      if (!Fp2.isValid(x))
+        throw new Error("bad point: is not on curve, wrong x");
+      const y2 = weierstrassEquation(x);
+      let y;
+      try {
+        y = Fp2.sqrt(y2);
+      } catch (sqrtError) {
+        const err = sqrtError instanceof Error ? ": " + sqrtError.message : "";
+        throw new Error("bad point: is not on curve, sqrt error" + err);
+      }
+      assertCompressionIsSupported();
+      const isYOdd = Fp2.isOdd(y);
+      const isHeadOdd = (head & 1) === 1;
+      if (isHeadOdd !== isYOdd)
+        y = Fp2.neg(y);
+      return { x, y };
+    } else if (length === uncomp && head === 4) {
+      const L = Fp2.BYTES;
+      const x = Fp2.fromBytes(tail.subarray(0, L));
+      const y = Fp2.fromBytes(tail.subarray(L, L * 2));
+      if (!isValidXY(x, y))
+        throw new Error("bad point: is not on curve");
+      return { x, y };
+    } else {
+      throw new Error(`bad point: got length ${length}, expected compressed=${comp} or uncompressed=${uncomp}`);
+    }
+  }
+  const encodePoint = extraOpts.toBytes || pointToBytes;
+  const decodePoint = extraOpts.fromBytes || pointFromBytes;
+  function weierstrassEquation(x) {
+    const x2 = Fp2.sqr(x);
+    const x3 = Fp2.mul(x2, x);
+    return Fp2.add(Fp2.add(x3, Fp2.mul(x, CURVE.a)), CURVE.b);
+  }
+  function isValidXY(x, y) {
+    const left = Fp2.sqr(y);
+    const right = weierstrassEquation(x);
+    return Fp2.eql(left, right);
+  }
+  if (!isValidXY(CURVE.Gx, CURVE.Gy))
+    throw new Error("bad curve params: generator point");
+  const _4a3 = Fp2.mul(Fp2.pow(CURVE.a, _3n3), _4n2);
+  const _27b2 = Fp2.mul(Fp2.sqr(CURVE.b), BigInt(27));
+  if (Fp2.is0(Fp2.add(_4a3, _27b2)))
+    throw new Error("bad curve params: a or b");
+  function acoord(title, n, banZero = false) {
+    if (!Fp2.isValid(n) || banZero && Fp2.is0(n))
+      throw new Error(`bad point coordinate ${title}`);
+    return n;
+  }
+  function aprjpoint(other) {
+    if (!(other instanceof Point))
+      throw new Error("ProjectivePoint expected");
+  }
+  function splitEndoScalarN(k) {
+    if (!endo || !endo.basises)
+      throw new Error("no endo");
+    return _splitEndoScalar(k, endo.basises, Fn2.ORDER);
+  }
+  const toAffineMemo = memoized((p, iz) => {
+    const { X, Y, Z } = p;
+    if (Fp2.eql(Z, Fp2.ONE))
+      return { x: X, y: Y };
+    const is0 = p.is0();
+    if (iz == null)
+      iz = is0 ? Fp2.ONE : Fp2.inv(Z);
+    const x = Fp2.mul(X, iz);
+    const y = Fp2.mul(Y, iz);
+    const zz = Fp2.mul(Z, iz);
+    if (is0)
+      return { x: Fp2.ZERO, y: Fp2.ZERO };
+    if (!Fp2.eql(zz, Fp2.ONE))
+      throw new Error("invZ was invalid");
+    return { x, y };
+  });
+  const assertValidMemo = memoized((p) => {
+    if (p.is0()) {
+      if (extraOpts.allowInfinityPoint && !Fp2.is0(p.Y))
+        return;
+      throw new Error("bad point: ZERO");
+    }
+    const { x, y } = p.toAffine();
+    if (!Fp2.isValid(x) || !Fp2.isValid(y))
+      throw new Error("bad point: x or y not field elements");
+    if (!isValidXY(x, y))
+      throw new Error("bad point: equation left != right");
+    if (!p.isTorsionFree())
+      throw new Error("bad point: not in prime-order subgroup");
+    return true;
+  });
+  function finishEndo(endoBeta, k1p, k2p, k1neg, k2neg) {
+    k2p = new Point(Fp2.mul(k2p.X, endoBeta), k2p.Y, k2p.Z);
+    k1p = negateCt(k1neg, k1p);
+    k2p = negateCt(k2neg, k2p);
+    return k1p.add(k2p);
+  }
+  class Point {
+    /** Does NOT validate if the point is valid. Use `.assertValidity()`. */
+    constructor(X, Y, Z) {
+      this.X = acoord("x", X);
+      this.Y = acoord("y", Y, true);
+      this.Z = acoord("z", Z);
+      Object.freeze(this);
+    }
+    static CURVE() {
+      return CURVE;
+    }
+    /** Does NOT validate if the point is valid. Use `.assertValidity()`. */
+    static fromAffine(p) {
+      const { x, y } = p || {};
+      if (!p || !Fp2.isValid(x) || !Fp2.isValid(y))
+        throw new Error("invalid affine point");
+      if (p instanceof Point)
+        throw new Error("projective point not allowed");
+      if (Fp2.is0(x) && Fp2.is0(y))
+        return Point.ZERO;
+      return new Point(x, y, Fp2.ONE);
+    }
+    static fromBytes(bytes) {
+      const P = Point.fromAffine(decodePoint(_abytes2(bytes, void 0, "point")));
+      P.assertValidity();
+      return P;
+    }
+    static fromHex(hex) {
+      return Point.fromBytes(ensureBytes("pointHex", hex));
+    }
+    get x() {
+      return this.toAffine().x;
+    }
+    get y() {
+      return this.toAffine().y;
+    }
+    /**
+     *
+     * @param windowSize
+     * @param isLazy true will defer table computation until the first multiplication
+     * @returns
+     */
+    precompute(windowSize = 8, isLazy = true) {
+      wnaf.createCache(this, windowSize);
+      if (!isLazy)
+        this.multiply(_3n3);
+      return this;
+    }
+    // TODO: return `this`
+    /** A point on curve is valid if it conforms to equation. */
+    assertValidity() {
+      assertValidMemo(this);
+    }
+    hasEvenY() {
+      const { y } = this.toAffine();
+      if (!Fp2.isOdd)
+        throw new Error("Field doesn't support isOdd");
+      return !Fp2.isOdd(y);
+    }
+    /** Compare one point to another. */
+    equals(other) {
+      aprjpoint(other);
+      const { X: X1, Y: Y1, Z: Z1 } = this;
+      const { X: X2, Y: Y2, Z: Z2 } = other;
+      const U1 = Fp2.eql(Fp2.mul(X1, Z2), Fp2.mul(X2, Z1));
+      const U2 = Fp2.eql(Fp2.mul(Y1, Z2), Fp2.mul(Y2, Z1));
+      return U1 && U2;
+    }
+    /** Flips point to one corresponding to (x, -y) in Affine coordinates. */
+    negate() {
+      return new Point(this.X, Fp2.neg(this.Y), this.Z);
+    }
+    // Renes-Costello-Batina exception-free doubling formula.
+    // There is 30% faster Jacobian formula, but it is not complete.
+    // https://eprint.iacr.org/2015/1060, algorithm 3
+    // Cost: 8M + 3S + 3*a + 2*b3 + 15add.
+    double() {
+      const { a, b } = CURVE;
+      const b3 = Fp2.mul(b, _3n3);
+      const { X: X1, Y: Y1, Z: Z1 } = this;
+      let X3 = Fp2.ZERO, Y3 = Fp2.ZERO, Z3 = Fp2.ZERO;
+      let t0 = Fp2.mul(X1, X1);
+      let t1 = Fp2.mul(Y1, Y1);
+      let t2 = Fp2.mul(Z1, Z1);
+      let t3 = Fp2.mul(X1, Y1);
+      t3 = Fp2.add(t3, t3);
+      Z3 = Fp2.mul(X1, Z1);
+      Z3 = Fp2.add(Z3, Z3);
+      X3 = Fp2.mul(a, Z3);
+      Y3 = Fp2.mul(b3, t2);
+      Y3 = Fp2.add(X3, Y3);
+      X3 = Fp2.sub(t1, Y3);
+      Y3 = Fp2.add(t1, Y3);
+      Y3 = Fp2.mul(X3, Y3);
+      X3 = Fp2.mul(t3, X3);
+      Z3 = Fp2.mul(b3, Z3);
+      t2 = Fp2.mul(a, t2);
+      t3 = Fp2.sub(t0, t2);
+      t3 = Fp2.mul(a, t3);
+      t3 = Fp2.add(t3, Z3);
+      Z3 = Fp2.add(t0, t0);
+      t0 = Fp2.add(Z3, t0);
+      t0 = Fp2.add(t0, t2);
+      t0 = Fp2.mul(t0, t3);
+      Y3 = Fp2.add(Y3, t0);
+      t2 = Fp2.mul(Y1, Z1);
+      t2 = Fp2.add(t2, t2);
+      t0 = Fp2.mul(t2, t3);
+      X3 = Fp2.sub(X3, t0);
+      Z3 = Fp2.mul(t2, t1);
+      Z3 = Fp2.add(Z3, Z3);
+      Z3 = Fp2.add(Z3, Z3);
+      return new Point(X3, Y3, Z3);
+    }
+    // Renes-Costello-Batina exception-free addition formula.
+    // There is 30% faster Jacobian formula, but it is not complete.
+    // https://eprint.iacr.org/2015/1060, algorithm 1
+    // Cost: 12M + 0S + 3*a + 3*b3 + 23add.
+    add(other) {
+      aprjpoint(other);
+      const { X: X1, Y: Y1, Z: Z1 } = this;
+      const { X: X2, Y: Y2, Z: Z2 } = other;
+      let X3 = Fp2.ZERO, Y3 = Fp2.ZERO, Z3 = Fp2.ZERO;
+      const a = CURVE.a;
+      const b3 = Fp2.mul(CURVE.b, _3n3);
+      let t0 = Fp2.mul(X1, X2);
+      let t1 = Fp2.mul(Y1, Y2);
+      let t2 = Fp2.mul(Z1, Z2);
+      let t3 = Fp2.add(X1, Y1);
+      let t4 = Fp2.add(X2, Y2);
+      t3 = Fp2.mul(t3, t4);
+      t4 = Fp2.add(t0, t1);
+      t3 = Fp2.sub(t3, t4);
+      t4 = Fp2.add(X1, Z1);
+      let t5 = Fp2.add(X2, Z2);
+      t4 = Fp2.mul(t4, t5);
+      t5 = Fp2.add(t0, t2);
+      t4 = Fp2.sub(t4, t5);
+      t5 = Fp2.add(Y1, Z1);
+      X3 = Fp2.add(Y2, Z2);
+      t5 = Fp2.mul(t5, X3);
+      X3 = Fp2.add(t1, t2);
+      t5 = Fp2.sub(t5, X3);
+      Z3 = Fp2.mul(a, t4);
+      X3 = Fp2.mul(b3, t2);
+      Z3 = Fp2.add(X3, Z3);
+      X3 = Fp2.sub(t1, Z3);
+      Z3 = Fp2.add(t1, Z3);
+      Y3 = Fp2.mul(X3, Z3);
+      t1 = Fp2.add(t0, t0);
+      t1 = Fp2.add(t1, t0);
+      t2 = Fp2.mul(a, t2);
+      t4 = Fp2.mul(b3, t4);
+      t1 = Fp2.add(t1, t2);
+      t2 = Fp2.sub(t0, t2);
+      t2 = Fp2.mul(a, t2);
+      t4 = Fp2.add(t4, t2);
+      t0 = Fp2.mul(t1, t4);
+      Y3 = Fp2.add(Y3, t0);
+      t0 = Fp2.mul(t5, t4);
+      X3 = Fp2.mul(t3, X3);
+      X3 = Fp2.sub(X3, t0);
+      t0 = Fp2.mul(t3, t1);
+      Z3 = Fp2.mul(t5, Z3);
+      Z3 = Fp2.add(Z3, t0);
+      return new Point(X3, Y3, Z3);
+    }
+    subtract(other) {
+      return this.add(other.negate());
+    }
+    is0() {
+      return this.equals(Point.ZERO);
+    }
+    /**
+     * Constant time multiplication.
+     * Uses wNAF method. Windowed method may be 10% faster,
+     * but takes 2x longer to generate and consumes 2x memory.
+     * Uses precomputes when available.
+     * Uses endomorphism for Koblitz curves.
+     * @param scalar by which the point would be multiplied
+     * @returns New point
+     */
+    multiply(scalar) {
+      const { endo: endo2 } = extraOpts;
+      if (!Fn2.isValidNot0(scalar))
+        throw new Error("invalid scalar: out of range");
+      let point, fake;
+      const mul = (n) => wnaf.cached(this, n, (p) => normalizeZ(Point, p));
+      if (endo2) {
+        const { k1neg, k1, k2neg, k2 } = splitEndoScalarN(scalar);
+        const { p: k1p, f: k1f } = mul(k1);
+        const { p: k2p, f: k2f } = mul(k2);
+        fake = k1f.add(k2f);
+        point = finishEndo(endo2.beta, k1p, k2p, k1neg, k2neg);
+      } else {
+        const { p, f } = mul(scalar);
+        point = p;
+        fake = f;
+      }
+      return normalizeZ(Point, [point, fake])[0];
+    }
+    /**
+     * Non-constant-time multiplication. Uses double-and-add algorithm.
+     * It's faster, but should only be used when you don't care about
+     * an exposed secret key e.g. sig verification, which works over *public* keys.
+     */
+    multiplyUnsafe(sc) {
+      const { endo: endo2 } = extraOpts;
+      const p = this;
+      if (!Fn2.isValid(sc))
+        throw new Error("invalid scalar: out of range");
+      if (sc === _0n6 || p.is0())
+        return Point.ZERO;
+      if (sc === _1n6)
+        return p;
+      if (wnaf.hasCache(this))
+        return this.multiply(sc);
+      if (endo2) {
+        const { k1neg, k1, k2neg, k2 } = splitEndoScalarN(sc);
+        const { p1, p2 } = mulEndoUnsafe(Point, p, k1, k2);
+        return finishEndo(endo2.beta, p1, p2, k1neg, k2neg);
+      } else {
+        return wnaf.unsafe(p, sc);
+      }
+    }
+    multiplyAndAddUnsafe(Q, a, b) {
+      const sum = this.multiplyUnsafe(a).add(Q.multiplyUnsafe(b));
+      return sum.is0() ? void 0 : sum;
+    }
+    /**
+     * Converts Projective point to affine (x, y) coordinates.
+     * @param invertedZ Z^-1 (inverted zero) - optional, precomputation is useful for invertBatch
+     */
+    toAffine(invertedZ) {
+      return toAffineMemo(this, invertedZ);
+    }
+    /**
+     * Checks whether Point is free of torsion elements (is in prime subgroup).
+     * Always torsion-free for cofactor=1 curves.
+     */
+    isTorsionFree() {
+      const { isTorsionFree } = extraOpts;
+      if (cofactor === _1n6)
+        return true;
+      if (isTorsionFree)
+        return isTorsionFree(Point, this);
+      return wnaf.unsafe(this, CURVE_ORDER).is0();
+    }
+    clearCofactor() {
+      const { clearCofactor } = extraOpts;
+      if (cofactor === _1n6)
+        return this;
+      if (clearCofactor)
+        return clearCofactor(Point, this);
+      return this.multiplyUnsafe(cofactor);
+    }
+    isSmallOrder() {
+      return this.multiplyUnsafe(cofactor).is0();
+    }
+    toBytes(isCompressed = true) {
+      _abool2(isCompressed, "isCompressed");
+      this.assertValidity();
+      return encodePoint(Point, this, isCompressed);
+    }
+    toHex(isCompressed = true) {
+      return bytesToHex(this.toBytes(isCompressed));
+    }
+    toString() {
+      return `<Point ${this.is0() ? "ZERO" : this.toHex()}>`;
+    }
+    // TODO: remove
+    get px() {
+      return this.X;
+    }
+    get py() {
+      return this.X;
+    }
+    get pz() {
+      return this.Z;
+    }
+    toRawBytes(isCompressed = true) {
+      return this.toBytes(isCompressed);
+    }
+    _setWindowSize(windowSize) {
+      this.precompute(windowSize);
+    }
+    static normalizeZ(points) {
+      return normalizeZ(Point, points);
+    }
+    static msm(points, scalars) {
+      return pippenger(Point, Fn2, points, scalars);
+    }
+    static fromPrivateKey(privateKey) {
+      return Point.BASE.multiply(_normFnElement(Fn2, privateKey));
+    }
+  }
+  Point.BASE = new Point(CURVE.Gx, CURVE.Gy, Fp2.ONE);
+  Point.ZERO = new Point(Fp2.ZERO, Fp2.ONE, Fp2.ZERO);
+  Point.Fp = Fp2;
+  Point.Fn = Fn2;
+  const bits = Fn2.BITS;
+  const wnaf = new wNAF(Point, extraOpts.endo ? Math.ceil(bits / 2) : bits);
+  Point.BASE.precompute(8);
+  return Point;
+}
+function pprefix(hasEvenY) {
+  return Uint8Array.of(hasEvenY ? 2 : 3);
+}
+function getWLengths(Fp2, Fn2) {
+  return {
+    secretKey: Fn2.BYTES,
+    publicKey: 1 + Fp2.BYTES,
+    publicKeyUncompressed: 1 + 2 * Fp2.BYTES,
+    publicKeyHasPrefix: true,
+    signature: 2 * Fn2.BYTES
+  };
+}
+function ecdh(Point, ecdhOpts = {}) {
+  const { Fn: Fn2 } = Point;
+  const randomBytes_ = ecdhOpts.randomBytes || randomBytes2;
+  const lengths = Object.assign(getWLengths(Point.Fp, Fn2), { seed: getMinHashLength(Fn2.ORDER) });
+  function isValidSecretKey(secretKey) {
+    try {
+      return !!_normFnElement(Fn2, secretKey);
+    } catch (error) {
+      return false;
+    }
+  }
+  function isValidPublicKey(publicKey, isCompressed) {
+    const { publicKey: comp, publicKeyUncompressed } = lengths;
+    try {
+      const l = publicKey.length;
+      if (isCompressed === true && l !== comp)
+        return false;
+      if (isCompressed === false && l !== publicKeyUncompressed)
+        return false;
+      return !!Point.fromBytes(publicKey);
+    } catch (error) {
+      return false;
+    }
+  }
+  function randomSecretKey(seed = randomBytes_(lengths.seed)) {
+    return mapHashToField(_abytes2(seed, lengths.seed, "seed"), Fn2.ORDER);
+  }
+  function getPublicKey(secretKey, isCompressed = true) {
+    return Point.BASE.multiply(_normFnElement(Fn2, secretKey)).toBytes(isCompressed);
+  }
+  function keygen(seed) {
+    const secretKey = randomSecretKey(seed);
+    return { secretKey, publicKey: getPublicKey(secretKey) };
+  }
+  function isProbPub(item) {
+    if (typeof item === "bigint")
+      return false;
+    if (item instanceof Point)
+      return true;
+    const { secretKey, publicKey, publicKeyUncompressed } = lengths;
+    if (Fn2.allowedLengths || secretKey === publicKey)
+      return void 0;
+    const l = ensureBytes("key", item).length;
+    return l === publicKey || l === publicKeyUncompressed;
+  }
+  function getSharedSecret(secretKeyA, publicKeyB, isCompressed = true) {
+    if (isProbPub(secretKeyA) === true)
+      throw new Error("first arg must be private key");
+    if (isProbPub(publicKeyB) === false)
+      throw new Error("second arg must be public key");
+    const s = _normFnElement(Fn2, secretKeyA);
+    const b = Point.fromHex(publicKeyB);
+    return b.multiply(s).toBytes(isCompressed);
+  }
+  const utils = {
+    isValidSecretKey,
+    isValidPublicKey,
+    randomSecretKey,
+    // TODO: remove
+    isValidPrivateKey: isValidSecretKey,
+    randomPrivateKey: randomSecretKey,
+    normPrivateKeyToScalar: (key) => _normFnElement(Fn2, key),
+    precompute(windowSize = 8, point = Point.BASE) {
+      return point.precompute(windowSize, false);
+    }
+  };
+  return Object.freeze({ getPublicKey, getSharedSecret, keygen, Point, utils, lengths });
+}
+function ecdsa(Point, hash, ecdsaOpts = {}) {
+  ahash(hash);
+  _validateObject(ecdsaOpts, {}, {
+    hmac: "function",
+    lowS: "boolean",
+    randomBytes: "function",
+    bits2int: "function",
+    bits2int_modN: "function"
+  });
+  const randomBytes6 = ecdsaOpts.randomBytes || randomBytes2;
+  const hmac2 = ecdsaOpts.hmac || ((key, ...msgs) => hmac(hash, key, concatBytes(...msgs)));
+  const { Fp: Fp2, Fn: Fn2 } = Point;
+  const { ORDER: CURVE_ORDER, BITS: fnBits } = Fn2;
+  const { keygen, getPublicKey, getSharedSecret, utils, lengths } = ecdh(Point, ecdsaOpts);
+  const defaultSigOpts = {
+    prehash: false,
+    lowS: typeof ecdsaOpts.lowS === "boolean" ? ecdsaOpts.lowS : false,
+    format: void 0,
+    //'compact' as ECDSASigFormat,
+    extraEntropy: false
+  };
+  const defaultSigOpts_format = "compact";
+  function isBiggerThanHalfOrder(number) {
+    const HALF = CURVE_ORDER >> _1n6;
+    return number > HALF;
+  }
+  function validateRS(title, num) {
+    if (!Fn2.isValidNot0(num))
+      throw new Error(`invalid signature ${title}: out of range 1..Point.Fn.ORDER`);
+    return num;
+  }
+  function validateSigLength(bytes, format) {
+    validateSigFormat(format);
+    const size = lengths.signature;
+    const sizer = format === "compact" ? size : format === "recovered" ? size + 1 : void 0;
+    return _abytes2(bytes, sizer, `${format} signature`);
+  }
+  class Signature {
+    constructor(r, s, recovery) {
+      this.r = validateRS("r", r);
+      this.s = validateRS("s", s);
+      if (recovery != null)
+        this.recovery = recovery;
+      Object.freeze(this);
+    }
+    static fromBytes(bytes, format = defaultSigOpts_format) {
+      validateSigLength(bytes, format);
+      let recid;
+      if (format === "der") {
+        const { r: r2, s: s2 } = DER.toSig(_abytes2(bytes));
+        return new Signature(r2, s2);
+      }
+      if (format === "recovered") {
+        recid = bytes[0];
+        format = "compact";
+        bytes = bytes.subarray(1);
+      }
+      const L = Fn2.BYTES;
+      const r = bytes.subarray(0, L);
+      const s = bytes.subarray(L, L * 2);
+      return new Signature(Fn2.fromBytes(r), Fn2.fromBytes(s), recid);
+    }
+    static fromHex(hex, format) {
+      return this.fromBytes(hexToBytes(hex), format);
+    }
+    addRecoveryBit(recovery) {
+      return new Signature(this.r, this.s, recovery);
+    }
+    recoverPublicKey(messageHash) {
+      const FIELD_ORDER = Fp2.ORDER;
+      const { r, s, recovery: rec } = this;
+      if (rec == null || ![0, 1, 2, 3].includes(rec))
+        throw new Error("recovery id invalid");
+      const hasCofactor = CURVE_ORDER * _2n4 < FIELD_ORDER;
+      if (hasCofactor && rec > 1)
+        throw new Error("recovery id is ambiguous for h>1 curve");
+      const radj = rec === 2 || rec === 3 ? r + CURVE_ORDER : r;
+      if (!Fp2.isValid(radj))
+        throw new Error("recovery id 2 or 3 invalid");
+      const x = Fp2.toBytes(radj);
+      const R = Point.fromBytes(concatBytes(pprefix((rec & 1) === 0), x));
+      const ir = Fn2.inv(radj);
+      const h = bits2int_modN(ensureBytes("msgHash", messageHash));
+      const u1 = Fn2.create(-h * ir);
+      const u2 = Fn2.create(s * ir);
+      const Q = Point.BASE.multiplyUnsafe(u1).add(R.multiplyUnsafe(u2));
+      if (Q.is0())
+        throw new Error("point at infinify");
+      Q.assertValidity();
+      return Q;
+    }
+    // Signatures should be low-s, to prevent malleability.
+    hasHighS() {
+      return isBiggerThanHalfOrder(this.s);
+    }
+    toBytes(format = defaultSigOpts_format) {
+      validateSigFormat(format);
+      if (format === "der")
+        return hexToBytes(DER.hexFromSig(this));
+      const r = Fn2.toBytes(this.r);
+      const s = Fn2.toBytes(this.s);
+      if (format === "recovered") {
+        if (this.recovery == null)
+          throw new Error("recovery bit must be present");
+        return concatBytes(Uint8Array.of(this.recovery), r, s);
+      }
+      return concatBytes(r, s);
+    }
+    toHex(format) {
+      return bytesToHex(this.toBytes(format));
+    }
+    // TODO: remove
+    assertValidity() {
+    }
+    static fromCompact(hex) {
+      return Signature.fromBytes(ensureBytes("sig", hex), "compact");
+    }
+    static fromDER(hex) {
+      return Signature.fromBytes(ensureBytes("sig", hex), "der");
+    }
+    normalizeS() {
+      return this.hasHighS() ? new Signature(this.r, Fn2.neg(this.s), this.recovery) : this;
+    }
+    toDERRawBytes() {
+      return this.toBytes("der");
+    }
+    toDERHex() {
+      return bytesToHex(this.toBytes("der"));
+    }
+    toCompactRawBytes() {
+      return this.toBytes("compact");
+    }
+    toCompactHex() {
+      return bytesToHex(this.toBytes("compact"));
+    }
+  }
+  const bits2int = ecdsaOpts.bits2int || function bits2int_def(bytes) {
+    if (bytes.length > 8192)
+      throw new Error("input is too large");
+    const num = bytesToNumberBE(bytes);
+    const delta = bytes.length * 8 - fnBits;
+    return delta > 0 ? num >> BigInt(delta) : num;
+  };
+  const bits2int_modN = ecdsaOpts.bits2int_modN || function bits2int_modN_def(bytes) {
+    return Fn2.create(bits2int(bytes));
+  };
+  const ORDER_MASK = bitMask(fnBits);
+  function int2octets(num) {
+    aInRange("num < 2^" + fnBits, num, _0n6, ORDER_MASK);
+    return Fn2.toBytes(num);
+  }
+  function validateMsgAndHash(message, prehash) {
+    _abytes2(message, void 0, "message");
+    return prehash ? _abytes2(hash(message), void 0, "prehashed message") : message;
+  }
+  function prepSig(message, privateKey, opts) {
+    if (["recovered", "canonical"].some((k) => k in opts))
+      throw new Error("sign() legacy options not supported");
+    const { lowS, prehash, extraEntropy } = validateSigOpts(opts, defaultSigOpts);
+    message = validateMsgAndHash(message, prehash);
+    const h1int = bits2int_modN(message);
+    const d = _normFnElement(Fn2, privateKey);
+    const seedArgs = [int2octets(d), int2octets(h1int)];
+    if (extraEntropy != null && extraEntropy !== false) {
+      const e = extraEntropy === true ? randomBytes6(lengths.secretKey) : extraEntropy;
+      seedArgs.push(ensureBytes("extraEntropy", e));
+    }
+    const seed = concatBytes(...seedArgs);
+    const m = h1int;
+    function k2sig(kBytes) {
+      const k = bits2int(kBytes);
+      if (!Fn2.isValidNot0(k))
+        return;
+      const ik = Fn2.inv(k);
+      const q = Point.BASE.multiply(k).toAffine();
+      const r = Fn2.create(q.x);
+      if (r === _0n6)
+        return;
+      const s = Fn2.create(ik * Fn2.create(m + r * d));
+      if (s === _0n6)
+        return;
+      let recovery = (q.x === r ? 0 : 2) | Number(q.y & _1n6);
+      let normS = s;
+      if (lowS && isBiggerThanHalfOrder(s)) {
+        normS = Fn2.neg(s);
+        recovery ^= 1;
+      }
+      return new Signature(r, normS, recovery);
+    }
+    return { seed, k2sig };
+  }
+  function sign(message, secretKey, opts = {}) {
+    message = ensureBytes("message", message);
+    const { seed, k2sig } = prepSig(message, secretKey, opts);
+    const drbg = createHmacDrbg(hash.outputLen, Fn2.BYTES, hmac2);
+    const sig = drbg(seed, k2sig);
+    return sig;
+  }
+  function tryParsingSig(sg) {
+    let sig = void 0;
+    const isHex = typeof sg === "string" || isBytes(sg);
+    const isObj = !isHex && sg !== null && typeof sg === "object" && typeof sg.r === "bigint" && typeof sg.s === "bigint";
+    if (!isHex && !isObj)
+      throw new Error("invalid signature, expected Uint8Array, hex string or Signature instance");
+    if (isObj) {
+      sig = new Signature(sg.r, sg.s);
+    } else if (isHex) {
+      try {
+        sig = Signature.fromBytes(ensureBytes("sig", sg), "der");
+      } catch (derError) {
+        if (!(derError instanceof DER.Err))
+          throw derError;
+      }
+      if (!sig) {
+        try {
+          sig = Signature.fromBytes(ensureBytes("sig", sg), "compact");
+        } catch (error) {
+          return false;
+        }
+      }
+    }
+    if (!sig)
+      return false;
+    return sig;
+  }
+  function verify(signature, message, publicKey, opts = {}) {
+    const { lowS, prehash, format } = validateSigOpts(opts, defaultSigOpts);
+    publicKey = ensureBytes("publicKey", publicKey);
+    message = validateMsgAndHash(ensureBytes("message", message), prehash);
+    if ("strict" in opts)
+      throw new Error("options.strict was renamed to lowS");
+    const sig = format === void 0 ? tryParsingSig(signature) : Signature.fromBytes(ensureBytes("sig", signature), format);
+    if (sig === false)
+      return false;
+    try {
+      const P = Point.fromBytes(publicKey);
+      if (lowS && sig.hasHighS())
+        return false;
+      const { r, s } = sig;
+      const h = bits2int_modN(message);
+      const is = Fn2.inv(s);
+      const u1 = Fn2.create(h * is);
+      const u2 = Fn2.create(r * is);
+      const R = Point.BASE.multiplyUnsafe(u1).add(P.multiplyUnsafe(u2));
+      if (R.is0())
+        return false;
+      const v = Fn2.create(R.x);
+      return v === r;
+    } catch (e) {
+      return false;
+    }
+  }
+  function recoverPublicKey(signature, message, opts = {}) {
+    const { prehash } = validateSigOpts(opts, defaultSigOpts);
+    message = validateMsgAndHash(message, prehash);
+    return Signature.fromBytes(signature, "recovered").recoverPublicKey(message).toBytes();
+  }
+  return Object.freeze({
+    keygen,
+    getPublicKey,
+    getSharedSecret,
+    utils,
+    lengths,
+    Point,
+    sign,
+    verify,
+    recoverPublicKey,
+    Signature,
+    hash
+  });
+}
+function _weierstrass_legacy_opts_to_new(c) {
+  const CURVE = {
+    a: c.a,
+    b: c.b,
+    p: c.Fp.ORDER,
+    n: c.n,
+    h: c.h,
+    Gx: c.Gx,
+    Gy: c.Gy
+  };
+  const Fp2 = c.Fp;
+  let allowedLengths = c.allowedPrivateKeyLengths ? Array.from(new Set(c.allowedPrivateKeyLengths.map((l) => Math.ceil(l / 2)))) : void 0;
+  const Fn2 = Field(CURVE.n, {
+    BITS: c.nBitLength,
+    allowedLengths,
+    modFromBytes: c.wrapPrivateKey
+  });
+  const curveOpts = {
+    Fp: Fp2,
+    Fn: Fn2,
+    allowInfinityPoint: c.allowInfinityPoint,
+    endo: c.endo,
+    isTorsionFree: c.isTorsionFree,
+    clearCofactor: c.clearCofactor,
+    fromBytes: c.fromBytes,
+    toBytes: c.toBytes
+  };
+  return { CURVE, curveOpts };
+}
+function _ecdsa_legacy_opts_to_new(c) {
+  const { CURVE, curveOpts } = _weierstrass_legacy_opts_to_new(c);
+  const ecdsaOpts = {
+    hmac: c.hmac,
+    randomBytes: c.randomBytes,
+    lowS: c.lowS,
+    bits2int: c.bits2int,
+    bits2int_modN: c.bits2int_modN
+  };
+  return { CURVE, curveOpts, hash: c.hash, ecdsaOpts };
+}
+function _ecdsa_new_output_to_legacy(c, _ecdsa) {
+  const Point = _ecdsa.Point;
+  return Object.assign({}, _ecdsa, {
+    ProjectivePoint: Point,
+    CURVE: Object.assign({}, c, nLength(Point.Fn.ORDER, Point.Fn.BITS))
+  });
+}
+function weierstrass(c) {
+  const { CURVE, curveOpts, hash, ecdsaOpts } = _ecdsa_legacy_opts_to_new(c);
+  const Point = weierstrassN(CURVE, curveOpts);
+  const signs = ecdsa(Point, hash, ecdsaOpts);
+  return _ecdsa_new_output_to_legacy(c, signs);
+}
+
+// node_modules/@noble/curves/esm/_shortw_utils.js
+function createCurve(curveDef, defHash) {
+  const create = (hash) => weierstrass({ ...curveDef, hash });
+  return { ...create(defHash), create };
+}
+
+// node_modules/@noble/curves/esm/nist.js
+var p256_CURVE = {
+  p: BigInt("0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"),
+  n: BigInt("0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"),
+  h: BigInt(1),
+  a: BigInt("0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc"),
+  b: BigInt("0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b"),
+  Gx: BigInt("0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296"),
+  Gy: BigInt("0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5")
+};
+var p384_CURVE = {
+  p: BigInt("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff"),
+  n: BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973"),
+  h: BigInt(1),
+  a: BigInt("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000fffffffc"),
+  b: BigInt("0xb3312fa7e23ee7e4988e056be3f82d19181d9c6efe8141120314088f5013875ac656398d8a2ed19d2a85c8edd3ec2aef"),
+  Gx: BigInt("0xaa87ca22be8b05378eb1c71ef320ad746e1d3b628ba79b9859f741e082542a385502f25dbf55296c3a545e3872760ab7"),
+  Gy: BigInt("0x3617de4a96262c6f5d9e98bf9292dc29f8f41dbd289a147ce9da3113b5f0b8c00a60b1ce1d7e819d7a431d7c90ea0e5f")
+};
+var p521_CURVE = {
+  p: BigInt("0x1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+  n: BigInt("0x01fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa51868783bf2f966b7fcc0148f709a5d03bb5c9b8899c47aebb6fb71e91386409"),
+  h: BigInt(1),
+  a: BigInt("0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc"),
+  b: BigInt("0x0051953eb9618e1c9a1f929a21a0b68540eea2da725b99b315f3b8b489918ef109e156193951ec7e937b1652c0bd3bb1bf073573df883d2c34f1ef451fd46b503f00"),
+  Gx: BigInt("0x00c6858e06b70404e9cd9e3ecb662395b4429c648139053fb521f828af606b4d3dbaa14b5e77efe75928fe1dc127a2ffa8de3348b3c1856a429bf97e7e31c2e5bd66"),
+  Gy: BigInt("0x011839296a789a3bc0045c8a5fb42c7d1bd998f54449579b446817afbd17273e662c97ee72995ef42640c550b9013fad0761353c7086a272c24088be94769fd16650")
+};
+var Fp256 = Field(p256_CURVE.p);
+var Fp384 = Field(p384_CURVE.p);
+var Fp521 = Field(p521_CURVE.p);
+var p256 = createCurve({ ...p256_CURVE, Fp: Fp256, lowS: false }, sha256);
+var p384 = createCurve({ ...p384_CURVE, Fp: Fp384, lowS: false }, sha384);
+var p521 = createCurve({ ...p521_CURVE, Fp: Fp521, lowS: false, allowedPrivateKeyLengths: [130, 131, 132] }, sha512);
+
+// node_modules/@noble/curves/esm/p256.js
+var p2562 = p256;
+
+// src/webauthn-approval.ts
 function createApprovalChallenge(requestId, toolName, agentId, rpId = "scopeblind.com", timeoutSeconds = 300) {
   const challengeBytes = (0, import_node_crypto8.randomBytes)(32);
   const contextHash = (0, import_node_crypto8.createHash)("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
@@ -42468,43 +44129,72 @@ function toCredentialRequestOptions(challenge, allowCredentials) {
     }
   };
 }
-function verifyApprovalAssertion(challenge, assertion) {
+function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts = {}) {
+  const now = opts.now ?? Date.now();
+  const fail = (reason, partial = {}) => ({
+    valid: false,
+    reason,
+    credentialId: assertion.credentialId,
+    authenticatorType: "unknown",
+    userVerified: false,
+    signCount: 0,
+    contextHash: challenge.contextHash,
+    approvedAt: new Date(now).toISOString(),
+    ...partial
+  });
   const createdAt = new Date(challenge.createdAt).getTime();
-  const now = Date.now();
-  if (now - createdAt > challenge.timeoutSeconds * 1e3) {
-    return {
-      valid: false,
-      credentialId: assertion.credentialId,
-      authenticatorType: "unknown",
-      userVerified: false,
-      signCount: 0,
-      contextHash: challenge.contextHash,
-      approvedAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
+  if (now - createdAt > challenge.timeoutSeconds * 1e3) return fail("challenge_expired");
+  if (!credentialPublicKey?.publicKeyHex) return fail("missing_credential_public_key");
+  const clientDataBytes = base64urlDecode2(assertion.clientDataJSON);
+  let clientData;
+  try {
+    clientData = JSON.parse(Buffer.from(clientDataBytes).toString("utf8"));
+  } catch {
+    return fail("client_data_parse_error");
   }
+  if (clientData.type !== "webauthn.get") return fail("wrong_client_data_type");
+  if (!constantTimeStrEqual(clientData.challenge ?? "", challenge.challenge)) return fail("challenge_mismatch");
+  const allowedOrigins = opts.expectedOrigin ? Array.isArray(opts.expectedOrigin) ? opts.expectedOrigin : [opts.expectedOrigin] : [`https://${challenge.rpId}`];
+  if (!clientData.origin || !allowedOrigins.includes(clientData.origin)) return fail("origin_mismatch");
   const authData = base64urlDecode2(assertion.authenticatorData);
+  if (authData.length < 37) return fail("authenticator_data_too_short");
+  const rpIdHash = authData.slice(0, 32);
+  const expectedRpIdHash = sha2562(new TextEncoder().encode(challenge.rpId));
+  if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail("rp_id_hash_mismatch");
   const flags = authData[32];
   const userPresent = !!(flags & 1);
   const userVerified = !!(flags & 4);
-  const attestedCredData = !!(flags & 64);
-  const signCount = authData.length >= 37 ? authData[33] << 24 | authData[34] << 16 | authData[35] << 8 | authData[36] : 0;
-  let authenticatorType = "unknown";
+  if (!userPresent) return fail("user_not_present");
+  if ((opts.requireUserVerification ?? true) && !userVerified) return fail("user_verification_required", { userVerified });
+  const signCount = authData[33] << 24 | authData[34] << 16 | authData[35] << 8 | authData[36];
+  if (typeof opts.prevSignCount === "number" && signCount !== 0 && signCount <= opts.prevSignCount) {
+    return fail("sign_count_regression", { userVerified, signCount });
+  }
+  const signedData = concatBytes2(authData, sha2562(clientDataBytes));
+  const sigBytes = base64urlDecode2(assertion.signature);
+  let sigOk = false;
   try {
-    const clientData = JSON.parse(Buffer.from(base64urlDecode2(assertion.clientDataJSON)).toString());
-    if (clientData.type === "webauthn.get") {
-      authenticatorType = "platform";
+    if (credentialPublicKey.alg === -7) {
+      sigOk = p2562.verify(sigBytes, sha2562(signedData), hexToBytes(credentialPublicKey.publicKeyHex), { format: "der" });
+    } else if (credentialPublicKey.alg === -8) {
+      sigOk = ed25519.verify(sigBytes, signedData, hexToBytes(credentialPublicKey.publicKeyHex));
+    } else {
+      return fail("unsupported_algorithm", { userVerified, signCount });
     }
   } catch {
+    sigOk = false;
   }
+  if (!sigOk) return fail("invalid_signature", { userVerified, signCount });
   return {
-    valid: userPresent,
-    // At minimum, user must be present
+    valid: true,
     credentialId: assertion.credentialId,
-    authenticatorType,
+    // Heuristic: platform authenticators (TouchID/FaceID/Hello) report UV; roaming
+    // keys without a PIN are UP-only. Attachment is authoritative only at registration.
+    authenticatorType: userVerified ? "platform" : "cross-platform",
     userVerified,
     signCount,
     contextHash: challenge.contextHash,
-    approvedAt: (/* @__PURE__ */ new Date()).toISOString()
+    approvedAt: new Date(now).toISOString()
   };
 }
 function createApprovalReceiptPayload(challenge, result) {
@@ -42529,6 +44219,22 @@ function base64urlDecode2(str) {
   const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
   const padded = base64 + "=".repeat((4 - base64.length % 4) % 4);
   return new Uint8Array(Buffer.from(padded, "base64"));
+}
+function concatBytes2(a, b) {
+  const out = new Uint8Array(a.length + b.length);
+  out.set(a, 0);
+  out.set(b, a.length);
+  return out;
+}
+function bytesEqual(a, b) {
+  if (a.length !== b.length) return false;
+  return (0, import_node_crypto8.timingSafeEqual)(Buffer.from(a), Buffer.from(b));
+}
+function constantTimeStrEqual(a, b) {
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return (0, import_node_crypto8.timingSafeEqual)(ab, bb);
 }
 
 // src/did-vc.ts
@@ -43451,7 +45157,7 @@ function handleRequest(request) {
       id: request.id,
       result: {
         protocolVersion: "2024-11-05",
-        serverInfo: { name: "protect-mcp-demo", version: "0.5.3" },
+        serverInfo: { name: "protect-mcp-demo", version: process.env.PROTECT_MCP_VERSION || "0.5.3" },
         capabilities: { tools: {} }
       }
     });
@@ -43537,7 +45243,7 @@ function createSandboxServer() {
   const { z } = require_zod();
   const server = new McpServer({
     name: "protect-mcp",
-    version: "0.4.5",
+    version: process.env.PROTECT_MCP_VERSION || "0.4.5",
     description: "Security gateway for MCP servers. Per-tool policies, Ed25519-signed receipts, human approval gates, trust tiers."
   });
   server.tool(
@@ -43739,5 +45445,9 @@ function createSandboxServer() {
 @noble/curves/esm/abstract/curve.js:
 @noble/curves/esm/abstract/edwards.js:
 @noble/curves/esm/ed25519.js:
+@noble/curves/esm/abstract/weierstrass.js:
+@noble/curves/esm/_shortw_utils.js:
+@noble/curves/esm/nist.js:
+@noble/curves/esm/p256.js:
   (*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
 */

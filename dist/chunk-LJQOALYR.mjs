@@ -136,6 +136,24 @@ var SHA256_IV = /* @__PURE__ */ Uint32Array.from([
   528734635,
   1541459225
 ]);
+var SHA384_IV = /* @__PURE__ */ Uint32Array.from([
+  3418070365,
+  3238371032,
+  1654270250,
+  914150663,
+  2438529370,
+  812702999,
+  355462360,
+  4144912697,
+  1731405415,
+  4290775857,
+  2394180231,
+  1750603025,
+  3675008525,
+  1694076839,
+  1203062813,
+  3204075428
+]);
 var SHA512_IV = /* @__PURE__ */ Uint32Array.from([
   1779033703,
   4089235720,
@@ -525,8 +543,30 @@ var SHA512 = class extends HashMD {
     this.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
   }
 };
+var SHA384 = class extends SHA512 {
+  constructor() {
+    super(48);
+    this.Ah = SHA384_IV[0] | 0;
+    this.Al = SHA384_IV[1] | 0;
+    this.Bh = SHA384_IV[2] | 0;
+    this.Bl = SHA384_IV[3] | 0;
+    this.Ch = SHA384_IV[4] | 0;
+    this.Cl = SHA384_IV[5] | 0;
+    this.Dh = SHA384_IV[6] | 0;
+    this.Dl = SHA384_IV[7] | 0;
+    this.Eh = SHA384_IV[8] | 0;
+    this.El = SHA384_IV[9] | 0;
+    this.Fh = SHA384_IV[10] | 0;
+    this.Fl = SHA384_IV[11] | 0;
+    this.Gh = SHA384_IV[12] | 0;
+    this.Gl = SHA384_IV[13] | 0;
+    this.Hh = SHA384_IV[14] | 0;
+    this.Hl = SHA384_IV[15] | 0;
+  }
+};
 var sha256 = /* @__PURE__ */ createHasher(() => new SHA256());
 var sha512 = /* @__PURE__ */ createHasher(() => new SHA512());
+var sha384 = /* @__PURE__ */ createHasher(() => new SHA384());
 
 // node_modules/@noble/curves/esm/utils.js
 var _0n = /* @__PURE__ */ BigInt(0);
@@ -549,6 +589,10 @@ function _abytes2(value, length, title = "") {
     throw new Error(prefix + "expected Uint8Array" + ofLen + ", got " + got);
   }
   return value;
+}
+function numberToHexUnpadded(num) {
+  const hex = num.toString(16);
+  return hex.length & 1 ? "0" + hex : hex;
 }
 function hexToNumber(hex) {
   if (typeof hex !== "string")
@@ -612,6 +656,56 @@ function bitLen(n) {
   return len;
 }
 var bitMask = (n) => (_1n << BigInt(n)) - _1n;
+function createHmacDrbg(hashLen, qByteLen, hmacFn) {
+  if (typeof hashLen !== "number" || hashLen < 2)
+    throw new Error("hashLen must be a number");
+  if (typeof qByteLen !== "number" || qByteLen < 2)
+    throw new Error("qByteLen must be a number");
+  if (typeof hmacFn !== "function")
+    throw new Error("hmacFn must be a function");
+  const u8n = (len) => new Uint8Array(len);
+  const u8of = (byte) => Uint8Array.of(byte);
+  let v = u8n(hashLen);
+  let k = u8n(hashLen);
+  let i = 0;
+  const reset = () => {
+    v.fill(1);
+    k.fill(0);
+    i = 0;
+  };
+  const h = (...b) => hmacFn(k, v, ...b);
+  const reseed = (seed = u8n(0)) => {
+    k = h(u8of(0), seed);
+    v = h();
+    if (seed.length === 0)
+      return;
+    k = h(u8of(1), seed);
+    v = h();
+  };
+  const gen = () => {
+    if (i++ >= 1e3)
+      throw new Error("drbg: tried 1000 values");
+    let len = 0;
+    const out = [];
+    while (len < qByteLen) {
+      v = h();
+      const sl = v.slice();
+      out.push(sl);
+      len += v.length;
+    }
+    return concatBytes(...out);
+  };
+  const genUntil = (seed, pred) => {
+    reset();
+    reseed(seed);
+    let res = void 0;
+    while (!(res = pred(gen())))
+      reseed();
+    reset();
+    return res;
+  };
+  return genUntil;
+}
 function isHash(val) {
   return typeof val === "function" && Number.isSafeInteger(val.outputLen);
 }
@@ -975,6 +1069,26 @@ function FpSqrtEven(Fp2, elm) {
   const root = Fp2.sqrt(elm);
   return Fp2.isOdd(root) ? Fp2.neg(root) : root;
 }
+function getFieldBytesLength(fieldOrder) {
+  if (typeof fieldOrder !== "bigint")
+    throw new Error("field order must be bigint");
+  const bitLength = fieldOrder.toString(2).length;
+  return Math.ceil(bitLength / 8);
+}
+function getMinHashLength(fieldOrder) {
+  const length = getFieldBytesLength(fieldOrder);
+  return length + Math.ceil(length / 2);
+}
+function mapHashToField(key, fieldOrder, isLE = false) {
+  const len = key.length;
+  const fieldLen = getFieldBytesLength(fieldOrder);
+  const minLen = getMinHashLength(fieldOrder);
+  if (len < 16 || len < minLen || len > 1024)
+    throw new Error("expected " + minLen + "-1024 bytes of input, got " + len);
+  const num = isLE ? bytesToNumberLE(key) : bytesToNumberBE(key);
+  const reduced = mod(num, fieldOrder - _1n2) + _1n2;
+  return isLE ? numberToBytesLE(reduced, fieldLen) : numberToBytesBE(reduced, fieldLen);
+}
 
 // node_modules/@noble/curves/esm/abstract/curve.js
 var _0n3 = BigInt(0);
@@ -1168,6 +1282,21 @@ var wNAF = class {
     return getW(elm) !== 1;
   }
 };
+function mulEndoUnsafe(Point, point, k1, k2) {
+  let acc = point;
+  let p1 = Point.ZERO;
+  let p2 = Point.ZERO;
+  while (k1 > _0n3 || k2 > _0n3) {
+    if (k1 & _1n3)
+      p1 = p1.add(acc);
+    if (k2 & _1n3)
+      p2 = p2.add(acc);
+    acc = acc.double();
+    k1 >>= _1n3;
+    k2 >>= _1n3;
+  }
+  return { p1, p2 };
+}
 function pippenger(c, fieldN, points, scalars) {
   validateMSMPoints(points, c);
   validateMSMScalars(scalars, fieldN);
@@ -2417,6 +2546,29 @@ var hash_to_ristretto255 = /* @__PURE__ */ (() => ristretto255_hasher.hashToCurv
 
 export {
   sha256,
+  sha512,
+  sha384,
+  _abool2,
+  _abytes2,
+  numberToHexUnpadded,
+  bytesToNumberBE,
+  ensureBytes,
+  aInRange,
+  bitLen,
+  bitMask,
+  createHmacDrbg,
+  _validateObject,
+  memoized,
+  nLength,
+  Field,
+  getMinHashLength,
+  mapHashToField,
+  negateCt,
+  normalizeZ,
+  wNAF,
+  mulEndoUnsafe,
+  pippenger,
+  _createCurveFields,
   ed25519,
   ed25519ctx,
   ed25519ph,

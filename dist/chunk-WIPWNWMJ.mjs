@@ -524,7 +524,7 @@ function handleHealth(res, startTime, config) {
     status: "ok",
     uptime_ms: Date.now() - startTime,
     mode: config.mode,
-    version: "0.3.1"
+    version: process.env.PROTECT_MCP_VERSION || "unknown"
   }));
 }
 function handleStatus(res, logDir) {

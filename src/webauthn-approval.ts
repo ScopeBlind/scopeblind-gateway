@@ -34,7 +34,11 @@
  *   const result = verifyApprovalAssertion(challenge, assertion, credentialId);
  */
 
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { p256 } from '@noble/curves/p256';
+import { ed25519 } from '@noble/curves/ed25519';
+import { sha256 } from '@noble/hashes/sha256';
+import { hexToBytes } from '@noble/hashes/utils';
 
 export interface ApprovalChallenge {
   /** Random challenge bytes (base64url) */
@@ -83,6 +87,31 @@ export interface ApprovalResult {
   contextHash: string;
   /** Timestamp of approval */
   approvedAt: string;
+  /** On failure, a machine-readable reason (e.g. 'invalid_signature'). */
+  reason?: string;
+}
+
+/**
+ * The registered credential public key, extracted from the COSE_Key at
+ * registration. ES256 keys are an uncompressed P-256 point; EdDSA keys are a
+ * 32-byte Ed25519 public key.
+ */
+export interface CredentialPublicKey {
+  /** COSE algorithm: -7 = ES256 (P-256 / ECDSA), -8 = EdDSA (Ed25519). */
+  alg: -7 | -8;
+  /** Public key, hex. ES256: 65-byte uncompressed point (0x04 || x || y). EdDSA: 32-byte key. */
+  publicKeyHex: string;
+}
+
+export interface VerifyAssertionOptions {
+  /** Allowed origin(s) the assertion must come from, e.g. 'https://app.scopeblind.com'. Defaults to https://<rpId>. */
+  expectedOrigin?: string | string[];
+  /** Require the UV (user-verified / biometric or PIN) flag. Default true. */
+  requireUserVerification?: boolean;
+  /** The signCount stored from the previous assertion; a non-increasing counter signals a cloned authenticator. */
+  prevSignCount?: number;
+  /** Override 'now' (ms) for testing. */
+  now?: number;
 }
 
 /**
@@ -161,68 +190,107 @@ export function toCredentialRequestOptions(
 }
 
 /**
- * Verify a WebAuthn assertion from the client.
+ * Verify a WebAuthn assertion: full, fail-closed verification of a passkey or
+ * security-key co-sign. This proves a SPECIFIC human authorized a SPECIFIC
+ * action with a hardware-held key the host operator cannot exfiltrate. It
+ * checks, in order: challenge freshness; clientDataJSON type, challenge, and
+ * origin; the rpIdHash; the UP (and, by default, UV) flags; the authenticator
+ * signature over authenticatorData || SHA-256(clientDataJSON) using the
+ * registered credential public key (ES256 or EdDSA); and signCount monotonicity
+ * (clone detection) when a previous count is supplied. Any failure returns
+ * valid:false with a reason; nothing is trusted on a partial check.
  *
- * This is a simplified verification that checks the structure
- * and extracts the authenticator data. For production use with
- * full signature verification, use the @simplewebauthn/server package.
- *
- * @param challenge - The original challenge
- * @param assertion - The assertion from navigator.credentials.get()
- * @returns ApprovalResult with verification details
+ * @param challenge - the original challenge
+ * @param assertion - the assertion from navigator.credentials.get()
+ * @param credentialPublicKey - the registered public key for assertion.credentialId
+ * @param opts - origin / UV / signCount / clock options
  */
 export function verifyApprovalAssertion(
   challenge: ApprovalChallenge,
   assertion: ApprovalAssertion,
+  credentialPublicKey?: CredentialPublicKey,
+  opts: VerifyAssertionOptions = {},
 ): ApprovalResult {
-  // Check challenge hasn't expired
+  const now = opts.now ?? Date.now();
+  const fail = (reason: string, partial: Partial<ApprovalResult> = {}): ApprovalResult => ({
+    valid: false,
+    reason,
+    credentialId: assertion.credentialId,
+    authenticatorType: 'unknown',
+    userVerified: false,
+    signCount: 0,
+    contextHash: challenge.contextHash,
+    approvedAt: new Date(now).toISOString(),
+    ...partial,
+  });
+
+  // 1. Freshness.
   const createdAt = new Date(challenge.createdAt).getTime();
-  const now = Date.now();
-  if (now - createdAt > challenge.timeoutSeconds * 1000) {
-    return {
-      valid: false,
-      credentialId: assertion.credentialId,
-      authenticatorType: 'unknown',
-      userVerified: false,
-      signCount: 0,
-      contextHash: challenge.contextHash,
-      approvedAt: new Date().toISOString(),
-    };
+  if (now - createdAt > challenge.timeoutSeconds * 1000) return fail('challenge_expired');
+
+  // 2. A signature cannot be verified without the registered key: fail closed.
+  if (!credentialPublicKey?.publicKeyHex) return fail('missing_credential_public_key');
+
+  // 3. clientDataJSON: type, challenge, origin.
+  const clientDataBytes = base64urlDecode(assertion.clientDataJSON);
+  let clientData: { type?: string; challenge?: string; origin?: string };
+  try {
+    clientData = JSON.parse(Buffer.from(clientDataBytes).toString('utf8'));
+  } catch {
+    return fail('client_data_parse_error');
+  }
+  if (clientData.type !== 'webauthn.get') return fail('wrong_client_data_type');
+  if (!constantTimeStrEqual(clientData.challenge ?? '', challenge.challenge)) return fail('challenge_mismatch');
+  const allowedOrigins = opts.expectedOrigin
+    ? (Array.isArray(opts.expectedOrigin) ? opts.expectedOrigin : [opts.expectedOrigin])
+    : [`https://${challenge.rpId}`];
+  if (!clientData.origin || !allowedOrigins.includes(clientData.origin)) return fail('origin_mismatch');
+
+  // 4. authenticatorData: rpIdHash, flags, signCount.
+  const authData = base64urlDecode(assertion.authenticatorData);
+  if (authData.length < 37) return fail('authenticator_data_too_short');
+  const rpIdHash = authData.slice(0, 32);
+  const expectedRpIdHash = sha256(new TextEncoder().encode(challenge.rpId));
+  if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail('rp_id_hash_mismatch');
+  const flags = authData[32];
+  const userPresent = !!(flags & 0x01);
+  const userVerified = !!(flags & 0x04);
+  if (!userPresent) return fail('user_not_present');
+  if ((opts.requireUserVerification ?? true) && !userVerified) return fail('user_verification_required', { userVerified });
+  const signCount = (authData[33] << 24) | (authData[34] << 16) | (authData[35] << 8) | authData[36];
+  if (typeof opts.prevSignCount === 'number' && signCount !== 0 && signCount <= opts.prevSignCount) {
+    return fail('sign_count_regression', { userVerified, signCount });
   }
 
-  // Parse authenticator data
-  const authData = base64urlDecode(assertion.authenticatorData);
-  const flags = authData[32]; // flags byte is at offset 32
-
-  // Check flags
-  const userPresent = !!(flags & 0x01);    // UP flag
-  const userVerified = !!(flags & 0x04);   // UV flag
-  const attestedCredData = !!(flags & 0x40); // AT flag
-
-  // Extract sign count (bytes 33-36, big-endian)
-  const signCount = authData.length >= 37
-    ? (authData[33] << 24) | (authData[34] << 16) | (authData[35] << 8) | authData[36]
-    : 0;
-
-  // Determine authenticator type from client data
-  let authenticatorType: 'platform' | 'cross-platform' | 'unknown' = 'unknown';
+  // 5. The cryptographic signature over authenticatorData || SHA-256(clientDataJSON).
+  const signedData = concatBytes(authData, sha256(clientDataBytes));
+  const sigBytes = base64urlDecode(assertion.signature);
+  let sigOk = false;
   try {
-    const clientData = JSON.parse(Buffer.from(base64urlDecode(assertion.clientDataJSON)).toString());
-    if (clientData.type === 'webauthn.get') {
-      authenticatorType = 'platform'; // Simplified — real detection needs more context
+    if (credentialPublicKey.alg === -7) {
+      // ES256: ECDSA-P256 over SHA-256(signedData); WebAuthn encodes the signature as ASN.1 DER.
+      sigOk = p256.verify(sigBytes, sha256(signedData), hexToBytes(credentialPublicKey.publicKeyHex), { format: 'der' });
+    } else if (credentialPublicKey.alg === -8) {
+      // EdDSA: Ed25519 over signedData directly.
+      sigOk = ed25519.verify(sigBytes, signedData, hexToBytes(credentialPublicKey.publicKeyHex));
+    } else {
+      return fail('unsupported_algorithm', { userVerified, signCount });
     }
   } catch {
-    // Client data parsing failed
+    sigOk = false;
   }
+  if (!sigOk) return fail('invalid_signature', { userVerified, signCount });
 
   return {
-    valid: userPresent, // At minimum, user must be present
+    valid: true,
     credentialId: assertion.credentialId,
-    authenticatorType,
+    // Heuristic: platform authenticators (TouchID/FaceID/Hello) report UV; roaming
+    // keys without a PIN are UP-only. Attachment is authoritative only at registration.
+    authenticatorType: userVerified ? 'platform' : 'cross-platform',
     userVerified,
     signCount,
     contextHash: challenge.contextHash,
-    approvedAt: new Date().toISOString(),
+    approvedAt: new Date(now).toISOString(),
   };
 }
 
@@ -279,4 +347,25 @@ function base64urlDecode(str: string): Uint8Array {
   const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
   const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
   return new Uint8Array(Buffer.from(padded, 'base64'));
+}
+
+function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+  const out = new Uint8Array(a.length + b.length);
+  out.set(a, 0);
+  out.set(b, a.length);
+  return out;
+}
+
+/** Constant-time byte comparison (length-checked). */
+function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
+/** Constant-time UTF-8 string comparison. */
+function constantTimeStrEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
 }

@@ -905,7 +905,7 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
       res.end(JSON.stringify({
         status: 'ok',
         server: 'protect-mcp-hooks',
-        version: '0.5.0',
+        version: process.env.PROTECT_MCP_VERSION || 'unknown',
         uptime_ms: Date.now() - state.startTime,
         mode: enforce ? 'enforce' : 'shadow',
         policy_digest: policyDigest,
@@ -1005,8 +1005,8 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
     const w = (s: string) => process.stderr.write(s);
     const pad = (s: string, n = 46) => s.padEnd(n);
     w(`\n`);
-    w(`  protect-mcp v0.5.4\n`);
-    w(`  ScopeBlind — https://scopeblind.com\n`);
+    w(process.env.PROTECT_MCP_VERSION ? `  protect-mcp v${process.env.PROTECT_MCP_VERSION}\n` : `  protect-mcp\n`);
+    w(`  ScopeBlind · https://scopeblind.com\n`);
     w(`\n`);
     w(`  Listening     http://127.0.0.1:${port}\n`);
     w(`  Mode          ${enforce ? 'enforce' : 'shadow'}\n`);
@@ -1021,7 +1021,10 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
     w(`  GET  /receipts     Signed receipts\n`);
     w(`  GET  /suggestions  Cedar policy suggestions\n`);
     w(`\n`);
-    w(`  deny is authoritative — cannot be overridden.\n`);
+    w(`  deny is authoritative: it cannot be overridden.\n`);
+    w(`\n`);
+    w(`  See your record   npx protect-mcp record\n`);
+    w(`                    a searchable view of every decision, all on this machine\n`);
     w(`\n`);
     // Dashboard hint — only show if not already connected
     const hasSlug = process.env.SCOPEBLIND_SLUG || existsSync(join(process.cwd(), '.scopeblind'));

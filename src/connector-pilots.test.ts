@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -14,6 +14,7 @@ describe('connector pilots', () => {
       expect(result.written.some((p) => p.endsWith('finance-pms.cedar'))).toBe(true);
       const installed = readInstalledConnectorPilots(dir);
       expect(installed.map((p) => p.id).sort()).toEqual(connectorPilotIds().sort());
+      expect(existsSync(join(dir, '.protect-mcp/connectors/nautilus-trader/bridge.py'))).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -43,6 +44,25 @@ describe('connector pilots', () => {
       expect(finance.mode).toBe('mock');
       expect(finance.usable).toBe(true);
       expect(finance.missing_required).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('installs a NautilusTrader-compatible bridge without requiring Nautilus locally', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pmcp-connectors-'));
+    try {
+      const result = writeConnectorPilots({ dir, ids: ['nautilus-trader'], force: true });
+      expect(result.pilots.map((pilot) => pilot.id)).toEqual(['nautilus-trader']);
+      const bridgePath = join(dir, '.protect-mcp/connectors/nautilus-trader/bridge.py');
+      const bridge = readFileSync(bridgePath, 'utf-8');
+      expect(bridge).toContain('ScopeBlind external bridge');
+      expect(bridge).toContain('NAUTILUS_BRIDGE_MODULE');
+      const rows = connectorDoctor(dir, {});
+      const nautilus = rows.find((row) => row.id === 'nautilus-trader') as any;
+      expect(nautilus.installed).toBe(true);
+      expect(nautilus.mode).toBe('mock_bridge');
+      expect(nautilus.usable).toBe(true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

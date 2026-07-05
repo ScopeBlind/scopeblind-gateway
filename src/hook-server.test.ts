@@ -400,7 +400,10 @@ describe('Health and observability', () => {
     const body = await res.json() as Record<string, unknown>;
     expect(body.status).toBe('ok');
     expect(body.server).toBe('protect-mcp-hooks');
-    expect(body.version).toBe('0.5.0');
+    // Version is resolved at runtime from package.json (set via PROTECT_MCP_VERSION
+    // by the CLI), so assert its shape rather than a frozen string.
+    expect(typeof body.version).toBe('string');
+    expect(body.version).toBeTruthy();
     expect(body.mode).toBe('enforce');
     expect(typeof body.uptime_ms).toBe('number');
   });

@@ -1,7 +1,7 @@
 import {
   ProtectGateway
-} from "./chunk-UBZJ3VI2.mjs";
-import "./chunk-D2RDY2JR.mjs";
+} from "./chunk-VTPZ4G5I.mjs";
+import "./chunk-WIPWNWMJ.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/http-transport.ts
@@ -34,7 +34,7 @@ async function startHttpTransport(options) {
       res.end(JSON.stringify({
         status: "ok",
         server: "protect-mcp",
-        version: "0.4.0",
+        version: process.env.PROTECT_MCP_VERSION || "unknown",
         transport: "streamable-http",
         mode: config.policy ? config.enforce ? "enforce" : "shadow" : "shadow",
         wrapping: serverCommand.join(" ")

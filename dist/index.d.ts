@@ -1683,7 +1683,7 @@ declare const POLICY_PACKS: PolicyPack[];
 declare function getPolicyPack(id: string): PolicyPack | undefined;
 declare function policyPackIds(): string[];
 
-type ConnectorPilotId = 'github' | 'email-gmail' | 'filesystem-git' | 'slack-teams' | 'finance-pms';
+type ConnectorPilotId = 'github' | 'email-gmail' | 'filesystem-git' | 'slack-teams' | 'finance-pms' | 'nautilus-trader';
 interface ConnectorEnvVar {
     name: string;
     required: boolean;
@@ -1695,6 +1695,11 @@ interface ConnectorAction {
     risk: 'low' | 'medium' | 'high';
     mode: 'observe' | 'require_approval' | 'deny';
     description: string;
+}
+interface ConnectorArtifact {
+    path: string;
+    contents: string;
+    executable?: boolean;
 }
 interface ConnectorPilot {
     id: ConnectorPilotId;
@@ -1709,6 +1714,7 @@ interface ConnectorPilot {
     setup: string[];
     config: Record<string, unknown>;
     cedar: string;
+    artifacts?: ConnectorArtifact[];
 }
 interface InstalledConnectorPilot {
     id: string;
@@ -2166,6 +2172,29 @@ interface ApprovalResult {
     contextHash: string;
     /** Timestamp of approval */
     approvedAt: string;
+    /** On failure, a machine-readable reason (e.g. 'invalid_signature'). */
+    reason?: string;
+}
+/**
+ * The registered credential public key, extracted from the COSE_Key at
+ * registration. ES256 keys are an uncompressed P-256 point; EdDSA keys are a
+ * 32-byte Ed25519 public key.
+ */
+interface CredentialPublicKey {
+    /** COSE algorithm: -7 = ES256 (P-256 / ECDSA), -8 = EdDSA (Ed25519). */
+    alg: -7 | -8;
+    /** Public key, hex. ES256: 65-byte uncompressed point (0x04 || x || y). EdDSA: 32-byte key. */
+    publicKeyHex: string;
+}
+interface VerifyAssertionOptions {
+    /** Allowed origin(s) the assertion must come from, e.g. 'https://app.scopeblind.com'. Defaults to https://<rpId>. */
+    expectedOrigin?: string | string[];
+    /** Require the UV (user-verified / biometric or PIN) flag. Default true. */
+    requireUserVerification?: boolean;
+    /** The signCount stored from the previous assertion; a non-increasing counter signals a cloned authenticator. */
+    prevSignCount?: number;
+    /** Override 'now' (ms) for testing. */
+    now?: number;
 }
 /**
  * Create a WebAuthn challenge for approving a tool call.
@@ -2202,17 +2231,22 @@ declare function toCredentialRequestOptions(challenge: ApprovalChallenge, allowC
     };
 };
 /**
- * Verify a WebAuthn assertion from the client.
+ * Verify a WebAuthn assertion: full, fail-closed verification of a passkey or
+ * security-key co-sign. This proves a SPECIFIC human authorized a SPECIFIC
+ * action with a hardware-held key the host operator cannot exfiltrate. It
+ * checks, in order: challenge freshness; clientDataJSON type, challenge, and
+ * origin; the rpIdHash; the UP (and, by default, UV) flags; the authenticator
+ * signature over authenticatorData || SHA-256(clientDataJSON) using the
+ * registered credential public key (ES256 or EdDSA); and signCount monotonicity
+ * (clone detection) when a previous count is supplied. Any failure returns
+ * valid:false with a reason; nothing is trusted on a partial check.
  *
- * This is a simplified verification that checks the structure
- * and extracts the authenticator data. For production use with
- * full signature verification, use the @simplewebauthn/server package.
- *
- * @param challenge - The original challenge
- * @param assertion - The assertion from navigator.credentials.get()
- * @returns ApprovalResult with verification details
+ * @param challenge - the original challenge
+ * @param assertion - the assertion from navigator.credentials.get()
+ * @param credentialPublicKey - the registered public key for assertion.credentialId
+ * @param opts - origin / UV / signCount / clock options
  */
-declare function verifyApprovalAssertion(challenge: ApprovalChallenge, assertion: ApprovalAssertion): ApprovalResult;
+declare function verifyApprovalAssertion(challenge: ApprovalChallenge, assertion: ApprovalAssertion, credentialPublicKey?: CredentialPublicKey, opts?: VerifyAssertionOptions): ApprovalResult;
 /**
  * Create the approval receipt payload for embedding in an Acta receipt.
  *

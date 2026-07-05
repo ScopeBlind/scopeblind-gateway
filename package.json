@@ -1,6 +1,6 @@
 {
   "name": "protect-mcp",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "mcpName": "com.scopeblind/protect-mcp",
   "description": "Fail-closed Cedar policy gate + signed receipts for AI agent tool calls. Blocks what breaks the rules before it runs, denies on any policy error, and proves the gate is live with a startup self-test.",
   "main": "dist/index.js",

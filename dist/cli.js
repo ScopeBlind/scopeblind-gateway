@@ -1140,7 +1140,7 @@ function handleHealth(res, startTime, config) {
     status: "ok",
     uptime_ms: Date.now() - startTime,
     mode: config.mode,
-    version: "0.3.1"
+    version: process.env.PROTECT_MCP_VERSION || "unknown"
   }));
 }
 function handleStatus(res, logDir) {
@@ -6651,7 +6651,7 @@ async function startHookServer(options = {}) {
       res.end(JSON.stringify({
         status: "ok",
         server: "protect-mcp-hooks",
-        version: "0.5.0",
+        version: process.env.PROTECT_MCP_VERSION || "unknown",
         uptime_ms: Date.now() - state.startTime,
         mode: enforce ? "enforce" : "shadow",
         policy_digest: policyDigest,
@@ -6738,9 +6738,10 @@ async function startHookServer(options = {}) {
     const pad = (s, n = 46) => s.padEnd(n);
     w(`
 `);
-    w(`  protect-mcp v0.5.4
+    w(process.env.PROTECT_MCP_VERSION ? `  protect-mcp v${process.env.PROTECT_MCP_VERSION}
+` : `  protect-mcp
 `);
-    w(`  ScopeBlind \u2014 https://scopeblind.com
+    w(`  ScopeBlind \xB7 https://scopeblind.com
 `);
     w(`
 `);
@@ -6768,7 +6769,13 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    w(`  deny is authoritative \u2014 cannot be overridden.
+    w(`  deny is authoritative: it cannot be overridden.
+`);
+    w(`
+`);
+    w(`  See your record   npx protect-mcp record
+`);
+    w(`                    a searchable view of every decision, all on this machine
 `);
     w(`
 `);
@@ -6918,7 +6925,7 @@ async function startHttpTransport(options) {
       res.end(JSON.stringify({
         status: "ok",
         server: "protect-mcp",
-        version: "0.4.0",
+        version: process.env.PROTECT_MCP_VERSION || "unknown",
         transport: "streamable-http",
         mode: config.policy ? config.enforce ? "enforce" : "shadow" : "shadow",
         wrapping: serverCommand.join(" ")
@@ -7561,6 +7568,292 @@ var defaultPermit2 = `
 // Default posture: observe all non-matching tools so the connector can be piloted in shadow mode.
 permit(principal, action == Action::"MCP::Tool::call", resource);
 `;
+var nautilusBridgePy = String.raw`#!/usr/bin/env python3
+"""
+ScopeBlind external bridge for NautilusTrader-compatible pilots.
+
+This file is intentionally outside NautilusTrader. It gives protect-mcp a stable
+JSONL command boundary for staging, approval-gated submission, cancellation, and
+event export while keeping the trading engine customer-owned.
+
+Mock mode runs without NautilusTrader installed. Real mode is enabled by setting
+NAUTILUS_BRIDGE_MODULE to "module.path:ClassName"; the class may implement:
+  submit_order(order), modify_order(order), cancel_order(order), reconcile(order),
+  export_events(since=None)
+"""
+
+from __future__ import annotations
+
+import hashlib
+import importlib
+import json
+import os
+import sys
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable
+
+
+def canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def sha256_json(value: Any) -> str:
+    return hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
+
+
+def now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+@dataclass
+class BridgeState:
+    root: Path = field(default_factory=lambda: Path(os.environ.get("SCOPEBLIND_NAUTILUS_STATE_DIR", ".protect-mcp/nautilus")))
+
+    def __post_init__(self) -> None:
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.orders_path.touch(exist_ok=True)
+        self.events_path.touch(exist_ok=True)
+
+    @property
+    def orders_path(self) -> Path:
+        return self.root / "orders.jsonl"
+
+    @property
+    def events_path(self) -> Path:
+        return self.root / "events.jsonl"
+
+    def append_order(self, order: dict[str, Any]) -> None:
+        with self.orders_path.open("a", encoding="utf-8") as handle:
+            handle.write(canonical_json(order) + "\n")
+
+    def append_event(self, event: dict[str, Any]) -> dict[str, Any]:
+        enriched = {
+            "event_id": event.get("event_id") or f"nt-{now_ms()}-{len(event)}",
+            "observed_at_ms": now_ms(),
+            **event,
+        }
+        enriched["event_digest"] = sha256_json(enriched)
+        with self.events_path.open("a", encoding="utf-8") as handle:
+            handle.write(canonical_json(enriched) + "\n")
+        return enriched
+
+    def events(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        with self.events_path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                if line.strip():
+                    rows.append(json.loads(line))
+        return rows
+
+
+class ScopeBlindNautilusBridge:
+    def __init__(self) -> None:
+        self.state = BridgeState()
+        self.real = self._load_real_bridge()
+
+    def _load_real_bridge(self) -> Any | None:
+        target = os.environ.get("NAUTILUS_BRIDGE_MODULE")
+        if not target:
+            return None
+        module_name, _, class_name = target.partition(":")
+        if not module_name or not class_name:
+            raise ValueError("NAUTILUS_BRIDGE_MODULE must be module.path:ClassName")
+        module = importlib.import_module(module_name)
+        return getattr(module, class_name)()
+
+    def handle(self, command: dict[str, Any]) -> dict[str, Any]:
+        action = command.get("action")
+        handlers: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
+            "stage_order": self.stage_order,
+            "submit_order": self.submit_order,
+            "modify_order": self.modify_order,
+            "cancel_order": self.cancel_order,
+            "reconcile": self.reconcile,
+            "export_events": self.export_events,
+        }
+        if action not in handlers:
+            return self.error(command, "unknown_action", f"Unsupported action: {action}")
+        try:
+            return handlers[action](command)
+        except Exception as exc:
+            return self.error(command, "bridge_error", str(exc))
+
+    def require(self, command: dict[str, Any], *fields: str) -> None:
+        missing = [field for field in fields if command.get(field) in (None, "")]
+        if missing:
+            raise ValueError(f"missing required field(s): {', '.join(missing)}")
+
+    def require_approved(self, command: dict[str, Any]) -> None:
+        self.require(command, "approval_receipt")
+        if command.get("mandate_passed") is not True:
+            raise ValueError("mandate_passed must be true before live order mutation")
+
+    def stage_order(self, command: dict[str, Any]) -> dict[str, Any]:
+        self.require(command, "client_order_id", "instrument_id", "side", "quantity")
+        order = self.order_projection(command, status="staged")
+        self.state.append_order(order)
+        event = self.state.append_event({
+            "type": "scopeblind.nautilus.order_staged.v1",
+            "client_order_id": order["client_order_id"],
+            "order_digest": sha256_json(order),
+            "disclosure": "position_blind",
+        })
+        return self.ok(command, {"status": "staged", "order": order, "event": event})
+
+    def submit_order(self, command: dict[str, Any]) -> dict[str, Any]:
+        self.require_approved(command)
+        order = self.order_projection(command, status="submitted")
+        if self.real and hasattr(self.real, "submit_order"):
+            external = self.real.submit_order(order)
+        else:
+            external = {"mode": "mock", "external_order_id": f"MOCK-{order['client_order_id']}"}
+        event = self.state.append_event({
+            "type": "scopeblind.nautilus.order_submitted.v1",
+            "client_order_id": order["client_order_id"],
+            "order_digest": sha256_json(order),
+            "external_digest": sha256_json(external),
+            "disclosure": "position_blind",
+        })
+        return self.ok(command, {"status": "submitted", "order": order, "external": external, "event": event})
+
+    def modify_order(self, command: dict[str, Any]) -> dict[str, Any]:
+        self.require_approved(command)
+        self.require(command, "client_order_id")
+        if self.real and hasattr(self.real, "modify_order"):
+            external = self.real.modify_order(command)
+        else:
+            external = {"mode": "mock", "modified": command["client_order_id"]}
+        event = self.state.append_event({
+            "type": "scopeblind.nautilus.order_modified.v1",
+            "client_order_id": command["client_order_id"],
+            "command_digest": sha256_json(command),
+            "external_digest": sha256_json(external),
+            "disclosure": "position_blind",
+        })
+        return self.ok(command, {"status": "modified", "external": external, "event": event})
+
+    def cancel_order(self, command: dict[str, Any]) -> dict[str, Any]:
+        self.require_approved(command)
+        self.require(command, "client_order_id")
+        if self.real and hasattr(self.real, "cancel_order"):
+            external = self.real.cancel_order(command)
+        else:
+            external = {"mode": "mock", "cancelled": command["client_order_id"]}
+        event = self.state.append_event({
+            "type": "scopeblind.nautilus.order_cancelled.v1",
+            "client_order_id": command["client_order_id"],
+            "command_digest": sha256_json(command),
+            "external_digest": sha256_json(external),
+            "disclosure": "position_blind",
+        })
+        return self.ok(command, {"status": "cancelled", "external": external, "event": event})
+
+    def reconcile(self, command: dict[str, Any]) -> dict[str, Any]:
+        self.require(command, "client_order_id")
+        if self.real and hasattr(self.real, "reconcile"):
+            external = self.real.reconcile(command)
+        else:
+            external = {"mode": "mock", "client_order_id": command["client_order_id"], "state": "accepted"}
+        event = self.state.append_event({
+            "type": "scopeblind.nautilus.reconciled.v1",
+            "client_order_id": command["client_order_id"],
+            "external_digest": sha256_json(external),
+            "disclosure": "position_blind",
+        })
+        return self.ok(command, {"status": "reconciled", "external": external, "event": event})
+
+    def export_events(self, command: dict[str, Any]) -> dict[str, Any]:
+        if self.real and hasattr(self.real, "export_events"):
+            external_events = self.real.export_events(command.get("since"))
+        else:
+            external_events = self.state.events()
+        return self.ok(command, {
+            "status": "exported",
+            "event_count": len(external_events),
+            "commitment_root": sha256_json(external_events),
+            "events": external_events,
+        })
+
+    def order_projection(self, command: dict[str, Any], status: str) -> dict[str, Any]:
+        return {
+            "client_order_id": command["client_order_id"],
+            "instrument_id": command["instrument_id"],
+            "side": command["side"],
+            "quantity": command["quantity"],
+            "price": command.get("price"),
+            "time_in_force": command.get("time_in_force", "GTC"),
+            "strategy_id": command.get("strategy_id"),
+            "mandate_digest": command.get("mandate_digest"),
+            "approval_receipt": command.get("approval_receipt"),
+            "status": status,
+            "created_at_ms": now_ms(),
+        }
+
+    def ok(self, command: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "ok": True,
+            "bridge": "scopeblind.nautilus.external.v1",
+            "mode": "real" if self.real else "mock",
+            "request_digest": sha256_json(command),
+            **result,
+        }
+
+    def error(self, command: dict[str, Any], code: str, message: str) -> dict[str, Any]:
+        return {
+            "ok": False,
+            "bridge": "scopeblind.nautilus.external.v1",
+            "mode": "real" if self.real else "mock",
+            "error": {"code": code, "message": message},
+            "request_digest": sha256_json(command),
+        }
+
+
+def main() -> int:
+    bridge = ScopeBlindNautilusBridge()
+    for line in sys.stdin:
+        if not line.strip():
+            continue
+        command = json.loads(line)
+        print(canonical_json(bridge.handle(command)), flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+`;
+var nautilusAdapterReadme = `# NautilusTrader-compatible external bridge
+
+This connector is intentionally external to NautilusTrader. It lets protect-mcp
+control and receipt high-risk order actions while a customer-owned Nautilus
+process remains the trading engine.
+
+## Local mock run
+
+\`\`\`bash
+python3 .protect-mcp/connectors/nautilus-trader/bridge.py <<'JSONL'
+{"action":"stage_order","client_order_id":"SB-1","instrument_id":"AAPL.NASDAQ","side":"BUY","quantity":"50","price":"182.40","mandate_digest":"demo"}
+{"action":"submit_order","client_order_id":"SB-1","instrument_id":"AAPL.NASDAQ","side":"BUY","quantity":"50","price":"182.40","mandate_digest":"demo","mandate_passed":true,"approval_receipt":"receipt-demo"}
+{"action":"export_events"}
+JSONL
+\`\`\`
+
+## Real mode
+
+Set \`NAUTILUS_BRIDGE_MODULE=customer_module:BridgeClass\`. The class can
+implement \`submit_order\`, \`modify_order\`, \`cancel_order\`, \`reconcile\`,
+and \`export_events\`. Keep that glue in the customer's repository so Nautilus
+licensing, credentials, and trading logic stay outside ScopeBlind.
+
+## Upstream contribution posture
+
+The best NautilusTrader contribution is not this bridge or a UI. It is a small,
+vendor-neutral audit/event sink RFC: a documented way to export normalized order
+commands, execution reports, fills, cancels, and reconciliation events so
+external compliance wrappers can prove what happened without mutating the
+engine.
+`;
 var CONNECTOR_PILOTS = [
   {
     id: "github",
@@ -7765,6 +8058,93 @@ when { ["pms.order.stage", "pms.order.book", "pms.order.cancel"].contains(contex
 forbid(principal, action == Action::"MCP::Tool::call", resource)
 when { context.tool == "pms.order.book" && context.mandate_passed != true };
 `
+  },
+  {
+    id: "nautilus-trader",
+    category: "finance",
+    name: "NautilusTrader-compatible external bridge",
+    status: "usable-pilot",
+    description: "Controls NautilusTrader-compatible staged orders through an external JSONL bridge, with local mock mode and customer-owned real mode.",
+    value: "Turns Nautilus into a strong Legate demo target: mandate-check, exact approval, external order event, position-blind audit bundle, and later reconciliation.",
+    env: [
+      { name: "NAUTILUS_BRIDGE_MODULE", required: false, description: "Optional customer glue in module.path:ClassName form for real Nautilus submission." },
+      { name: "SCOPEBLIND_NAUTILUS_STATE_DIR", required: false, description: "Optional state directory for local mock events. Defaults to .protect-mcp/nautilus." },
+      { name: "NAUTILUS_TRADER_PROJECT", required: false, description: "Optional path to the customer Nautilus project when running real mode." }
+    ],
+    tools: [
+      "nautilus.order.stage",
+      "nautilus.order.submit",
+      "nautilus.order.modify",
+      "nautilus.order.cancel",
+      "nautilus.strategy.deploy",
+      "nautilus.event.export",
+      "nautilus.reconcile"
+    ],
+    actions: [
+      { name: "Stage order", tool: "nautilus.order.stage", risk: "medium", mode: "require_approval", description: "Creates a position-blind booking intent and event commitment." },
+      { name: "Submit order", tool: "nautilus.order.submit", risk: "high", mode: "require_approval", description: "Requires mandate pass plus exact approval before live order mutation." },
+      { name: "Modify or cancel order", tool: "nautilus.order.modify", risk: "high", mode: "require_approval", description: "Mutates live order state and must carry a fresh approval receipt." },
+      { name: "Deploy strategy", tool: "nautilus.strategy.deploy", risk: "high", mode: "require_approval", description: "Requires signed strategy pack, mandate scope, and operator approval." },
+      { name: "Export event log", tool: "nautilus.event.export", risk: "low", mode: "observe", description: "Exports normalized event commitments for receipt corroboration." }
+    ],
+    setup: [
+      "Run mock mode first: protect-mcp connectors init nautilus-trader --force.",
+      "Pipe stage/submit/reconcile JSONL through .protect-mcp/connectors/nautilus-trader/bridge.py.",
+      "For real mode, set NAUTILUS_BRIDGE_MODULE to customer-owned glue that calls NautilusTrader APIs.",
+      "Open an upstream NautilusTrader RFC for a neutral audit/event sink before proposing any PR."
+    ],
+    config: {
+      type: "scopeblind.connector_pilot.v1",
+      provider: "nautilus-trader-compatible",
+      mode: "external-bridge-mock-first",
+      license_boundary: "No NautilusTrader code is bundled. Real mode calls a customer-owned process/module.",
+      adapter_contract: {
+        protocol: "stdin/stdout JSONL",
+        bridge: ".protect-mcp/connectors/nautilus-trader/bridge.py",
+        real_mode_env: "NAUTILUS_BRIDGE_MODULE=module.path:ClassName",
+        actions: ["stage_order", "submit_order", "modify_order", "cancel_order", "reconcile", "export_events"]
+      },
+      controlled_tools: [
+        "nautilus.order.stage",
+        "nautilus.order.submit",
+        "nautilus.order.modify",
+        "nautilus.order.cancel",
+        "nautilus.strategy.deploy",
+        "nautilus.event.export",
+        "nautilus.reconcile"
+      ],
+      approval_required_for: ["submit_order", "modify_order", "cancel_order", "strategy_deploy"],
+      receipt_fields: [
+        "client_order_id",
+        "instrument_id_hash",
+        "side",
+        "quantity",
+        "price",
+        "mandate_digest",
+        "approval_receipt",
+        "external_event_digest",
+        "commitment_root"
+      ],
+      upstream_rfc: {
+        title: "[RFC] Add a vendor-neutral order/execution audit event sink",
+        non_goals: ["ScopeBlind dependency", "UI dashboard", "AI tooling", "new venue adapter"]
+      }
+    },
+    artifacts: [
+      { path: "nautilus-trader/bridge.py", contents: nautilusBridgePy, executable: true },
+      { path: "nautilus-trader/README.md", contents: nautilusAdapterReadme }
+    ],
+    cedar: `${defaultPermit2}
+// NautilusTrader-compatible pilot: stage can be observed, but any live mutation requires exact approval.
+forbid(principal, action == Action::"MCP::Tool::call", resource)
+when { ["nautilus.order.submit", "nautilus.order.modify", "nautilus.order.cancel", "nautilus.strategy.deploy"].contains(context.tool) && !context.approved };
+
+forbid(principal, action == Action::"MCP::Tool::call", resource)
+when { ["nautilus.order.submit", "nautilus.order.modify", "nautilus.order.cancel"].contains(context.tool) && context.mandate_passed != true };
+
+forbid(principal, action == Action::"MCP::Tool::call", resource)
+when { context.tool == "nautilus.strategy.deploy" && context.strategy_pack_signed != true };
+`
   }
 ];
 function getConnectorPilot(id) {
@@ -7792,10 +8172,25 @@ function writeConnectorPilots(opts) {
     (0, import_node_fs8.writeFileSync)(policyPath, pilot.cedar.endsWith("\n") ? pilot.cedar : `${pilot.cedar}
 `);
     written.push(configPath, policyPath);
+    for (const artifact of pilot.artifacts || []) {
+      const artifactPath = connectorArtifactPath(directory, artifact.path);
+      (0, import_node_fs8.mkdirSync)((0, import_node_path5.dirname)(artifactPath), { recursive: true });
+      (0, import_node_fs8.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
+`);
+      if (artifact.executable) (0, import_node_fs8.chmodSync)(artifactPath, 493);
+      written.push(artifactPath);
+    }
   }
   (0, import_node_fs8.writeFileSync)((0, import_node_path5.join)(directory, "README.md"), renderConnectorReadme(selected));
   written.push((0, import_node_path5.join)(directory, "README.md"));
   return { written, pilots: selected, directory };
+}
+function connectorArtifactPath(directory, relativePath) {
+  const clean2 = (0, import_node_path5.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
+  if (clean2.startsWith("/") || clean2.includes("..")) {
+    throw new Error(`Unsafe connector artifact path: ${relativePath}`);
+  }
+  return (0, import_node_path5.join)(directory, clean2);
 }
 function readInstalledConnectorPilots(dir) {
   const directory = connectorDirectory(dir);
@@ -7830,15 +8225,15 @@ function connectorDoctor(dir, env = process.env) {
     }));
     const missingRequired = envRows.filter((item) => item.required && !item.present).map((item) => item.name);
     const optionalPresent = envRows.filter((item) => !item.required && item.present).map((item) => item.name);
-    const optionalProviderReady = pilot.id === "slack-teams" ? Boolean(env.SLACK_BOT_TOKEN || env.TEAMS_WEBHOOK_URL) : pilot.id === "finance-pms" ? Boolean(env.PMS_ADAPTER_URL) : false;
-    const mockModeReady = pilot.id === "finance-pms";
+    const optionalProviderReady = pilot.id === "slack-teams" ? Boolean(env.SLACK_BOT_TOKEN || env.TEAMS_WEBHOOK_URL) : pilot.id === "finance-pms" ? Boolean(env.PMS_ADAPTER_URL) : pilot.id === "nautilus-trader" ? Boolean(env.NAUTILUS_BRIDGE_MODULE || env.NAUTILUS_TRADER_PROJECT) : false;
+    const mockModeReady = pilot.id === "finance-pms" || pilot.id === "nautilus-trader";
     return {
       id: pilot.id,
       name: pilot.name,
       category: pilot.category,
       installed: installed.has(pilot.id),
       usable: missingRequired.length === 0 && (pilot.env.some((item) => item.required) || pilot.env.length === 0 || optionalProviderReady || mockModeReady),
-      mode: pilot.id === "finance-pms" && !env.PMS_ADAPTER_URL ? "mock" : pilot.id === "slack-teams" && !env.SLACK_BOT_TOKEN && !env.TEAMS_WEBHOOK_URL ? "needs_provider_choice" : "configured_or_local",
+      mode: pilot.id === "finance-pms" && !env.PMS_ADAPTER_URL ? "mock" : pilot.id === "nautilus-trader" && !env.NAUTILUS_BRIDGE_MODULE ? "mock_bridge" : pilot.id === "slack-teams" && !env.SLACK_BOT_TOKEN && !env.TEAMS_WEBHOOK_URL ? "needs_provider_choice" : "configured_or_local",
       missing_required: missingRequired,
       optional_present: optionalPresent,
       tools: pilot.tools,
@@ -7861,7 +8256,10 @@ Tools: ${pilot.tools.map((tool) => `\`${tool}\``).join(", ")}
 
 Setup:
 ${pilot.setup.map((step) => `- ${step}`).join("\n")}
-`).join("\n")}
+${pilot.artifacts?.length ? `
+Generated files:
+${pilot.artifacts.map((artifact) => `- \`${artifact.path}\``).join("\n")}
+` : ""}`).join("\n")}
 Next: run \`npx protect-mcp dashboard --open\` and review tool inventory, policy coverage, approvals, and receipts.
 `;
 }
@@ -7871,10 +8269,9 @@ var import_node_crypto7 = require("crypto");
 var import_node_fs12 = require("fs");
 var import_node_path8 = require("path");
 var import_node_os = require("os");
-var import_meta = {};
 function printHelp() {
   process.stderr.write(`
-protect-mcp \u2014 Enterprise security gateway for MCP servers & Claude Code hooks
+protect-mcp: Enterprise security gateway for MCP servers & Claude Code hooks
 
 Usage:
   protect-mcp [options] -- <command> [args...]
@@ -7897,6 +8294,7 @@ Usage:
   protect-mcp status [--dir <path>]
   protect-mcp digest [--today] [--dir <path>]
   protect-mcp receipts [--last <n>] [--dir <path>]
+  protect-mcp record [--dir <path>] [--no-open]
   protect-mcp bundle [--output <path>] [--dir <path>]
   protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]
   protect-mcp report [--period <days>d] [--format md|json] [--output <path>] [--dir <path>]
@@ -7934,6 +8332,7 @@ Commands:
   status            Show tool call statistics from the local decision log
   digest            Generate a human-readable summary of agent activity
   receipts          Show recent persisted signed receipts
+  record            Open a local, searchable view of your record in the browser
   bundle            Export an offline-verifiable audit bundle
 
 Examples:
@@ -8127,14 +8526,14 @@ Add --enforce when ready to block policy violations.
 }
 async function handleDemo() {
   const { existsSync: existsSync9 } = await import("fs");
-  const { join: join8, dirname: dirname2, resolve } = await import("path");
+  const { join: join8, dirname: dirname3, resolve } = await import("path");
   const { realpathSync } = await import("fs");
   const cliPath = resolve(process.argv[1] || "dist/cli.js");
   let cliDir;
   try {
-    cliDir = dirname2(realpathSync(cliPath));
+    cliDir = dirname3(realpathSync(cliPath));
   } catch {
-    cliDir = dirname2(cliPath);
+    cliDir = dirname3(cliPath);
   }
   const demoServerPath = join8(cliDir, "demo-server.js");
   const configPath = join8(process.cwd(), "protect-mcp.json");
@@ -9780,6 +10179,167 @@ ${bold("\u{1F6E1}\uFE0F Recent Receipts")} (last ${recent.length})
   process.stdout.write(`
 `);
 }
+var _pkgV = null;
+async function pkgVersion() {
+  if (_pkgV) return _pkgV;
+  let v = "0.0.0";
+  try {
+    const { readFileSync: readFileSync11, existsSync: existsSync9, realpathSync } = await import("fs");
+    const { dirname: dirname3, join: join8, resolve } = await import("path");
+    let base = "";
+    try {
+      base = dirname3(realpathSync(resolve(process.argv[1] || "")));
+    } catch {
+    }
+    const candidates = [
+      base ? join8(base, "..", "package.json") : "",
+      base ? join8(base, "package.json") : ""
+    ].filter(Boolean);
+    for (const p of candidates) {
+      if (existsSync9(p)) {
+        const parsed = JSON.parse(readFileSync11(p, "utf-8"));
+        if (parsed && parsed.name === "protect-mcp" && parsed.version) {
+          v = parsed.version;
+          break;
+        }
+      }
+    }
+  } catch {
+  }
+  _pkgV = v;
+  return v;
+}
+function mapRecordEntry(e) {
+  const p = e && e.payload && typeof e.payload === "object" ? e.payload : e;
+  const dec = String(p.decision || e.decision || "").toLowerCase();
+  const verdict = /den|block|reject|refus/.test(dec) ? "blocked" : /ask|approv|hold|escal|review|pending/.test(dec) ? "held" : "allowed";
+  const tsRaw = e.issued_at || e.timestamp || p.timestamp || p.issued_at;
+  const ms = typeof tsRaw === "number" ? tsRaw : typeof tsRaw === "string" ? Date.parse(tsRaw) : NaN;
+  const ts = isFinite(ms) ? new Date(ms).toISOString() : "";
+  const tool = String(p.tool || e.tool || "action");
+  const reason = String(p.reason_code || e.reason_code || p.policy_engine || "signed");
+  const hook = String(p.hook_event || e.hook_event || "");
+  const signed = !!(e.signature || e.sig || e.receipt_hash || typeof e.type === "string" && e.type.indexOf("receipt") >= 0);
+  let digest = "";
+  if (e.receipt_hash) digest = String(e.receipt_hash);
+  else if (e.digest) digest = String(e.digest);
+  else if (p.payload_digest && p.payload_digest.output_hash) digest = String(p.payload_digest.output_hash);
+  return { ts, tool, verdict, reason, hook, signed, id: String(e.request_id || p.request_id || ""), digest };
+}
+async function handleRecord(argv) {
+  const { readFileSync: readFileSync11, existsSync: existsSync9, writeFileSync: writeFileSync4 } = await import("fs");
+  const { join: join8 } = await import("path");
+  const osMod = await import("os");
+  const cp = await import("child_process");
+  let dir = process.cwd();
+  const di = argv.indexOf("--dir");
+  if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
+  const recPath = join8(dir, ".protect-mcp-receipts.jsonl");
+  const logPath = join8(dir, ".protect-mcp-log.jsonl");
+  const chosen = existsSync9(recPath) ? recPath : existsSync9(logPath) ? logPath : null;
+  if (!chosen) {
+    process.stderr.write(`
+${bold("protect-mcp record")}
+
+No record found in ${dir}.
+Start the gate with ${bold("npx protect-mcp serve")}, use your agent, then run this again.
+
+`);
+    process.exit(0);
+    return;
+  }
+  const raw = readFileSync11(chosen, "utf-8");
+  const recs = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+    try {
+      return JSON.parse(l);
+    } catch {
+      return null;
+    }
+  }).filter((x) => x !== null).map(mapRecordEntry);
+  const meta = { file: chosen, signed: chosen === recPath, count: recs.length };
+  const html = RECORD_HTML.replace("__DATA__", () => JSON.stringify(recs)).replace("__META__", () => JSON.stringify(meta));
+  const out = join8(osMod.tmpdir(), "protect-mcp-record-" + Date.now() + ".html");
+  writeFileSync4(out, html);
+  if (!argv.includes("--no-open")) {
+    const platform = process.platform;
+    const opener = platform === "darwin" ? "open" : platform === "win32" ? "cmd" : "xdg-open";
+    const openArgs = platform === "win32" ? ["/c", "start", "", out] : [out];
+    try {
+      const child = cp.spawn(opener, openArgs, { stdio: "ignore", detached: true });
+      child.unref();
+    } catch {
+    }
+  }
+  process.stdout.write(`
+${bold("\u{1F6E1}\uFE0F  Your record")} ${dim("\xB7")} ${recs.length} decision${recs.length === 1 ? "" : "s"}, all on this machine
+`);
+  if (!meta.signed) process.stdout.write(`  ${dim("(decision log; signed receipts appear in .protect-mcp-receipts.jsonl once signing is on)")}
+`);
+  const fileUrl = "file://" + encodeURI(out);
+  if (process.stdout.isTTY) {
+    process.stdout.write(`  Opened in your browser. If it did not open, click: \x1B]8;;${fileUrl}\x1B\\${bold("your record")}\x1B]8;;\x1B\\
+
+`);
+  } else {
+    process.stdout.write(`  Opened in your browser. If it did not open, open: ${out}
+
+`);
+  }
+  process.exit(0);
+}
+var RECORD_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>protect-mcp record</title>
+<style>
+:root{--paper:#f6f4ef;--ink:#1b1815;--soft:#524d46;--faint:#8a837a;--line:#ddd7c9;--g:#3f6146;--gb:#e7eee3;--a:#8f6216;--ab:#f2e8d3;--r:#7d3535;--rb:#f2e0dc}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1000px;margin:0 auto;padding:26px 22px 60px}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:-.012em}
+.meta{color:var(--faint);font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.bar{margin:18px 0 12px}
+input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9px;background:#fff;font:inherit}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.chip{cursor:pointer;font-size:12px;padding:3px 10px;border-radius:100px;border:1px solid var(--line);background:#fff;color:var(--soft)}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.count{color:var(--faint);font-size:12px;font-family:ui-monospace,Menlo,monospace;margin-bottom:8px}
+.row{border:1px solid var(--line);border-radius:9px;background:#fcfbf7;padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.top{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.pill{font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px}
+.pill.allowed{background:var(--gb);color:var(--g)}.pill.held{background:var(--ab);color:var(--a)}.pill.blocked{background:var(--rb);color:var(--r)}
+.tag{font-size:11px;padding:1px 7px;border-radius:100px;background:var(--paper);border:1px solid var(--line);color:var(--faint)}
+.when{margin-left:auto;font-size:12px;color:var(--faint);font-family:ui-monospace,Menlo,monospace}
+.det{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;color:var(--soft);font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all;display:none}
+.row.open .det{display:block}
+.foot{margin-top:22px;color:var(--faint);font-size:12px;line-height:1.6;border-top:1px solid var(--line);padding-top:14px}
+.foot b{color:var(--soft)}
+</style></head><body><div class="wrap">
+<h1>Your record</h1>
+<div class="meta" id="meta"></div>
+<div class="bar"><input id="q" placeholder="Search your record: tool, reason, verdict"></div>
+<div class="chips" id="chips"></div>
+<div class="count" id="count"></div>
+<div id="list"></div>
+<div class="foot">Signed decisions from your own gate. This page is local and nothing was uploaded. Verify authoritatively with <b>npx protect-mcp receipts</b> or the open verifier. protect-mcp governs proposed actions before they run.</div>
+</div>
+<script>
+var RECORDS=__DATA__;var META=__META__;var Q="",ACT={};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function vlabel(v){return v==="allowed"?"Allowed":v==="held"?"Held":"Blocked"}
+function when(ts){if(!ts)return"";var d=new Date(ts);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}
+function fvals(key){var m={};RECORDS.forEach(function(r){var v=key==="Decision"?vlabel(r.verdict):r[key.toLowerCase()];if(v){m[v]=(m[v]||0)+1}});return Object.keys(m).sort(function(a,b){return m[b]-m[a]}).slice(0,8).map(function(v){return[v,m[v]]})}
+function match(r){if(ACT.Decision&&vlabel(r.verdict)!==ACT.Decision)return false;if(ACT.Tool&&r.tool!==ACT.Tool)return false;if(ACT.Reason&&r.reason!==ACT.Reason)return false;if(Q){var h=(r.tool+" "+r.reason+" "+vlabel(r.verdict)+" "+r.hook).toLowerCase();if(h.indexOf(Q)<0)return false}return true}
+function render(){
+document.getElementById("meta").textContent=META.count+" decisions from "+META.file+(META.signed?" (signed)":" (decision log)")+" - all local";
+var chips="";["Decision","Tool","Reason"].forEach(function(key){fvals(key).forEach(function(p){var on=ACT[key]===p[0];chips+='<span class="chip'+(on?" on":"")+'" data-k="'+key+'" data-v="'+esc(p[0])+'">'+esc(p[0])+" "+p[1]+"</span>"})});
+document.getElementById("chips").innerHTML=chips;
+var rows=RECORDS.filter(match);
+document.getElementById("count").textContent=rows.length+" of "+RECORDS.length+" records";
+var html="";rows.slice(0,800).forEach(function(r){html+='<div class="row"><div class="top"><span class="pill '+r.verdict+'">'+vlabel(r.verdict)+"</span><b>"+esc(r.tool)+'</b><span class="tag">'+esc(r.reason)+"</span>"+(r.hook?'<span class="tag">'+esc(r.hook)+"</span>":"")+'<span class="tag">'+(r.signed?"signed":"log")+'</span><span class="when">'+esc(when(r.ts))+'</span></div><div class="det">'+esc(JSON.stringify(r,null,2))+"</div></div>"});
+document.getElementById("list").innerHTML=html||'<p style="color:#8a837a">No records match.</p>'}
+document.getElementById("q").addEventListener("input",function(e){Q=e.target.value.toLowerCase().trim();render()});
+document.getElementById("chips").addEventListener("click",function(e){var c=e.target.closest(".chip");if(!c)return;var k=c.getAttribute("data-k"),v=c.getAttribute("data-v");ACT[k]=ACT[k]===v?undefined:v;render()});
+document.getElementById("list").addEventListener("click",function(e){var row=e.target.closest(".row");if(row)row.classList.toggle("open")});
+render();
+</script></body></html>`;
 async function handleBundle(argv) {
   const { readFileSync: readFileSync11, writeFileSync: writeFileSync4, existsSync: existsSync9 } = await import("fs");
   const { join: join8 } = await import("path");
@@ -9901,7 +10461,7 @@ ${bold("protect-mcp connect")}
 `));
     process.stderr.write(`    Receipts will be uploaded automatically.
 `);
-    process.stderr.write(dim(`    Free tier: 20,000 receipts/month \u2014 no credit card required.
+    process.stderr.write(dim(`    Free tier: 20,000 receipts/month, no credit card required.
 `));
     process.stderr.write(`
 ${"\u2500".repeat(50)}
@@ -9999,7 +10559,7 @@ ${bold("protect-mcp quickstart")}
 `));
       process.stdout.write(`    Receipts will be uploaded automatically.
 `);
-      process.stdout.write(dim(`    Free tier: 20,000 receipts/month \u2014 no credit card required.
+      process.stdout.write(dim(`    Free tier: 20,000 receipts/month, no credit card required.
 `));
       process.stdout.write(`
 `);
@@ -10748,7 +11308,7 @@ ${bold("protect-mcp trace")}
     process.stdout.write(`${prefix}${connector}${typeEmoji} ${bold(type)} ${dim(shortId)} ${dim(time)}
 `);
     if (rendered.has(id)) {
-      process.stdout.write(`${prefix}${childPrefix}${dim("(cycle \u2014 already rendered)")}
+      process.stdout.write(`${prefix}${childPrefix}${dim("(cycle: already rendered)")}
 `);
       return;
     }
@@ -10951,7 +11511,7 @@ ${bold("protect-mcp init-hooks")}
 
 `);
     } catch {
-      process.stdout.write(`  ${yellow("\u26A0")} Could not generate Ed25519 keys \u2014 signing disabled
+      process.stdout.write(`  ${yellow("\u26A0")} Could not generate Ed25519 keys, signing disabled
 
 `);
     }
@@ -11022,13 +11582,14 @@ ${bold("protect-mcp init-hooks")}
   process.stdout.write(`     Every tool call will be receipted automatically.
 
 `);
-  process.stdout.write(`  3. Check receipts:
+  process.stdout.write(`  3. See your record: a searchable view of every decision.
 `);
-  process.stdout.write(`     ${dim(`curl http://127.0.0.1:${port}/receipts/latest`)}
+  process.stdout.write(`     ${dim(`npx protect-mcp record`)}
 `);
-  process.stdout.write(`     ${dim(`npx protect-mcp receipts`)}
+  process.stdout.write(`     ${dim(`Everything stays on this machine. Nothing is uploaded.`)}
+
 `);
-  process.stdout.write(`     Or use ${dim("/verify-receipt")} inside Claude Code.
+  process.stdout.write(`     Prefer the terminal? ${dim(`npx protect-mcp receipts`)}, or ${dim("/verify-receipt")} in Claude Code.
 
 `);
   process.stdout.write(`  4. View policy suggestions:
@@ -11038,9 +11599,9 @@ ${bold("protect-mcp init-hooks")}
 `);
   process.stdout.write(`${bold("Key facts:")}
 `);
-  process.stdout.write(`  \u2022 deny decisions are ${bold("AUTHORITATIVE")} \u2014 cannot be overridden
+  process.stdout.write(`  \u2022 deny decisions are ${bold("AUTHORITATIVE")}: they cannot be overridden
 `);
-  process.stdout.write(`  \u2022 PostToolUse runs ${bold("async")} \u2014 zero latency impact on tool execution
+  process.stdout.write(`  \u2022 PostToolUse runs ${bold("async")}, so there is zero latency impact on tool execution
 `);
   process.stdout.write(`  \u2022 Receipts are Ed25519-signed and append-only
 `);
@@ -11051,7 +11612,7 @@ ${bold("protect-mcp init-hooks")}
 async function sendInstallTelemetry() {
   try {
     const { existsSync: existsSync9, mkdirSync: mkdirSync3, writeFileSync: writeFileSync4, readFileSync: readFileSync11 } = await import("fs");
-    const { join: join8, dirname: dirname2 } = await import("path");
+    const { join: join8, dirname: dirname3 } = await import("path");
     const { homedir } = await import("os");
     const { fileURLToPath } = await import("url");
     const markerDir = join8(homedir(), ".protect-mcp");
@@ -11059,15 +11620,7 @@ async function sendInstallTelemetry() {
     if (existsSync9(markerFile) || process.env.PROTECT_MCP_TELEMETRY === "off") {
       return;
     }
-    let version = "unknown";
-    try {
-      const thisDir = dirname2(fileURLToPath(import_meta.url));
-      const pkgPath = join8(thisDir, "..", "package.json");
-      if (existsSync9(pkgPath)) {
-        version = JSON.parse(readFileSync11(pkgPath, "utf-8")).version;
-      }
-    } catch {
-    }
+    const version = await pkgVersion();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3e3);
     fetch("https://api.scopeblind.com/telemetry/install", {
@@ -11241,6 +11794,7 @@ async function main() {
   sendInstallTelemetry().catch(() => {
   });
   const args = process.argv.slice(2);
+  process.env.PROTECT_MCP_VERSION = process.env.PROTECT_MCP_VERSION || await pkgVersion();
   if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
     printHelp();
     process.exit(0);
@@ -11278,6 +11832,10 @@ async function main() {
     }
     await startHookServer2({ port, policyPath: policyPath2, cedarDir: cedarDir2, enforce: enforce2, verbose: verbose2 });
     return;
+  }
+  if (args[0] === "record") {
+    await handleRecord(args.slice(1));
+    process.exit(0);
   }
   if (args[0] === "init-hooks") {
     await handleInitHooks(args.slice(1));
@@ -11536,7 +12094,7 @@ async function handleDoctor() {
     process.stdout.write(green2(`Node.js ${nodeVersion}
 `));
   } else {
-    process.stdout.write(red2(`Node.js ${nodeVersion} \u2014 requires >= 18
+    process.stdout.write(red2(`Node.js ${nodeVersion}, requires >= 18
 `));
     issues++;
   }
@@ -11547,7 +12105,7 @@ async function handleDoctor() {
       if (config.signing?.private_key || config.signing?.key_file) {
         process.stdout.write(green2("Signing keys configured\n"));
       } else {
-        process.stdout.write(yellow2("Config found but no signing keys \u2014 run: protect-mcp init\n"));
+        process.stdout.write(yellow2("Config found but no signing keys. Run: protect-mcp init\n"));
         issues++;
       }
     } catch {
@@ -11555,7 +12113,7 @@ async function handleDoctor() {
       issues++;
     }
   } else {
-    process.stdout.write(yellow2("No scopeblind.config.json \u2014 run: protect-mcp init\n"));
+    process.stdout.write(yellow2("No scopeblind.config.json. Run: protect-mcp init\n"));
   }
   let policyFound = false;
   for (const dir of ["cedar", "policies", "."]) {
@@ -11580,14 +12138,14 @@ async function handleDoctor() {
     }
   }
   if (!policyFound) {
-    process.stdout.write(yellow2("No policy files found \u2014 running in shadow mode (allow all)\n"));
+    process.stdout.write(yellow2("No policy files found, running in shadow mode (allow all)\n"));
   }
   try {
     const cedarAvailable = await isCedarAvailable();
     if (cedarAvailable) {
       process.stdout.write(green2("Cedar WASM engine available\n"));
     } else {
-      process.stdout.write(dim2("  Cedar WASM not installed \u2014 install: npm install @cedar-policy/cedar-wasm\n"));
+      process.stdout.write(dim2("  Cedar WASM not installed. Install: npm install @cedar-policy/cedar-wasm\n"));
     }
   } catch {
     process.stdout.write(dim2("  Cedar WASM not installed\n"));
@@ -11603,7 +12161,7 @@ async function handleDoctor() {
       process.stdout.write(green2("Decision log exists\n"));
     }
   } else {
-    process.stdout.write(dim2("  No decision log yet \u2014 will be created on first tool call\n"));
+    process.stdout.write(dim2("  No decision log yet, will be created on first tool call\n"));
   }
   if (existsSync9(receiptFile)) {
     try {
@@ -11618,17 +12176,17 @@ async function handleDoctor() {
     execSync("npx @veritasacta/verify --version 2>/dev/null", { stdio: "pipe", timeout: 1e4 });
     process.stdout.write(green2("Verifier available: @veritasacta/verify\n"));
   } catch {
-    process.stdout.write(dim2("  Verifier not cached \u2014 install: npm install -g @veritasacta/verify\n"));
+    process.stdout.write(dim2("  Verifier not cached. Install: npm install -g @veritasacta/verify\n"));
   }
   try {
     const res = await fetch("https://api.scopeblind.com/health", { signal: AbortSignal.timeout(5e3) });
     if (res.ok) {
       process.stdout.write(green2("ScopeBlind API reachable\n"));
     } else {
-      process.stdout.write(yellow2("ScopeBlind API returned non-200 \u2014 receipts will be stored locally\n"));
+      process.stdout.write(yellow2("ScopeBlind API returned non-200, receipts will be stored locally\n"));
     }
   } catch {
-    process.stdout.write(dim2("  ScopeBlind API not reachable \u2014 offline mode (receipts stored locally)\n"));
+    process.stdout.write(dim2("  ScopeBlind API not reachable, offline mode (receipts stored locally)\n"));
   }
   process.stdout.write("\nRestraint self-test:\n");
   try {

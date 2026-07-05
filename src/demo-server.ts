@@ -131,7 +131,7 @@ function handleRequest(request: JsonRpcRequest): string {
       id: request.id,
       result: {
         protocolVersion: '2024-11-05',
-        serverInfo: { name: 'protect-mcp-demo', version: '0.5.3' },
+        serverInfo: { name: 'protect-mcp-demo', version: process.env.PROTECT_MCP_VERSION || '0.5.3' },
         capabilities: { tools: {} },
       },
     });
@@ -235,7 +235,7 @@ export function createSandboxServer() {
 
   const server = new McpServer({
     name: 'protect-mcp',
-    version: '0.4.5',
+    version: process.env.PROTECT_MCP_VERSION || '0.4.5',
     description: 'Security gateway for MCP servers. Per-tool policies, Ed25519-signed receipts, human approval gates, trust tiers.',
   });
 

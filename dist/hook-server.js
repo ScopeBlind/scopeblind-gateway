@@ -1361,7 +1361,7 @@ async function startHookServer(options = {}) {
       res.end(JSON.stringify({
         status: "ok",
         server: "protect-mcp-hooks",
-        version: "0.5.0",
+        version: process.env.PROTECT_MCP_VERSION || "unknown",
         uptime_ms: Date.now() - state.startTime,
         mode: enforce ? "enforce" : "shadow",
         policy_digest: policyDigest,
@@ -1448,9 +1448,10 @@ async function startHookServer(options = {}) {
     const pad = (s, n = 46) => s.padEnd(n);
     w(`
 `);
-    w(`  protect-mcp v0.5.4
+    w(process.env.PROTECT_MCP_VERSION ? `  protect-mcp v${process.env.PROTECT_MCP_VERSION}
+` : `  protect-mcp
 `);
-    w(`  ScopeBlind \u2014 https://scopeblind.com
+    w(`  ScopeBlind \xB7 https://scopeblind.com
 `);
     w(`
 `);
@@ -1478,7 +1479,13 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    w(`  deny is authoritative \u2014 cannot be overridden.
+    w(`  deny is authoritative: it cannot be overridden.
+`);
+    w(`
+`);
+    w(`  See your record   npx protect-mcp record
+`);
+    w(`                    a searchable view of every decision, all on this machine
 `);
     w(`
 `);
