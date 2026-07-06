@@ -15,7 +15,8 @@ import {
   ristretto255,
   ristretto255_hasher,
   x25519
-} from "./chunk-LJQOALYR.mjs";
+} from "./chunk-FFVJL3KQ.mjs";
+import "./chunk-JIDDQUSQ.mjs";
 import "./chunk-D733KAPG.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 export {

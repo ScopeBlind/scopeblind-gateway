@@ -469,6 +469,7 @@ function signDecision(entry) {
     if (entry.timing) payload.timing = entry.timing;
     if (entry.swarm) payload.swarm = entry.swarm;
     if (entry.payload_digest) payload.payload_digest = entry.payload_digest;
+    if (entry.enrichment) payload.enrichment = entry.enrichment;
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
     const result = artifactsModule.createSignedArtifact(
@@ -5993,6 +5994,97 @@ var init_scopeblind_bridge = __esm({
   }
 });
 
+// src/receipt-enrichment.ts
+function canonicalJson(value) {
+  const seen = /* @__PURE__ */ new WeakSet();
+  const enc = (v) => {
+    if (v === null || v === void 0) return "null";
+    const t = typeof v;
+    if (t === "number") return Number.isFinite(v) ? JSON.stringify(v) : "null";
+    if (t === "boolean" || t === "string") return JSON.stringify(v);
+    if (t === "bigint") return JSON.stringify(v.toString());
+    if (t === "function" || t === "symbol") return "null";
+    if (Array.isArray(v)) return "[" + v.map(enc).join(",") + "]";
+    if (t === "object") {
+      const o = v;
+      if (seen.has(o)) return '"[circular]"';
+      seen.add(o);
+      const body = Object.keys(o).sort().map((k) => JSON.stringify(k) + ":" + enc(o[k])).join(",");
+      seen.delete(o);
+      return "{" + body + "}";
+    }
+    return "null";
+  };
+  return enc(value);
+}
+function sha256Hex2(s) {
+  return bytesToHex(sha2562(new TextEncoder().encode(s)));
+}
+function deriveCapabilities(tool, input) {
+  const t = String(tool || "").toLowerCase();
+  let text = "";
+  try {
+    text = canonicalJson(input).toLowerCase();
+  } catch {
+  }
+  const caps = /* @__PURE__ */ new Set();
+  for (const r of RULES) {
+    if (r.tool && r.tool.test(t)) caps.add(r.cap);
+    if (r.text && r.text.test(text)) caps.add(r.cap);
+  }
+  return Array.from(caps).sort();
+}
+function deriveResource(input) {
+  const o = input && typeof input === "object" ? input : {};
+  const path = o.file_path ?? o.path ?? o.filePath ?? o.notebook_path ?? o.filename;
+  if (typeof path === "string" && path.trim()) return { kind: "path", digest: sha256Hex2(path.replace(/\\/g, "/")) };
+  const url = o.url ?? o.uri ?? o.endpoint ?? o.href;
+  if (typeof url === "string" && url.trim()) {
+    try {
+      return { kind: "host", digest: sha256Hex2(new URL(url).host.toLowerCase()) };
+    } catch {
+    }
+  }
+  const cmd = o.command ?? o.cmd ?? o.script;
+  if (typeof cmd === "string" && cmd.trim()) {
+    const first = cmd.trim().split(/\s+/)[0];
+    if (first) return { kind: "command", digest: sha256Hex2(first) };
+  }
+  return void 0;
+}
+function buildEnrichment(tool, input) {
+  const e = {
+    v: ENRICHMENT_VERSION,
+    input_digest: sha256Hex2(canonicalJson(input ?? {})),
+    capabilities: deriveCapabilities(tool, input)
+  };
+  const resource = deriveResource(input);
+  if (resource) e.resource = resource;
+  return e;
+}
+var ENRICHMENT_VERSION, RULES;
+var init_receipt_enrichment = __esm({
+  "src/receipt-enrichment.ts"() {
+    "use strict";
+    init_sha256();
+    init_utils();
+    ENRICHMENT_VERSION = 1;
+    RULES = [
+      { cap: "exec.shell", tool: /bash|shell|exec|terminal|run_command|command/ },
+      { cap: "fs.read", tool: /(^|[_.])(read|cat|glob|grep|search|ls|view|list_files|open)/ },
+      { cap: "fs.write", tool: /write|create_file|save|append|edit|patch|replace|update_file|multiedit|notebook/ },
+      { cap: "fs.delete", tool: /delete|remove|unlink|trash|(^|[_.])rm/ },
+      { cap: "net.egress", tool: /fetch|http|curl|wget|request|download|browse|navigate|webfetch|web_search|scrape/ },
+      { cap: "vcs", tool: /(^|[_.])git/, text: /\bgit\s+(commit|push|pull|clone|reset|checkout|branch|rebase|merge|tag)\b/ },
+      { cap: "package.install", text: /\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip3?\s+install\b|\bgo\s+get\b|\bcargo\s+add\b|\bbrew\s+install\b|\bapt(-get)?\s+install\b|\bgem\s+install\b/ },
+      { cap: "secret.adjacent", text: /\.env\b|secret|credential|passwd|password|api[_-]?key|private[_-]?key|\.pem\b|\.key\b|id_rsa|bearer\s|aws_(access|secret)|authorization/ },
+      { cap: "destructive", text: /rm\s+-[a-z]*[rf]|\brmdir\b|drop\s+table|truncate\s+table|delete\s+from|reset\s+--hard|--force\b|\bmkfs\b|\bdd\s+if=|shutdown|reboot|kill\s+-9|>\s*\/dev\/sd/ },
+      { cap: "financial", text: /\b(order|trade|buy|sell|transfer|wire|payment|withdraw|deposit|swap|invoice|charge|refund|settle)\b/ },
+      { cap: "data.query", text: /\bselect\s+[\s\S]+\bfrom\b|\binsert\s+into\b|\bupdate\s+[\s\S]+\bset\b|\bdelete\s+from\b/ }
+    ];
+  }
+});
+
 // src/hook-server.ts
 var hook_server_exports = {};
 __export(hook_server_exports, {
@@ -6065,6 +6157,9 @@ async function handlePreToolUse(input, state) {
   });
   const payloadDigest = computePayloadDigest(input.toolInput);
   const actionReadback = buildActionReadback(toolName, input.toolInput || {});
+  const enrichment = buildEnrichment(toolName, input.toolInput || {});
+  const inflightRec = state.inflightTools.get(requestId);
+  if (inflightRec) inflightRec.enrichment = enrichment;
   const swarm = {
     ...state.swarmContext,
     ...input.agentId && { agent_id: input.agentId },
@@ -6484,6 +6579,8 @@ function emitDecisionLog(state, entry) {
     ...entry.sandbox_state && { sandbox_state: entry.sandbox_state },
     ...entry.plan_receipt_id && { plan_receipt_id: entry.plan_receipt_id }
   };
+  const enr = state.inflightTools.get(log.request_id)?.enrichment;
+  if (enr) log.enrichment = enr;
   process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
   try {
@@ -6846,6 +6943,7 @@ var init_hook_server = __esm({
     init_http_server();
     init_scopeblind_bridge();
     init_action_readback();
+    init_receipt_enrichment();
     DEFAULT_PORT = 9377;
     LOG_FILE3 = ".protect-mcp-log.jsonl";
     RECEIPTS_FILE2 = ".protect-mcp-receipts.jsonl";
@@ -10224,7 +10322,13 @@ function mapRecordEntry(e) {
   if (e.receipt_hash) digest = String(e.receipt_hash);
   else if (e.digest) digest = String(e.digest);
   else if (p.payload_digest && p.payload_digest.output_hash) digest = String(p.payload_digest.output_hash);
-  return { ts, tool, verdict, reason, hook, signed, id: String(e.request_id || p.request_id || ""), digest, raw: e };
+  const enr = p && typeof p.enrichment === "object" && p.enrichment || typeof e.enrichment === "object" && e.enrichment || null;
+  const caps = enr && Array.isArray(enr.capabilities) ? enr.capabilities.map(String) : [];
+  const sw = p && typeof p.swarm === "object" && p.swarm || null;
+  const agent = sw && (sw.agent_name || sw.agent_id || sw.agent_type) ? String(sw.agent_name || sw.agent_id || sw.agent_type) : "main agent";
+  const tm = p && typeof p.timing === "object" && p.timing || null;
+  const dur = tm && typeof tm.tool_duration_ms === "number" ? tm.tool_duration_ms : 0;
+  return { ts, tool, verdict, reason, hook, signed, caps, agent, dur, id: String(e.request_id || p.request_id || ""), digest, raw: e };
 }
 async function handleRecord(argv) {
   const { readFileSync: readFileSync11, existsSync: existsSync9, writeFileSync: writeFileSync4 } = await import("fs");
@@ -10368,6 +10472,7 @@ input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9p
 .pill{font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px}
 .pill.allowed{background:var(--gb);color:var(--g)}.pill.held{background:var(--ab);color:var(--a)}.pill.blocked{background:var(--rb);color:var(--r)}
 .tag{font-size:11px;padding:1px 7px;border-radius:100px;background:var(--paper);border:1px solid var(--line);color:var(--faint)}
+.cap{font-size:10px;padding:1px 6px;border-radius:100px;background:#eef0ea;border:1px solid var(--line);color:var(--soft)}
 .badge{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:100px}
 .badge.sgn{background:var(--gb);color:var(--g)}
 .badge.log{background:var(--paper);color:var(--faint);border:1px solid var(--line)}
@@ -10377,11 +10482,30 @@ input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9p
 .row.open .det{display:block}
 .foot{margin-top:22px;color:var(--faint);font-size:12px;line-height:1.6;border-top:1px solid var(--line);padding-top:14px}
 .foot b{color:var(--soft)}
+.viewtoggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.viewtoggle button{border:0;background:#fff;color:var(--soft);font:inherit;font-size:12.5px;padding:7px 12px;cursor:pointer}
+.viewtoggle button.on{background:var(--ink);color:var(--paper)}
+.agent{border:1px solid var(--line);border-radius:10px;background:#fcfbf7;margin-bottom:10px;overflow:hidden}
+.ahead{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:11px 13px;cursor:pointer}
+.atwist{color:var(--faint);font-size:11px;transition:transform .12s;display:inline-block}
+.agent.open .atwist{transform:rotate(90deg)}
+.acount{font-size:12px;color:var(--faint)}
+.akids{display:none;padding:2px 12px 12px 24px;border-top:1px solid var(--line)}
+.agent.open .akids{display:block}
+.act{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid var(--line);border-left:3px solid var(--line);margin-top:7px;background:#fff}
+.act.blocked{border-left-color:var(--r)}.act.held{border-left-color:var(--a)}.act.allowed{border-left-color:var(--g)}
+.act .det{flex-basis:100%}
+.act.open .det{display:block}
+.ev{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--faint);padding:5px 10px;margin-top:6px}
+.evdot{width:6px;height:6px;border-radius:100px;background:var(--faint);display:inline-block}
+.evre{color:var(--soft)}
+.badge.blk{background:var(--rb);color:var(--r)}
 </style></head><body><div class="wrap">
 <h1>Your record</h1>
 <div class="meta"><span id="meta"></span><span id="live"></span></div>
 <div class="stats" id="stats"></div>
 <div class="actions">
+<div class="viewtoggle"><button id="vlist" class="on" onclick="setView('list')">List</button><button id="vtree" onclick="setView('tree')">Tree</button></div>
 <button class="btn p" onclick="exportJsonl()">Export receipts (.jsonl)</button>
 <button class="btn" onclick="exportMd()">Export report (.md)</button>
 <button class="btn" id="cpv" onclick="copyVerify()">Copy verify command</button>
@@ -10394,13 +10518,13 @@ input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9p
 <div class="foot">Signed decisions from your own gate, on this machine. Nothing was uploaded. Each row is Ed25519-signed, and the exports carry the signatures, so anyone you hand them to (an allocator, an auditor, a counterparty) verifies offline with <b>npx @veritasacta/verify</b>, our code removed. For a Merkle-rooted evidence pack: <b>npx protect-mcp bundle</b>. protect-mcp governs proposed actions before they run.</div>
 </div>
 <script>
-var RECORDS=__DATA__;var META=__META__;var Q="",ACT={};var NL=String.fromCharCode(10);
+var RECORDS=__DATA__;var META=__META__;var Q="",ACT={},VIEW="list";var NL=String.fromCharCode(10);
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function vlabel(v){return v==="allowed"?"Allowed":v==="held"?"Held":"Blocked"}
 function when(ts){if(!ts)return"";var d=new Date(ts);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}
 function counts(rows){var c={allowed:0,held:0,blocked:0,signed:0};rows.forEach(function(r){c[r.verdict]=(c[r.verdict]||0)+1;if(r.signed)c.signed++});return c}
-function fvals(key){var m={};RECORDS.forEach(function(r){var v=key==="Decision"?vlabel(r.verdict):r[key.toLowerCase()];if(v){m[v]=(m[v]||0)+1}});return Object.keys(m).sort(function(a,b){return m[b]-m[a]}).slice(0,8).map(function(v){return[v,m[v]]})}
-function match(r){if(ACT.Decision&&vlabel(r.verdict)!==ACT.Decision)return false;if(ACT.Tool&&r.tool!==ACT.Tool)return false;if(ACT.Reason&&r.reason!==ACT.Reason)return false;if(Q){var h=(r.tool+" "+r.reason+" "+vlabel(r.verdict)+" "+r.hook).toLowerCase();if(h.indexOf(Q)<0)return false}return true}
+function fvals(key){var m={};RECORDS.forEach(function(r){var vs=key==="Decision"?[vlabel(r.verdict)]:(key==="Capability"?(r.caps||[]):[r[key.toLowerCase()]]);vs.forEach(function(v){if(v){m[v]=(m[v]||0)+1}})});return Object.keys(m).sort(function(a,b){return m[b]-m[a]}).slice(0,10).map(function(v){return[v,m[v]]})}
+function match(r){if(ACT.Decision&&vlabel(r.verdict)!==ACT.Decision)return false;if(ACT.Tool&&r.tool!==ACT.Tool)return false;if(ACT.Reason&&r.reason!==ACT.Reason)return false;if(ACT.Capability&&(r.caps||[]).indexOf(ACT.Capability)<0)return false;if(Q){var h=(r.tool+" "+r.reason+" "+vlabel(r.verdict)+" "+r.hook+" "+(r.caps||[]).join(" ")).toLowerCase();if(h.indexOf(Q)<0)return false}return true}
 function filtered(){return RECORDS.filter(match)}
 function dl(name,text,type){var b=new Blob([text],{type:type||"text/plain"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1500)}
 function stamp(){return new Date().toISOString().replace(/[:.]/g,"-").slice(0,19)}
@@ -10408,19 +10532,23 @@ function exportJsonl(){var rows=filtered();if(!rows.length)return;var lines=rows
 function exportMd(){var rows=filtered();if(!rows.length)return;var c=counts(rows);var head=["# Agent decision record","",rows.length+" decisions from "+META.file,c.allowed+" allowed, "+c.held+" held, "+c.blocked+" blocked, "+c.signed+" signed.","","Generated locally by protect-mcp. These are signed receipts; verify offline with npx @veritasacta/verify (our code removed).","","| When | Decision | Tool | Reason | Hook | Signed |","|---|---|---|---|---|---|"];var body=rows.slice(0,3000).map(function(r){return "| "+(r.ts||"")+" | "+vlabel(r.verdict)+" | "+String(r.tool||"").replace(/\\|/g,"/")+" | "+String(r.reason||"").replace(/\\|/g,"/")+" | "+(r.hook||"")+" | "+(r.signed?"yes":"no")+" |"});dl("protect-mcp-record-"+stamp()+".md",head.concat(body).join(NL)+NL,"text/markdown")}
 function copyVerify(){var cmd="npx @veritasacta/verify";try{navigator.clipboard&&navigator.clipboard.writeText(cmd)}catch(e){}var b=document.getElementById("cpv");if(b){var t=b.textContent;b.textContent="Copied";setTimeout(function(){b.textContent=t},1200)}}
 function renderStats(){var c=counts(RECORDS);var p=[];p.push('<span class="stat"><b>'+RECORDS.length+'</b> decisions</span>');p.push('<span class="stat"><span class="dot g"></span>'+c.allowed+' allowed</span>');if(c.held)p.push('<span class="stat"><span class="dot a"></span>'+c.held+' held</span>');p.push('<span class="stat"><span class="dot r"></span>'+c.blocked+' blocked</span>');p.push('<span class="stat sig">'+c.signed+' signed, verifiable offline</span>');document.getElementById("stats").innerHTML=p.join("")}
+function renderList(rows){var html="";rows.slice(0,800).forEach(function(r){var sig=r.signed?'<span class="badge sgn">signed</span>':'<span class="badge log">log</span>';var dg=r.digest?'<span class="dg">'+esc(String(r.digest).slice(0,10))+'</span>':'';var ct=(r.caps||[]).map(function(c){return '<span class="cap">'+esc(c)+'</span>'}).join('');html+='<div class="row '+r.verdict+'"><div class="top"><span class="pill '+r.verdict+'">'+vlabel(r.verdict)+"</span><b>"+esc(r.tool)+'</b><span class="tag">'+esc(r.reason)+"</span>"+ct+(r.hook?'<span class="tag">'+esc(r.hook)+"</span>":"")+sig+dg+'<span class="when">'+esc(when(r.ts))+'</span></div><div class="det">'+esc(JSON.stringify(r.raw||r,null,2))+"</div></div>"});document.getElementById("list").innerHTML=html||'<p style="color:#8a837a">No records match.</p>';}
+function isLifecycle(r){var h=r.hook||"";return h==="SessionStart"||h==="SessionEnd"||h==="Stop"||h==="SubagentStart"||h==="SubagentStop"||h==="TaskCreated"||h==="TaskCompleted"||h==="ConfigChange"||h==="Notification"||h==="PreCompact";}
+function buildTree(rows){var ags={},order=[];rows.forEach(function(r){var a=r.agent||"main agent";if(!ags[a]){ags[a]={name:a,byId:{},items:[],caps:{},blocked:0,actions:0};order.push(a);}var g=ags[a];(r.caps||[]).forEach(function(c){g.caps[c]=(g.caps[c]||0)+1;});if(isLifecycle(r)){g.items.push({t:"e",ts:r.ts,r:r});return;}var id=r.id||("_"+r.ts);var n=g.byId[id];if(!n){n={t:"a",id:id,tool:r.tool,verdict:r.verdict,caps:(r.caps||[]).slice(),ts:r.ts,dur:0,signed:!!r.signed,raw:r.raw};g.byId[id]=n;g.items.push(n);g.actions++;}if(r.hook==="PostToolUse"){if(r.dur)n.dur=r.dur;if(!n.raw)n.raw=r.raw;}else{n.verdict=r.verdict;if((r.caps||[]).length)n.caps=r.caps.slice();n.raw=r.raw;n.ts=r.ts;}if(r.signed)n.signed=true;});order.forEach(function(a){var g=ags[a];g.blocked=g.items.filter(function(it){return it.t==="a"&&it.verdict==="blocked";}).length;g.items.sort(function(x,y){return (x.ts<y.ts)?-1:1;});});return order.map(function(a){return ags[a];});}
+function renderTree(ags){if(!ags.length){document.getElementById("list").innerHTML='<p style="color:#8a837a">No records match.</p>';return;}var html="",N=0;ags.forEach(function(g,gi){var capstr=Object.keys(g.caps).sort(function(a,b){return g.caps[b]-g.caps[a];}).slice(0,5).map(function(c){return '<span class="cap">'+esc(c)+'</span>';}).join('');var op=(ags.length===1||gi===0)?" open":"";html+='<div class="agent'+op+'"><div class="ahead"><span class="atwist">\u25B8</span><b>'+esc(g.name)+'</b><span class="acount">'+g.actions+' action'+(g.actions===1?'':'s')+'</span>'+(g.blocked?'<span class="badge blk">'+g.blocked+' blocked</span>':'')+capstr+'</div><div class="akids">';g.items.forEach(function(it){if(N++>1500)return;if(it.t==="e"){var r=it.r;html+='<div class="ev"><span class="evdot"></span>'+esc(r.hook||r.tool)+' <span class="evre">'+esc(r.reason)+'</span><span class="when">'+esc(when(r.ts))+'</span></div>';}else{var ct=(it.caps||[]).map(function(c){return '<span class="cap">'+esc(c)+'</span>';}).join('');var dur=it.dur?'<span class="dg">'+it.dur+'ms</span>':'';html+='<div class="act '+it.verdict+'"><span class="pill '+it.verdict+'">'+vlabel(it.verdict)+'</span><b>'+esc(it.tool)+'</b>'+ct+(it.signed?'<span class="badge sgn">signed</span>':'')+dur+'<span class="when">'+esc(when(it.ts))+'</span><div class="det">'+esc(JSON.stringify(it.raw||{},null,2))+'</div></div>';}});html+='</div></div>';});if(N>1500)html+='<p style="color:#8a837a;font-size:12px;margin-top:10px">Showing the first 1500 items. Search or pick a facet to narrow.</p>';document.getElementById("list").innerHTML=html;}
+function setView(v){VIEW=v;document.getElementById("vlist").className=v==="list"?"on":"";document.getElementById("vtree").className=v==="tree"?"on":"";render();}
 function render(){
 document.getElementById("meta").textContent=META.count+" decisions from "+META.file+(META.signed?" (signed)":" (decision log)")+" - all local"+(META.live?" \xB7 live, updating":"");
 document.getElementById("live").innerHTML=META.live?'<span class="pulse"></span>':"";
 renderStats();
-var chips="";["Decision","Tool","Reason"].forEach(function(key){fvals(key).forEach(function(p){var on=ACT[key]===p[0];chips+='<span class="chip'+(on?" on":"")+'" data-k="'+key+'" data-v="'+esc(p[0])+'">'+esc(p[0])+" "+p[1]+"</span>"})});
+var chips="";["Decision","Tool","Reason","Capability"].forEach(function(key){fvals(key).forEach(function(p){var on=ACT[key]===p[0];chips+='<span class="chip'+(on?" on":"")+'" data-k="'+key+'" data-v="'+esc(p[0])+'">'+esc(p[0])+" "+p[1]+"</span>"})});
 document.getElementById("chips").innerHTML=chips;
 var rows=RECORDS.filter(match);
-document.getElementById("count").textContent=rows.length+" of "+RECORDS.length+" records";
-var html="";rows.slice(0,800).forEach(function(r){var sig=r.signed?'<span class="badge sgn">signed</span>':'<span class="badge log">log</span>';var dg=r.digest?'<span class="dg">'+esc(String(r.digest).slice(0,10))+'</span>':'';html+='<div class="row '+r.verdict+'"><div class="top"><span class="pill '+r.verdict+'">'+vlabel(r.verdict)+"</span><b>"+esc(r.tool)+'</b><span class="tag">'+esc(r.reason)+"</span>"+(r.hook?'<span class="tag">'+esc(r.hook)+"</span>":"")+sig+dg+'<span class="when">'+esc(when(r.ts))+'</span></div><div class="det">'+esc(JSON.stringify(r.raw||r,null,2))+"</div></div>"});
-document.getElementById("list").innerHTML=html||'<p style="color:#8a837a">No records match.</p>'}
+document.getElementById("count").textContent=rows.length+" of "+RECORDS.length+" records"+(VIEW==="tree"?" \xB7 grouped by agent":"");
+if(VIEW==="tree"){renderTree(buildTree(rows));}else{renderList(rows);}}
 document.getElementById("q").addEventListener("input",function(e){Q=e.target.value.toLowerCase().trim();render()});
 document.getElementById("chips").addEventListener("click",function(e){var c=e.target.closest(".chip");if(!c)return;var k=c.getAttribute("data-k"),v=c.getAttribute("data-v");ACT[k]=ACT[k]===v?undefined:v;render()});
-document.getElementById("list").addEventListener("click",function(e){var row=e.target.closest(".row");if(row)row.classList.toggle("open")});
+document.getElementById("list").addEventListener("click",function(e){var ah=e.target.closest(".ahead");if(ah){ah.parentNode.classList.toggle("open");return;}var act=e.target.closest(".act");if(act){act.classList.toggle("open");return;}var row=e.target.closest(".row");if(row)row.classList.toggle("open")});
 render();
 if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){RECORDS=d.recs||[];META.count=RECORDS.length;if(typeof d.signed==='boolean')META.signed=d.signed;render()}).catch(function(){})};poll();setInterval(poll,2000);}
 </script></body></html>`;

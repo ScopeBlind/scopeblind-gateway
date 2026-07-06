@@ -231,6 +231,8 @@ export interface DecisionLog {
   sandbox_state?: 'enabled' | 'disabled' | 'unavailable';
   /** Plan receipt reference — links tool calls back to the approved plan */
   plan_receipt_id?: string;
+  /** Deterministic enrichment (input digest, capability tags, hashed resource) */
+  enrichment?: import('./receipt-enrichment.js').ReceiptEnrichment;
   /** Hook event that triggered this log entry */
   hook_event?: HookEventName;
   /** Redacted exact-action readback shown to humans before approving */

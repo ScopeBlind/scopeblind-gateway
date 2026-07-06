@@ -27339,11 +27339,11 @@ var require_util3 = __commonJS({
       return false;
     }
     exports2.schemaHasRules = schemaHasRules;
-    function schemaHasRulesButRef(schema, RULES) {
+    function schemaHasRulesButRef(schema, RULES2) {
       if (typeof schema == "boolean")
         return !schema;
       for (const key in schema)
-        if (key !== "$ref" && RULES.all[key])
+        if (key !== "$ref" && RULES2.all[key])
           return true;
       return false;
     }
@@ -28737,17 +28737,17 @@ var require_validate = __commonJS({
     }
     function schemaKeywords(it, types, typeErrors, errsCount) {
       const { gen, schema, data, allErrors, opts, self } = it;
-      const { RULES } = self;
-      if (schema.$ref && (opts.ignoreKeywordsWithRef || !(0, util_1.schemaHasRulesButRef)(schema, RULES))) {
-        gen.block(() => keywordCode(it, "$ref", RULES.all.$ref.definition));
+      const { RULES: RULES2 } = self;
+      if (schema.$ref && (opts.ignoreKeywordsWithRef || !(0, util_1.schemaHasRulesButRef)(schema, RULES2))) {
+        gen.block(() => keywordCode(it, "$ref", RULES2.all.$ref.definition));
         return;
       }
       if (!opts.jtd)
         checkStrictTypes(it, types);
       gen.block(() => {
-        for (const group of RULES.rules)
+        for (const group of RULES2.rules)
           groupKeywords(group);
-        groupKeywords(RULES.post);
+        groupKeywords(RULES2.post);
       });
       function groupKeywords(group) {
         if (!(0, applicability_1.shouldUseGroup)(schema, group))
@@ -30449,10 +30449,10 @@ var require_core3 = __commonJS({
       }
       // Remove keyword
       removeKeyword(keyword) {
-        const { RULES } = this;
-        delete RULES.keywords[keyword];
-        delete RULES.all[keyword];
-        for (const group of RULES.rules) {
+        const { RULES: RULES2 } = this;
+        delete RULES2.keywords[keyword];
+        delete RULES2.all[keyword];
+        for (const group of RULES2.rules) {
           const i = group.rules.findIndex((rule) => rule.keyword === keyword);
           if (i >= 0)
             group.rules.splice(i, 1);
@@ -30620,9 +30620,9 @@ var require_core3 = __commonJS({
     }
     var KEYWORD_NAME = /^[a-z_$][a-z0-9_$:-]*$/i;
     function checkKeyword(keyword, def) {
-      const { RULES } = this;
+      const { RULES: RULES2 } = this;
       (0, util_1.eachItem)(keyword, (kwd) => {
-        if (RULES.keywords[kwd])
+        if (RULES2.keywords[kwd])
           throw new Error(`Keyword ${kwd} is already defined`);
         if (!KEYWORD_NAME.test(kwd))
           throw new Error(`Keyword ${kwd} has invalid name`);
@@ -30638,13 +30638,13 @@ var require_core3 = __commonJS({
       const post = definition === null || definition === void 0 ? void 0 : definition.post;
       if (dataType && post)
         throw new Error('keyword with "post" flag cannot have "type"');
-      const { RULES } = this;
-      let ruleGroup = post ? RULES.post : RULES.rules.find(({ type: t }) => t === dataType);
+      const { RULES: RULES2 } = this;
+      let ruleGroup = post ? RULES2.post : RULES2.rules.find(({ type: t }) => t === dataType);
       if (!ruleGroup) {
         ruleGroup = { type: dataType, rules: [] };
-        RULES.rules.push(ruleGroup);
+        RULES2.rules.push(ruleGroup);
       }
-      RULES.keywords[keyword] = true;
+      RULES2.keywords[keyword] = true;
       if (!definition)
         return;
       const rule = {
@@ -30659,7 +30659,7 @@ var require_core3 = __commonJS({
         addBeforeRule.call(this, ruleGroup, rule, definition.before);
       else
         ruleGroup.rules.push(rule);
-      RULES.all[keyword] = rule;
+      RULES2.all[keyword] = rule;
       (_a = definition.implements) === null || _a === void 0 ? void 0 : _a.forEach((kwd) => this.addKeyword(kwd));
     }
     function addBeforeRule(ruleGroup, rule, before) {
@@ -35553,6 +35553,7 @@ function signDecision(entry) {
     if (entry.timing) payload.timing = entry.timing;
     if (entry.swarm) payload.swarm = entry.swarm;
     if (entry.payload_digest) payload.payload_digest = entry.payload_digest;
+    if (entry.enrichment) payload.enrichment = entry.enrichment;
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
     const result = artifactsModule.createSignedArtifact(
@@ -40360,6 +40361,89 @@ function forwardReceipt(signedReceipt) {
   getScopeBlindBridge().forward(signedReceipt);
 }
 
+// src/receipt-enrichment.ts
+var ENRICHMENT_VERSION = 1;
+function canonicalJson(value) {
+  const seen = /* @__PURE__ */ new WeakSet();
+  const enc = (v) => {
+    if (v === null || v === void 0) return "null";
+    const t = typeof v;
+    if (t === "number") return Number.isFinite(v) ? JSON.stringify(v) : "null";
+    if (t === "boolean" || t === "string") return JSON.stringify(v);
+    if (t === "bigint") return JSON.stringify(v.toString());
+    if (t === "function" || t === "symbol") return "null";
+    if (Array.isArray(v)) return "[" + v.map(enc).join(",") + "]";
+    if (t === "object") {
+      const o = v;
+      if (seen.has(o)) return '"[circular]"';
+      seen.add(o);
+      const body = Object.keys(o).sort().map((k) => JSON.stringify(k) + ":" + enc(o[k])).join(",");
+      seen.delete(o);
+      return "{" + body + "}";
+    }
+    return "null";
+  };
+  return enc(value);
+}
+function sha256Hex(s) {
+  return bytesToHex(sha2562(new TextEncoder().encode(s)));
+}
+var RULES = [
+  { cap: "exec.shell", tool: /bash|shell|exec|terminal|run_command|command/ },
+  { cap: "fs.read", tool: /(^|[_.])(read|cat|glob|grep|search|ls|view|list_files|open)/ },
+  { cap: "fs.write", tool: /write|create_file|save|append|edit|patch|replace|update_file|multiedit|notebook/ },
+  { cap: "fs.delete", tool: /delete|remove|unlink|trash|(^|[_.])rm/ },
+  { cap: "net.egress", tool: /fetch|http|curl|wget|request|download|browse|navigate|webfetch|web_search|scrape/ },
+  { cap: "vcs", tool: /(^|[_.])git/, text: /\bgit\s+(commit|push|pull|clone|reset|checkout|branch|rebase|merge|tag)\b/ },
+  { cap: "package.install", text: /\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip3?\s+install\b|\bgo\s+get\b|\bcargo\s+add\b|\bbrew\s+install\b|\bapt(-get)?\s+install\b|\bgem\s+install\b/ },
+  { cap: "secret.adjacent", text: /\.env\b|secret|credential|passwd|password|api[_-]?key|private[_-]?key|\.pem\b|\.key\b|id_rsa|bearer\s|aws_(access|secret)|authorization/ },
+  { cap: "destructive", text: /rm\s+-[a-z]*[rf]|\brmdir\b|drop\s+table|truncate\s+table|delete\s+from|reset\s+--hard|--force\b|\bmkfs\b|\bdd\s+if=|shutdown|reboot|kill\s+-9|>\s*\/dev\/sd/ },
+  { cap: "financial", text: /\b(order|trade|buy|sell|transfer|wire|payment|withdraw|deposit|swap|invoice|charge|refund|settle)\b/ },
+  { cap: "data.query", text: /\bselect\s+[\s\S]+\bfrom\b|\binsert\s+into\b|\bupdate\s+[\s\S]+\bset\b|\bdelete\s+from\b/ }
+];
+function deriveCapabilities(tool, input) {
+  const t = String(tool || "").toLowerCase();
+  let text = "";
+  try {
+    text = canonicalJson(input).toLowerCase();
+  } catch {
+  }
+  const caps = /* @__PURE__ */ new Set();
+  for (const r of RULES) {
+    if (r.tool && r.tool.test(t)) caps.add(r.cap);
+    if (r.text && r.text.test(text)) caps.add(r.cap);
+  }
+  return Array.from(caps).sort();
+}
+function deriveResource(input) {
+  const o = input && typeof input === "object" ? input : {};
+  const path = o.file_path ?? o.path ?? o.filePath ?? o.notebook_path ?? o.filename;
+  if (typeof path === "string" && path.trim()) return { kind: "path", digest: sha256Hex(path.replace(/\\/g, "/")) };
+  const url = o.url ?? o.uri ?? o.endpoint ?? o.href;
+  if (typeof url === "string" && url.trim()) {
+    try {
+      return { kind: "host", digest: sha256Hex(new URL(url).host.toLowerCase()) };
+    } catch {
+    }
+  }
+  const cmd = o.command ?? o.cmd ?? o.script;
+  if (typeof cmd === "string" && cmd.trim()) {
+    const first = cmd.trim().split(/\s+/)[0];
+    if (first) return { kind: "command", digest: sha256Hex(first) };
+  }
+  return void 0;
+}
+function buildEnrichment(tool, input) {
+  const e = {
+    v: ENRICHMENT_VERSION,
+    input_digest: sha256Hex(canonicalJson(input ?? {})),
+    capabilities: deriveCapabilities(tool, input)
+  };
+  const resource = deriveResource(input);
+  if (resource) e.resource = resource;
+  return e;
+}
+
 // src/hook-server.ts
 var DEFAULT_PORT = 9377;
 var LOG_FILE3 = ".protect-mcp-log.jsonl";
@@ -40432,6 +40516,9 @@ async function handlePreToolUse(input, state) {
   });
   const payloadDigest = computePayloadDigest(input.toolInput);
   const actionReadback = buildActionReadback(toolName, input.toolInput || {});
+  const enrichment = buildEnrichment(toolName, input.toolInput || {});
+  const inflightRec = state.inflightTools.get(requestId);
+  if (inflightRec) inflightRec.enrichment = enrichment;
   const swarm = {
     ...state.swarmContext,
     ...input.agentId && { agent_id: input.agentId },
@@ -40851,6 +40938,8 @@ function emitDecisionLog(state, entry) {
     ...entry.sandbox_state && { sandbox_state: entry.sandbox_state },
     ...entry.plan_receipt_id && { plan_receipt_id: entry.plan_receipt_id }
   };
+  const enr = state.inflightTools.get(log.request_id)?.enrichment;
+  if (enr) log.enrichment = enr;
   process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
   try {

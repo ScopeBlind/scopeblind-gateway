@@ -1,7 +1,9 @@
 import {
-  ed25519,
   sha256
-} from "./chunk-LJQOALYR.mjs";
+} from "./chunk-AYNQIEN7.mjs";
+import {
+  ed25519
+} from "./chunk-FFVJL3KQ.mjs";
 import {
   Hash,
   abytes,
@@ -14,9 +16,6 @@ import {
   toBytes
 } from "./chunk-D733KAPG.mjs";
 
-// node_modules/@noble/hashes/esm/sha256.js
-var sha2562 = sha256;
-
 // src/commitments/merkle.ts
 var DOMAIN_LEAF = 0;
 var DOMAIN_INTERNAL = 1;
@@ -24,14 +23,14 @@ function hashLeaf(leafBytes) {
   const buf = new Uint8Array(leafBytes.length + 1);
   buf[0] = DOMAIN_LEAF;
   buf.set(leafBytes, 1);
-  return sha2562(buf);
+  return sha256(buf);
 }
 function hashInternal(left, right) {
   const buf = new Uint8Array(left.length + right.length + 1);
   buf[0] = DOMAIN_INTERNAL;
   buf.set(left, 1);
   buf.set(right, 1 + left.length);
-  return sha2562(buf);
+  return sha256(buf);
 }
 function merkleRoot(leafHashes) {
   if (leafHashes.length === 0) {
@@ -315,7 +314,7 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
   const canonical = jcs(payload);
-  const messageHash = sha2562(new TextEncoder().encode(canonical));
+  const messageHash = sha256(new TextEncoder().encode(canonical));
   const signatureBytes = ed25519.sign(messageHash, hexToBytes(signingKey));
   const signedReceipt = {
     ...payload,
@@ -329,7 +328,7 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     }
   };
   const signedJson = JSON.stringify(signedReceipt);
-  const receiptHash = bytesToHex(sha2562(new TextEncoder().encode(jcs(signedReceipt))));
+  const receiptHash = bytesToHex(sha256(new TextEncoder().encode(jcs(signedReceipt))));
   return {
     signed: signedJson,
     artifact_type: "decision_receipt_committed_v1",
@@ -458,7 +457,7 @@ function committedFieldNamesFromReceipt(receipt, openings) {
   return Array.from(new Set(names)).sort();
 }
 function receiptHashHex(receipt) {
-  return bytesToHex(sha2562(new TextEncoder().encode(jcs(receipt))));
+  return bytesToHex(sha256(new TextEncoder().encode(jcs(receipt))));
 }
 function verifyCommittedReceiptSignature(receipt) {
   const signature = receipt.signature;
@@ -468,7 +467,7 @@ function verifyCommittedReceiptSignature(receipt) {
     return null;
   }
   const { signature: _signature, ...payloadWithoutSig } = receipt;
-  const messageHash = sha2562(new TextEncoder().encode(jcs(payloadWithoutSig)));
+  const messageHash = sha256(new TextEncoder().encode(jcs(payloadWithoutSig)));
   try {
     return ed25519.verify(base64urlDecode(sig.sig), messageHash, hexToBytes(sig.public_key));
   } catch {
@@ -477,7 +476,6 @@ function verifyCommittedReceiptSignature(receipt) {
 }
 
 export {
-  sha2562 as sha256,
   hmac,
   signCommittedDecision,
   discloseField,

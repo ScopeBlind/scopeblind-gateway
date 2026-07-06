@@ -190,6 +190,7 @@ function signDecision(entry) {
     if (entry.timing) payload.timing = entry.timing;
     if (entry.swarm) payload.swarm = entry.swarm;
     if (entry.payload_digest) payload.payload_digest = entry.payload_digest;
+    if (entry.enrichment) payload.enrichment = entry.enrichment;
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
     const result = artifactsModule.createSignedArtifact(

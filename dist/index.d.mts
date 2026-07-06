@@ -3,6 +3,20 @@ export { BUILTIN_PATTERNS, HookPattern, generateHookSettings, generateSampleCeda
 export { createSandboxServer } from './demo-server.mjs';
 import 'node:http';
 
+interface ReceiptEnrichment {
+    /** Rule/schema version, so derivations stay reproducible as rules evolve. */
+    v: number;
+    /** SHA-256 (hex) of the canonical tool input. */
+    input_digest: string;
+    /** Sorted, deterministic capability tags (heuristic organisation labels). */
+    capabilities: string[];
+    /** Hashed coarse resource for clustering, when one is derivable. */
+    resource?: {
+        kind: 'path' | 'host' | 'command';
+        digest: string;
+    };
+}
+
 interface ProtectPolicy {
     tools: Record<string, ToolPolicy>;
     /** Default trust tier for unidentified agents (default: "unknown") */
@@ -188,6 +202,8 @@ interface DecisionLog {
     sandbox_state?: 'enabled' | 'disabled' | 'unavailable';
     /** Plan receipt reference — links tool calls back to the approved plan */
     plan_receipt_id?: string;
+    /** Deterministic enrichment (input digest, capability tags, hashed resource) */
+    enrichment?: ReceiptEnrichment;
     /** Hook event that triggered this log entry */
     hook_event?: HookEventName;
     /** Redacted exact-action readback shown to humans before approving */

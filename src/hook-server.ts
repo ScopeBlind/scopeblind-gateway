@@ -44,6 +44,7 @@ import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './pol
 import { ReceiptBuffer } from './http-server.js';
 import { getScopeBlindBridge } from './scopeblind-bridge.js';
 import { buildActionReadback } from './action-readback.js';
+import { buildEnrichment, type ReceiptEnrichment } from './receipt-enrichment.js';
 
 // ============================================================
 // Constants
@@ -68,7 +69,7 @@ interface HookServerState {
   /** Receipt buffer for /receipts endpoint */
   receiptBuffer: ReceiptBuffer;
   /** In-flight tool calls (PreToolUse → PostToolUse timing) */
-  inflightTools: Map<string, { tool: string; startedAt: number; requestId: string }>;
+  inflightTools: Map<string, { tool: string; startedAt: number; requestId: string; enrichment?: ReceiptEnrichment }>;
   /** Deny iteration counter per tool (tracks retries after denial) */
   denyCounter: Map<string, number>;
   /** Swarm context (detected from env vars or hook events) */
@@ -198,6 +199,13 @@ async function handlePreToolUse(
   // Compute payload digest for large inputs
   const payloadDigest = computePayloadDigest(input.toolInput);
   const actionReadback = buildActionReadback(toolName, input.toolInput || {});
+
+  // Deterministic, minimum-disclosure enrichment (input digest, capability tags,
+  // hashed resource). Stored on the in-flight record and folded into the signed
+  // decision receipt by emitDecisionLog, so it is part of the tamper-evident record.
+  const enrichment = buildEnrichment(toolName, input.toolInput || {});
+  const inflightRec = state.inflightTools.get(requestId);
+  if (inflightRec) inflightRec.enrichment = enrichment;
 
   // Build swarm context from hook input (override env detection)
   const swarm: SwarmContext = {
@@ -713,6 +721,11 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
     ...(entry.sandbox_state && { sandbox_state: entry.sandbox_state }),
     ...(entry.plan_receipt_id && { plan_receipt_id: entry.plan_receipt_id }),
   };
+
+  // Fold in the per-call enrichment (set at PreToolUse) BEFORE signing, so the
+  // input digest + capability tags + hashed resource are covered by the signature.
+  const enr = state.inflightTools.get(log.request_id)?.enrichment;
+  if (enr) log.enrichment = enr;
 
   process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}\n`);
 
