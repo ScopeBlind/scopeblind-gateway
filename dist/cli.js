@@ -5082,6 +5082,222 @@ var init_sha256 = __esm({
   }
 });
 
+// src/receipt-enrichment.ts
+function canonicalJson(value) {
+  const seen = /* @__PURE__ */ new WeakSet();
+  const enc = (v) => {
+    if (v === null || v === void 0) return "null";
+    const t = typeof v;
+    if (t === "number") return Number.isFinite(v) ? JSON.stringify(v) : "null";
+    if (t === "boolean" || t === "string") return JSON.stringify(v);
+    if (t === "bigint") return JSON.stringify(v.toString());
+    if (t === "function" || t === "symbol") return "null";
+    if (Array.isArray(v)) return "[" + v.map(enc).join(",") + "]";
+    if (t === "object") {
+      const o = v;
+      if (seen.has(o)) return '"[circular]"';
+      seen.add(o);
+      const body = Object.keys(o).sort().map((k) => JSON.stringify(k) + ":" + enc(o[k])).join(",");
+      seen.delete(o);
+      return "{" + body + "}";
+    }
+    return "null";
+  };
+  return enc(value);
+}
+function sha256Hex2(s) {
+  return bytesToHex(sha2562(new TextEncoder().encode(s)));
+}
+function deriveCapabilities(tool, input) {
+  const t = String(tool || "").toLowerCase();
+  let text = "";
+  try {
+    text = canonicalJson(input).toLowerCase();
+  } catch {
+  }
+  const caps = /* @__PURE__ */ new Set();
+  for (const r of RULES) {
+    if (r.tool && r.tool.test(t)) caps.add(r.cap);
+    if (r.text && r.text.test(text)) caps.add(r.cap);
+  }
+  return Array.from(caps).sort();
+}
+function deriveResource(input) {
+  const o = input && typeof input === "object" ? input : {};
+  const path = o.file_path ?? o.path ?? o.filePath ?? o.notebook_path ?? o.filename;
+  if (typeof path === "string" && path.trim()) return { kind: "path", digest: sha256Hex2(path.replace(/\\/g, "/")) };
+  const url = o.url ?? o.uri ?? o.endpoint ?? o.href;
+  if (typeof url === "string" && url.trim()) {
+    try {
+      return { kind: "host", digest: sha256Hex2(new URL(url).host.toLowerCase()) };
+    } catch {
+    }
+  }
+  const cmd = o.command ?? o.cmd ?? o.script;
+  if (typeof cmd === "string" && cmd.trim()) {
+    const first = cmd.trim().split(/\s+/)[0];
+    if (first) return { kind: "command", digest: sha256Hex2(first) };
+  }
+  return void 0;
+}
+function buildEnrichment(tool, input) {
+  const e = {
+    v: ENRICHMENT_VERSION,
+    input_digest: sha256Hex2(canonicalJson(input ?? {})),
+    capabilities: deriveCapabilities(tool, input)
+  };
+  const resource = deriveResource(input);
+  if (resource) e.resource = resource;
+  return e;
+}
+var ENRICHMENT_VERSION, RULES;
+var init_receipt_enrichment = __esm({
+  "src/receipt-enrichment.ts"() {
+    "use strict";
+    init_sha256();
+    init_utils();
+    ENRICHMENT_VERSION = 1;
+    RULES = [
+      { cap: "exec.shell", tool: /bash|shell|exec|terminal|run_command|command/ },
+      { cap: "fs.read", tool: /(^|[_.])(read|cat|glob|grep|search|ls|view|list_files|open)/ },
+      { cap: "fs.write", tool: /write|create_file|save|append|edit|patch|replace|update_file|multiedit|notebook/ },
+      { cap: "fs.delete", tool: /delete|remove|unlink|trash|(^|[_.])rm/ },
+      { cap: "net.egress", tool: /fetch|http|curl|wget|request|download|browse|navigate|webfetch|web_search|scrape/ },
+      { cap: "vcs", tool: /(^|[_.])git/, text: /\bgit\s+(commit|push|pull|clone|reset|checkout|branch|rebase|merge|tag)\b/ },
+      { cap: "package.install", text: /\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip3?\s+install\b|\bgo\s+get\b|\bcargo\s+add\b|\bbrew\s+install\b|\bapt(-get)?\s+install\b|\bgem\s+install\b/ },
+      { cap: "secret.adjacent", text: /\.env\b|secret|credential|passwd|password|api[_-]?key|private[_-]?key|\.pem\b|\.key\b|id_rsa|bearer\s|aws_(access|secret)|authorization/ },
+      { cap: "destructive", text: /rm\s+-[a-z]*[rf]|\brmdir\b|drop\s+table|truncate\s+table|delete\s+from|reset\s+--hard|--force\b|\bmkfs\b|\bdd\s+if=|shutdown|reboot|kill\s+-9|>\s*\/dev\/sd/ },
+      { cap: "financial", text: /\b(order|trade|buy|sell|transfer|wire|payment|withdraw|deposit|swap|invoice|charge|refund|settle)\b/ },
+      { cap: "data.query", text: /\bselect\s+[\s\S]+\bfrom\b|\binsert\s+into\b|\bupdate\s+[\s\S]+\bset\b|\bdelete\s+from\b/ }
+    ];
+  }
+});
+
+// src/claim.ts
+var claim_exports = {};
+__export(claim_exports, {
+  CLAIM_TYPE: () => CLAIM_TYPE,
+  buildClaim: () => buildClaim,
+  evaluate: () => evaluate,
+  leafHash: () => leafHash,
+  merkleRoot: () => merkleRoot,
+  receiptToLeaf: () => receiptToLeaf,
+  verifyClaim: () => verifyClaim
+});
+function sha256Hex3(input) {
+  const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;
+  return bytesToHex(sha2562(bytes));
+}
+function receiptToLeaf(e) {
+  const p = e && typeof e.payload === "object" && e.payload || e;
+  const dec = String(p.decision || e.decision || "").toLowerCase();
+  const v = /den|block|reject|refus/.test(dec) ? "blocked" : /ask|approv|hold|escal|review|pending/.test(dec) ? "held" : "allowed";
+  const enr = p.enrichment;
+  const c = enr && Array.isArray(enr.capabilities) ? enr.capabilities.map(String).sort() : [];
+  const tsRaw = e.issued_at || p.timestamp || p.issued_at;
+  const ms = typeof tsRaw === "number" ? tsRaw : typeof tsRaw === "string" ? Date.parse(tsRaw) : NaN;
+  const t = isFinite(ms) ? new Date(ms).toISOString() : "";
+  const d = sha256Hex3(canonicalJson(e));
+  return { d, v, c, t };
+}
+function leafHash(leaf) {
+  return sha256Hex3(canonicalJson(leaf));
+}
+function merkleRoot(leafHashes) {
+  if (leafHashes.length === 0) return sha256Hex3("scopeblind.claim.empty");
+  let level = [...leafHashes].sort();
+  while (level.length > 1) {
+    const next = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const a = level[i];
+      const b = i + 1 < level.length ? level[i + 1] : level[i];
+      next.push(sha256Hex3(a + b));
+    }
+    level = next;
+  }
+  return level[0];
+}
+function evaluate(pred, leaves) {
+  if (pred.kind === "no_capability") {
+    const matched2 = leaves.filter((l) => l.c.indexOf(pred.capability) >= 0).length;
+    return { statement: `No action used capability "${pred.capability}"`, holds: matched2 === 0, matched: matched2 };
+  }
+  if (pred.kind === "only_capabilities") {
+    const allow = new Set(pred.capabilities);
+    const matched2 = leaves.filter((l) => !l.c.every((c) => allow.has(c))).length;
+    return { statement: `All actions were confined to capabilities {${pred.capabilities.join(", ")}}`, holds: matched2 === 0, matched: matched2 };
+  }
+  if (pred.kind === "no_verdict") {
+    const matched2 = leaves.filter((l) => l.v === pred.verdict).length;
+    return { statement: `No action was ${pred.verdict}`, holds: matched2 === 0, matched: matched2 };
+  }
+  const matched = leaves.filter((l) => l.v === pred.verdict).length;
+  return { statement: `${matched} action${matched === 1 ? " was" : "s were"} ${pred.verdict}`, holds: true, matched };
+}
+function messageHash(unsigned) {
+  return sha2562(new TextEncoder().encode(canonicalJson(unsigned)));
+}
+function buildClaim(receipts, predicate, key, issuedAt) {
+  const leaves = receipts.map(receiptToLeaf);
+  const root = merkleRoot(leaves.map(leafHash));
+  const claim = evaluate(predicate, leaves);
+  const times = leaves.map((l) => l.t).filter(Boolean).sort();
+  const unsigned = {
+    type: CLAIM_TYPE,
+    predicate,
+    claim,
+    scope: { total: leaves.length, from: times[0] || "", to: times[times.length - 1] || "" },
+    record: { root },
+    leaves,
+    issuer: { kid: key.kid, publicKey: key.publicKey, issuer: key.issuer || "protect-mcp" },
+    issued_at: issuedAt
+  };
+  const signature = bytesToHex(ed25519.sign(messageHash(unsigned), hexToBytes(key.privateKey)));
+  return { ...unsigned, signature };
+}
+function verifyClaim(pack, overridePublicKey) {
+  const reasons = [];
+  const leaves = Array.isArray(pack.leaves) ? pack.leaves : [];
+  const recomputedRoot = merkleRoot(leaves.map(leafHash));
+  const root_ok = !!pack.record && recomputedRoot === pack.record.root;
+  if (!root_ok) reasons.push("record commitment (Merkle root) does not match the disclosed decisions");
+  const recomputed = evaluate(pack.predicate, leaves);
+  const predicate_ok = !!pack.claim && recomputed.holds === pack.claim.holds && recomputed.matched === pack.claim.matched;
+  if (!predicate_ok) reasons.push("claim result does not match the predicate recomputed over the disclosed decisions");
+  let authentic = false;
+  try {
+    const { signature, ...unsigned } = pack;
+    const pub = overridePublicKey || pack.issuer && pack.issuer.publicKey;
+    if (pub && signature) {
+      authentic = ed25519.verify(hexToBytes(signature), messageHash(unsigned), hexToBytes(pub));
+    }
+  } catch {
+  }
+  if (!authentic) reasons.push("signature does not verify against the issuer public key");
+  return {
+    valid: authentic && root_ok && predicate_ok,
+    authentic,
+    root_ok,
+    predicate_ok,
+    holds: !!(pack.claim && pack.claim.holds),
+    matched: pack.claim ? pack.claim.matched : recomputed.matched,
+    total: leaves.length,
+    statement: pack.claim ? pack.claim.statement : recomputed.statement,
+    reasons
+  };
+}
+var CLAIM_TYPE;
+var init_claim = __esm({
+  "src/claim.ts"() {
+    "use strict";
+    init_sha256();
+    init_utils();
+    init_ed25519();
+    init_receipt_enrichment();
+    CLAIM_TYPE = "scopeblind.claim.v1";
+  }
+});
+
 // src/commitments/merkle.ts
 function hashLeaf(leafBytes) {
   const buf = new Uint8Array(leafBytes.length + 1);
@@ -5096,7 +5312,7 @@ function hashInternal(left, right) {
   buf.set(right, 1 + left.length);
   return sha2562(buf);
 }
-function merkleRoot(leafHashes) {
+function merkleRoot2(leafHashes) {
   if (leafHashes.length === 0) {
     throw new Error("merkleRoot: cannot compute root of empty leaf set");
   }
@@ -5105,8 +5321,8 @@ function merkleRoot(leafHashes) {
   }
   const n = leafHashes.length;
   const k = largestPowerOfTwoLessThan(n);
-  const left = merkleRoot(leafHashes.slice(0, k));
-  const right = merkleRoot(leafHashes.slice(k));
+  const left = merkleRoot2(leafHashes.slice(0, k));
+  const right = merkleRoot2(leafHashes.slice(k));
   return hashInternal(left, right);
 }
 function generateProof(leafHashes, index) {
@@ -5132,21 +5348,21 @@ function collectPath(leaves, index, out) {
   const k = largestPowerOfTwoLessThan(n);
   if (index < k) {
     collectPath(leaves.slice(0, k), index, out);
-    out.push(merkleRoot(leaves.slice(k)));
+    out.push(merkleRoot2(leaves.slice(k)));
   } else {
     collectPath(leaves.slice(k), index - k, out);
-    out.push(merkleRoot(leaves.slice(0, k)));
+    out.push(merkleRoot2(leaves.slice(0, k)));
   }
 }
-function verifyProof(expectedRootHex, leafHash, proof) {
+function verifyProof(expectedRootHex, leafHash2, proof) {
   if (proof.index < 0 || proof.index >= proof.treeSize) return false;
   if (proof.treeSize === 1) {
-    return proof.siblings.length === 0 && bytesToHex(leafHash).toLowerCase() === expectedRootHex.toLowerCase();
+    return proof.siblings.length === 0 && bytesToHex(leafHash2).toLowerCase() === expectedRootHex.toLowerCase();
   }
   let result;
   try {
     result = reconstructRoot(
-      leafHash,
+      leafHash2,
       proof.index,
       proof.treeSize,
       proof.siblings
@@ -5156,12 +5372,12 @@ function verifyProof(expectedRootHex, leafHash, proof) {
   }
   return bytesToHex(result).toLowerCase() === expectedRootHex.toLowerCase();
 }
-function reconstructRoot(leafHash, index, treeSize, siblings) {
+function reconstructRoot(leafHash2, index, treeSize, siblings) {
   if (treeSize === 1) {
     if (siblings.length !== 0) {
       throw new Error("reconstructRoot: extra siblings at single-leaf level");
     }
-    return leafHash;
+    return leafHash2;
   }
   if (siblings.length === 0) {
     throw new Error("reconstructRoot: ran out of siblings before single-leaf");
@@ -5170,11 +5386,11 @@ function reconstructRoot(leafHash, index, treeSize, siblings) {
   const outermostSibling = hexToBytes(siblings[siblings.length - 1]);
   const innerSiblings = siblings.slice(0, -1);
   if (index < k) {
-    const leftHash = reconstructRoot(leafHash, index, k, innerSiblings);
+    const leftHash = reconstructRoot(leafHash2, index, k, innerSiblings);
     return hashInternal(leftHash, outermostSibling);
   } else {
     const rightHash = reconstructRoot(
-      leafHash,
+      leafHash2,
       index - k,
       treeSize - k,
       innerSiblings
@@ -5320,7 +5536,7 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
   if (committedFields.length > 0) {
     const { sorted, leafBytes } = leavesFromFields(committedFields);
     const leafHashes = leafBytes.map(hashLeaf);
-    const root = merkleRoot(leafHashes);
+    const root = merkleRoot2(leafHashes);
     committedFieldsRoot = bytesToHex(root);
     sorted.forEach((f, i) => {
       openings[f.name] = { name: f.name, value: f.value, salt: f.salt, index: i };
@@ -5338,8 +5554,8 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
   const canonical = jcs(payload);
-  const messageHash = sha2562(new TextEncoder().encode(canonical));
-  const signatureBytes = ed25519.sign(messageHash, hexToBytes(signingKey));
+  const messageHash2 = sha2562(new TextEncoder().encode(canonical));
+  const signatureBytes = ed25519.sign(messageHash2, hexToBytes(signingKey));
   const signedReceipt = {
     ...payload,
     signature: {
@@ -5491,9 +5707,9 @@ function verifyCommittedReceiptSignature(receipt) {
     return null;
   }
   const { signature: _signature, ...payloadWithoutSig } = receipt;
-  const messageHash = sha2562(new TextEncoder().encode(jcs(payloadWithoutSig)));
+  const messageHash2 = sha2562(new TextEncoder().encode(jcs(payloadWithoutSig)));
   try {
-    return ed25519.verify(base64urlDecode(sig.sig), messageHash, hexToBytes(sig.public_key));
+    return ed25519.verify(base64urlDecode(sig.sig), messageHash2, hexToBytes(sig.public_key));
   } catch {
     return false;
   }
@@ -5991,97 +6207,6 @@ var init_scopeblind_bridge = __esm({
       }
     };
     singleton = null;
-  }
-});
-
-// src/receipt-enrichment.ts
-function canonicalJson(value) {
-  const seen = /* @__PURE__ */ new WeakSet();
-  const enc = (v) => {
-    if (v === null || v === void 0) return "null";
-    const t = typeof v;
-    if (t === "number") return Number.isFinite(v) ? JSON.stringify(v) : "null";
-    if (t === "boolean" || t === "string") return JSON.stringify(v);
-    if (t === "bigint") return JSON.stringify(v.toString());
-    if (t === "function" || t === "symbol") return "null";
-    if (Array.isArray(v)) return "[" + v.map(enc).join(",") + "]";
-    if (t === "object") {
-      const o = v;
-      if (seen.has(o)) return '"[circular]"';
-      seen.add(o);
-      const body = Object.keys(o).sort().map((k) => JSON.stringify(k) + ":" + enc(o[k])).join(",");
-      seen.delete(o);
-      return "{" + body + "}";
-    }
-    return "null";
-  };
-  return enc(value);
-}
-function sha256Hex2(s) {
-  return bytesToHex(sha2562(new TextEncoder().encode(s)));
-}
-function deriveCapabilities(tool, input) {
-  const t = String(tool || "").toLowerCase();
-  let text = "";
-  try {
-    text = canonicalJson(input).toLowerCase();
-  } catch {
-  }
-  const caps = /* @__PURE__ */ new Set();
-  for (const r of RULES) {
-    if (r.tool && r.tool.test(t)) caps.add(r.cap);
-    if (r.text && r.text.test(text)) caps.add(r.cap);
-  }
-  return Array.from(caps).sort();
-}
-function deriveResource(input) {
-  const o = input && typeof input === "object" ? input : {};
-  const path = o.file_path ?? o.path ?? o.filePath ?? o.notebook_path ?? o.filename;
-  if (typeof path === "string" && path.trim()) return { kind: "path", digest: sha256Hex2(path.replace(/\\/g, "/")) };
-  const url = o.url ?? o.uri ?? o.endpoint ?? o.href;
-  if (typeof url === "string" && url.trim()) {
-    try {
-      return { kind: "host", digest: sha256Hex2(new URL(url).host.toLowerCase()) };
-    } catch {
-    }
-  }
-  const cmd = o.command ?? o.cmd ?? o.script;
-  if (typeof cmd === "string" && cmd.trim()) {
-    const first = cmd.trim().split(/\s+/)[0];
-    if (first) return { kind: "command", digest: sha256Hex2(first) };
-  }
-  return void 0;
-}
-function buildEnrichment(tool, input) {
-  const e = {
-    v: ENRICHMENT_VERSION,
-    input_digest: sha256Hex2(canonicalJson(input ?? {})),
-    capabilities: deriveCapabilities(tool, input)
-  };
-  const resource = deriveResource(input);
-  if (resource) e.resource = resource;
-  return e;
-}
-var ENRICHMENT_VERSION, RULES;
-var init_receipt_enrichment = __esm({
-  "src/receipt-enrichment.ts"() {
-    "use strict";
-    init_sha256();
-    init_utils();
-    ENRICHMENT_VERSION = 1;
-    RULES = [
-      { cap: "exec.shell", tool: /bash|shell|exec|terminal|run_command|command/ },
-      { cap: "fs.read", tool: /(^|[_.])(read|cat|glob|grep|search|ls|view|list_files|open)/ },
-      { cap: "fs.write", tool: /write|create_file|save|append|edit|patch|replace|update_file|multiedit|notebook/ },
-      { cap: "fs.delete", tool: /delete|remove|unlink|trash|(^|[_.])rm/ },
-      { cap: "net.egress", tool: /fetch|http|curl|wget|request|download|browse|navigate|webfetch|web_search|scrape/ },
-      { cap: "vcs", tool: /(^|[_.])git/, text: /\bgit\s+(commit|push|pull|clone|reset|checkout|branch|rebase|merge|tag)\b/ },
-      { cap: "package.install", text: /\b(npm|pnpm|yarn)\s+(i|install|add)\b|\bpip3?\s+install\b|\bgo\s+get\b|\bcargo\s+add\b|\bbrew\s+install\b|\bapt(-get)?\s+install\b|\bgem\s+install\b/ },
-      { cap: "secret.adjacent", text: /\.env\b|secret|credential|passwd|password|api[_-]?key|private[_-]?key|\.pem\b|\.key\b|id_rsa|bearer\s|aws_(access|secret)|authorization/ },
-      { cap: "destructive", text: /rm\s+-[a-z]*[rf]|\brmdir\b|drop\s+table|truncate\s+table|delete\s+from|reset\s+--hard|--force\b|\bmkfs\b|\bdd\s+if=|shutdown|reboot|kill\s+-9|>\s*\/dev\/sd/ },
-      { cap: "financial", text: /\b(order|trade|buy|sell|transfer|wire|payment|withdraw|deposit|swap|invoice|charge|refund|settle)\b/ },
-      { cap: "data.query", text: /\bselect\s+[\s\S]+\bfrom\b|\binsert\s+into\b|\bupdate\s+[\s\S]+\bset\b|\bdelete\s+from\b/ }
-    ];
   }
 });
 
@@ -8393,6 +8518,8 @@ Usage:
   protect-mcp digest [--today] [--dir <path>]
   protect-mcp receipts [--last <n>] [--dir <path>]
   protect-mcp record [--dir <path>] [--live] [--no-open]
+  protect-mcp claim [--no <cap>] [--only <c,c>] [--count <verdict>] [--dir <path>] [--output <path>]
+  protect-mcp verify-claim <claim.json> [--key <public-hex>]
   protect-mcp bundle [--output <path>] [--dir <path>]
   protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]
   protect-mcp report [--period <days>d] [--format md|json] [--output <path>] [--dir <path>]
@@ -8431,6 +8558,8 @@ Commands:
   digest            Generate a human-readable summary of agent activity
   receipts          Show recent persisted signed receipts
   record            Open a local, searchable view of your record in the browser
+  claim             Attest a signed, position-blind claim over your record (e.g. no egress)
+  verify-claim      Verify a claim attestation offline (signature + predicate + commitment)
   bundle            Export an offline-verifiable audit bundle
 
 Examples:
@@ -10554,6 +10683,170 @@ document.getElementById("list").addEventListener("click",function(e){var ah=e.ta
 render();
 if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){var nr=d.recs||[];var changed=nr.length!==RECORDS.length;RECORDS=nr;META.count=RECORDS.length;if(typeof d.signed==='boolean')META.signed=d.signed;if(changed)render()}).catch(function(){})};poll();setInterval(poll,2000);}
 </script></body></html>`;
+async function handleClaim(argv) {
+  const { readFileSync: readFileSync11, existsSync: existsSync9, writeFileSync: writeFileSync4 } = await import("fs");
+  const { join: join8 } = await import("path");
+  const { buildClaim: buildClaim2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
+  let dir = process.cwd();
+  const di = argv.indexOf("--dir");
+  if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
+  let predicate = null;
+  const noIdx = argv.indexOf("--no"), onlyIdx = argv.indexOf("--only"), nvIdx = argv.indexOf("--no-verdict"), cvIdx = argv.indexOf("--count");
+  if (noIdx !== -1 && argv[noIdx + 1]) predicate = { kind: "no_capability", capability: argv[noIdx + 1] };
+  else if (onlyIdx !== -1 && argv[onlyIdx + 1]) predicate = { kind: "only_capabilities", capabilities: argv[onlyIdx + 1].split(",").map((s) => s.trim()).filter(Boolean) };
+  else if (nvIdx !== -1 && argv[nvIdx + 1]) predicate = { kind: "no_verdict", verdict: argv[nvIdx + 1] };
+  else if (cvIdx !== -1 && argv[cvIdx + 1]) predicate = { kind: "count_verdict", verdict: argv[cvIdx + 1] };
+  if (!predicate) {
+    process.stderr.write(`
+${bold("protect-mcp claim")}
+
+Attest a signed, position-blind claim over your record:
+  --no <capability>        no action used it, e.g. ${dim("--no net.egress")}
+  --only <c1,c2,...>       all actions confined to these capabilities
+  --no-verdict <verdict>   e.g. ${dim("--no-verdict blocked")}
+  --count <verdict>        how many, e.g. ${dim("--count blocked")}
+
+Example: ${bold("npx protect-mcp claim --no net.egress")}
+
+`);
+    process.exit(0);
+    return;
+  }
+  const keyPath = join8(dir, "keys", "gateway.json");
+  if (!existsSync9(keyPath)) {
+    process.stderr.write(`
+${bold("protect-mcp claim")}
+
+No signing key at ${keyPath}. A claim must be signed. Run ${bold("npx protect-mcp init")} first.
+
+`);
+    process.exit(1);
+    return;
+  }
+  let key;
+  try {
+    key = JSON.parse(readFileSync11(keyPath, "utf-8"));
+  } catch {
+    process.stderr.write(`
+protect-mcp claim: ${keyPath} is not valid JSON.
+
+`);
+    process.exit(1);
+    return;
+  }
+  if (!key.privateKey || !key.publicKey) {
+    process.stderr.write(`
+protect-mcp claim: ${keyPath} is missing privateKey/publicKey.
+
+`);
+    process.exit(1);
+    return;
+  }
+  const recPath = join8(dir, ".protect-mcp-receipts.jsonl");
+  if (!existsSync9(recPath)) {
+    process.stderr.write(`
+${bold("protect-mcp claim")}
+
+No signed receipts in ${dir}. Run the gate with signing on, then try again.
+
+`);
+    process.exit(0);
+    return;
+  }
+  const receipts = readFileSync11(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+    try {
+      return JSON.parse(l);
+    } catch {
+      return null;
+    }
+  }).filter((x) => x !== null);
+  if (!receipts.length) {
+    process.stderr.write(`
+protect-mcp claim: no readable receipts in ${recPath}.
+
+`);
+    process.exit(0);
+    return;
+  }
+  const pack = buildClaim2(receipts, predicate, { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || "gateway", issuer: "protect-mcp" }, (/* @__PURE__ */ new Date()).toISOString());
+  const oi = argv.indexOf("--output");
+  const out = oi !== -1 && argv[oi + 1] ? argv[oi + 1] : join8(dir, "claim-" + Date.now() + ".json");
+  writeFileSync4(out, JSON.stringify(pack, null, 2) + "\n");
+  process.stdout.write(`
+${bold("\u{1F6E1}\uFE0F  Signed claim")}
+`);
+  process.stdout.write(`  ${pack.claim.statement}: ${pack.claim.holds ? green("holds") : yellow("does not hold")}  ${dim("(" + pack.claim.matched + " matched of " + pack.scope.total + " decisions)")}
+`);
+  process.stdout.write(`  ${dim("Position-blind: reveals decision categories, never tool inputs, outputs, or data. Ed25519-signed.")}
+`);
+  process.stdout.write(`  Written to ${out}
+`);
+  process.stdout.write(`  Hand it to anyone. They verify offline: ${bold("npx protect-mcp verify-claim " + out)}
+
+`);
+  process.exit(0);
+}
+async function handleVerifyClaim(argv) {
+  const { readFileSync: readFileSync11, existsSync: existsSync9 } = await import("fs");
+  const { verifyClaim: verifyClaim2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
+  const file = argv.find((a) => !a.startsWith("--"));
+  if (!file || !existsSync9(file)) {
+    process.stderr.write(`
+${bold("protect-mcp verify-claim")} <claim.json> [--key <public-hex>]
+
+Provide a claim pack file.
+
+`);
+    process.exit(2);
+    return;
+  }
+  let pack;
+  try {
+    pack = JSON.parse(readFileSync11(file, "utf-8"));
+  } catch {
+    process.stderr.write(`
+protect-mcp verify-claim: ${file} is not valid JSON.
+
+`);
+    process.exit(2);
+    return;
+  }
+  if (!pack || pack.type !== "scopeblind.claim.v1") {
+    process.stderr.write(`
+protect-mcp verify-claim: not a scopeblind.claim.v1 pack.
+
+`);
+    process.exit(2);
+    return;
+  }
+  const ki = argv.indexOf("--key");
+  const v = verifyClaim2(pack, ki !== -1 ? argv[ki + 1] : void 0);
+  const ok = (b) => b ? green("\u2713") : red("\u2717");
+  process.stdout.write(`
+${bold("protect-mcp verify-claim")}
+`);
+  process.stdout.write(`  Claim:      ${pack.claim ? pack.claim.statement : "(none)"}
+`);
+  process.stdout.write(`  Holds:      ${v.holds ? green("yes") : yellow("no")}  ${dim("(" + v.matched + " matched of " + v.total + " decisions)")}
+`);
+  process.stdout.write(`  Signature:  ${ok(v.authentic)} ${v.authentic ? "valid" : "INVALID"}  ${dim("issuer kid " + (pack.issuer && pack.issuer.kid || "?"))}
+`);
+  process.stdout.write(`  Commitment: ${ok(v.root_ok)} ${v.root_ok ? "Merkle root matches the " + v.total + " disclosed decisions" : "MISMATCH"}
+`);
+  process.stdout.write(`  Predicate:  ${ok(v.predicate_ok)} ${v.predicate_ok ? "recomputed independently and matches" : "MISMATCH"}
+`);
+  process.stdout.write(`
+  ${v.valid ? green("VALID") : red("INVALID")} attestation.
+`);
+  process.stdout.write(`  ${dim("Proves the pack came from the issuer key and the claim is true over the disclosed decision")}
+`);
+  process.stdout.write(`  ${dim("categories (verdict + capabilities), which reveal no tool inputs, outputs, or data. Completeness")}
+`);
+  process.stdout.write(`  ${dim("of the disclosed set is attested by the issuer; pin the key or anchor to the log for more.")}
+
+`);
+  process.exit(v.valid ? 0 : 1);
+}
 async function handleBundle(argv) {
   const { readFileSync: readFileSync11, writeFileSync: writeFileSync4, existsSync: existsSync9 } = await import("fs");
   const { join: join8 } = await import("path");
@@ -12049,6 +12342,14 @@ async function main() {
   }
   if (args[0] === "record") {
     await handleRecord(args.slice(1));
+    return;
+  }
+  if (args[0] === "claim") {
+    await handleClaim(args.slice(1));
+    return;
+  }
+  if (args[0] === "verify-claim") {
+    await handleVerifyClaim(args.slice(1));
     return;
   }
   if (args[0] === "init-hooks") {

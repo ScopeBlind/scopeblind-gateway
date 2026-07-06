@@ -54,7 +54,8 @@ import {
   forwardReceipt,
   getScopeBlindBridge,
   startHookServer
-} from "./chunk-IH322HMH.mjs";
+} from "./chunk-744JMCY4.mjs";
+import "./chunk-KMNXHGGT.mjs";
 import {
   sha256 as sha2562
 } from "./chunk-AYNQIEN7.mjs";

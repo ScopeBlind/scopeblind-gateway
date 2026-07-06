@@ -60,6 +60,8 @@ Usage:
   protect-mcp digest [--today] [--dir <path>]
   protect-mcp receipts [--last <n>] [--dir <path>]
   protect-mcp record [--dir <path>] [--live] [--no-open]
+  protect-mcp claim [--no <cap>] [--only <c,c>] [--count <verdict>] [--dir <path>] [--output <path>]
+  protect-mcp verify-claim <claim.json> [--key <public-hex>]
   protect-mcp bundle [--output <path>] [--dir <path>]
   protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]
   protect-mcp report [--period <days>d] [--format md|json] [--output <path>] [--dir <path>]
@@ -98,6 +100,8 @@ Commands:
   digest            Generate a human-readable summary of agent activity
   receipts          Show recent persisted signed receipts
   record            Open a local, searchable view of your record in the browser
+  claim             Attest a signed, position-blind claim over your record (e.g. no egress)
+  verify-claim      Verify a claim attestation offline (signature + predicate + commitment)
   bundle            Export an offline-verifiable audit bundle
 
 Examples:
@@ -2221,6 +2225,170 @@ document.getElementById("list").addEventListener("click",function(e){var ah=e.ta
 render();
 if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){var nr=d.recs||[];var changed=nr.length!==RECORDS.length;RECORDS=nr;META.count=RECORDS.length;if(typeof d.signed==='boolean')META.signed=d.signed;if(changed)render()}).catch(function(){})};poll();setInterval(poll,2000);}
 </script></body></html>`;
+async function handleClaim(argv) {
+  const { readFileSync, existsSync, writeFileSync } = await import("fs");
+  const { join } = await import("path");
+  const { buildClaim } = await import("./claim-U7Q3A4WW.mjs");
+  let dir = process.cwd();
+  const di = argv.indexOf("--dir");
+  if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
+  let predicate = null;
+  const noIdx = argv.indexOf("--no"), onlyIdx = argv.indexOf("--only"), nvIdx = argv.indexOf("--no-verdict"), cvIdx = argv.indexOf("--count");
+  if (noIdx !== -1 && argv[noIdx + 1]) predicate = { kind: "no_capability", capability: argv[noIdx + 1] };
+  else if (onlyIdx !== -1 && argv[onlyIdx + 1]) predicate = { kind: "only_capabilities", capabilities: argv[onlyIdx + 1].split(",").map((s) => s.trim()).filter(Boolean) };
+  else if (nvIdx !== -1 && argv[nvIdx + 1]) predicate = { kind: "no_verdict", verdict: argv[nvIdx + 1] };
+  else if (cvIdx !== -1 && argv[cvIdx + 1]) predicate = { kind: "count_verdict", verdict: argv[cvIdx + 1] };
+  if (!predicate) {
+    process.stderr.write(`
+${bold("protect-mcp claim")}
+
+Attest a signed, position-blind claim over your record:
+  --no <capability>        no action used it, e.g. ${dim("--no net.egress")}
+  --only <c1,c2,...>       all actions confined to these capabilities
+  --no-verdict <verdict>   e.g. ${dim("--no-verdict blocked")}
+  --count <verdict>        how many, e.g. ${dim("--count blocked")}
+
+Example: ${bold("npx protect-mcp claim --no net.egress")}
+
+`);
+    process.exit(0);
+    return;
+  }
+  const keyPath = join(dir, "keys", "gateway.json");
+  if (!existsSync(keyPath)) {
+    process.stderr.write(`
+${bold("protect-mcp claim")}
+
+No signing key at ${keyPath}. A claim must be signed. Run ${bold("npx protect-mcp init")} first.
+
+`);
+    process.exit(1);
+    return;
+  }
+  let key;
+  try {
+    key = JSON.parse(readFileSync(keyPath, "utf-8"));
+  } catch {
+    process.stderr.write(`
+protect-mcp claim: ${keyPath} is not valid JSON.
+
+`);
+    process.exit(1);
+    return;
+  }
+  if (!key.privateKey || !key.publicKey) {
+    process.stderr.write(`
+protect-mcp claim: ${keyPath} is missing privateKey/publicKey.
+
+`);
+    process.exit(1);
+    return;
+  }
+  const recPath = join(dir, ".protect-mcp-receipts.jsonl");
+  if (!existsSync(recPath)) {
+    process.stderr.write(`
+${bold("protect-mcp claim")}
+
+No signed receipts in ${dir}. Run the gate with signing on, then try again.
+
+`);
+    process.exit(0);
+    return;
+  }
+  const receipts = readFileSync(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+    try {
+      return JSON.parse(l);
+    } catch {
+      return null;
+    }
+  }).filter((x) => x !== null);
+  if (!receipts.length) {
+    process.stderr.write(`
+protect-mcp claim: no readable receipts in ${recPath}.
+
+`);
+    process.exit(0);
+    return;
+  }
+  const pack = buildClaim(receipts, predicate, { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || "gateway", issuer: "protect-mcp" }, (/* @__PURE__ */ new Date()).toISOString());
+  const oi = argv.indexOf("--output");
+  const out = oi !== -1 && argv[oi + 1] ? argv[oi + 1] : join(dir, "claim-" + Date.now() + ".json");
+  writeFileSync(out, JSON.stringify(pack, null, 2) + "\n");
+  process.stdout.write(`
+${bold("\u{1F6E1}\uFE0F  Signed claim")}
+`);
+  process.stdout.write(`  ${pack.claim.statement}: ${pack.claim.holds ? green("holds") : yellow("does not hold")}  ${dim("(" + pack.claim.matched + " matched of " + pack.scope.total + " decisions)")}
+`);
+  process.stdout.write(`  ${dim("Position-blind: reveals decision categories, never tool inputs, outputs, or data. Ed25519-signed.")}
+`);
+  process.stdout.write(`  Written to ${out}
+`);
+  process.stdout.write(`  Hand it to anyone. They verify offline: ${bold("npx protect-mcp verify-claim " + out)}
+
+`);
+  process.exit(0);
+}
+async function handleVerifyClaim(argv) {
+  const { readFileSync, existsSync } = await import("fs");
+  const { verifyClaim } = await import("./claim-U7Q3A4WW.mjs");
+  const file = argv.find((a) => !a.startsWith("--"));
+  if (!file || !existsSync(file)) {
+    process.stderr.write(`
+${bold("protect-mcp verify-claim")} <claim.json> [--key <public-hex>]
+
+Provide a claim pack file.
+
+`);
+    process.exit(2);
+    return;
+  }
+  let pack;
+  try {
+    pack = JSON.parse(readFileSync(file, "utf-8"));
+  } catch {
+    process.stderr.write(`
+protect-mcp verify-claim: ${file} is not valid JSON.
+
+`);
+    process.exit(2);
+    return;
+  }
+  if (!pack || pack.type !== "scopeblind.claim.v1") {
+    process.stderr.write(`
+protect-mcp verify-claim: not a scopeblind.claim.v1 pack.
+
+`);
+    process.exit(2);
+    return;
+  }
+  const ki = argv.indexOf("--key");
+  const v = verifyClaim(pack, ki !== -1 ? argv[ki + 1] : void 0);
+  const ok = (b) => b ? green("\u2713") : red("\u2717");
+  process.stdout.write(`
+${bold("protect-mcp verify-claim")}
+`);
+  process.stdout.write(`  Claim:      ${pack.claim ? pack.claim.statement : "(none)"}
+`);
+  process.stdout.write(`  Holds:      ${v.holds ? green("yes") : yellow("no")}  ${dim("(" + v.matched + " matched of " + v.total + " decisions)")}
+`);
+  process.stdout.write(`  Signature:  ${ok(v.authentic)} ${v.authentic ? "valid" : "INVALID"}  ${dim("issuer kid " + (pack.issuer && pack.issuer.kid || "?"))}
+`);
+  process.stdout.write(`  Commitment: ${ok(v.root_ok)} ${v.root_ok ? "Merkle root matches the " + v.total + " disclosed decisions" : "MISMATCH"}
+`);
+  process.stdout.write(`  Predicate:  ${ok(v.predicate_ok)} ${v.predicate_ok ? "recomputed independently and matches" : "MISMATCH"}
+`);
+  process.stdout.write(`
+  ${v.valid ? green("VALID") : red("INVALID")} attestation.
+`);
+  process.stdout.write(`  ${dim("Proves the pack came from the issuer key and the claim is true over the disclosed decision")}
+`);
+  process.stdout.write(`  ${dim("categories (verdict + capabilities), which reveal no tool inputs, outputs, or data. Completeness")}
+`);
+  process.stdout.write(`  ${dim("of the disclosed set is attested by the issuer; pin the key or anchor to the log for more.")}
+
+`);
+  process.exit(v.valid ? 0 : 1);
+}
 async function handleBundle(argv) {
   const { readFileSync, writeFileSync, existsSync } = await import("fs");
   const { join } = await import("path");
@@ -3716,6 +3884,14 @@ async function main() {
   }
   if (args[0] === "record") {
     await handleRecord(args.slice(1));
+    return;
+  }
+  if (args[0] === "claim") {
+    await handleClaim(args.slice(1));
+    return;
+  }
+  if (args[0] === "verify-claim") {
+    await handleVerifyClaim(args.slice(1));
     return;
   }
   if (args[0] === "init-hooks") {

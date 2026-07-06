@@ -70,6 +70,8 @@ Usage:
   protect-mcp digest [--today] [--dir <path>]
   protect-mcp receipts [--last <n>] [--dir <path>]
   protect-mcp record [--dir <path>] [--live] [--no-open]
+  protect-mcp claim [--no <cap>] [--only <c,c>] [--count <verdict>] [--dir <path>] [--output <path>]
+  protect-mcp verify-claim <claim.json> [--key <public-hex>]
   protect-mcp bundle [--output <path>] [--dir <path>]
   protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]
   protect-mcp report [--period <days>d] [--format md|json] [--output <path>] [--dir <path>]
@@ -108,6 +110,8 @@ Commands:
   digest            Generate a human-readable summary of agent activity
   receipts          Show recent persisted signed receipts
   record            Open a local, searchable view of your record in the browser
+  claim             Attest a signed, position-blind claim over your record (e.g. no egress)
+  verify-claim      Verify a claim attestation offline (signature + predicate + commitment)
   bundle            Export an offline-verifiable audit bundle
 
 Examples:
@@ -2364,6 +2368,86 @@ render();
 if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){var nr=d.recs||[];var changed=nr.length!==RECORDS.length;RECORDS=nr;META.count=RECORDS.length;if(typeof d.signed==='boolean')META.signed=d.signed;if(changed)render()}).catch(function(){})};poll();setInterval(poll,2000);}
 </script></body></html>`;
 
+// ── claim: a signed, position-blind attestation of a predicate over your record ──
+async function handleClaim(argv: string[]): Promise<void> {
+  const { readFileSync, existsSync, writeFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { buildClaim } = await import('./claim.js');
+
+  let dir = process.cwd();
+  const di = argv.indexOf('--dir'); if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
+
+  let predicate: import('./claim.js').ClaimPredicate | null = null;
+  const noIdx = argv.indexOf('--no'), onlyIdx = argv.indexOf('--only'), nvIdx = argv.indexOf('--no-verdict'), cvIdx = argv.indexOf('--count');
+  if (noIdx !== -1 && argv[noIdx + 1]) predicate = { kind: 'no_capability', capability: argv[noIdx + 1] };
+  else if (onlyIdx !== -1 && argv[onlyIdx + 1]) predicate = { kind: 'only_capabilities', capabilities: argv[onlyIdx + 1].split(',').map((s) => s.trim()).filter(Boolean) };
+  else if (nvIdx !== -1 && argv[nvIdx + 1]) predicate = { kind: 'no_verdict', verdict: argv[nvIdx + 1] as 'allowed' | 'held' | 'blocked' };
+  else if (cvIdx !== -1 && argv[cvIdx + 1]) predicate = { kind: 'count_verdict', verdict: argv[cvIdx + 1] as 'allowed' | 'held' | 'blocked' };
+  if (!predicate) {
+    process.stderr.write(`\n${bold('protect-mcp claim')}\n\nAttest a signed, position-blind claim over your record:\n  --no <capability>        no action used it, e.g. ${dim('--no net.egress')}\n  --only <c1,c2,...>       all actions confined to these capabilities\n  --no-verdict <verdict>   e.g. ${dim('--no-verdict blocked')}\n  --count <verdict>        how many, e.g. ${dim('--count blocked')}\n\nExample: ${bold('npx protect-mcp claim --no net.egress')}\n\n`);
+    process.exit(0); return;
+  }
+
+  const keyPath = join(dir, 'keys', 'gateway.json');
+  if (!existsSync(keyPath)) {
+    process.stderr.write(`\n${bold('protect-mcp claim')}\n\nNo signing key at ${keyPath}. A claim must be signed. Run ${bold('npx protect-mcp init')} first.\n\n`);
+    process.exit(1); return;
+  }
+  let key: { privateKey?: string; publicKey?: string; kid?: string };
+  try { key = JSON.parse(readFileSync(keyPath, 'utf-8')); } catch { process.stderr.write(`\nprotect-mcp claim: ${keyPath} is not valid JSON.\n\n`); process.exit(1); return; }
+  if (!key.privateKey || !key.publicKey) { process.stderr.write(`\nprotect-mcp claim: ${keyPath} is missing privateKey/publicKey.\n\n`); process.exit(1); return; }
+
+  const recPath = join(dir, '.protect-mcp-receipts.jsonl');
+  if (!existsSync(recPath)) {
+    process.stderr.write(`\n${bold('protect-mcp claim')}\n\nNo signed receipts in ${dir}. Run the gate with signing on, then try again.\n\n`);
+    process.exit(0); return;
+  }
+  const receipts = readFileSync(recPath, 'utf-8').split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+    .map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((x): x is Record<string, unknown> => x !== null);
+  if (!receipts.length) { process.stderr.write(`\nprotect-mcp claim: no readable receipts in ${recPath}.\n\n`); process.exit(0); return; }
+
+  const pack = buildClaim(receipts, predicate, { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || 'gateway', issuer: 'protect-mcp' }, new Date().toISOString());
+  const oi = argv.indexOf('--output');
+  const out = oi !== -1 && argv[oi + 1] ? argv[oi + 1] : join(dir, 'claim-' + Date.now() + '.json');
+  writeFileSync(out, JSON.stringify(pack, null, 2) + '\n');
+
+  process.stdout.write(`\n${bold('🛡️  Signed claim')}\n`);
+  process.stdout.write(`  ${pack.claim.statement}: ${pack.claim.holds ? green('holds') : yellow('does not hold')}  ${dim('(' + pack.claim.matched + ' matched of ' + pack.scope.total + ' decisions)')}\n`);
+  process.stdout.write(`  ${dim('Position-blind: reveals decision categories, never tool inputs, outputs, or data. Ed25519-signed.')}\n`);
+  process.stdout.write(`  Written to ${out}\n`);
+  process.stdout.write(`  Hand it to anyone. They verify offline: ${bold('npx protect-mcp verify-claim ' + out)}\n\n`);
+  process.exit(0);
+}
+
+async function handleVerifyClaim(argv: string[]): Promise<void> {
+  const { readFileSync, existsSync } = await import('node:fs');
+  const { verifyClaim } = await import('./claim.js');
+  const file = argv.find((a) => !a.startsWith('--'));
+  if (!file || !existsSync(file)) {
+    process.stderr.write(`\n${bold('protect-mcp verify-claim')} <claim.json> [--key <public-hex>]\n\nProvide a claim pack file.\n\n`);
+    process.exit(2); return;
+  }
+  let pack: import('./claim.js').ClaimPack;
+  try { pack = JSON.parse(readFileSync(file, 'utf-8')); } catch { process.stderr.write(`\nprotect-mcp verify-claim: ${file} is not valid JSON.\n\n`); process.exit(2); return; }
+  if (!pack || pack.type !== 'scopeblind.claim.v1') { process.stderr.write(`\nprotect-mcp verify-claim: not a scopeblind.claim.v1 pack.\n\n`); process.exit(2); return; }
+
+  const ki = argv.indexOf('--key');
+  const v = verifyClaim(pack, ki !== -1 ? argv[ki + 1] : undefined);
+  const ok = (b: boolean) => (b ? green('✓') : red('✗'));
+
+  process.stdout.write(`\n${bold('protect-mcp verify-claim')}\n`);
+  process.stdout.write(`  Claim:      ${pack.claim ? pack.claim.statement : '(none)'}\n`);
+  process.stdout.write(`  Holds:      ${v.holds ? green('yes') : yellow('no')}  ${dim('(' + v.matched + ' matched of ' + v.total + ' decisions)')}\n`);
+  process.stdout.write(`  Signature:  ${ok(v.authentic)} ${v.authentic ? 'valid' : 'INVALID'}  ${dim('issuer kid ' + ((pack.issuer && pack.issuer.kid) || '?'))}\n`);
+  process.stdout.write(`  Commitment: ${ok(v.root_ok)} ${v.root_ok ? 'Merkle root matches the ' + v.total + ' disclosed decisions' : 'MISMATCH'}\n`);
+  process.stdout.write(`  Predicate:  ${ok(v.predicate_ok)} ${v.predicate_ok ? 'recomputed independently and matches' : 'MISMATCH'}\n`);
+  process.stdout.write(`\n  ${v.valid ? green('VALID') : red('INVALID')} attestation.\n`);
+  process.stdout.write(`  ${dim('Proves the pack came from the issuer key and the claim is true over the disclosed decision')}\n`);
+  process.stdout.write(`  ${dim('categories (verdict + capabilities), which reveal no tool inputs, outputs, or data. Completeness')}\n`);
+  process.stdout.write(`  ${dim('of the disclosed set is attested by the issuer; pin the key or anchor to the log for more.')}\n\n`);
+  process.exit(v.valid ? 0 : 1);
+}
+
 async function handleBundle(argv: string[]): Promise<void> {
   const { readFileSync, writeFileSync, existsSync } = await import('node:fs');
   const { join } = await import('node:path');
@@ -3785,6 +3869,10 @@ async function main(): Promise<void> {
     await handleRecord(args.slice(1));
     return;
   }
+
+  // Handle claim / verify-claim — signed, position-blind attestations over the record
+  if (args[0] === 'claim') { await handleClaim(args.slice(1)); return; }
+  if (args[0] === 'verify-claim') { await handleVerifyClaim(args.slice(1)); return; }
 
   // Handle init-hooks command — Claude Code integration setup
   if (args[0] === 'init-hooks') {
