@@ -8294,7 +8294,7 @@ Usage:
   protect-mcp status [--dir <path>]
   protect-mcp digest [--today] [--dir <path>]
   protect-mcp receipts [--last <n>] [--dir <path>]
-  protect-mcp record [--dir <path>] [--no-open]
+  protect-mcp record [--dir <path>] [--live] [--no-open]
   protect-mcp bundle [--output <path>] [--dir <path>]
   protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]
   protect-mcp report [--period <days>d] [--format md|json] [--output <path>] [--dir <path>]
@@ -10224,7 +10224,7 @@ function mapRecordEntry(e) {
   if (e.receipt_hash) digest = String(e.receipt_hash);
   else if (e.digest) digest = String(e.digest);
   else if (p.payload_digest && p.payload_digest.output_hash) digest = String(p.payload_digest.output_hash);
-  return { ts, tool, verdict, reason, hook, signed, id: String(e.request_id || p.request_id || ""), digest };
+  return { ts, tool, verdict, reason, hook, signed, id: String(e.request_id || p.request_id || ""), digest, raw: e };
 }
 async function handleRecord(argv) {
   const { readFileSync: readFileSync11, existsSync: existsSync9, writeFileSync: writeFileSync4 } = await import("fs");
@@ -10236,40 +10236,85 @@ async function handleRecord(argv) {
   if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
   const recPath = join8(dir, ".protect-mcp-receipts.jsonl");
   const logPath = join8(dir, ".protect-mcp-log.jsonl");
-  const chosen = existsSync9(recPath) ? recPath : existsSync9(logPath) ? logPath : null;
+  const pick = () => existsSync9(recPath) ? recPath : existsSync9(logPath) ? logPath : null;
+  const chosen = pick();
   if (!chosen) {
     process.stderr.write(`
 ${bold("protect-mcp record")}
 
 No record found in ${dir}.
 Start the gate with ${bold("npx protect-mcp serve")}, use your agent, then run this again.
+`);
+    process.stderr.write(`Tip: run this in the directory where your gate is signing (where .protect-mcp-receipts.jsonl lives), or pass ${bold("--dir <path>")}.
 
 `);
     process.exit(0);
     return;
   }
-  const raw = readFileSync11(chosen, "utf-8");
-  const recs = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const readRecs = (file) => readFileSync11(file, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
       return null;
     }
   }).filter((x) => x !== null).map(mapRecordEntry);
-  const meta = { file: chosen, signed: chosen === recPath, count: recs.length };
-  const html = RECORD_HTML.replace("__DATA__", () => JSON.stringify(recs)).replace("__META__", () => JSON.stringify(meta));
-  const out = join8(osMod.tmpdir(), "protect-mcp-record-" + Date.now() + ".html");
-  writeFileSync4(out, html);
-  if (!argv.includes("--no-open")) {
+  const openTarget = (target) => {
+    if (argv.includes("--no-open")) return;
     const platform = process.platform;
     const opener = platform === "darwin" ? "open" : platform === "win32" ? "cmd" : "xdg-open";
-    const openArgs = platform === "win32" ? ["/c", "start", "", out] : [out];
+    const openArgs = platform === "win32" ? ["/c", "start", "", target] : [target];
     try {
       const child = cp.spawn(opener, openArgs, { stdio: "ignore", detached: true });
       child.unref();
     } catch {
     }
+  };
+  if (argv.includes("--live") || argv.includes("--watch")) {
+    const http = await import("http");
+    const pi = argv.indexOf("--port");
+    const port = pi !== -1 && argv[pi + 1] ? parseInt(argv[pi + 1], 10) : 9378;
+    const server = http.createServer((req, res) => {
+      if (req.url && req.url.indexOf("/data") === 0) {
+        let recs2 = [];
+        const f = pick();
+        try {
+          if (f) recs2 = readRecs(f);
+        } catch {
+        }
+        res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+        res.end(JSON.stringify({ recs: recs2, signed: f === recPath }));
+        return;
+      }
+      const meta2 = { file: chosen, signed: pick() === recPath, count: 0, live: true };
+      const page = RECORD_HTML.replace("__DATA__", () => "[]").replace("__META__", () => JSON.stringify(meta2));
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.end(page);
+    });
+    server.on("error", (e) => {
+      process.stderr.write(`
+protect-mcp record --live: could not start on port ${port}${e && e.code ? ` (${e.code})` : ""}. Try ${bold("--port <n>")}.
+
+`);
+      process.exit(1);
+    });
+    server.listen(port, "127.0.0.1", () => {
+      const url = `http://127.0.0.1:${port}`;
+      openTarget(url);
+      process.stdout.write(`
+${bold("\u{1F6E1}\uFE0F  Your record")} ${dim("\xB7")} live at ${url}
+`);
+      process.stdout.write(`  Updates as your agent runs. All local, nothing uploaded. ${dim("Ctrl-C to stop.")}
+
+`);
+    });
+    return;
   }
+  const recs = readRecs(chosen);
+  const meta = { file: chosen, signed: chosen === recPath, count: recs.length, live: false };
+  const html = RECORD_HTML.replace("__DATA__", () => JSON.stringify(recs)).replace("__META__", () => JSON.stringify(meta));
+  const out = join8(osMod.tmpdir(), "protect-mcp-record-" + Date.now() + ".html");
+  writeFileSync4(out, html);
+  openTarget(out);
   process.stdout.write(`
 ${bold("\u{1F6E1}\uFE0F  Your record")} ${dim("\xB7")} ${recs.length} decision${recs.length === 1 ? "" : "s"}, all on this machine
 `);
@@ -10278,13 +10323,14 @@ ${bold("\u{1F6E1}\uFE0F  Your record")} ${dim("\xB7")} ${recs.length} decision${
   const fileUrl = "file://" + encodeURI(out);
   if (process.stdout.isTTY) {
     process.stdout.write(`  Opened in your browser. If it did not open, click: \x1B]8;;${fileUrl}\x1B\\${bold("your record")}\x1B]8;;\x1B\\
-
 `);
   } else {
     process.stdout.write(`  Opened in your browser. If it did not open, open: ${out}
-
 `);
   }
+  process.stdout.write(`  ${dim("Want it to update live as your agent runs? npx protect-mcp record --live")}
+
+`);
   process.exit(0);
 }
 var RECORD_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>protect-mcp record</title>
@@ -10294,18 +10340,38 @@ var RECORD_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><m
 body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:1000px;margin:0 auto;padding:26px 22px 60px}
 h1{font-size:24px;margin:0 0 4px;letter-spacing:-.012em}
-.meta{color:var(--faint);font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace}
-.bar{margin:18px 0 12px}
+.meta{color:var(--faint);font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace;display:flex;align-items:center}
+.pulse{width:7px;height:7px;border-radius:100px;background:var(--g);display:inline-block;margin-left:8px;animation:pl 1.6s ease-in-out infinite}
+@keyframes pl{0%,100%{opacity:.3}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+.stats{display:flex;gap:15px;flex-wrap:wrap;align-items:center;margin:14px 0 10px;font-size:13px}
+.stat{display:flex;align-items:center;gap:6px;color:var(--soft)}
+.stat b{color:var(--ink);font-weight:680}
+.dot{width:8px;height:8px;border-radius:100px;display:inline-block}
+.dot.g{background:var(--g)}.dot.a{background:var(--a)}.dot.r{background:var(--r)}
+.stat.sig{margin-left:auto;color:var(--g);font-weight:600}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 16px}
+.btn{cursor:pointer;font:inherit;font-size:12.5px;padding:7px 13px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);transition:border-color .12s}
+.btn:hover{border-color:var(--ink)}
+.btn.p{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.vhint{font-size:12px;color:var(--faint);margin-left:auto;font-family:ui-monospace,Menlo,monospace}
+.bar{margin:6px 0 12px}
 input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9px;background:#fff;font:inherit}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .chip{cursor:pointer;font-size:12px;padding:3px 10px;border-radius:100px;border:1px solid var(--line);background:#fff;color:var(--soft)}
 .chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .count{color:var(--faint);font-size:12px;font-family:ui-monospace,Menlo,monospace;margin-bottom:8px}
 .row{border:1px solid var(--line);border-radius:9px;background:#fcfbf7;padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.row.blocked{border-left:3px solid var(--r)}.row.held{border-left:3px solid var(--a)}
 .top{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .pill{font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px}
 .pill.allowed{background:var(--gb);color:var(--g)}.pill.held{background:var(--ab);color:var(--a)}.pill.blocked{background:var(--rb);color:var(--r)}
 .tag{font-size:11px;padding:1px 7px;border-radius:100px;background:var(--paper);border:1px solid var(--line);color:var(--faint)}
+.badge{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:100px}
+.badge.sgn{background:var(--gb);color:var(--g)}
+.badge.log{background:var(--paper);color:var(--faint);border:1px solid var(--line)}
+.dg{font-size:10.5px;color:var(--faint);font-family:ui-monospace,Menlo,monospace}
 .when{margin-left:auto;font-size:12px;color:var(--faint);font-family:ui-monospace,Menlo,monospace}
 .det{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;color:var(--soft);font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all;display:none}
 .row.open .det{display:block}
@@ -10313,32 +10379,50 @@ input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9p
 .foot b{color:var(--soft)}
 </style></head><body><div class="wrap">
 <h1>Your record</h1>
-<div class="meta" id="meta"></div>
+<div class="meta"><span id="meta"></span><span id="live"></span></div>
+<div class="stats" id="stats"></div>
+<div class="actions">
+<button class="btn p" onclick="exportJsonl()">Export receipts (.jsonl)</button>
+<button class="btn" onclick="exportMd()">Export report (.md)</button>
+<button class="btn" id="cpv" onclick="copyVerify()">Copy verify command</button>
+<span class="vhint">verify offline: npx @veritasacta/verify</span>
+</div>
 <div class="bar"><input id="q" placeholder="Search your record: tool, reason, verdict"></div>
 <div class="chips" id="chips"></div>
 <div class="count" id="count"></div>
 <div id="list"></div>
-<div class="foot">Signed decisions from your own gate. This page is local and nothing was uploaded. Verify authoritatively with <b>npx protect-mcp receipts</b> or the open verifier. protect-mcp governs proposed actions before they run.</div>
+<div class="foot">Signed decisions from your own gate, on this machine. Nothing was uploaded. Each row is Ed25519-signed, and the exports carry the signatures, so anyone you hand them to (an allocator, an auditor, a counterparty) verifies offline with <b>npx @veritasacta/verify</b>, our code removed. For a Merkle-rooted evidence pack: <b>npx protect-mcp bundle</b>. protect-mcp governs proposed actions before they run.</div>
 </div>
 <script>
-var RECORDS=__DATA__;var META=__META__;var Q="",ACT={};
+var RECORDS=__DATA__;var META=__META__;var Q="",ACT={};var NL=String.fromCharCode(10);
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function vlabel(v){return v==="allowed"?"Allowed":v==="held"?"Held":"Blocked"}
 function when(ts){if(!ts)return"";var d=new Date(ts);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}
+function counts(rows){var c={allowed:0,held:0,blocked:0,signed:0};rows.forEach(function(r){c[r.verdict]=(c[r.verdict]||0)+1;if(r.signed)c.signed++});return c}
 function fvals(key){var m={};RECORDS.forEach(function(r){var v=key==="Decision"?vlabel(r.verdict):r[key.toLowerCase()];if(v){m[v]=(m[v]||0)+1}});return Object.keys(m).sort(function(a,b){return m[b]-m[a]}).slice(0,8).map(function(v){return[v,m[v]]})}
 function match(r){if(ACT.Decision&&vlabel(r.verdict)!==ACT.Decision)return false;if(ACT.Tool&&r.tool!==ACT.Tool)return false;if(ACT.Reason&&r.reason!==ACT.Reason)return false;if(Q){var h=(r.tool+" "+r.reason+" "+vlabel(r.verdict)+" "+r.hook).toLowerCase();if(h.indexOf(Q)<0)return false}return true}
+function filtered(){return RECORDS.filter(match)}
+function dl(name,text,type){var b=new Blob([text],{type:type||"text/plain"});var u=URL.createObjectURL(b);var a=document.createElement("a");a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},1500)}
+function stamp(){return new Date().toISOString().replace(/[:.]/g,"-").slice(0,19)}
+function exportJsonl(){var rows=filtered();if(!rows.length)return;var lines=rows.map(function(r){return JSON.stringify(r.raw||r)}).join(NL);dl("protect-mcp-record-"+stamp()+".jsonl",lines,"application/x-ndjson")}
+function exportMd(){var rows=filtered();if(!rows.length)return;var c=counts(rows);var head=["# Agent decision record","",rows.length+" decisions from "+META.file,c.allowed+" allowed, "+c.held+" held, "+c.blocked+" blocked, "+c.signed+" signed.","","Generated locally by protect-mcp. These are signed receipts; verify offline with npx @veritasacta/verify (our code removed).","","| When | Decision | Tool | Reason | Hook | Signed |","|---|---|---|---|---|---|"];var body=rows.slice(0,3000).map(function(r){return "| "+(r.ts||"")+" | "+vlabel(r.verdict)+" | "+String(r.tool||"").replace(/\\|/g,"/")+" | "+String(r.reason||"").replace(/\\|/g,"/")+" | "+(r.hook||"")+" | "+(r.signed?"yes":"no")+" |"});dl("protect-mcp-record-"+stamp()+".md",head.concat(body).join(NL)+NL,"text/markdown")}
+function copyVerify(){var cmd="npx @veritasacta/verify";try{navigator.clipboard&&navigator.clipboard.writeText(cmd)}catch(e){}var b=document.getElementById("cpv");if(b){var t=b.textContent;b.textContent="Copied";setTimeout(function(){b.textContent=t},1200)}}
+function renderStats(){var c=counts(RECORDS);var p=[];p.push('<span class="stat"><b>'+RECORDS.length+'</b> decisions</span>');p.push('<span class="stat"><span class="dot g"></span>'+c.allowed+' allowed</span>');if(c.held)p.push('<span class="stat"><span class="dot a"></span>'+c.held+' held</span>');p.push('<span class="stat"><span class="dot r"></span>'+c.blocked+' blocked</span>');p.push('<span class="stat sig">'+c.signed+' signed, verifiable offline</span>');document.getElementById("stats").innerHTML=p.join("")}
 function render(){
-document.getElementById("meta").textContent=META.count+" decisions from "+META.file+(META.signed?" (signed)":" (decision log)")+" - all local";
+document.getElementById("meta").textContent=META.count+" decisions from "+META.file+(META.signed?" (signed)":" (decision log)")+" - all local"+(META.live?" \xB7 live, updating":"");
+document.getElementById("live").innerHTML=META.live?'<span class="pulse"></span>':"";
+renderStats();
 var chips="";["Decision","Tool","Reason"].forEach(function(key){fvals(key).forEach(function(p){var on=ACT[key]===p[0];chips+='<span class="chip'+(on?" on":"")+'" data-k="'+key+'" data-v="'+esc(p[0])+'">'+esc(p[0])+" "+p[1]+"</span>"})});
 document.getElementById("chips").innerHTML=chips;
 var rows=RECORDS.filter(match);
 document.getElementById("count").textContent=rows.length+" of "+RECORDS.length+" records";
-var html="";rows.slice(0,800).forEach(function(r){html+='<div class="row"><div class="top"><span class="pill '+r.verdict+'">'+vlabel(r.verdict)+"</span><b>"+esc(r.tool)+'</b><span class="tag">'+esc(r.reason)+"</span>"+(r.hook?'<span class="tag">'+esc(r.hook)+"</span>":"")+'<span class="tag">'+(r.signed?"signed":"log")+'</span><span class="when">'+esc(when(r.ts))+'</span></div><div class="det">'+esc(JSON.stringify(r,null,2))+"</div></div>"});
+var html="";rows.slice(0,800).forEach(function(r){var sig=r.signed?'<span class="badge sgn">signed</span>':'<span class="badge log">log</span>';var dg=r.digest?'<span class="dg">'+esc(String(r.digest).slice(0,10))+'</span>':'';html+='<div class="row '+r.verdict+'"><div class="top"><span class="pill '+r.verdict+'">'+vlabel(r.verdict)+"</span><b>"+esc(r.tool)+'</b><span class="tag">'+esc(r.reason)+"</span>"+(r.hook?'<span class="tag">'+esc(r.hook)+"</span>":"")+sig+dg+'<span class="when">'+esc(when(r.ts))+'</span></div><div class="det">'+esc(JSON.stringify(r.raw||r,null,2))+"</div></div>"});
 document.getElementById("list").innerHTML=html||'<p style="color:#8a837a">No records match.</p>'}
 document.getElementById("q").addEventListener("input",function(e){Q=e.target.value.toLowerCase().trim();render()});
 document.getElementById("chips").addEventListener("click",function(e){var c=e.target.closest(".chip");if(!c)return;var k=c.getAttribute("data-k"),v=c.getAttribute("data-v");ACT[k]=ACT[k]===v?undefined:v;render()});
 document.getElementById("list").addEventListener("click",function(e){var row=e.target.closest(".row");if(row)row.classList.toggle("open")});
 render();
+if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){RECORDS=d.recs||[];META.count=RECORDS.length;if(typeof d.signed==='boolean')META.signed=d.signed;render()}).catch(function(){})};poll();setInterval(poll,2000);}
 </script></body></html>`;
 async function handleBundle(argv) {
   const { readFileSync: readFileSync11, writeFileSync: writeFileSync4, existsSync: existsSync9 } = await import("fs");
@@ -11835,7 +11919,7 @@ async function main() {
   }
   if (args[0] === "record") {
     await handleRecord(args.slice(1));
-    process.exit(0);
+    return;
   }
   if (args[0] === "init-hooks") {
     await handleInitHooks(args.slice(1));
