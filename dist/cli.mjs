@@ -2131,6 +2131,10 @@ h1{font-size:24px;margin:0 0 4px;letter-spacing:-.012em}
 .btn.p{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .vhint{font-size:12px;color:var(--faint);margin-left:auto;font-family:ui-monospace,Menlo,monospace}
+.attest{margin:0 0 12px;font-size:12.5px;color:var(--soft);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cmd{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#efece4;border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--ink)}
+.btn2{cursor:pointer;font:inherit;font-size:12px;padding:4px 9px;border-radius:7px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+.btn2:hover{border-color:var(--ink)}
 .bar{margin:6px 0 12px}
 input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9px;background:#fff;font:inherit}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
@@ -2187,8 +2191,9 @@ input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9p
 <div class="bar"><input id="q" placeholder="Search your record: tool, reason, verdict"></div>
 <div class="chips" id="chips"></div>
 <div class="count" id="count"></div>
+<div class="attest" id="attest"></div>
 <div id="list"></div>
-<div class="foot">Signed decisions from your own gate, on this machine. Nothing was uploaded. Each row is Ed25519-signed, and the exports carry the signatures, so anyone you hand them to (an allocator, an auditor, a counterparty) verifies offline with <b>npx @veritasacta/verify</b>, our code removed. For a Merkle-rooted evidence pack: <b>npx protect-mcp bundle</b>. protect-mcp governs proposed actions before they run.</div>
+<div class="foot">Signed decisions from your own gate, on this machine. Nothing was uploaded. Each row is Ed25519-signed, and the exports carry the signatures, so anyone you hand them to (an allocator, an auditor, a counterparty) verifies offline with <b>npx @veritasacta/verify</b>, our code removed. For a Merkle-rooted evidence pack: <b>npx protect-mcp bundle</b>. To prove a claim over this record without revealing it (e.g. no egress): <b>npx protect-mcp claim --no net.egress</b>, checked offline with <b>npx protect-mcp verify-claim</b>. protect-mcp governs proposed actions before they run.</div>
 </div>
 <script>
 var RECORDS=__DATA__;var META=__META__;var Q="",ACT={},VIEW="list",OPEN={};var NL=String.fromCharCode(10);
@@ -2203,6 +2208,7 @@ function dl(name,text,type){var b=new Blob([text],{type:type||"text/plain"});var
 function stamp(){return new Date().toISOString().replace(/[:.]/g,"-").slice(0,19)}
 function exportJsonl(){var rows=filtered();if(!rows.length)return;var lines=rows.map(function(r){return JSON.stringify(r.raw||r)}).join(NL);dl("protect-mcp-record-"+stamp()+".jsonl",lines,"application/x-ndjson")}
 function exportMd(){var rows=filtered();if(!rows.length)return;var c=counts(rows);var head=["# Agent decision record","",rows.length+" decisions from "+META.file,c.allowed+" allowed, "+c.held+" held, "+c.blocked+" blocked, "+c.signed+" signed.","","Generated locally by protect-mcp. These are signed receipts; verify offline with npx @veritasacta/verify (our code removed).","","| When | Decision | Tool | Reason | Hook | Signed |","|---|---|---|---|---|---|"];var body=rows.slice(0,3000).map(function(r){return "| "+(r.ts||"")+" | "+vlabel(r.verdict)+" | "+String(r.tool||"").replace(/\\|/g,"/")+" | "+String(r.reason||"").replace(/\\|/g,"/")+" | "+(r.hook||"")+" | "+(r.signed?"yes":"no")+" |"});dl("protect-mcp-record-"+stamp()+".md",head.concat(body).join(NL)+NL,"text/markdown")}
+function copyAttest(){var a=document.getElementById("attest");var cmd=a?a.getAttribute("data-cmd"):"";try{navigator.clipboard&&cmd&&navigator.clipboard.writeText(cmd)}catch(e){}var b=document.getElementById("cpa");if(b){var t=b.textContent;b.textContent="Copied";setTimeout(function(){b.textContent=t},1200)}}
 function copyVerify(){var cmd="npx @veritasacta/verify";try{navigator.clipboard&&navigator.clipboard.writeText(cmd)}catch(e){}var b=document.getElementById("cpv");if(b){var t=b.textContent;b.textContent="Copied";setTimeout(function(){b.textContent=t},1200)}}
 function renderStats(){var c=counts(RECORDS);var p=[];p.push('<span class="stat"><b>'+RECORDS.length+'</b> decisions</span>');p.push('<span class="stat"><span class="dot g"></span>'+c.allowed+' allowed</span>');if(c.held)p.push('<span class="stat"><span class="dot a"></span>'+c.held+' held</span>');p.push('<span class="stat"><span class="dot r"></span>'+c.blocked+' blocked</span>');p.push('<span class="stat sig">'+c.signed+' signed, verifiable offline</span>');document.getElementById("stats").innerHTML=p.join("")}
 function renderList(rows){var html="";rows.slice(0,800).forEach(function(r){var sig=r.signed?'<span class="badge sgn">signed</span>':'<span class="badge log">log</span>';var dg=r.digest?'<span class="dg">'+esc(String(r.digest).slice(0,10))+'</span>':'';var ct=(r.caps||[]).map(function(c){return '<span class="cap">'+esc(c)+'</span>'}).join('');var rk="row:"+(r.id||"")+"|"+(r.ts||"");html+='<div class="row '+r.verdict+(OPEN[rk]?" open":"")+'" data-k="'+esc(rk)+'"><div class="top"><span class="pill '+r.verdict+'">'+vlabel(r.verdict)+"</span><b>"+esc(r.tool)+'</b><span class="tag">'+esc(r.reason)+"</span>"+ct+(r.hook?'<span class="tag">'+esc(r.hook)+"</span>":"")+sig+dg+'<span class="when">'+esc(when(r.ts))+'</span></div><div class="det">'+esc(JSON.stringify(r.raw||r,null,2))+"</div></div>"});document.getElementById("list").innerHTML=html||'<p style="color:#8a837a">No records match.</p>';}
@@ -2218,6 +2224,7 @@ var chips="";["Decision","Tool","Reason","Capability"].forEach(function(key){fva
 document.getElementById("chips").innerHTML=chips;
 var rows=RECORDS.filter(match);
 document.getElementById("count").textContent=rows.length+" of "+RECORDS.length+" records"+(VIEW==="tree"?" \xB7 grouped by agent":"");
+var _at=document.getElementById("attest");if(ACT.Capability){var _cmd="npx protect-mcp claim --no "+ACT.Capability;_at.setAttribute("data-cmd",_cmd);_at.innerHTML='Prove it over this record, revealing nothing: <span class="cmd">'+esc(_cmd)+'</span><button class="btn2" id="cpa" onclick="copyAttest()">Copy</button>';}else{_at.innerHTML="";_at.removeAttribute("data-cmd");}
 if(VIEW==="tree"){renderTree(buildTree(rows));}else{renderList(rows);}}
 document.getElementById("q").addEventListener("input",function(e){Q=e.target.value.toLowerCase().trim();render()});
 document.getElementById("chips").addEventListener("click",function(e){var c=e.target.closest(".chip");if(!c)return;var k=c.getAttribute("data-k"),v=c.getAttribute("data-v");ACT[k]=ACT[k]===v?undefined:v;render()});
