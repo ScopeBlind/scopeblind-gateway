@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.9.1: prove a claim without revealing the record
+
+The record viewer closes the loop from a decision to a portable proof.
+
+- The `record` viewer surfaces the exact `claim` command when you filter by a
+  capability, so a decision becomes a signed, position-blind attestation in one
+  step, with copy-to-clipboard and an offline `verify-claim` hint.
+- The browser drop-viewer (legate.scopeblind.com/record) reached parity with
+  the CLI: signed capability tags, a capability facet, and a provenance tree.
+
+## 0.9.0: signed, position-blind claim attestations
+
+Prove a predicate over the record without revealing it.
+
+- Added `protect-mcp claim`: mints a signed attestation of a predicate over the
+  record (`--no <cap>` for "no action carried this capability", `--only`,
+  `--count`/`--no-verdict <verdict>`), disclosing only per-decision categories
+  (receipt digest, verdict, capability tags), never inputs, outputs, or data.
+- Added `protect-mcp verify-claim`: checks it offline via Ed25519 over the pack,
+  a recomputed Merkle root over the disclosed set, and the predicate recomputed
+  independently. Honest trust model: an accountable position-blind attestation,
+  not zero-knowledge; set-completeness is issuer-attested.
+
+## 0.8.0: deterministic receipt enrichment
+
+Each signed decision now carries minimum-disclosure, rule-derived metadata.
+
+- `input_digest`: SHA-256 of the canonicalized tool input, so you can prove what
+  was requested without storing it.
+- Signed `capabilities`: deterministic, rule-derived tags (fs.read, fs.write,
+  net.egress, secret.adjacent, destructive, financial, exec.shell, ...) so the
+  record is queryable by what an action touched.
+- `resource`: the hashed target (path, host, or command). The gate sees tool
+  calls, not the model's prompt or reasoning, and does not claim to.
+
+## 0.7.6: the live record viewer
+
+- Added `protect-mcp record --live`: a local, streaming view of the receipt
+  file that turns decisions into a searchable, auto-labelled record as the agent
+  runs (stat strip, per-row signed badge and digest, a List/Tree provenance
+  view), all local, nothing uploaded.
+- One-click export: `.jsonl` carrying the real signatures (so a recipient
+  verifies offline with `npx @veritasacta/verify`) plus a Markdown report.
+
+## 0.7.5: honest version strings and the record viewer
+
+- Added `protect-mcp record`, a local browser viewer over the receipts file
+  (the answer to "the receipts are a hidden dotfile I cannot find").
+- Fixed hard-coded version strings in the banner and health/serverInfo: they
+  read the resolved package version now.
+- WebAuthn co-sign hardening: verify the rpIdHash and enforce challenge expiry.
+
 ## 0.7.4: the self-serve trial path
 
 Everything the scopeblind.com trial and docs pages describe now ships in the

@@ -189,7 +189,7 @@ session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.7.3 evaluate --cedar ./cedar --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\""
+            "command": "npx protect-mcp@0.9.1 evaluate --cedar ./cedar --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\""
           }
         ]
       }
@@ -200,7 +200,7 @@ session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.7.3 sign --tool \"$TOOL_NAME\" --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx protect-mcp@0.9.1 sign --tool \"$TOOL_NAME\" --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }

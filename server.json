@@ -6,12 +6,12 @@
     "url": "https://github.com/scopeblind/scopeblind-gateway",
     "source": "github"
   },
-  "version": "0.7.2",
+  "version": "0.9.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "protect-mcp",
-      "version": "0.7.2",
+      "version": "0.9.1",
       "transport": {
         "type": "stdio"
       },
