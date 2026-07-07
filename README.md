@@ -148,6 +148,43 @@ disclosure, not full zero-knowledge, but it makes the privacy claim concrete:
 auditors can verify selected facts without receiving the full tool payload or
 sensitive desk context.
 
+### Prove a claim over the record (position-blind attestations)
+
+You can prove a CLAIM over your record without revealing it. Mint a signed,
+position-blind attestation over the whole record that discloses only per-decision
+categories (a receipt digest, the verdict, capability tags), never your tool
+inputs, outputs, or data:
+
+```bash
+# "No action reached the network across the record":
+npx protect-mcp claim --no net.egress
+
+# other predicates:
+#   --only fs.read,fs.write     all actions were confined to these capabilities
+#   --no-verdict blocked        no action was blocked
+#   --count blocked             how many were blocked
+```
+
+Anyone verifies it offline, seeing only the categories, never the content:
+
+```bash
+npx protect-mcp verify-claim claim-<id>.json
+```
+
+The verifier recomputes a Merkle root over the disclosed set and recomputes the
+predicate independently, so the issuer cannot lie about the claim given the
+disclosure. Add `--anchor` to record the claim's digest in the public,
+append-only ScopeBlind transparency log, so a counterparty who does not trust you
+can confirm the disclosed set is complete and was not quietly re-cut (only the
+hash is sent; the record stays local):
+
+```bash
+npx protect-mcp claim --no net.egress --anchor
+```
+
+This is an accountable, position-blind attestation, not full zero-knowledge: it
+reveals the shape, not the content.
+
 ## Claude Code hook quickstart
 
 ```bash
@@ -335,6 +372,9 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 | `dashboard` | Start a local-only dashboard on `127.0.0.1` showing tool inventory, risk, policy coverage, exact-action approvals, receipt chains, and audit export. |
 | `recommend` | Draft a reviewable JSON policy from observed local calls. Dry-run by default; use `--write` to create `protect-mcp.recommended.json`. |
 | `registry` | Create an org identity, anchor receipt digests, and write a static verifier page. Hosted mode uploads digests only. |
+| `record` | Open a local, searchable viewer over your receipts (`--live` streams as the agent runs): capability tags, a provenance tree, and one-click signed export. All local, nothing uploaded. |
+| `claim` | Mint a signed, position-blind attestation of a predicate over the record (`--no <cap>`, `--only <c1,c2>`, `--no-verdict <verdict>`, `--count <verdict>`), disclosing only decision categories. Add `--anchor` to record the claim digest in the public transparency log. |
+| `verify-claim` | Verify a claim pack offline: signature, recomputed Merkle root, and independently recomputed predicate. Reveals the shape, not the content. |
 | `killer-demo` | Generate a complete shadow-mode to policy to approval to signed-receipt demo pack. |
 | `verify-disclosure` | Verify a `scopeblind.selective_disclosure.v0` package and explain disclosed versus hidden fields. |
 | `policy-packs` | List, inspect, and install starter Cedar policy packs. |
