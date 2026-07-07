@@ -189,3 +189,126 @@ export function verifyClaim(pack: ClaimPack, overridePublicKey?: string): ClaimV
     reasons,
   };
 }
+
+// ── Anchoring: record a claim's digest in the public transparency log ──────────
+// The log (scopeblind.com/fn/log) is credential-free and CT-style: it proves a
+// digest existed at a time in an append-only chain; it does NOT endorse. Anchoring
+// closes the one honest gap in a bare claim (that the disclosed set is COMPLETE):
+// a counterparty who distrusts you can confirm the claim's commitment was fixed at
+// a time and cannot be quietly re-cut later. ONLY hashes leave your machine; the
+// claim, its leaves, and every receipt stay local.
+export const ANCHOR_SCHEMA = 'scopeblind.protect-mcp.anchor.v1';
+export const DEFAULT_LOG = 'https://scopeblind.com';
+
+// Matches the log endpoint's preimage (anchor-pack.js): sha256 over the deep-sorted
+// JSON of the envelope minus {signature, digest}; the signature is over those bytes.
+function anchorDeepSort(o: unknown): unknown {
+  if (o === null || typeof o !== 'object') return o;
+  if (Array.isArray(o)) return o.map(anchorDeepSort);
+  const src = o as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(src).sort()) out[k] = anchorDeepSort(src[k]);
+  return out;
+}
+function toBase64(bytes: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+/** SHA-256 (hex) of the full signed claim pack: the exact artifact a counterparty holds. */
+export function claimDigest(pack: ClaimPack): string {
+  return sha256Hex(canonicalJson(pack));
+}
+
+export interface AnchorEnvelope {
+  type: 'evidence_pack'; // the log's generic signed-submission wire type
+  schema: string;
+  anchors: 'protect-mcp-claim';
+  claim_digest: string;
+  record_root: string;
+  statement: string;
+  holds: boolean;
+  matched: number;
+  total: number;
+  issued_at: string;
+  verification_key: string;
+  disclosure: 'internal';
+  signature: string;
+  digest: string;
+}
+
+/**
+ * Build the signed envelope submitted to the log. It is a self-verifying signed
+ * object (the log re-checks the Ed25519 signature against verification_key and the
+ * digest against the body), carrying only hashes plus the claim's PUBLIC result.
+ * Pure and unit-testable; no network.
+ */
+export function buildAnchorEnvelope(pack: ClaimPack, key: ClaimKey, issuedAt: string): AnchorEnvelope {
+  const signed = {
+    type: 'evidence_pack' as const,
+    schema: ANCHOR_SCHEMA,
+    anchors: 'protect-mcp-claim' as const,
+    claim_digest: claimDigest(pack),
+    record_root: pack.record.root,
+    statement: pack.claim.statement,
+    holds: pack.claim.holds,
+    matched: pack.claim.matched,
+    total: pack.scope.total,
+    issued_at: issuedAt,
+    verification_key: key.publicKey,
+    disclosure: 'internal' as const,
+  };
+  const hash = sha256(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  const digest = bytesToHex(hash);
+  const signature = bytesToHex(ed25519.sign(hash, hexToBytes(key.privateKey)));
+  return { ...signed, signature, digest };
+}
+
+export interface AnchorResult {
+  ok: boolean;
+  claim_digest: string;
+  seq?: number;
+  entry_url?: string;
+  anchored_at?: string;
+  already_anchored?: boolean;
+  envelope?: AnchorEnvelope;
+  error?: string;
+}
+
+/** Anchor a claim by POSTing its signed envelope to the transparency log. Sends only hashes. */
+export async function anchorClaim(
+  pack: ClaimPack,
+  key: ClaimKey,
+  opts: { log?: string; issuedAt: string; fetchImpl?: typeof fetch },
+): Promise<AnchorResult> {
+  const envelope = buildAnchorEnvelope(pack, key, opts.issuedAt);
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, '');
+  const doFetch = opts.fetchImpl || (globalThis.fetch as typeof fetch | undefined);
+  if (!doFetch) return { ok: false, claim_digest: envelope.claim_digest, error: 'fetch_unavailable', envelope };
+  const encoded = toBase64(new TextEncoder().encode(JSON.stringify(envelope)));
+  try {
+    const resp = await doFetch(`${base}/fn/log/anchor-pack`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ encoded }),
+    });
+    const data = (await resp.json().catch(() => null)) as
+      | { ok?: boolean; seq?: number; anchored_at?: string; already_anchored?: boolean; error?: string }
+      | null;
+    if (!resp.ok || !data || !data.ok || typeof data.seq !== 'number') {
+      return { ok: false, claim_digest: envelope.claim_digest, error: (data && data.error) || `http_${resp.status}`, envelope };
+    }
+    return {
+      ok: true,
+      claim_digest: envelope.claim_digest,
+      seq: data.seq,
+      entry_url: `${base}/fn/log/${data.seq}`,
+      anchored_at: data.anchored_at,
+      already_anchored: !!data.already_anchored,
+      envelope,
+    };
+  } catch {
+    return { ok: false, claim_digest: envelope.claim_digest, error: 'network_error', envelope };
+  }
+}

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.2: anchor a claim to the public log
+
+Closes the one honest gap in a bare claim: that the disclosed set is complete.
+
+- Added `protect-mcp claim --anchor`: records the claim's digest in the public,
+  append-only ScopeBlind transparency log, so a counterparty who does not trust
+  you can confirm the exact claim existed at a time and was not quietly re-cut.
+  Only the hash is sent; the claim, its leaves, and every receipt stay on your
+  machine. Writes a `<claim>.anchor.json` sidecar with the log entry and a
+  verify URL. Anonymous and free; enrolling an org identity a counterparty can
+  pin is the paid upgrade (scopeblind.com/enroll).
+
 ## 0.9.1: prove a claim without revealing the record
 
 The record viewer closes the loop from a decision to a portable proof.

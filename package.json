@@ -1,8 +1,8 @@
 {
   "name": "protect-mcp",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "mcpName": "com.scopeblind/protect-mcp",
-  "description": "Fail-closed Cedar policy gate + signed receipts for AI agent tool calls. Blocks what breaks the rules before it runs, denies on any policy error, and proves the gate is live with a startup self-test.",
+  "description": "Fail-closed Cedar policy gate + Ed25519 signed receipts for AI agent tool calls. Denies on any policy error, proves the gate is live with a startup self-test, and turns every decision into a local searchable record you own. The open gate behind Legate by ScopeBlind. scopeblind.com",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.mjs",

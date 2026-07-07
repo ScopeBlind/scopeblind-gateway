@@ -2391,7 +2391,7 @@ async function handleClaim(argv: string[]): Promise<void> {
   else if (nvIdx !== -1 && argv[nvIdx + 1]) predicate = { kind: 'no_verdict', verdict: argv[nvIdx + 1] as 'allowed' | 'held' | 'blocked' };
   else if (cvIdx !== -1 && argv[cvIdx + 1]) predicate = { kind: 'count_verdict', verdict: argv[cvIdx + 1] as 'allowed' | 'held' | 'blocked' };
   if (!predicate) {
-    process.stderr.write(`\n${bold('protect-mcp claim')}\n\nAttest a signed, position-blind claim over your record:\n  --no <capability>        no action used it, e.g. ${dim('--no net.egress')}\n  --only <c1,c2,...>       all actions confined to these capabilities\n  --no-verdict <verdict>   e.g. ${dim('--no-verdict blocked')}\n  --count <verdict>        how many, e.g. ${dim('--count blocked')}\n\nExample: ${bold('npx protect-mcp claim --no net.egress')}\n\n`);
+    process.stderr.write(`\n${bold('protect-mcp claim')}\n\nAttest a signed, position-blind claim over your record:\n  --no <capability>        no action used it, e.g. ${dim('--no net.egress')}\n  --only <c1,c2,...>       all actions confined to these capabilities\n  --no-verdict <verdict>   e.g. ${dim('--no-verdict blocked')}\n  --count <verdict>        how many, e.g. ${dim('--count blocked')}\n  --anchor                 also record the claim digest in the public append-only\n                           log so a counterparty can trust it is complete (only the\n                           hash is sent; your record stays local)\n\nExample: ${bold('npx protect-mcp claim --no net.egress --anchor')}\n\n`);
     process.exit(0); return;
   }
 
@@ -2422,7 +2422,30 @@ async function handleClaim(argv: string[]): Promise<void> {
   process.stdout.write(`  ${pack.claim.statement}: ${pack.claim.holds ? green('holds') : yellow('does not hold')}  ${dim('(' + pack.claim.matched + ' matched of ' + pack.scope.total + ' decisions)')}\n`);
   process.stdout.write(`  ${dim('Position-blind: reveals decision categories, never tool inputs, outputs, or data. Ed25519-signed.')}\n`);
   process.stdout.write(`  Written to ${out}\n`);
-  process.stdout.write(`  Hand it to anyone. They verify offline: ${bold('npx protect-mcp verify-claim ' + out)}\n\n`);
+  process.stdout.write(`  Hand it to anyone. They verify offline: ${bold('npx protect-mcp verify-claim ' + out)}\n`);
+
+  if (argv.indexOf('--anchor') !== -1) {
+    const { anchorClaim } = await import('./claim.js');
+    const li = argv.indexOf('--log');
+    const logBase = li !== -1 && argv[li + 1] ? argv[li + 1] : undefined;
+    process.stdout.write(`\n  ${dim('Anchoring the claim digest to the public append-only log (only the hash leaves your machine)...')}\n`);
+    const res = await anchorClaim(
+      pack,
+      { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || 'gateway', issuer: 'protect-mcp' },
+      { log: logBase, issuedAt: new Date().toISOString() },
+    );
+    if (res.ok) {
+      const sidecar = out.replace(/\.json$/, '') + '.anchor.json';
+      writeFileSync(sidecar, JSON.stringify({ log: logBase || 'https://scopeblind.com', seq: res.seq, entry_url: res.entry_url, anchored_at: res.anchored_at, claim_digest: res.claim_digest, envelope: res.envelope }, null, 2) + '\n');
+      process.stdout.write(`  ${green('Anchored')} as log entry ${bold('#' + res.seq)}${res.already_anchored ? dim(' (already present)') : ''}  ${dim(res.entry_url || '')}\n`);
+      process.stdout.write(`  ${dim('A counterparty can now confirm this exact claim existed at ' + (res.anchored_at || 'this time') + ' and cannot be quietly re-cut.')}\n`);
+      process.stdout.write(`  ${dim('Anchor record written to ' + sidecar + '. Only the digest was sent; your record stayed local.')}\n`);
+      process.stdout.write(`  ${dim('To anchor as your enrolled org identity (a key a counterparty can pin), see')} ${bold('scopeblind.com/enroll')}\n`);
+    } else {
+      process.stdout.write(`  ${yellow('Anchor skipped')} ${dim('(' + (res.error || 'unavailable') + '). The claim above is complete and verifiable offline without it.')}\n`);
+    }
+  }
+  process.stdout.write(`\n`);
   process.exit(0);
 }
 

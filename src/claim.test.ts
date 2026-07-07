@@ -1,7 +1,28 @@
 import { describe, it, expect } from 'vitest';
 import { ed25519 } from '@noble/curves/ed25519';
-import { bytesToHex } from '@noble/hashes/utils';
-import { buildClaim, verifyClaim, type ClaimKey } from './claim.js';
+import { sha256 } from '@noble/hashes/sha256';
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
+import { buildClaim, verifyClaim, buildAnchorEnvelope, claimDigest, type ClaimKey } from './claim.js';
+
+// Replicates the transparency-log endpoint's acceptance check (functions/fn/log/
+// anchor-pack.js): type gate, digest == sha256(deepSort(pack minus sig/digest/cosigs)),
+// and Ed25519 sig verifies against the embedded key. If this passes, the live log
+// will anchor the envelope.
+function endpointAccepts(env: Record<string, unknown>): boolean {
+  if (env.type !== 'evidence_pack' || typeof env.signature !== 'string' || typeof env.digest !== 'string' || typeof env.verification_key !== 'string') return false;
+  const deepSort = (o: unknown): unknown => {
+    if (o === null || typeof o !== 'object') return o;
+    if (Array.isArray(o)) return o.map(deepSort);
+    const s: Record<string, unknown> = {};
+    for (const k of Object.keys(o as Record<string, unknown>).sort()) s[k] = deepSort((o as Record<string, unknown>)[k]);
+    return s;
+  };
+  const { signature, digest, co_signatures, ...signed } = env as Record<string, unknown>;
+  void co_signatures;
+  const hash = sha256(new TextEncoder().encode(JSON.stringify(deepSort(signed))));
+  if (bytesToHex(hash) !== String(digest).toLowerCase()) return false;
+  try { return ed25519.verify(hexToBytes(signature as string), hash, hexToBytes(env.verification_key as string)); } catch { return false; }
+}
 
 function genKey(): ClaimKey {
   const priv = ed25519.utils.randomPrivateKey();
@@ -83,5 +104,33 @@ describe('claim attestations', () => {
     // pinned-key override: verifying against the real key works; a wrong pinned key fails
     expect(verifyClaim(pack, key.publicKey).authentic).toBe(true);
     expect(verifyClaim(pack, genKey().publicKey).authentic).toBe(false);
+  });
+
+  it('anchor envelope binds the claim digest and is accepted by the log endpoint', () => {
+    const pack = buildClaim(recs, { kind: 'no_capability', capability: 'net.egress' }, key, '2026-07-05T11:00:00Z');
+    const env = buildAnchorEnvelope(pack, key, '2026-07-06T00:00:00Z');
+    expect(env.type).toBe('evidence_pack');
+    expect(env.anchors).toBe('protect-mcp-claim');
+    expect(env.claim_digest).toBe(claimDigest(pack)); // binds the exact signed pack
+    expect(env.record_root).toBe(pack.record.root);
+    expect(env.total).toBe(pack.scope.total);
+    expect(endpointAccepts(env as unknown as Record<string, unknown>)).toBe(true);
+  });
+
+  it('anchor envelope discloses only hashes + the public claim result, never leaves/receipts', () => {
+    const pack = buildClaim(recs, { kind: 'no_capability', capability: 'net.egress' }, key, 't');
+    const env = buildAnchorEnvelope(pack, key, 't2');
+    const s = JSON.stringify(env);
+    expect(s).not.toContain('exec.shell'); // a capability that appears in the record's leaves
+    expect(s).not.toContain('input_digest');
+    expect(s).not.toContain('"leaves"');
+  });
+
+  it('tampering the anchored digest breaks the log endpoint check', () => {
+    const pack = buildClaim(recs, { kind: 'no_capability', capability: 'net.egress' }, key, 't');
+    const env = buildAnchorEnvelope(pack, key, 't2') as unknown as Record<string, unknown>;
+    expect(endpointAccepts(env)).toBe(true);
+    expect(endpointAccepts({ ...env, claim_digest: '00'.repeat(32) })).toBe(false); // digest no longer matches signature
+    expect(endpointAccepts({ ...env, verification_key: genKey().publicKey })).toBe(false); // wrong key
   });
 });
