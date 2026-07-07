@@ -5176,8 +5176,13 @@ var init_receipt_enrichment = __esm({
 // src/claim.ts
 var claim_exports = {};
 __export(claim_exports, {
+  ANCHOR_SCHEMA: () => ANCHOR_SCHEMA,
   CLAIM_TYPE: () => CLAIM_TYPE,
+  DEFAULT_LOG: () => DEFAULT_LOG,
+  anchorClaim: () => anchorClaim,
+  buildAnchorEnvelope: () => buildAnchorEnvelope,
   buildClaim: () => buildClaim,
+  claimDigest: () => claimDigest,
   evaluate: () => evaluate,
   leafHash: () => leafHash,
   merkleRoot: () => merkleRoot,
@@ -5286,7 +5291,72 @@ function verifyClaim(pack, overridePublicKey) {
     reasons
   };
 }
-var CLAIM_TYPE;
+function anchorDeepSort(o) {
+  if (o === null || typeof o !== "object") return o;
+  if (Array.isArray(o)) return o.map(anchorDeepSort);
+  const src = o;
+  const out = {};
+  for (const k of Object.keys(src).sort()) out[k] = anchorDeepSort(src[k]);
+  return out;
+}
+function toBase64(bytes) {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function claimDigest(pack) {
+  return sha256Hex3(canonicalJson(pack));
+}
+function buildAnchorEnvelope(pack, key, issuedAt) {
+  const signed = {
+    type: "evidence_pack",
+    schema: ANCHOR_SCHEMA,
+    anchors: "protect-mcp-claim",
+    claim_digest: claimDigest(pack),
+    record_root: pack.record.root,
+    statement: pack.claim.statement,
+    holds: pack.claim.holds,
+    matched: pack.claim.matched,
+    total: pack.scope.total,
+    issued_at: issuedAt,
+    verification_key: key.publicKey,
+    disclosure: "internal"
+  };
+  const hash = sha2562(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  const digest = bytesToHex(hash);
+  const signature = bytesToHex(ed25519.sign(hash, hexToBytes(key.privateKey)));
+  return { ...signed, signature, digest };
+}
+async function anchorClaim(pack, key, opts) {
+  const envelope = buildAnchorEnvelope(pack, key, opts.issuedAt);
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
+  const doFetch = opts.fetchImpl || globalThis.fetch;
+  if (!doFetch) return { ok: false, claim_digest: envelope.claim_digest, error: "fetch_unavailable", envelope };
+  const encoded = toBase64(new TextEncoder().encode(JSON.stringify(envelope)));
+  try {
+    const resp = await doFetch(`${base}/fn/log/anchor-pack`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ encoded })
+    });
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok || !data || !data.ok || typeof data.seq !== "number") {
+      return { ok: false, claim_digest: envelope.claim_digest, error: data && data.error || `http_${resp.status}`, envelope };
+    }
+    return {
+      ok: true,
+      claim_digest: envelope.claim_digest,
+      seq: data.seq,
+      entry_url: `${base}/fn/log/${data.seq}`,
+      anchored_at: data.anchored_at,
+      already_anchored: !!data.already_anchored,
+      envelope
+    };
+  } catch {
+    return { ok: false, claim_digest: envelope.claim_digest, error: "network_error", envelope };
+  }
+}
+var CLAIM_TYPE, ANCHOR_SCHEMA, DEFAULT_LOG;
 var init_claim = __esm({
   "src/claim.ts"() {
     "use strict";
@@ -5295,6 +5365,8 @@ var init_claim = __esm({
     init_ed25519();
     init_receipt_enrichment();
     CLAIM_TYPE = "scopeblind.claim.v1";
+    ANCHOR_SCHEMA = "scopeblind.protect-mcp.anchor.v1";
+    DEFAULT_LOG = "https://scopeblind.com";
   }
 });
 
@@ -10712,8 +10784,11 @@ Attest a signed, position-blind claim over your record:
   --only <c1,c2,...>       all actions confined to these capabilities
   --no-verdict <verdict>   e.g. ${dim("--no-verdict blocked")}
   --count <verdict>        how many, e.g. ${dim("--count blocked")}
+  --anchor                 also record the claim digest in the public append-only
+                           log so a counterparty can trust it is complete (only the
+                           hash is sent; your record stays local)
 
-Example: ${bold("npx protect-mcp claim --no net.egress")}
+Example: ${bold("npx protect-mcp claim --no net.egress --anchor")}
 
 `);
     process.exit(0);
@@ -10789,7 +10864,36 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
   process.stdout.write(`  Written to ${out}
 `);
   process.stdout.write(`  Hand it to anyone. They verify offline: ${bold("npx protect-mcp verify-claim " + out)}
-
+`);
+  if (argv.indexOf("--anchor") !== -1) {
+    const { anchorClaim: anchorClaim2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
+    const li = argv.indexOf("--log");
+    const logBase = li !== -1 && argv[li + 1] ? argv[li + 1] : void 0;
+    process.stdout.write(`
+  ${dim("Anchoring the claim digest to the public append-only log (only the hash leaves your machine)...")}
+`);
+    const res = await anchorClaim2(
+      pack,
+      { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || "gateway", issuer: "protect-mcp" },
+      { log: logBase, issuedAt: (/* @__PURE__ */ new Date()).toISOString() }
+    );
+    if (res.ok) {
+      const sidecar = out.replace(/\.json$/, "") + ".anchor.json";
+      writeFileSync4(sidecar, JSON.stringify({ log: logBase || "https://scopeblind.com", seq: res.seq, entry_url: res.entry_url, anchored_at: res.anchored_at, claim_digest: res.claim_digest, envelope: res.envelope }, null, 2) + "\n");
+      process.stdout.write(`  ${green("Anchored")} as log entry ${bold("#" + res.seq)}${res.already_anchored ? dim(" (already present)") : ""}  ${dim(res.entry_url || "")}
+`);
+      process.stdout.write(`  ${dim("A counterparty can now confirm this exact claim existed at " + (res.anchored_at || "this time") + " and cannot be quietly re-cut.")}
+`);
+      process.stdout.write(`  ${dim("Anchor record written to " + sidecar + ". Only the digest was sent; your record stayed local.")}
+`);
+      process.stdout.write(`  ${dim("To anchor as your enrolled org identity (a key a counterparty can pin), see")} ${bold("scopeblind.com/enroll")}
+`);
+    } else {
+      process.stdout.write(`  ${yellow("Anchor skipped")} ${dim("(" + (res.error || "unavailable") + "). The claim above is complete and verifiable offline without it.")}
+`);
+    }
+  }
+  process.stdout.write(`
 `);
   process.exit(0);
 }

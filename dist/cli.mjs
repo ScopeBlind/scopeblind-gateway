@@ -2235,7 +2235,7 @@ if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(functio
 async function handleClaim(argv) {
   const { readFileSync, existsSync, writeFileSync } = await import("fs");
   const { join } = await import("path");
-  const { buildClaim } = await import("./claim-U7Q3A4WW.mjs");
+  const { buildClaim } = await import("./claim-TUDH2WPB.mjs");
   let dir = process.cwd();
   const di = argv.indexOf("--dir");
   if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
@@ -2254,8 +2254,11 @@ Attest a signed, position-blind claim over your record:
   --only <c1,c2,...>       all actions confined to these capabilities
   --no-verdict <verdict>   e.g. ${dim("--no-verdict blocked")}
   --count <verdict>        how many, e.g. ${dim("--count blocked")}
+  --anchor                 also record the claim digest in the public append-only
+                           log so a counterparty can trust it is complete (only the
+                           hash is sent; your record stays local)
 
-Example: ${bold("npx protect-mcp claim --no net.egress")}
+Example: ${bold("npx protect-mcp claim --no net.egress --anchor")}
 
 `);
     process.exit(0);
@@ -2331,13 +2334,42 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
   process.stdout.write(`  Written to ${out}
 `);
   process.stdout.write(`  Hand it to anyone. They verify offline: ${bold("npx protect-mcp verify-claim " + out)}
-
+`);
+  if (argv.indexOf("--anchor") !== -1) {
+    const { anchorClaim } = await import("./claim-TUDH2WPB.mjs");
+    const li = argv.indexOf("--log");
+    const logBase = li !== -1 && argv[li + 1] ? argv[li + 1] : void 0;
+    process.stdout.write(`
+  ${dim("Anchoring the claim digest to the public append-only log (only the hash leaves your machine)...")}
+`);
+    const res = await anchorClaim(
+      pack,
+      { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || "gateway", issuer: "protect-mcp" },
+      { log: logBase, issuedAt: (/* @__PURE__ */ new Date()).toISOString() }
+    );
+    if (res.ok) {
+      const sidecar = out.replace(/\.json$/, "") + ".anchor.json";
+      writeFileSync(sidecar, JSON.stringify({ log: logBase || "https://scopeblind.com", seq: res.seq, entry_url: res.entry_url, anchored_at: res.anchored_at, claim_digest: res.claim_digest, envelope: res.envelope }, null, 2) + "\n");
+      process.stdout.write(`  ${green("Anchored")} as log entry ${bold("#" + res.seq)}${res.already_anchored ? dim(" (already present)") : ""}  ${dim(res.entry_url || "")}
+`);
+      process.stdout.write(`  ${dim("A counterparty can now confirm this exact claim existed at " + (res.anchored_at || "this time") + " and cannot be quietly re-cut.")}
+`);
+      process.stdout.write(`  ${dim("Anchor record written to " + sidecar + ". Only the digest was sent; your record stayed local.")}
+`);
+      process.stdout.write(`  ${dim("To anchor as your enrolled org identity (a key a counterparty can pin), see")} ${bold("scopeblind.com/enroll")}
+`);
+    } else {
+      process.stdout.write(`  ${yellow("Anchor skipped")} ${dim("(" + (res.error || "unavailable") + "). The claim above is complete and verifiable offline without it.")}
+`);
+    }
+  }
+  process.stdout.write(`
 `);
   process.exit(0);
 }
 async function handleVerifyClaim(argv) {
   const { readFileSync, existsSync } = await import("fs");
-  const { verifyClaim } = await import("./claim-U7Q3A4WW.mjs");
+  const { verifyClaim } = await import("./claim-TUDH2WPB.mjs");
   const file = argv.find((a) => !a.startsWith("--"));
   if (!file || !existsSync(file)) {
     process.stderr.write(`

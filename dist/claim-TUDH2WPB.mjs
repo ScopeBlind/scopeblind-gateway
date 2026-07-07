@@ -118,9 +118,81 @@ function verifyClaim(pack, overridePublicKey) {
     reasons
   };
 }
+var ANCHOR_SCHEMA = "scopeblind.protect-mcp.anchor.v1";
+var DEFAULT_LOG = "https://scopeblind.com";
+function anchorDeepSort(o) {
+  if (o === null || typeof o !== "object") return o;
+  if (Array.isArray(o)) return o.map(anchorDeepSort);
+  const src = o;
+  const out = {};
+  for (const k of Object.keys(src).sort()) out[k] = anchorDeepSort(src[k]);
+  return out;
+}
+function toBase64(bytes) {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function claimDigest(pack) {
+  return sha256Hex(canonicalJson(pack));
+}
+function buildAnchorEnvelope(pack, key, issuedAt) {
+  const signed = {
+    type: "evidence_pack",
+    schema: ANCHOR_SCHEMA,
+    anchors: "protect-mcp-claim",
+    claim_digest: claimDigest(pack),
+    record_root: pack.record.root,
+    statement: pack.claim.statement,
+    holds: pack.claim.holds,
+    matched: pack.claim.matched,
+    total: pack.scope.total,
+    issued_at: issuedAt,
+    verification_key: key.publicKey,
+    disclosure: "internal"
+  };
+  const hash = sha256(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  const digest = bytesToHex(hash);
+  const signature = bytesToHex(ed25519.sign(hash, hexToBytes(key.privateKey)));
+  return { ...signed, signature, digest };
+}
+async function anchorClaim(pack, key, opts) {
+  const envelope = buildAnchorEnvelope(pack, key, opts.issuedAt);
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
+  const doFetch = opts.fetchImpl || globalThis.fetch;
+  if (!doFetch) return { ok: false, claim_digest: envelope.claim_digest, error: "fetch_unavailable", envelope };
+  const encoded = toBase64(new TextEncoder().encode(JSON.stringify(envelope)));
+  try {
+    const resp = await doFetch(`${base}/fn/log/anchor-pack`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ encoded })
+    });
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok || !data || !data.ok || typeof data.seq !== "number") {
+      return { ok: false, claim_digest: envelope.claim_digest, error: data && data.error || `http_${resp.status}`, envelope };
+    }
+    return {
+      ok: true,
+      claim_digest: envelope.claim_digest,
+      seq: data.seq,
+      entry_url: `${base}/fn/log/${data.seq}`,
+      anchored_at: data.anchored_at,
+      already_anchored: !!data.already_anchored,
+      envelope
+    };
+  } catch {
+    return { ok: false, claim_digest: envelope.claim_digest, error: "network_error", envelope };
+  }
+}
 export {
+  ANCHOR_SCHEMA,
   CLAIM_TYPE,
+  DEFAULT_LOG,
+  anchorClaim,
+  buildAnchorEnvelope,
   buildClaim,
+  claimDigest,
   evaluate,
   leafHash,
   merkleRoot,
