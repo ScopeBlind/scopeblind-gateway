@@ -1,6 +1,6 @@
 import {
   buildEnrichment
-} from "./chunk-KMNXHGGT.mjs";
+} from "./chunk-WWPQNIVF.mjs";
 import {
   ReceiptBuffer,
   buildActionReadback,

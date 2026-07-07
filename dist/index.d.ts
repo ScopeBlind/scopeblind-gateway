@@ -3,6 +3,16 @@ export { BUILTIN_PATTERNS, HookPattern, generateHookSettings, generateSampleCeda
 export { createSandboxServer } from './demo-server.js';
 import 'node:http';
 
+interface PaymentInfo {
+    /** Normalized human amount in `asset` units, when derivable; else null. */
+    amount: number | null;
+    /** Asset symbol (e.g. 'USDC') or contract address, when derivable; else null. */
+    asset: string | null;
+    /** SHA-256 (hex) of the lowercased recipient: position-blind, when present. */
+    recipient_digest: string | null;
+    /** x402 scheme ('exact' | 'upto' | ...) when present. */
+    scheme?: string;
+}
 interface ReceiptEnrichment {
     /** Rule/schema version, so derivations stay reproducible as rules evolve. */
     v: number;
@@ -15,6 +25,8 @@ interface ReceiptEnrichment {
         kind: 'path' | 'host' | 'command';
         digest: string;
     };
+    /** Minimum-disclosure facts about a value transfer (x402 / agent payment). */
+    payment?: PaymentInfo;
 }
 
 interface ProtectPolicy {

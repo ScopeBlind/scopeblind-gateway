@@ -1045,7 +1045,7 @@ var sha256 = /* @__PURE__ */ createHasher(() => new SHA256());
 var sha2562 = sha256;
 
 // src/receipt-enrichment.ts
-var ENRICHMENT_VERSION = 1;
+var ENRICHMENT_VERSION = 2;
 function canonicalJson(value) {
   const seen = /* @__PURE__ */ new WeakSet();
   const enc = (v) => {
@@ -1082,7 +1082,11 @@ var RULES = [
   { cap: "secret.adjacent", text: /\.env\b|secret|credential|passwd|password|api[_-]?key|private[_-]?key|\.pem\b|\.key\b|id_rsa|bearer\s|aws_(access|secret)|authorization/ },
   { cap: "destructive", text: /rm\s+-[a-z]*[rf]|\brmdir\b|drop\s+table|truncate\s+table|delete\s+from|reset\s+--hard|--force\b|\bmkfs\b|\bdd\s+if=|shutdown|reboot|kill\s+-9|>\s*\/dev\/sd/ },
   { cap: "financial", text: /\b(order|trade|buy|sell|transfer|wire|payment|withdraw|deposit|swap|invoice|charge|refund|settle)\b/ },
-  { cap: "data.query", text: /\bselect\s+[\s\S]+\bfrom\b|\binsert\s+into\b|\bupdate\s+[\s\S]+\bset\b|\bdelete\s+from\b/ }
+  { cap: "data.query", text: /\bselect\s+[\s\S]+\bfrom\b|\binsert\s+into\b|\bupdate\s+[\s\S]+\bset\b|\bdelete\s+from\b/ },
+  // Agent payments (x402 / value transfer). Deliberately BROAD: a false positive
+  // only makes a `claim --no payment` harder to assert (conservative); a false
+  // negative would let a real payment escape the record's payment claims.
+  { cap: "payment", tool: /(^|[_.-])(pay|payment|x402|checkout)($|[_.-])|wallet.*send|send.*payment/, text: /x402|x-payment|paymentrequirements|maxamountrequired|payto|"pay_to"|eip-3009|transferwithauthorization|payment_intent|send_payment|create_payment/ }
 ];
 function deriveCapabilities(tool, input) {
   const t = String(tool || "").toLowerCase();
@@ -1116,6 +1120,33 @@ function deriveResource(input) {
   }
   return void 0;
 }
+function findField(input, names, depth = 0) {
+  if (depth > 4 || input === null || typeof input !== "object") return void 0;
+  const o = input;
+  const keys = Object.keys(o).sort();
+  for (const k of keys) {
+    if (names.indexOf(k.toLowerCase()) >= 0 && o[k] !== void 0 && o[k] !== null) return o[k];
+  }
+  for (const k of keys) {
+    const v = findField(o[k], names, depth + 1);
+    if (v !== void 0) return v;
+  }
+  return void 0;
+}
+function derivePayment(tool, input) {
+  if (deriveCapabilities(tool, input).indexOf("payment") < 0) return void 0;
+  const p = { amount: null, asset: null, recipient_digest: null };
+  const amt = findField(input, ["amount"]);
+  if (typeof amt === "number" && Number.isFinite(amt) && amt >= 0) p.amount = amt;
+  else if (typeof amt === "string" && /^\d{1,15}(\.\d{1,18})?$/.test(amt.trim()) && amt.indexOf(".") >= 0) p.amount = parseFloat(amt);
+  const asset = findField(input, ["asset", "currency", "token"]);
+  if (typeof asset === "string" && asset.trim()) p.asset = asset.trim().slice(0, 64);
+  const to = findField(input, ["payto", "pay_to", "recipient", "destination", "to"]);
+  if (typeof to === "string" && to.trim()) p.recipient_digest = sha256Hex(to.trim().toLowerCase());
+  const scheme = findField(input, ["scheme"]);
+  if (typeof scheme === "string" && scheme.trim()) p.scheme = scheme.trim().slice(0, 32);
+  return p;
+}
 function buildEnrichment(tool, input) {
   const e = {
     v: ENRICHMENT_VERSION,
@@ -1124,6 +1155,8 @@ function buildEnrichment(tool, input) {
   };
   const resource = deriveResource(input);
   if (resource) e.resource = resource;
+  const payment = derivePayment(tool, input);
+  if (payment) e.payment = payment;
   return e;
 }
 

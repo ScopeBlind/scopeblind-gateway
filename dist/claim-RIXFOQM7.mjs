@@ -1,6 +1,6 @@
 import {
   canonicalJson
-} from "./chunk-KMNXHGGT.mjs";
+} from "./chunk-WWPQNIVF.mjs";
 import {
   sha256
 } from "./chunk-AYNQIEN7.mjs";
@@ -30,7 +30,13 @@ function receiptToLeaf(e) {
   const ms = typeof tsRaw === "number" ? tsRaw : typeof tsRaw === "string" ? Date.parse(tsRaw) : NaN;
   const t = isFinite(ms) ? new Date(ms).toISOString() : "";
   const d = sha256Hex(canonicalJson(e));
-  return { d, v, c, t };
+  const leaf = { d, v, c, t };
+  const pay = enr && enr.payment;
+  if (pay && typeof pay === "object") {
+    const amt = pay.amount;
+    leaf.p = typeof amt === "number" && Number.isFinite(amt) ? amt : null;
+  }
+  return leaf;
 }
 function leafHash(leaf) {
   return sha256Hex(canonicalJson(leaf));
@@ -62,6 +68,10 @@ function evaluate(pred, leaves) {
   if (pred.kind === "no_verdict") {
     const matched2 = leaves.filter((l) => l.v === pred.verdict).length;
     return { statement: `No action was ${pred.verdict}`, holds: matched2 === 0, matched: matched2 };
+  }
+  if (pred.kind === "payment_under") {
+    const matched2 = leaves.filter((l) => "p" in l && (l.p === null || l.p >= pred.cap)).length;
+    return { statement: `Every payment stayed under ${pred.cap} (unknown amounts count as over)`, holds: matched2 === 0, matched: matched2 };
   }
   const matched = leaves.filter((l) => l.v === pred.verdict).length;
   return { statement: `${matched} action${matched === 1 ? " was" : "s were"} ${pred.verdict}`, holds: true, matched };
@@ -229,11 +239,9 @@ async function checkClaimAnchor(pack, sidecar, opts) {
     return out;
   }
 }
-async function anchorClaim(pack, key, opts) {
-  const envelope = buildAnchorEnvelope(pack, key, opts.issuedAt);
-  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
-  const doFetch = opts.fetchImpl || globalThis.fetch;
-  if (!doFetch) return { ok: false, claim_digest: envelope.claim_digest, error: "fetch_unavailable", envelope };
+async function submitEnvelope(envelope, base, fetchImpl) {
+  const doFetch = fetchImpl || globalThis.fetch;
+  if (!doFetch) return { ok: false, error: "fetch_unavailable" };
   const encoded = toBase64(new TextEncoder().encode(JSON.stringify(envelope)));
   try {
     const resp = await doFetch(`${base}/fn/log/anchor-pack`, {
@@ -243,32 +251,101 @@ async function anchorClaim(pack, key, opts) {
     });
     const data = await resp.json().catch(() => null);
     if (!resp.ok || !data || !data.ok || typeof data.seq !== "number") {
-      return { ok: false, claim_digest: envelope.claim_digest, error: data && data.error || `http_${resp.status}`, envelope };
+      return { ok: false, error: data && data.error || `http_${resp.status}` };
     }
+    return { ok: true, seq: data.seq, anchored_at: data.anchored_at, already_anchored: !!data.already_anchored };
+  } catch {
+    return { ok: false, error: "network_error" };
+  }
+}
+async function anchorClaim(pack, key, opts) {
+  const envelope = buildAnchorEnvelope(pack, key, opts.issuedAt);
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
+  const out = await submitEnvelope(envelope, base, opts.fetchImpl);
+  if (!out.ok) return { ok: false, claim_digest: envelope.claim_digest, error: out.error, envelope };
+  return {
+    ok: true,
+    claim_digest: envelope.claim_digest,
+    seq: out.seq,
+    entry_url: `${base}/fn/log/${out.seq}`,
+    anchored_at: out.anchored_at,
+    already_anchored: out.already_anchored,
+    envelope
+  };
+}
+var CHECKPOINT_SCHEMA = "scopeblind.protect-mcp.record-checkpoint.v1";
+function buildRecordCheckpoint(receipts, key, issuedAt) {
+  const leaves = receipts.map(receiptToLeaf);
+  const times = leaves.map((l) => l.t).filter(Boolean).sort();
+  const signed = {
+    type: "evidence_pack",
+    schema: CHECKPOINT_SCHEMA,
+    anchors: "protect-mcp-record",
+    record_root: merkleRoot(leaves.map(leafHash)),
+    total: leaves.length,
+    from: times[0] || "",
+    to: times[times.length - 1] || "",
+    issued_at: issuedAt,
+    verification_key: key.publicKey,
+    disclosure: "internal"
+  };
+  const hash = sha256(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  const digest = bytesToHex(hash);
+  const signature = bytesToHex(ed25519.sign(hash, hexToBytes(key.privateKey)));
+  return { ...signed, signature, digest };
+}
+async function anchorRecordCheckpoint(receipts, key, opts) {
+  const checkpoint = buildRecordCheckpoint(receipts, key, opts.issuedAt);
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
+  const out = await submitEnvelope(checkpoint, base, opts.fetchImpl);
+  if (!out.ok) return { ok: false, record_root: checkpoint.record_root, total: checkpoint.total, checkpoint, error: out.error };
+  return {
+    ok: true,
+    record_root: checkpoint.record_root,
+    total: checkpoint.total,
+    seq: out.seq,
+    entry_url: `${base}/fn/log/${out.seq}`,
+    anchored_at: out.anchored_at,
+    already_anchored: out.already_anchored,
+    checkpoint
+  };
+}
+async function lookupPinnedIdentity(publicKey, opts) {
+  const base = (opts && opts.log || DEFAULT_LOG).replace(/\/+$/, "");
+  const doFetch = opts && opts.fetchImpl || globalThis.fetch;
+  if (!doFetch || !/^[0-9a-f]{64}$/i.test(publicKey)) return null;
+  try {
+    const resp = await doFetch(`${base}/fn/log/keys/lookup/${publicKey.toLowerCase()}`, { headers: { accept: "application/json" } });
+    const data = await resp.json().catch(() => null);
+    if (!data || data.ok !== true) return null;
+    if (!data.found) return { found: false };
     return {
-      ok: true,
-      claim_digest: envelope.claim_digest,
-      seq: data.seq,
-      entry_url: `${base}/fn/log/${data.seq}`,
-      anchored_at: data.anchored_at,
-      already_anchored: !!data.already_anchored,
-      envelope
+      found: true,
+      name: data.name,
+      slug: data.slug,
+      kid: data.kid,
+      enrolled_at: data.enrolled_at,
+      revoked: !!(data.revoked || data.revoked_at)
     };
   } catch {
-    return { ok: false, claim_digest: envelope.claim_digest, error: "network_error", envelope };
+    return null;
   }
 }
 export {
   ANCHOR_SCHEMA,
+  CHECKPOINT_SCHEMA,
   CLAIM_TYPE,
   DEFAULT_LOG,
   anchorClaim,
+  anchorRecordCheckpoint,
   buildAnchorEnvelope,
   buildClaim,
+  buildRecordCheckpoint,
   checkClaimAnchor,
   claimDigest,
   evaluate,
   leafHash,
+  lookupPinnedIdentity,
   merkleRoot,
   receiptToLeaf,
   verifyAnchorEnvelope,

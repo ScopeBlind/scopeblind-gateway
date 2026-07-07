@@ -100,8 +100,12 @@ Commands:
   digest            Generate a human-readable summary of agent activity
   receipts          Show recent persisted signed receipts
   record            Open a local, searchable view of your record in the browser
-  claim             Attest a signed, position-blind claim over your record (e.g. no egress)
-  verify-claim      Verify a claim attestation offline (signature + predicate + commitment)
+  claim             Attest a signed, position-blind claim over your record (e.g. no egress,
+                    no payment, every payment under a cap)
+  verify-claim      Verify a claim attestation offline (signature + predicate + commitment
+                    + the anchor sidecar and issuer identity when present)
+  anchor-record     Checkpoint the record's Merkle root + count into the public log
+                    (heartbeat-friendly: skips when unchanged; only hashes leave)
   bundle            Export an offline-verifiable audit bundle
 
 Examples:
@@ -2273,25 +2277,28 @@ if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(functio
 async function handleClaim(argv) {
   const { readFileSync, existsSync, writeFileSync } = await import("fs");
   const { join } = await import("path");
-  const { buildClaim } = await import("./claim-6LSIZMYJ.mjs");
+  const { buildClaim } = await import("./claim-RIXFOQM7.mjs");
   let dir = process.cwd();
   const di = argv.indexOf("--dir");
   if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
   let predicate = null;
-  const noIdx = argv.indexOf("--no"), onlyIdx = argv.indexOf("--only"), nvIdx = argv.indexOf("--no-verdict"), cvIdx = argv.indexOf("--count");
+  const noIdx = argv.indexOf("--no"), onlyIdx = argv.indexOf("--only"), nvIdx = argv.indexOf("--no-verdict"), cvIdx = argv.indexOf("--count"), puIdx = argv.indexOf("--payment-under");
   if (noIdx !== -1 && argv[noIdx + 1]) predicate = { kind: "no_capability", capability: argv[noIdx + 1] };
   else if (onlyIdx !== -1 && argv[onlyIdx + 1]) predicate = { kind: "only_capabilities", capabilities: argv[onlyIdx + 1].split(",").map((s) => s.trim()).filter(Boolean) };
   else if (nvIdx !== -1 && argv[nvIdx + 1]) predicate = { kind: "no_verdict", verdict: argv[nvIdx + 1] };
   else if (cvIdx !== -1 && argv[cvIdx + 1]) predicate = { kind: "count_verdict", verdict: argv[cvIdx + 1] };
+  else if (puIdx !== -1 && argv[puIdx + 1] && isFinite(parseFloat(argv[puIdx + 1]))) predicate = { kind: "payment_under", cap: parseFloat(argv[puIdx + 1]) };
   if (!predicate) {
     process.stderr.write(`
 ${bold("protect-mcp claim")}
 
 Attest a signed, position-blind claim over your record:
-  --no <capability>        no action used it, e.g. ${dim("--no net.egress")}
+  --no <capability>        no action used it, e.g. ${dim("--no net.egress")} or ${dim("--no payment")}
   --only <c1,c2,...>       all actions confined to these capabilities
   --no-verdict <verdict>   e.g. ${dim("--no-verdict blocked")}
   --count <verdict>        how many, e.g. ${dim("--count blocked")}
+  --payment-under <cap>    every agent payment stayed under the cap (amounts the
+                           gate could not read count as OVER, so this cannot lie)
   --anchor                 also record the claim digest in the public append-only
                            log so a counterparty can trust it is complete (only the
                            hash is sent; your record stays local)
@@ -2374,7 +2381,7 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
   process.stdout.write(`  Hand it to anyone. They verify offline: ${bold("npx protect-mcp verify-claim " + out)}
 `);
   if (argv.indexOf("--anchor") !== -1) {
-    const { anchorClaim } = await import("./claim-6LSIZMYJ.mjs");
+    const { anchorClaim } = await import("./claim-RIXFOQM7.mjs");
     const li = argv.indexOf("--log");
     const logBase = li !== -1 && argv[li + 1] ? argv[li + 1] : void 0;
     process.stdout.write(`
@@ -2394,8 +2401,18 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
 `);
       process.stdout.write(`  ${dim("Anchor record written to " + sidecar + ". Only the digest was sent; your record stayed local.")}
 `);
-      process.stdout.write(`  ${dim("To anchor as your enrolled org identity (a key a counterparty can pin), see")} ${bold("scopeblind.com/enroll")}
+      const { lookupPinnedIdentity } = await import("./claim-RIXFOQM7.mjs");
+      const who = await lookupPinnedIdentity(key.publicKey, { log: logBase });
+      if (who && who.found && !who.revoked) {
+        process.stdout.write(`  ${green("Identity:")} anchored as ${bold(who.name || who.slug || "enrolled org")} ${dim("(key pinned in the ScopeBlind directory" + (who.enrolled_at ? ", enrolled " + who.enrolled_at.slice(0, 10) : "") + ")")}
 `);
+      } else if (who && who.found && who.revoked) {
+        process.stdout.write(`  ${red("Identity: this key is REVOKED in the ScopeBlind directory.")}
+`);
+      } else {
+        process.stdout.write(`  ${dim("Identity: anonymous (key not enrolled). To anchor as a named org a counterparty can pin, see")} ${bold("scopeblind.com/enroll")}
+`);
+      }
     } else {
       process.stdout.write(`  ${yellow("Anchor skipped")} ${dim("(" + (res.error || "unavailable") + "). The claim above is complete and verifiable offline without it.")}
 `);
@@ -2405,9 +2422,135 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
 `);
   process.exit(0);
 }
+async function handleAnchorRecord(argv) {
+  const { readFileSync, existsSync, appendFileSync } = await import("fs");
+  const { join } = await import("path");
+  const { anchorRecordCheckpoint, buildRecordCheckpoint, lookupPinnedIdentity } = await import("./claim-RIXFOQM7.mjs");
+  let dir = process.cwd();
+  const di = argv.indexOf("--dir");
+  if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
+  const li = argv.indexOf("--log");
+  const logBase = li !== -1 && argv[li + 1] ? argv[li + 1] : void 0;
+  const keyPath = join(dir, "keys", "gateway.json");
+  if (!existsSync(keyPath)) {
+    process.stderr.write(`
+${bold("protect-mcp anchor-record")}
+
+No signing key at ${keyPath}. A checkpoint must be signed. Run ${bold("npx protect-mcp init")} first.
+
+`);
+    process.exit(1);
+    return;
+  }
+  let key;
+  try {
+    key = JSON.parse(readFileSync(keyPath, "utf-8"));
+  } catch {
+    process.stderr.write(`
+protect-mcp anchor-record: ${keyPath} is not valid JSON.
+
+`);
+    process.exit(1);
+    return;
+  }
+  if (!key.privateKey || !key.publicKey) {
+    process.stderr.write(`
+protect-mcp anchor-record: ${keyPath} is missing privateKey/publicKey.
+
+`);
+    process.exit(1);
+    return;
+  }
+  const recPath = join(dir, ".protect-mcp-receipts.jsonl");
+  if (!existsSync(recPath)) {
+    process.stderr.write(`
+${bold("protect-mcp anchor-record")}
+
+No signed receipts in ${dir}. Run the gate with signing on, then try again.
+
+`);
+    process.exit(0);
+    return;
+  }
+  const receipts = readFileSync(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+    try {
+      return JSON.parse(l);
+    } catch {
+      return null;
+    }
+  }).filter((x) => x !== null);
+  if (!receipts.length) {
+    process.stderr.write(`
+protect-mcp anchor-record: no readable receipts in ${recPath}.
+
+`);
+    process.exit(0);
+    return;
+  }
+  const claimKey = { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || "gateway", issuer: "protect-mcp" };
+  const historyPath = join(dir, ".protect-mcp-anchors.jsonl");
+  const preview = buildRecordCheckpoint(receipts, claimKey, "preview");
+  if (!argv.includes("--force") && existsSync(historyPath)) {
+    const lines = readFileSync(historyPath, "utf-8").split(/\r?\n/).filter(Boolean);
+    const last = lines.length ? (() => {
+      try {
+        return JSON.parse(lines[lines.length - 1]);
+      } catch {
+        return null;
+      }
+    })() : null;
+    if (last && last.record_root === preview.record_root && last.total === preview.total) {
+      process.stdout.write(`
+${bold("\u{1F6E1}\uFE0F  Record checkpoint")}
+`);
+      process.stdout.write(`  Unchanged since entry ${bold("#" + last.seq)} ${dim("(" + last.total + " receipts, anchored " + (last.anchored_at || "") + ")")}. Nothing new to anchor.
+`);
+      process.stdout.write(`  ${dim("Use --force to re-anchor anyway.")}
+
+`);
+      process.exit(0);
+      return;
+    }
+  }
+  const res = await anchorRecordCheckpoint(receipts, claimKey, { log: logBase, issuedAt: (/* @__PURE__ */ new Date()).toISOString() });
+  process.stdout.write(`
+${bold("\u{1F6E1}\uFE0F  Record checkpoint")}
+`);
+  process.stdout.write(`  ${res.total} receipts ${dim("\xB7")} root ${dim(res.record_root.slice(0, 16) + "\u2026")} ${dim("(" + res.checkpoint.from.slice(0, 10) + " \u2192 " + res.checkpoint.to.slice(0, 10) + ")")}
+`);
+  if (!res.ok) {
+    process.stdout.write(`  ${yellow("Anchor failed")} ${dim("(" + (res.error || "unavailable") + "). Nothing was recorded; try again.")}
+
+`);
+    process.exit(1);
+    return;
+  }
+  appendFileSync(historyPath, JSON.stringify({ schema: res.checkpoint.schema, seq: res.seq, anchored_at: res.anchored_at, total: res.total, record_root: res.record_root, entry_url: res.entry_url, digest: res.checkpoint.digest }) + "\n");
+  process.stdout.write(`  ${green("Anchored")} as log entry ${bold("#" + res.seq)}  ${dim(res.entry_url || "")}
+`);
+  process.stdout.write(`  ${dim("Only the root, count, and time range were sent. History: " + historyPath)}
+`);
+  const who = await lookupPinnedIdentity(claimKey.publicKey, { log: logBase });
+  if (who && who.found && !who.revoked) {
+    process.stdout.write(`  ${green("Identity:")} anchored as ${bold(who.name || who.slug || "enrolled org")} ${dim("(key pinned in the ScopeBlind directory)")}
+`);
+  } else if (who && who.found && who.revoked) {
+    process.stdout.write(`  ${red("Identity: this key is REVOKED in the ScopeBlind directory.")}
+`);
+  } else {
+    process.stdout.write(`  ${dim("Identity: anonymous (key not enrolled). Named identity: scopeblind.com/enroll")}
+`);
+  }
+  process.stdout.write(`  ${dim("A claim whose commitment matches this root is provably over the complete record as of")}
+`);
+  process.stdout.write(`  ${dim("this checkpoint. Run this on a heartbeat (e.g. cron) to keep the anchored history growing.")}
+
+`);
+  process.exit(0);
+}
 async function handleVerifyClaim(argv) {
   const { readFileSync, existsSync } = await import("fs");
-  const { verifyClaim } = await import("./claim-6LSIZMYJ.mjs");
+  const { verifyClaim } = await import("./claim-RIXFOQM7.mjs");
   const file = argv.find((a) => !a.startsWith("--"));
   if (!file || !existsSync(file)) {
     process.stderr.write(`
@@ -2459,7 +2602,7 @@ ${bold("protect-mcp verify-claim")}
   const requireAnchor = argv.includes("--check-anchor");
   let anchorOk = true;
   if (existsSync(sidecarPath)) {
-    const { checkClaimAnchor } = await import("./claim-6LSIZMYJ.mjs");
+    const { checkClaimAnchor } = await import("./claim-RIXFOQM7.mjs");
     let sidecar = null;
     try {
       sidecar = JSON.parse(readFileSync(sidecarPath, "utf-8"));
@@ -2490,6 +2633,21 @@ ${bold("protect-mcp verify-claim")}
       } else if (a.local_ok) {
         process.stdout.write(`              ${yellow("~")} log not checked ${dim(argv.includes("--offline") ? "(--offline)" : "(unreachable; local binding checks stand)")}
 `);
+      }
+      if (!argv.includes("--offline") && sidecar.envelope) {
+        const { lookupPinnedIdentity } = await import("./claim-RIXFOQM7.mjs");
+        const who = await lookupPinnedIdentity(sidecar.envelope.verification_key, {});
+        if (who && who.found && !who.revoked) {
+          process.stdout.write(`              ${green("\u2713")} issuer key pinned to ${bold(who.name || who.slug || "an enrolled org")} ${dim("(ScopeBlind key directory)")}
+`);
+        } else if (who && who.found && who.revoked) {
+          anchorOk = false;
+          process.stdout.write(`              ${red("\u2717")} issuer key is REVOKED in the ScopeBlind key directory
+`);
+        } else if (who && !who.found) {
+          process.stdout.write(`              ${dim("issuer key not enrolled (anonymous issuer); named identities pin via scopeblind.com/enroll")}
+`);
+        }
       }
     }
   } else if (requireAnchor) {
@@ -4016,6 +4174,10 @@ async function main() {
   }
   if (args[0] === "verify-claim") {
     await handleVerifyClaim(args.slice(1));
+    return;
+  }
+  if (args[0] === "anchor-record") {
+    await handleAnchorRecord(args.slice(1));
     return;
   }
   if (args[0] === "init-hooks") {

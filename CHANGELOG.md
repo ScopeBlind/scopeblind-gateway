@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.9.4: agent payments get receipts, records get heartbeats, anchors get names
+
+The provenance layer reaches the agentic economy's payment rails (x402), the
+record gains continuous completeness, and anchoring can carry an identity.
+
+- **Payment receipts (x402 interop).** The gate now tags agent payments with a
+  signed `payment` capability, detected broadly across x402 wire shapes
+  (`paymentRequirements`, `X-PAYMENT`, EIP-3009 `transferWithAuthorization`)
+  and payment-shaped tools. Receipts carry minimum-disclosure payment facts:
+  amount (only when clearly readable in human units), asset, a HASHED recipient,
+  and the x402 scheme. `claim --no payment` proves no agent paid anything;
+  `claim --payment-under <cap>` proves every payment stayed under a cap, and an
+  amount the gate could not read counts as OVER (you cannot prove an amount you
+  could not read, so the claim cannot lie).
+- **Record checkpoints (`anchor-record`).** Anchors the record's CURRENT
+  commitment (the same Merkle root a claim commits to, plus count and time
+  range) into the public log. Run it on a heartbeat and the record grows an
+  anchored history: a later claim whose root matches a checkpoint is provably
+  over the complete set as of that checkpoint. Skips when the record is
+  unchanged; writes a local `.protect-mcp-anchors.jsonl` history; only the
+  root, count, and time range leave the machine.
+- **Pinned identity in the anchor loop.** `claim --anchor`, `anchor-record`,
+  and `verify-claim` now resolve the anchoring key against the public ScopeBlind
+  key directory: an enrolled key shows "anchored as <Org> (key pinned)", a
+  revoked key fails verification, an anonymous key points at enrollment. The
+  free anchor stays anonymous; the named identity is the paid upgrade.
+
 ## 0.9.3: the skeptic's tools sharpen
 
 Two verification upgrades: the anchor check moves into the verifier, and the

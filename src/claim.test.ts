@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { ed25519 } from '@noble/curves/ed25519';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
-import { buildClaim, verifyClaim, buildAnchorEnvelope, claimDigest, verifyAnchorEnvelope, checkClaimAnchor, type ClaimKey } from './claim.js';
+import { buildClaim, verifyClaim, buildAnchorEnvelope, claimDigest, verifyAnchorEnvelope, checkClaimAnchor, buildRecordCheckpoint, lookupPinnedIdentity, type ClaimKey } from './claim.js';
 
 // Replicates the transparency-log endpoint's acceptance check (functions/fn/log/
 // anchor-pack.js): type gate, digest == sha256(deepSort(pack minus sig/digest/cosigs)),
@@ -178,5 +178,69 @@ describe('claim attestations', () => {
     const off = await checkClaimAnchor(pack, sidecar, { fetchImpl: fetchBoom });
     expect(off.local_ok).toBe(true);
     expect(off.log_ok).toBe(null);
+  });
+
+  function paymentReceipt(tool: string, amount: number | null, ts: string): Record<string, unknown> {
+    return {
+      v: 2, type: 'decision_receipt', issued_at: ts,
+      payload: { tool, decision: 'allow', request_id: tool + ts, enrichment: { v: 2, input_digest: 'x', capabilities: ['payment'], payment: { amount, asset: 'USDC', recipient_digest: 'r'.repeat(64) } } },
+      signature: 'sig' + tool + ts,
+    };
+  }
+
+  it('payment_under: holds when every readable payment is under the cap', () => {
+    const rows = [
+      paymentReceipt('pay_a', 0.5, '2026-07-07T10:00:00Z'),
+      paymentReceipt('pay_b', 2, '2026-07-07T10:01:00Z'),
+      receipt('Read', 'allow', ['fs.read'], '2026-07-07T10:02:00Z'), // non-payment row
+    ];
+    const pack = buildClaim(rows, { kind: 'payment_under', cap: 5 }, key, 't');
+    expect(pack.claim.holds).toBe(true);
+    expect(pack.claim.matched).toBe(0);
+    expect(verifyClaim(pack).valid).toBe(true);
+    // leaves carry `p` ONLY on payment rows; non-payment leaves stay {c,d,t,v}
+    const withP = pack.leaves.filter((l) => 'p' in l);
+    expect(withP.length).toBe(2);
+    const bare = pack.leaves.find((l) => !('p' in l))!;
+    expect(Object.keys(bare).sort()).toEqual(['c', 'd', 't', 'v']);
+    expect(JSON.stringify(pack)).not.toContain('r'.repeat(64)); // recipient hash never enters leaves
+  });
+
+  it('payment_under: an over-cap payment or an UNREADABLE amount refutes the claim', () => {
+    const over = buildClaim([paymentReceipt('pay_a', 9, 't1')], { kind: 'payment_under', cap: 5 }, key, 't');
+    expect(over.claim.holds).toBe(false);
+    expect(over.claim.matched).toBe(1);
+    // unknown amount (atomic units the gate could not normalize) counts as over:
+    // you cannot prove an amount you could not read.
+    const unknown = buildClaim([paymentReceipt('pay_b', null, 't2')], { kind: 'payment_under', cap: 5 }, key, 't');
+    expect(unknown.claim.holds).toBe(false);
+    // and a verifier recomputes that refusal independently: lying about it breaks the pack
+    const lied = JSON.parse(JSON.stringify(unknown));
+    lied.claim.holds = true; lied.claim.matched = 0;
+    expect(verifyClaim(lied).valid).toBe(false);
+  });
+
+  it('record checkpoint commits to the SAME root a claim commits to, and the log endpoint accepts it', () => {
+    const pack = buildClaim(recs, { kind: 'no_capability', capability: 'financial' }, key, 't');
+    const cp = buildRecordCheckpoint(recs, key, '2026-07-07T12:00:00Z');
+    expect(cp.record_root).toBe(pack.record.root); // cross-checkable by construction
+    expect(cp.total).toBe(pack.scope.total);
+    expect(cp.anchors).toBe('protect-mcp-record');
+    expect(endpointAccepts(cp as unknown as Record<string, unknown>)).toBe(true);
+    // tampering the count breaks the checkpoint's own signature binding
+    expect(endpointAccepts({ ...(cp as unknown as Record<string, unknown>), total: 999 })).toBe(false);
+  });
+
+  it('lookupPinnedIdentity: found / not-found / revoked / unreachable / bad key', async () => {
+    const mk = (body: unknown) => (async () => ({ ok: true, json: async () => body })) as unknown as typeof fetch;
+    const found = await lookupPinnedIdentity('a'.repeat(64), { fetchImpl: mk({ ok: true, found: true, name: 'Meridian', slug: 'meridian', enrolled_at: '2026-07-01T00:00:00Z' }) });
+    expect(found).toEqual(expect.objectContaining({ found: true, name: 'Meridian', revoked: false }));
+    const missing = await lookupPinnedIdentity('b'.repeat(64), { fetchImpl: mk({ ok: true, found: false }) });
+    expect(missing).toEqual({ found: false });
+    const revoked = await lookupPinnedIdentity('c'.repeat(64), { fetchImpl: mk({ ok: true, found: true, name: 'Old', revoked_at: '2026-07-02T00:00:00Z' }) });
+    expect(revoked!.revoked).toBe(true);
+    const down = await lookupPinnedIdentity('d'.repeat(64), { fetchImpl: (async () => { throw new Error('net'); }) as unknown as typeof fetch });
+    expect(down).toBe(null); // unknown, never a refutation
+    expect(await lookupPinnedIdentity('not-a-key', { fetchImpl: mk({}) })).toBe(null);
   });
 });

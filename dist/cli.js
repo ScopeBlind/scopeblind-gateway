@@ -5146,6 +5146,33 @@ function deriveResource(input) {
   }
   return void 0;
 }
+function findField(input, names, depth = 0) {
+  if (depth > 4 || input === null || typeof input !== "object") return void 0;
+  const o = input;
+  const keys = Object.keys(o).sort();
+  for (const k of keys) {
+    if (names.indexOf(k.toLowerCase()) >= 0 && o[k] !== void 0 && o[k] !== null) return o[k];
+  }
+  for (const k of keys) {
+    const v = findField(o[k], names, depth + 1);
+    if (v !== void 0) return v;
+  }
+  return void 0;
+}
+function derivePayment(tool, input) {
+  if (deriveCapabilities(tool, input).indexOf("payment") < 0) return void 0;
+  const p = { amount: null, asset: null, recipient_digest: null };
+  const amt = findField(input, ["amount"]);
+  if (typeof amt === "number" && Number.isFinite(amt) && amt >= 0) p.amount = amt;
+  else if (typeof amt === "string" && /^\d{1,15}(\.\d{1,18})?$/.test(amt.trim()) && amt.indexOf(".") >= 0) p.amount = parseFloat(amt);
+  const asset = findField(input, ["asset", "currency", "token"]);
+  if (typeof asset === "string" && asset.trim()) p.asset = asset.trim().slice(0, 64);
+  const to = findField(input, ["payto", "pay_to", "recipient", "destination", "to"]);
+  if (typeof to === "string" && to.trim()) p.recipient_digest = sha256Hex2(to.trim().toLowerCase());
+  const scheme = findField(input, ["scheme"]);
+  if (typeof scheme === "string" && scheme.trim()) p.scheme = scheme.trim().slice(0, 32);
+  return p;
+}
 function buildEnrichment(tool, input) {
   const e = {
     v: ENRICHMENT_VERSION,
@@ -5154,6 +5181,8 @@ function buildEnrichment(tool, input) {
   };
   const resource = deriveResource(input);
   if (resource) e.resource = resource;
+  const payment = derivePayment(tool, input);
+  if (payment) e.payment = payment;
   return e;
 }
 var ENRICHMENT_VERSION, RULES;
@@ -5162,7 +5191,7 @@ var init_receipt_enrichment = __esm({
     "use strict";
     init_sha256();
     init_utils();
-    ENRICHMENT_VERSION = 1;
+    ENRICHMENT_VERSION = 2;
     RULES = [
       { cap: "exec.shell", tool: /bash|shell|exec|terminal|run_command|command/ },
       { cap: "fs.read", tool: /(^|[_.])(read|cat|glob|grep|search|ls|view|list_files|open)/ },
@@ -5174,7 +5203,11 @@ var init_receipt_enrichment = __esm({
       { cap: "secret.adjacent", text: /\.env\b|secret|credential|passwd|password|api[_-]?key|private[_-]?key|\.pem\b|\.key\b|id_rsa|bearer\s|aws_(access|secret)|authorization/ },
       { cap: "destructive", text: /rm\s+-[a-z]*[rf]|\brmdir\b|drop\s+table|truncate\s+table|delete\s+from|reset\s+--hard|--force\b|\bmkfs\b|\bdd\s+if=|shutdown|reboot|kill\s+-9|>\s*\/dev\/sd/ },
       { cap: "financial", text: /\b(order|trade|buy|sell|transfer|wire|payment|withdraw|deposit|swap|invoice|charge|refund|settle)\b/ },
-      { cap: "data.query", text: /\bselect\s+[\s\S]+\bfrom\b|\binsert\s+into\b|\bupdate\s+[\s\S]+\bset\b|\bdelete\s+from\b/ }
+      { cap: "data.query", text: /\bselect\s+[\s\S]+\bfrom\b|\binsert\s+into\b|\bupdate\s+[\s\S]+\bset\b|\bdelete\s+from\b/ },
+      // Agent payments (x402 / value transfer). Deliberately BROAD: a false positive
+      // only makes a `claim --no payment` harder to assert (conservative); a false
+      // negative would let a real payment escape the record's payment claims.
+      { cap: "payment", tool: /(^|[_.-])(pay|payment|x402|checkout)($|[_.-])|wallet.*send|send.*payment/, text: /x402|x-payment|paymentrequirements|maxamountrequired|payto|"pay_to"|eip-3009|transferwithauthorization|payment_intent|send_payment|create_payment/ }
     ];
   }
 });
@@ -5183,15 +5216,19 @@ var init_receipt_enrichment = __esm({
 var claim_exports = {};
 __export(claim_exports, {
   ANCHOR_SCHEMA: () => ANCHOR_SCHEMA,
+  CHECKPOINT_SCHEMA: () => CHECKPOINT_SCHEMA,
   CLAIM_TYPE: () => CLAIM_TYPE,
   DEFAULT_LOG: () => DEFAULT_LOG,
   anchorClaim: () => anchorClaim,
+  anchorRecordCheckpoint: () => anchorRecordCheckpoint,
   buildAnchorEnvelope: () => buildAnchorEnvelope,
   buildClaim: () => buildClaim,
+  buildRecordCheckpoint: () => buildRecordCheckpoint,
   checkClaimAnchor: () => checkClaimAnchor,
   claimDigest: () => claimDigest,
   evaluate: () => evaluate,
   leafHash: () => leafHash,
+  lookupPinnedIdentity: () => lookupPinnedIdentity,
   merkleRoot: () => merkleRoot,
   receiptToLeaf: () => receiptToLeaf,
   verifyAnchorEnvelope: () => verifyAnchorEnvelope,
@@ -5211,7 +5248,13 @@ function receiptToLeaf(e) {
   const ms = typeof tsRaw === "number" ? tsRaw : typeof tsRaw === "string" ? Date.parse(tsRaw) : NaN;
   const t = isFinite(ms) ? new Date(ms).toISOString() : "";
   const d = sha256Hex3(canonicalJson(e));
-  return { d, v, c, t };
+  const leaf = { d, v, c, t };
+  const pay = enr && enr.payment;
+  if (pay && typeof pay === "object") {
+    const amt = pay.amount;
+    leaf.p = typeof amt === "number" && Number.isFinite(amt) ? amt : null;
+  }
+  return leaf;
 }
 function leafHash(leaf) {
   return sha256Hex3(canonicalJson(leaf));
@@ -5243,6 +5286,10 @@ function evaluate(pred, leaves) {
   if (pred.kind === "no_verdict") {
     const matched2 = leaves.filter((l) => l.v === pred.verdict).length;
     return { statement: `No action was ${pred.verdict}`, holds: matched2 === 0, matched: matched2 };
+  }
+  if (pred.kind === "payment_under") {
+    const matched2 = leaves.filter((l) => "p" in l && (l.p === null || l.p >= pred.cap)).length;
+    return { statement: `Every payment stayed under ${pred.cap} (unknown amounts count as over)`, holds: matched2 === 0, matched: matched2 };
   }
   const matched = leaves.filter((l) => l.v === pred.verdict).length;
   return { statement: `${matched} action${matched === 1 ? " was" : "s were"} ${pred.verdict}`, holds: true, matched };
@@ -5408,11 +5455,9 @@ async function checkClaimAnchor(pack, sidecar, opts) {
     return out;
   }
 }
-async function anchorClaim(pack, key, opts) {
-  const envelope = buildAnchorEnvelope(pack, key, opts.issuedAt);
-  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
-  const doFetch = opts.fetchImpl || globalThis.fetch;
-  if (!doFetch) return { ok: false, claim_digest: envelope.claim_digest, error: "fetch_unavailable", envelope };
+async function submitEnvelope(envelope, base, fetchImpl) {
+  const doFetch = fetchImpl || globalThis.fetch;
+  if (!doFetch) return { ok: false, error: "fetch_unavailable" };
   const encoded = toBase64(new TextEncoder().encode(JSON.stringify(envelope)));
   try {
     const resp = await doFetch(`${base}/fn/log/anchor-pack`, {
@@ -5422,22 +5467,86 @@ async function anchorClaim(pack, key, opts) {
     });
     const data = await resp.json().catch(() => null);
     if (!resp.ok || !data || !data.ok || typeof data.seq !== "number") {
-      return { ok: false, claim_digest: envelope.claim_digest, error: data && data.error || `http_${resp.status}`, envelope };
+      return { ok: false, error: data && data.error || `http_${resp.status}` };
     }
-    return {
-      ok: true,
-      claim_digest: envelope.claim_digest,
-      seq: data.seq,
-      entry_url: `${base}/fn/log/${data.seq}`,
-      anchored_at: data.anchored_at,
-      already_anchored: !!data.already_anchored,
-      envelope
-    };
+    return { ok: true, seq: data.seq, anchored_at: data.anchored_at, already_anchored: !!data.already_anchored };
   } catch {
-    return { ok: false, claim_digest: envelope.claim_digest, error: "network_error", envelope };
+    return { ok: false, error: "network_error" };
   }
 }
-var CLAIM_TYPE, ANCHOR_SCHEMA, DEFAULT_LOG;
+async function anchorClaim(pack, key, opts) {
+  const envelope = buildAnchorEnvelope(pack, key, opts.issuedAt);
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
+  const out = await submitEnvelope(envelope, base, opts.fetchImpl);
+  if (!out.ok) return { ok: false, claim_digest: envelope.claim_digest, error: out.error, envelope };
+  return {
+    ok: true,
+    claim_digest: envelope.claim_digest,
+    seq: out.seq,
+    entry_url: `${base}/fn/log/${out.seq}`,
+    anchored_at: out.anchored_at,
+    already_anchored: out.already_anchored,
+    envelope
+  };
+}
+function buildRecordCheckpoint(receipts, key, issuedAt) {
+  const leaves = receipts.map(receiptToLeaf);
+  const times = leaves.map((l) => l.t).filter(Boolean).sort();
+  const signed = {
+    type: "evidence_pack",
+    schema: CHECKPOINT_SCHEMA,
+    anchors: "protect-mcp-record",
+    record_root: merkleRoot(leaves.map(leafHash)),
+    total: leaves.length,
+    from: times[0] || "",
+    to: times[times.length - 1] || "",
+    issued_at: issuedAt,
+    verification_key: key.publicKey,
+    disclosure: "internal"
+  };
+  const hash = sha2562(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  const digest = bytesToHex(hash);
+  const signature = bytesToHex(ed25519.sign(hash, hexToBytes(key.privateKey)));
+  return { ...signed, signature, digest };
+}
+async function anchorRecordCheckpoint(receipts, key, opts) {
+  const checkpoint = buildRecordCheckpoint(receipts, key, opts.issuedAt);
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
+  const out = await submitEnvelope(checkpoint, base, opts.fetchImpl);
+  if (!out.ok) return { ok: false, record_root: checkpoint.record_root, total: checkpoint.total, checkpoint, error: out.error };
+  return {
+    ok: true,
+    record_root: checkpoint.record_root,
+    total: checkpoint.total,
+    seq: out.seq,
+    entry_url: `${base}/fn/log/${out.seq}`,
+    anchored_at: out.anchored_at,
+    already_anchored: out.already_anchored,
+    checkpoint
+  };
+}
+async function lookupPinnedIdentity(publicKey, opts) {
+  const base = (opts && opts.log || DEFAULT_LOG).replace(/\/+$/, "");
+  const doFetch = opts && opts.fetchImpl || globalThis.fetch;
+  if (!doFetch || !/^[0-9a-f]{64}$/i.test(publicKey)) return null;
+  try {
+    const resp = await doFetch(`${base}/fn/log/keys/lookup/${publicKey.toLowerCase()}`, { headers: { accept: "application/json" } });
+    const data = await resp.json().catch(() => null);
+    if (!data || data.ok !== true) return null;
+    if (!data.found) return { found: false };
+    return {
+      found: true,
+      name: data.name,
+      slug: data.slug,
+      kid: data.kid,
+      enrolled_at: data.enrolled_at,
+      revoked: !!(data.revoked || data.revoked_at)
+    };
+  } catch {
+    return null;
+  }
+}
+var CLAIM_TYPE, ANCHOR_SCHEMA, DEFAULT_LOG, CHECKPOINT_SCHEMA;
 var init_claim = __esm({
   "src/claim.ts"() {
     "use strict";
@@ -5448,6 +5557,7 @@ var init_claim = __esm({
     CLAIM_TYPE = "scopeblind.claim.v1";
     ANCHOR_SCHEMA = "scopeblind.protect-mcp.anchor.v1";
     DEFAULT_LOG = "https://scopeblind.com";
+    CHECKPOINT_SCHEMA = "scopeblind.protect-mcp.record-checkpoint.v1";
   }
 });
 
@@ -8711,8 +8821,12 @@ Commands:
   digest            Generate a human-readable summary of agent activity
   receipts          Show recent persisted signed receipts
   record            Open a local, searchable view of your record in the browser
-  claim             Attest a signed, position-blind claim over your record (e.g. no egress)
-  verify-claim      Verify a claim attestation offline (signature + predicate + commitment)
+  claim             Attest a signed, position-blind claim over your record (e.g. no egress,
+                    no payment, every payment under a cap)
+  verify-claim      Verify a claim attestation offline (signature + predicate + commitment
+                    + the anchor sidecar and issuer identity when present)
+  anchor-record     Checkpoint the record's Merkle root + count into the public log
+                    (heartbeat-friendly: skips when unchanged; only hashes leave)
   bundle            Export an offline-verifiable audit bundle
 
 Examples:
@@ -10889,20 +11003,23 @@ async function handleClaim(argv) {
   const di = argv.indexOf("--dir");
   if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
   let predicate = null;
-  const noIdx = argv.indexOf("--no"), onlyIdx = argv.indexOf("--only"), nvIdx = argv.indexOf("--no-verdict"), cvIdx = argv.indexOf("--count");
+  const noIdx = argv.indexOf("--no"), onlyIdx = argv.indexOf("--only"), nvIdx = argv.indexOf("--no-verdict"), cvIdx = argv.indexOf("--count"), puIdx = argv.indexOf("--payment-under");
   if (noIdx !== -1 && argv[noIdx + 1]) predicate = { kind: "no_capability", capability: argv[noIdx + 1] };
   else if (onlyIdx !== -1 && argv[onlyIdx + 1]) predicate = { kind: "only_capabilities", capabilities: argv[onlyIdx + 1].split(",").map((s) => s.trim()).filter(Boolean) };
   else if (nvIdx !== -1 && argv[nvIdx + 1]) predicate = { kind: "no_verdict", verdict: argv[nvIdx + 1] };
   else if (cvIdx !== -1 && argv[cvIdx + 1]) predicate = { kind: "count_verdict", verdict: argv[cvIdx + 1] };
+  else if (puIdx !== -1 && argv[puIdx + 1] && isFinite(parseFloat(argv[puIdx + 1]))) predicate = { kind: "payment_under", cap: parseFloat(argv[puIdx + 1]) };
   if (!predicate) {
     process.stderr.write(`
 ${bold("protect-mcp claim")}
 
 Attest a signed, position-blind claim over your record:
-  --no <capability>        no action used it, e.g. ${dim("--no net.egress")}
+  --no <capability>        no action used it, e.g. ${dim("--no net.egress")} or ${dim("--no payment")}
   --only <c1,c2,...>       all actions confined to these capabilities
   --no-verdict <verdict>   e.g. ${dim("--no-verdict blocked")}
   --count <verdict>        how many, e.g. ${dim("--count blocked")}
+  --payment-under <cap>    every agent payment stayed under the cap (amounts the
+                           gate could not read count as OVER, so this cannot lie)
   --anchor                 also record the claim digest in the public append-only
                            log so a counterparty can trust it is complete (only the
                            hash is sent; your record stays local)
@@ -11005,14 +11122,150 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
 `);
       process.stdout.write(`  ${dim("Anchor record written to " + sidecar + ". Only the digest was sent; your record stayed local.")}
 `);
-      process.stdout.write(`  ${dim("To anchor as your enrolled org identity (a key a counterparty can pin), see")} ${bold("scopeblind.com/enroll")}
+      const { lookupPinnedIdentity: lookupPinnedIdentity2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
+      const who = await lookupPinnedIdentity2(key.publicKey, { log: logBase });
+      if (who && who.found && !who.revoked) {
+        process.stdout.write(`  ${green("Identity:")} anchored as ${bold(who.name || who.slug || "enrolled org")} ${dim("(key pinned in the ScopeBlind directory" + (who.enrolled_at ? ", enrolled " + who.enrolled_at.slice(0, 10) : "") + ")")}
 `);
+      } else if (who && who.found && who.revoked) {
+        process.stdout.write(`  ${red("Identity: this key is REVOKED in the ScopeBlind directory.")}
+`);
+      } else {
+        process.stdout.write(`  ${dim("Identity: anonymous (key not enrolled). To anchor as a named org a counterparty can pin, see")} ${bold("scopeblind.com/enroll")}
+`);
+      }
     } else {
       process.stdout.write(`  ${yellow("Anchor skipped")} ${dim("(" + (res.error || "unavailable") + "). The claim above is complete and verifiable offline without it.")}
 `);
     }
   }
   process.stdout.write(`
+`);
+  process.exit(0);
+}
+async function handleAnchorRecord(argv) {
+  const { readFileSync: readFileSync11, existsSync: existsSync9, appendFileSync: appendFileSync3 } = await import("fs");
+  const { join: join8 } = await import("path");
+  const { anchorRecordCheckpoint: anchorRecordCheckpoint2, buildRecordCheckpoint: buildRecordCheckpoint2, lookupPinnedIdentity: lookupPinnedIdentity2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
+  let dir = process.cwd();
+  const di = argv.indexOf("--dir");
+  if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
+  const li = argv.indexOf("--log");
+  const logBase = li !== -1 && argv[li + 1] ? argv[li + 1] : void 0;
+  const keyPath = join8(dir, "keys", "gateway.json");
+  if (!existsSync9(keyPath)) {
+    process.stderr.write(`
+${bold("protect-mcp anchor-record")}
+
+No signing key at ${keyPath}. A checkpoint must be signed. Run ${bold("npx protect-mcp init")} first.
+
+`);
+    process.exit(1);
+    return;
+  }
+  let key;
+  try {
+    key = JSON.parse(readFileSync11(keyPath, "utf-8"));
+  } catch {
+    process.stderr.write(`
+protect-mcp anchor-record: ${keyPath} is not valid JSON.
+
+`);
+    process.exit(1);
+    return;
+  }
+  if (!key.privateKey || !key.publicKey) {
+    process.stderr.write(`
+protect-mcp anchor-record: ${keyPath} is missing privateKey/publicKey.
+
+`);
+    process.exit(1);
+    return;
+  }
+  const recPath = join8(dir, ".protect-mcp-receipts.jsonl");
+  if (!existsSync9(recPath)) {
+    process.stderr.write(`
+${bold("protect-mcp anchor-record")}
+
+No signed receipts in ${dir}. Run the gate with signing on, then try again.
+
+`);
+    process.exit(0);
+    return;
+  }
+  const receipts = readFileSync11(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+    try {
+      return JSON.parse(l);
+    } catch {
+      return null;
+    }
+  }).filter((x) => x !== null);
+  if (!receipts.length) {
+    process.stderr.write(`
+protect-mcp anchor-record: no readable receipts in ${recPath}.
+
+`);
+    process.exit(0);
+    return;
+  }
+  const claimKey = { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || "gateway", issuer: "protect-mcp" };
+  const historyPath = join8(dir, ".protect-mcp-anchors.jsonl");
+  const preview = buildRecordCheckpoint2(receipts, claimKey, "preview");
+  if (!argv.includes("--force") && existsSync9(historyPath)) {
+    const lines = readFileSync11(historyPath, "utf-8").split(/\r?\n/).filter(Boolean);
+    const last = lines.length ? (() => {
+      try {
+        return JSON.parse(lines[lines.length - 1]);
+      } catch {
+        return null;
+      }
+    })() : null;
+    if (last && last.record_root === preview.record_root && last.total === preview.total) {
+      process.stdout.write(`
+${bold("\u{1F6E1}\uFE0F  Record checkpoint")}
+`);
+      process.stdout.write(`  Unchanged since entry ${bold("#" + last.seq)} ${dim("(" + last.total + " receipts, anchored " + (last.anchored_at || "") + ")")}. Nothing new to anchor.
+`);
+      process.stdout.write(`  ${dim("Use --force to re-anchor anyway.")}
+
+`);
+      process.exit(0);
+      return;
+    }
+  }
+  const res = await anchorRecordCheckpoint2(receipts, claimKey, { log: logBase, issuedAt: (/* @__PURE__ */ new Date()).toISOString() });
+  process.stdout.write(`
+${bold("\u{1F6E1}\uFE0F  Record checkpoint")}
+`);
+  process.stdout.write(`  ${res.total} receipts ${dim("\xB7")} root ${dim(res.record_root.slice(0, 16) + "\u2026")} ${dim("(" + res.checkpoint.from.slice(0, 10) + " \u2192 " + res.checkpoint.to.slice(0, 10) + ")")}
+`);
+  if (!res.ok) {
+    process.stdout.write(`  ${yellow("Anchor failed")} ${dim("(" + (res.error || "unavailable") + "). Nothing was recorded; try again.")}
+
+`);
+    process.exit(1);
+    return;
+  }
+  appendFileSync3(historyPath, JSON.stringify({ schema: res.checkpoint.schema, seq: res.seq, anchored_at: res.anchored_at, total: res.total, record_root: res.record_root, entry_url: res.entry_url, digest: res.checkpoint.digest }) + "\n");
+  process.stdout.write(`  ${green("Anchored")} as log entry ${bold("#" + res.seq)}  ${dim(res.entry_url || "")}
+`);
+  process.stdout.write(`  ${dim("Only the root, count, and time range were sent. History: " + historyPath)}
+`);
+  const who = await lookupPinnedIdentity2(claimKey.publicKey, { log: logBase });
+  if (who && who.found && !who.revoked) {
+    process.stdout.write(`  ${green("Identity:")} anchored as ${bold(who.name || who.slug || "enrolled org")} ${dim("(key pinned in the ScopeBlind directory)")}
+`);
+  } else if (who && who.found && who.revoked) {
+    process.stdout.write(`  ${red("Identity: this key is REVOKED in the ScopeBlind directory.")}
+`);
+  } else {
+    process.stdout.write(`  ${dim("Identity: anonymous (key not enrolled). Named identity: scopeblind.com/enroll")}
+`);
+  }
+  process.stdout.write(`  ${dim("A claim whose commitment matches this root is provably over the complete record as of")}
+`);
+  process.stdout.write(`  ${dim("this checkpoint. Run this on a heartbeat (e.g. cron) to keep the anchored history growing.")}
+
 `);
   process.exit(0);
 }
@@ -11101,6 +11354,21 @@ ${bold("protect-mcp verify-claim")}
       } else if (a.local_ok) {
         process.stdout.write(`              ${yellow("~")} log not checked ${dim(argv.includes("--offline") ? "(--offline)" : "(unreachable; local binding checks stand)")}
 `);
+      }
+      if (!argv.includes("--offline") && sidecar.envelope) {
+        const { lookupPinnedIdentity: lookupPinnedIdentity2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
+        const who = await lookupPinnedIdentity2(sidecar.envelope.verification_key, {});
+        if (who && who.found && !who.revoked) {
+          process.stdout.write(`              ${green("\u2713")} issuer key pinned to ${bold(who.name || who.slug || "an enrolled org")} ${dim("(ScopeBlind key directory)")}
+`);
+        } else if (who && who.found && who.revoked) {
+          anchorOk = false;
+          process.stdout.write(`              ${red("\u2717")} issuer key is REVOKED in the ScopeBlind key directory
+`);
+        } else if (who && !who.found) {
+          process.stdout.write(`              ${dim("issuer key not enrolled (anonymous issuer); named identities pin via scopeblind.com/enroll")}
+`);
+        }
       }
     }
   } else if (requireAnchor) {
@@ -12627,6 +12895,10 @@ async function main() {
   }
   if (args[0] === "verify-claim") {
     await handleVerifyClaim(args.slice(1));
+    return;
+  }
+  if (args[0] === "anchor-record") {
+    await handleAnchorRecord(args.slice(1));
     return;
   }
   if (args[0] === "init-hooks") {

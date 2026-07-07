@@ -40,13 +40,22 @@ export interface ClaimLeaf {
   c: string[];
   /** ISO timestamp. */
   t: string;
+  /**
+   * Payment amount, present ONLY on rows the gate tagged as a payment:
+   * a number when the amount was clearly readable at gate time, null when a
+   * payment happened but its amount was not derivable (atomic units, unknown
+   * decimals). Still position-blind: an amount is a category-level fact; the
+   * recipient stays a hash and never appears in a leaf.
+   */
+  p?: number | null;
 }
 
 export type ClaimPredicate =
   | { kind: 'no_capability'; capability: string }
   | { kind: 'only_capabilities'; capabilities: string[] }
   | { kind: 'no_verdict'; verdict: Verdict }
-  | { kind: 'count_verdict'; verdict: Verdict };
+  | { kind: 'count_verdict'; verdict: Verdict }
+  | { kind: 'payment_under'; cap: number };
 
 export interface ClaimResult { statement: string; holds: boolean; matched: number; }
 
@@ -78,7 +87,13 @@ export function receiptToLeaf(e: Record<string, unknown>): ClaimLeaf {
   const ms = typeof tsRaw === 'number' ? tsRaw : (typeof tsRaw === 'string' ? Date.parse(tsRaw) : NaN);
   const t = isFinite(ms) ? new Date(ms).toISOString() : '';
   const d = sha256Hex(canonicalJson(e));
-  return { d, v, c, t };
+  const leaf: ClaimLeaf = { d, v, c, t };
+  const pay = enr && (enr as { payment?: { amount?: unknown } }).payment;
+  if (pay && typeof pay === 'object') {
+    const amt = (pay as { amount?: unknown }).amount;
+    leaf.p = typeof amt === 'number' && Number.isFinite(amt) ? amt : null;
+  }
+  return leaf;
 }
 
 export function leafHash(leaf: ClaimLeaf): string {
@@ -114,6 +129,12 @@ export function evaluate(pred: ClaimPredicate, leaves: ClaimLeaf[]): ClaimResult
   if (pred.kind === 'no_verdict') {
     const matched = leaves.filter((l) => l.v === pred.verdict).length;
     return { statement: `No action was ${pred.verdict}`, holds: matched === 0, matched };
+  }
+  if (pred.kind === 'payment_under') {
+    // A payment row violates when its amount reached the cap OR was not
+    // readable at gate time: you cannot prove an unknown amount stayed under.
+    const matched = leaves.filter((l) => 'p' in l && (l.p === null || (l.p as number) >= pred.cap)).length;
+    return { statement: `Every payment stayed under ${pred.cap} (unknown amounts count as over)`, holds: matched === 0, matched };
   }
   // count_verdict
   const matched = leaves.filter((l) => l.v === pred.verdict).length;
@@ -389,16 +410,12 @@ export async function checkClaimAnchor(
   }
 }
 
-/** Anchor a claim by POSTing its signed envelope to the transparency log. Sends only hashes. */
-export async function anchorClaim(
-  pack: ClaimPack,
-  key: ClaimKey,
-  opts: { log?: string; issuedAt: string; fetchImpl?: typeof fetch },
-): Promise<AnchorResult> {
-  const envelope = buildAnchorEnvelope(pack, key, opts.issuedAt);
-  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, '');
-  const doFetch = opts.fetchImpl || (globalThis.fetch as typeof fetch | undefined);
-  if (!doFetch) return { ok: false, claim_digest: envelope.claim_digest, error: 'fetch_unavailable', envelope };
+interface SubmitOutcome { ok: boolean; seq?: number; anchored_at?: string; already_anchored?: boolean; error?: string; }
+
+/** POST a signed envelope to the log's anchor endpoint. Sends only the envelope (hashes + public facts). */
+async function submitEnvelope(envelope: object, base: string, fetchImpl?: typeof fetch): Promise<SubmitOutcome> {
+  const doFetch = fetchImpl || (globalThis.fetch as typeof fetch | undefined);
+  if (!doFetch) return { ok: false, error: 'fetch_unavailable' };
   const encoded = toBase64(new TextEncoder().encode(JSON.stringify(envelope)));
   try {
     const resp = await doFetch(`${base}/fn/log/anchor-pack`, {
@@ -410,18 +427,152 @@ export async function anchorClaim(
       | { ok?: boolean; seq?: number; anchored_at?: string; already_anchored?: boolean; error?: string }
       | null;
     if (!resp.ok || !data || !data.ok || typeof data.seq !== 'number') {
-      return { ok: false, claim_digest: envelope.claim_digest, error: (data && data.error) || `http_${resp.status}`, envelope };
+      return { ok: false, error: (data && data.error) || `http_${resp.status}` };
     }
+    return { ok: true, seq: data.seq, anchored_at: data.anchored_at, already_anchored: !!data.already_anchored };
+  } catch {
+    return { ok: false, error: 'network_error' };
+  }
+}
+
+/** Anchor a claim by POSTing its signed envelope to the transparency log. Sends only hashes. */
+export async function anchorClaim(
+  pack: ClaimPack,
+  key: ClaimKey,
+  opts: { log?: string; issuedAt: string; fetchImpl?: typeof fetch },
+): Promise<AnchorResult> {
+  const envelope = buildAnchorEnvelope(pack, key, opts.issuedAt);
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, '');
+  const out = await submitEnvelope(envelope, base, opts.fetchImpl);
+  if (!out.ok) return { ok: false, claim_digest: envelope.claim_digest, error: out.error, envelope };
+  return {
+    ok: true,
+    claim_digest: envelope.claim_digest,
+    seq: out.seq,
+    entry_url: `${base}/fn/log/${out.seq}`,
+    anchored_at: out.anchored_at,
+    already_anchored: out.already_anchored,
+    envelope,
+  };
+}
+
+// ── Record checkpoints: continuous completeness (heartbeat anchoring) ──────────
+// Anchoring a CLAIM proves that claim existed; it does not prove receipts were
+// not quietly dropped before the claim was minted. A checkpoint anchors the
+// record's CURRENT commitment (the same Merkle root a claim over the same set
+// commits to, plus the count and time range) into the public log. Run it on a
+// heartbeat and the record grows an anchored history: a later claim whose root
+// matches an anchored checkpoint is provably over the complete set as of that
+// checkpoint. Only the root, count, and time range leave the machine.
+export const CHECKPOINT_SCHEMA = 'scopeblind.protect-mcp.record-checkpoint.v1';
+
+export interface RecordCheckpoint {
+  type: 'evidence_pack'; // the log's generic signed-submission wire type
+  schema: string;
+  anchors: 'protect-mcp-record';
+  /** Same computation as ClaimPack.record.root over the same receipts. */
+  record_root: string;
+  total: number;
+  from: string;
+  to: string;
+  issued_at: string;
+  verification_key: string;
+  disclosure: 'internal';
+  signature: string;
+  digest: string;
+}
+
+export function buildRecordCheckpoint(receipts: Array<Record<string, unknown>>, key: ClaimKey, issuedAt: string): RecordCheckpoint {
+  const leaves = receipts.map(receiptToLeaf);
+  const times = leaves.map((l) => l.t).filter(Boolean).sort();
+  const signed = {
+    type: 'evidence_pack' as const,
+    schema: CHECKPOINT_SCHEMA,
+    anchors: 'protect-mcp-record' as const,
+    record_root: merkleRoot(leaves.map(leafHash)),
+    total: leaves.length,
+    from: times[0] || '',
+    to: times[times.length - 1] || '',
+    issued_at: issuedAt,
+    verification_key: key.publicKey,
+    disclosure: 'internal' as const,
+  };
+  const hash = sha256(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  const digest = bytesToHex(hash);
+  const signature = bytesToHex(ed25519.sign(hash, hexToBytes(key.privateKey)));
+  return { ...signed, signature, digest };
+}
+
+export interface CheckpointResult {
+  ok: boolean;
+  record_root: string;
+  total: number;
+  seq?: number;
+  entry_url?: string;
+  anchored_at?: string;
+  already_anchored?: boolean;
+  checkpoint: RecordCheckpoint;
+  error?: string;
+}
+
+/** Build + anchor a record checkpoint. Sends only the root, count, and time range. */
+export async function anchorRecordCheckpoint(
+  receipts: Array<Record<string, unknown>>,
+  key: ClaimKey,
+  opts: { log?: string; issuedAt: string; fetchImpl?: typeof fetch },
+): Promise<CheckpointResult> {
+  const checkpoint = buildRecordCheckpoint(receipts, key, opts.issuedAt);
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, '');
+  const out = await submitEnvelope(checkpoint, base, opts.fetchImpl);
+  if (!out.ok) return { ok: false, record_root: checkpoint.record_root, total: checkpoint.total, checkpoint, error: out.error };
+  return {
+    ok: true,
+    record_root: checkpoint.record_root,
+    total: checkpoint.total,
+    seq: out.seq,
+    entry_url: `${base}/fn/log/${out.seq}`,
+    anchored_at: out.anchored_at,
+    already_anchored: out.already_anchored,
+    checkpoint,
+  };
+}
+
+// ── Pinned identity: is this key enrolled in the public key directory? ─────────
+// The free anchor is anonymous (a timestamp, not an identity). Enrolling a key
+// (scopeblind.com/enroll) upgrades it: a counterparty resolves the key to a
+// named org they can pin. This lookup is read-only and public.
+export interface PinnedIdentity {
+  found: boolean;
+  name?: string;
+  slug?: string;
+  kid?: string;
+  enrolled_at?: string;
+  revoked?: boolean;
+}
+
+export async function lookupPinnedIdentity(
+  publicKey: string,
+  opts?: { log?: string; fetchImpl?: typeof fetch },
+): Promise<PinnedIdentity | null> {
+  const base = ((opts && opts.log) || DEFAULT_LOG).replace(/\/+$/, '');
+  const doFetch = (opts && opts.fetchImpl) || (globalThis.fetch as typeof fetch | undefined);
+  if (!doFetch || !/^[0-9a-f]{64}$/i.test(publicKey)) return null;
+  try {
+    const resp = await doFetch(`${base}/fn/log/keys/lookup/${publicKey.toLowerCase()}`, { headers: { accept: 'application/json' } });
+    const data = (await resp.json().catch(() => null)) as
+      | { ok?: boolean; found?: boolean; name?: string; slug?: string; kid?: string; enrolled_at?: string; revoked?: boolean; revoked_at?: string | null }
+      | null;
+    if (!data || data.ok !== true) return null;
+    if (!data.found) return { found: false };
     return {
-      ok: true,
-      claim_digest: envelope.claim_digest,
-      seq: data.seq,
-      entry_url: `${base}/fn/log/${data.seq}`,
-      anchored_at: data.anchored_at,
-      already_anchored: !!data.already_anchored,
-      envelope,
+      found: true,
+      name: data.name,
+      slug: data.slug,
+      kid: data.kid,
+      enrolled_at: data.enrolled_at,
+      revoked: !!(data.revoked || data.revoked_at),
     };
   } catch {
-    return { ok: false, claim_digest: envelope.claim_digest, error: 'network_error', envelope };
+    return null; // unreachable directory is "unknown", never a refutation
   }
 }
