@@ -173,6 +173,12 @@ export function signDecision(entry: DecisionLog): {
       // - self-signed          = signed with local Ed25519 key (free tier, protect-mcp default)
       // - uncertified          = unsigned receipt (shadow mode, no signing configured)
       issuer_certification: signerState ? 'self-signed' : 'uncertified',
+      // The signer's PUBLIC key, inside the signed payload, so a receipt is
+      // self-contained: any verifier (including the record viewer, in-browser)
+      // can check the signature without a side channel. Binding the key inside
+      // the signature means it cannot be swapped without breaking the signature;
+      // authenticity (that the key is YOUR gate's) still comes from pinning it.
+      public_key: signerState.publicKey,
     };
 
     if (entry.tier) payload.tier = entry.tier;

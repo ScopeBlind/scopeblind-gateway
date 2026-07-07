@@ -276,6 +276,119 @@ export interface AnchorResult {
   error?: string;
 }
 
+// ── Anchor verification: the counterparty side of --anchor ─────────────────────
+// A verifier holding the claim pack + its .anchor.json sidecar can check, without
+// trusting the issuer: (a) the anchored envelope binds THIS exact claim (its
+// digest and record root), (b) the envelope's own signature verifies and was made
+// by the same key that signed the claim, and (c) the public log really holds the
+// envelope digest at the recorded position. (a)+(b) are pure/offline; (c) needs
+// one GET to the log.
+
+/** The .anchor.json sidecar written by `claim --anchor`. */
+export interface AnchorSidecar {
+  log?: string;
+  seq?: number;
+  entry_url?: string;
+  anchored_at?: string;
+  claim_digest?: string;
+  envelope?: AnchorEnvelope;
+}
+
+/** Pure, offline: does this anchored envelope bind this exact claim pack? */
+export function verifyAnchorEnvelope(pack: ClaimPack, envelope: AnchorEnvelope): { ok: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  if (!envelope || envelope.type !== 'evidence_pack' || envelope.anchors !== 'protect-mcp-claim') {
+    return { ok: false, reasons: ['sidecar does not contain a protect-mcp claim anchor envelope'] };
+  }
+  const expected = claimDigest(pack);
+  if (envelope.claim_digest !== expected) {
+    reasons.push('anchored envelope binds a DIFFERENT claim (claim_digest mismatch)');
+  }
+  if (envelope.record_root !== pack.record.root) {
+    reasons.push('anchored envelope commits to a different record root');
+  }
+  if (pack.issuer && envelope.verification_key !== pack.issuer.publicKey) {
+    reasons.push('anchor was signed by a different key than the claim issuer');
+  }
+  // Recompute the envelope digest + signature exactly as the log endpoint does.
+  try {
+    const { signature, digest, ...signed } = envelope as unknown as Record<string, unknown>;
+    const hash = sha256(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+    if (bytesToHex(hash) !== String(digest).toLowerCase()) {
+      reasons.push('envelope digest does not match its contents');
+    } else if (!ed25519.verify(hexToBytes(String(signature)), hash, hexToBytes(envelope.verification_key))) {
+      reasons.push('envelope signature does not verify');
+    }
+  } catch {
+    reasons.push('envelope signature does not verify');
+  }
+  return { ok: reasons.length === 0, reasons };
+}
+
+export interface AnchorCheck {
+  /** Local (offline) binding checks: envelope binds this claim and is authentic. */
+  local_ok: boolean;
+  /** Log confirmation: true/false when the log answered, null when unreachable. */
+  log_ok: boolean | null;
+  seq?: number;
+  anchored_at?: string;
+  entry_url?: string;
+  reasons: string[];
+}
+
+/** Verify a claim's anchor sidecar offline, then confirm against the public log. */
+export async function checkClaimAnchor(
+  pack: ClaimPack,
+  sidecar: AnchorSidecar,
+  opts?: { fetchImpl?: typeof fetch; offline?: boolean },
+): Promise<AnchorCheck> {
+  const reasons: string[] = [];
+  const envelope = sidecar && sidecar.envelope;
+  if (!envelope) {
+    return { local_ok: false, log_ok: null, reasons: ['sidecar has no anchor envelope'] };
+  }
+  const local = verifyAnchorEnvelope(pack, envelope);
+  reasons.push(...local.reasons);
+
+  const base = (sidecar.log || DEFAULT_LOG).replace(/\/+$/, '');
+  const out: AnchorCheck = {
+    local_ok: local.ok,
+    log_ok: null,
+    seq: sidecar.seq,
+    anchored_at: sidecar.anchored_at,
+    entry_url: sidecar.entry_url || (typeof sidecar.seq === 'number' ? `${base}/fn/log/${sidecar.seq}` : undefined),
+    reasons,
+  };
+  if (opts?.offline) return out;
+
+  const doFetch = opts?.fetchImpl || (globalThis.fetch as typeof fetch | undefined);
+  if (!doFetch) return out;
+  try {
+    const resp = await doFetch(`${base}/fn/log/digest/sha256:${envelope.digest}`, { headers: { accept: 'application/json' } });
+    const data = (await resp.json().catch(() => null)) as { anchored?: boolean; seq?: number; timestamp?: string } | null;
+    if (!resp.ok || !data) {
+      out.log_ok = null; // treat a malformed answer as unreachable, not as refutation
+      return out;
+    }
+    if (data.anchored !== true) {
+      out.log_ok = false;
+      out.reasons.push('the public log does not contain this anchor digest');
+      return out;
+    }
+    if (typeof sidecar.seq === 'number' && typeof data.seq === 'number' && data.seq !== sidecar.seq) {
+      out.log_ok = false;
+      out.reasons.push(`log holds the digest at entry #${data.seq}, sidecar says #${sidecar.seq}`);
+      return out;
+    }
+    out.log_ok = true;
+    if (typeof data.seq === 'number') out.seq = data.seq;
+    return out;
+  } catch {
+    out.log_ok = null; // offline is not a failure; local binding checks stand alone
+    return out;
+  }
+}
+
 /** Anchor a claim by POSTing its signed envelope to the transparency log. Sends only hashes. */
 export async function anchorClaim(
   pack: ClaimPack,

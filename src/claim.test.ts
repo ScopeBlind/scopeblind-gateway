@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { ed25519 } from '@noble/curves/ed25519';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
-import { buildClaim, verifyClaim, buildAnchorEnvelope, claimDigest, type ClaimKey } from './claim.js';
+import { buildClaim, verifyClaim, buildAnchorEnvelope, claimDigest, verifyAnchorEnvelope, checkClaimAnchor, type ClaimKey } from './claim.js';
 
 // Replicates the transparency-log endpoint's acceptance check (functions/fn/log/
 // anchor-pack.js): type gate, digest == sha256(deepSort(pack minus sig/digest/cosigs)),
@@ -132,5 +132,51 @@ describe('claim attestations', () => {
     expect(endpointAccepts(env)).toBe(true);
     expect(endpointAccepts({ ...env, claim_digest: '00'.repeat(32) })).toBe(false); // digest no longer matches signature
     expect(endpointAccepts({ ...env, verification_key: genKey().publicKey })).toBe(false); // wrong key
+  });
+
+  it('verifyAnchorEnvelope: binds the exact claim, refuses a different claim or key', () => {
+    const pack = buildClaim(recs, { kind: 'no_capability', capability: 'net.egress' }, key, 't');
+    const env = buildAnchorEnvelope(pack, key, 't2');
+    expect(verifyAnchorEnvelope(pack, env).ok).toBe(true);
+    // a DIFFERENT claim (same record) must not be bound by this envelope
+    const other = buildClaim(recs, { kind: 'no_capability', capability: 'financial' }, key, 't');
+    const vOther = verifyAnchorEnvelope(other, env);
+    expect(vOther.ok).toBe(false);
+    expect(vOther.reasons.join(' ')).toContain('claim_digest');
+    // tampered claim_digest in the envelope breaks its own signature check
+    const tampered = { ...env, claim_digest: '00'.repeat(32) };
+    expect(verifyAnchorEnvelope(pack, tampered).ok).toBe(false);
+    // an envelope signed by a stranger's key is rejected as not-the-issuer
+    const strangerEnv = buildAnchorEnvelope(pack, genKey(), 't2');
+    const vStranger = verifyAnchorEnvelope(pack, strangerEnv);
+    expect(vStranger.ok).toBe(false);
+    expect(vStranger.reasons.join(' ')).toContain('different key');
+  });
+
+  it('checkClaimAnchor: confirms via the log, refutes a missing digest, tolerates offline', async () => {
+    const pack = buildClaim(recs, { kind: 'no_capability', capability: 'net.egress' }, key, 't');
+    const env = buildAnchorEnvelope(pack, key, 't2');
+    const sidecar = { log: 'https://log.test', seq: 7, anchored_at: 't3', envelope: env };
+    const fetchOk = (async (url: string) => {
+      expect(String(url)).toBe(`https://log.test/fn/log/digest/sha256:${env.digest}`);
+      return { ok: true, json: async () => ({ ok: true, anchored: true, seq: 7 }) };
+    }) as unknown as typeof fetch;
+    const a = await checkClaimAnchor(pack, sidecar, { fetchImpl: fetchOk });
+    expect(a.local_ok).toBe(true);
+    expect(a.log_ok).toBe(true);
+    expect(a.seq).toBe(7);
+    // the log does not hold the digest -> refuted
+    const fetchMiss = (async () => ({ ok: true, json: async () => ({ ok: false, anchored: false }) })) as unknown as typeof fetch;
+    const miss = await checkClaimAnchor(pack, sidecar, { fetchImpl: fetchMiss });
+    expect(miss.log_ok).toBe(false);
+    // seq disagreement between sidecar and log -> refuted
+    const fetchSeq = (async () => ({ ok: true, json: async () => ({ ok: true, anchored: true, seq: 9 }) })) as unknown as typeof fetch;
+    const seq = await checkClaimAnchor(pack, sidecar, { fetchImpl: fetchSeq });
+    expect(seq.log_ok).toBe(false);
+    // network failure -> log_ok null, local checks stand
+    const fetchBoom = (async () => { throw new Error('offline'); }) as unknown as typeof fetch;
+    const off = await checkClaimAnchor(pack, sidecar, { fetchImpl: fetchBoom });
+    expect(off.local_ok).toBe(true);
+    expect(off.log_ok).toBe(null);
   });
 });

@@ -2185,6 +2185,19 @@ async function handleRecord(argv: string[]): Promise<void> {
     .map((l) => { try { return JSON.parse(l); } catch { return null; } })
     .filter((x) => x !== null).map(mapRecordEntry);
 
+  // The operator's PUBLIC key, so the viewer verifies signatures in-browser
+  // against YOUR gate's key (authenticity, not just self-consistency). Only the
+  // public half ever reaches the page; the private key is never read into it.
+  let pinnedKey = '';
+  let pinnedKid = '';
+  try {
+    const kd = JSON.parse(readFileSync(join(dir, 'keys', 'gateway.json'), 'utf-8'));
+    if (kd && typeof kd.publicKey === 'string' && /^[0-9a-f]{64}$/i.test(kd.publicKey)) {
+      pinnedKey = kd.publicKey;
+      pinnedKid = typeof kd.kid === 'string' ? kd.kid : '';
+    }
+  } catch { /* no key file: viewer falls back to keys embedded in receipts */ }
+
   const openTarget = (target: string): void => {
     if (argv.includes('--no-open')) return;
     const platform = process.platform;
@@ -2207,7 +2220,7 @@ async function handleRecord(argv: string[]): Promise<void> {
         res.end(JSON.stringify({ recs, signed: f === recPath }));
         return;
       }
-      const meta = { file: chosen, signed: pick() === recPath, count: 0, live: true };
+      const meta = { file: chosen, signed: pick() === recPath, count: 0, live: true, pinned_key: pinnedKey, pinned_kid: pinnedKid };
       const page = RECORD_HTML.replace('__DATA__', () => '[]').replace('__META__', () => JSON.stringify(meta));
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(page);
@@ -2227,7 +2240,7 @@ async function handleRecord(argv: string[]): Promise<void> {
 
   // ── static snapshot (default) ──
   const recs = readRecs(chosen);
-  const meta = { file: chosen, signed: chosen === recPath, count: recs.length, live: false };
+  const meta = { file: chosen, signed: chosen === recPath, count: recs.length, live: false, pinned_key: pinnedKey, pinned_kid: pinnedKid };
   const html = RECORD_HTML
     .replace('__DATA__', () => JSON.stringify(recs))
     .replace('__META__', () => JSON.stringify(meta));
@@ -2293,6 +2306,9 @@ input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9p
 .badge{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:100px}
 .badge.sgn{background:var(--gb);color:var(--g)}
 .badge.log{background:var(--paper);color:var(--faint);border:1px solid var(--line)}
+.badge.vbad{background:#fbecec;color:#b3382f;border:1px solid #edc6c2}
+.badge.vfor{background:#fbf3df;color:#8a6d1a;border:1px solid #e8d8ae}
+.stat .badk{color:#b3382f;font-weight:680}.stat .warnk{color:#8a6d1a}.stat .dim2{color:var(--faint);font-weight:400}
 .dg{font-size:10.5px;color:var(--faint);font-family:ui-monospace,Menlo,monospace}
 .when{margin-left:auto;font-size:12px;color:var(--faint);font-family:ui-monospace,Menlo,monospace}
 .det{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);font-size:12px;color:var(--soft);font-family:ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-all;display:none}
@@ -2339,6 +2355,30 @@ input{width:100%;padding:10px 13px;border:1px solid var(--line);border-radius:9p
 </div>
 <script>
 var RECORDS=__DATA__;var META=__META__;var Q="",ACT={},VIEW="list",OPEN={};var NL=String.fromCharCode(10);
+// In-browser signature verification. Mirrors @veritasacta/artifacts exactly:
+// preimage = JCS-style canonical JSON (sorted keys) of the receipt minus its
+// signature, verified with WebCrypto Ed25519. Pinned key (your keys/gateway.json
+// public half, injected by the CLI) = authenticity; key embedded in the receipt
+// payload (0.9.3+) = self-consistency. Everything runs locally.
+var VSTATE={},VDONE=false,VBUSY=false,VUNSUP=false;
+function vkey(r){return "row:"+(r.id||"")+"|"+(r.ts||"")}
+function hexb(h){h=String(h||"");var a=new Uint8Array(h.length>>1);for(var i=0;i<a.length;i++)a[i]=parseInt(h.substr(i*2,2),16);return a}
+function canon(v){return JSON.stringify(v,function(k,x){if(x&&typeof x==="object"&&!Array.isArray(x)){var s={},ks=Object.keys(x).sort();for(var i=0;i<ks.length;i++)s[ks[i]]=x[ks[i]];return s}return x})}
+async function edv(sig,msg,pub){var key=await crypto.subtle.importKey("raw",hexb(pub),{name:"Ed25519"},false,["verify"]);return crypto.subtle.verify({name:"Ed25519"},key,hexb(sig),msg)}
+async function verifyRow(r){var raw=r.raw;if(!raw||typeof raw.signature!=="string")return"unsigned";
+var rest={},k;for(k in raw)if(k!=="signature")rest[k]=raw[k];
+var msg=new TextEncoder().encode(canon(rest));
+var pin=String(META.pinned_key||"").toLowerCase();
+var emb=String((raw.payload&&raw.payload.public_key)||raw.public_key||"").toLowerCase();
+if(!/^[0-9a-f]{64}$/.test(emb))emb="";
+if(pin){if(await edv(raw.signature,msg,pin))return"ok";if(emb&&emb!==pin&&await edv(raw.signature,msg,emb))return"foreign";return"bad"}
+if(emb)return(await edv(raw.signature,msg,emb))?"ok":"bad";
+return"nokey"}
+function vsum(){var s={ok:0,bad:0,foreign:0,nokey:0};RECORDS.forEach(function(r){if(!r.signed)return;var v=VSTATE[vkey(r)];if(v&&s[v]!==undefined)s[v]++});return s}
+async function kickVerify(){if(VBUSY||VUNSUP||!(window.crypto&&crypto.subtle))return;VBUSY=true;
+try{var rows=RECORDS.slice(0,1500);for(var i=0;i<rows.length;i++){var r=rows[i],kk=vkey(r);if(VSTATE[kk])continue;
+try{VSTATE[kk]=await verifyRow(r)}catch(e){if(e&&e.name==="NotSupportedError"){VUNSUP=true;break}VSTATE[kk]="bad"}}}
+finally{VDONE=true;VBUSY=false;render()}}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function vlabel(v){return v==="allowed"?"Allowed":v==="held"?"Held":"Blocked"}
 function when(ts){if(!ts)return"";var d=new Date(ts);return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})}
@@ -2352,8 +2392,9 @@ function exportJsonl(){var rows=filtered();if(!rows.length)return;var lines=rows
 function exportMd(){var rows=filtered();if(!rows.length)return;var c=counts(rows);var head=["# Agent decision record","",rows.length+" decisions from "+META.file,c.allowed+" allowed, "+c.held+" held, "+c.blocked+" blocked, "+c.signed+" signed.","","Generated locally by protect-mcp. These are signed receipts; verify offline with npx @veritasacta/verify (our code removed).","","| When | Decision | Tool | Reason | Hook | Signed |","|---|---|---|---|---|---|"];var body=rows.slice(0,3000).map(function(r){return "| "+(r.ts||"")+" | "+vlabel(r.verdict)+" | "+String(r.tool||"").replace(/\\|/g,"/")+" | "+String(r.reason||"").replace(/\\|/g,"/")+" | "+(r.hook||"")+" | "+(r.signed?"yes":"no")+" |"});dl("protect-mcp-record-"+stamp()+".md",head.concat(body).join(NL)+NL,"text/markdown")}
 function copyAttest(){var a=document.getElementById("attest");var cmd=a?a.getAttribute("data-cmd"):"";try{navigator.clipboard&&cmd&&navigator.clipboard.writeText(cmd)}catch(e){}var b=document.getElementById("cpa");if(b){var t=b.textContent;b.textContent="Copied";setTimeout(function(){b.textContent=t},1200)}}
 function copyVerify(){var cmd="npx @veritasacta/verify";try{navigator.clipboard&&navigator.clipboard.writeText(cmd)}catch(e){}var b=document.getElementById("cpv");if(b){var t=b.textContent;b.textContent="Copied";setTimeout(function(){b.textContent=t},1200)}}
-function renderStats(){var c=counts(RECORDS);var p=[];p.push('<span class="stat"><b>'+RECORDS.length+'</b> decisions</span>');p.push('<span class="stat"><span class="dot g"></span>'+c.allowed+' allowed</span>');if(c.held)p.push('<span class="stat"><span class="dot a"></span>'+c.held+' held</span>');p.push('<span class="stat"><span class="dot r"></span>'+c.blocked+' blocked</span>');p.push('<span class="stat sig">'+c.signed+' signed, verifiable offline</span>');document.getElementById("stats").innerHTML=p.join("")}
-function renderList(rows){var html="";rows.slice(0,800).forEach(function(r){var sig=r.signed?'<span class="badge sgn">signed</span>':'<span class="badge log">log</span>';var dg=r.digest?'<span class="dg">'+esc(String(r.digest).slice(0,10))+'</span>':'';var ct=(r.caps||[]).map(function(c){return '<span class="cap">'+esc(c)+'</span>'}).join('');var rk="row:"+(r.id||"")+"|"+(r.ts||"");html+='<div class="row '+r.verdict+(OPEN[rk]?" open":"")+'" data-k="'+esc(rk)+'"><div class="top"><span class="pill '+r.verdict+'">'+vlabel(r.verdict)+"</span><b>"+esc(r.tool)+'</b><span class="tag">'+esc(r.reason)+"</span>"+ct+(r.hook?'<span class="tag">'+esc(r.hook)+"</span>":"")+sig+dg+'<span class="when">'+esc(when(r.ts))+'</span></div><div class="det">'+esc(JSON.stringify(r.raw||r,null,2))+"</div></div>"});document.getElementById("list").innerHTML=html||'<p style="color:#8a837a">No records match.</p>';}
+function renderStats(){var c=counts(RECORDS);var p=[];p.push('<span class="stat"><b>'+RECORDS.length+'</b> decisions</span>');p.push('<span class="stat"><span class="dot g"></span>'+c.allowed+' allowed</span>');if(c.held)p.push('<span class="stat"><span class="dot a"></span>'+c.held+' held</span>');p.push('<span class="stat"><span class="dot r"></span>'+c.blocked+' blocked</span>');var st;if(!c.signed){st='0 signed, verifiable offline'}else if(VUNSUP||!(window.crypto&&crypto.subtle)){st=c.signed+' signed, verifiable offline <span class="dim2">(in-browser check unavailable here; run npx protect-mcp receipts)</span>'}else if(!VDONE){st=c.signed+' signed · verifying in your browser…'}else{var s=vsum();st=s.ok+' of '+c.signed+' signatures verified in your browser';if(s.foreign)st+=' <span class="warnk">· '+s.foreign+' signed by an unpinned key</span>';if(s.bad)st+=' <span class="badk">· '+s.bad+' INVALID</span>';if(s.nokey)st+=' <span class="dim2">· '+s.nokey+' need a key to check</span>'}
+p.push('<span class="stat sig">'+st+'</span>');document.getElementById("stats").innerHTML=p.join("")}
+function renderList(rows){var html="";rows.slice(0,800).forEach(function(r){var vs=VSTATE[vkey(r)];var sig=!r.signed?'<span class="badge log">log</span>':vs==="ok"?'<span class="badge sgn">✓ verified</span>':vs==="bad"?'<span class="badge vbad">✗ invalid signature</span>':vs==="foreign"?'<span class="badge vfor">signed · unpinned key</span>':'<span class="badge sgn">signed</span>';var dg=r.digest?'<span class="dg">'+esc(String(r.digest).slice(0,10))+'</span>':'';var ct=(r.caps||[]).map(function(c){return '<span class="cap">'+esc(c)+'</span>'}).join('');var rk="row:"+(r.id||"")+"|"+(r.ts||"");html+='<div class="row '+r.verdict+(OPEN[rk]?" open":"")+'" data-k="'+esc(rk)+'"><div class="top"><span class="pill '+r.verdict+'">'+vlabel(r.verdict)+"</span><b>"+esc(r.tool)+'</b><span class="tag">'+esc(r.reason)+"</span>"+ct+(r.hook?'<span class="tag">'+esc(r.hook)+"</span>":"")+sig+dg+'<span class="when">'+esc(when(r.ts))+'</span></div><div class="det">'+esc(JSON.stringify(r.raw||r,null,2))+"</div></div>"});document.getElementById("list").innerHTML=html||'<p style="color:#8a837a">No records match.</p>';}
 function isLifecycle(r){var h=r.hook||"";return h==="SessionStart"||h==="SessionEnd"||h==="Stop"||h==="SubagentStart"||h==="SubagentStop"||h==="TaskCreated"||h==="TaskCompleted"||h==="ConfigChange"||h==="Notification"||h==="PreCompact";}
 function buildTree(rows){var ags={},order=[];rows.forEach(function(r){var a=r.agent||"main agent";if(!ags[a]){ags[a]={name:a,byId:{},items:[],caps:{},blocked:0,actions:0};order.push(a);}var g=ags[a];(r.caps||[]).forEach(function(c){g.caps[c]=(g.caps[c]||0)+1;});if(isLifecycle(r)){g.items.push({t:"e",ts:r.ts,r:r});return;}var id=r.id||("_"+r.ts);var n=g.byId[id];if(!n){n={t:"a",id:id,tool:r.tool,verdict:r.verdict,caps:(r.caps||[]).slice(),ts:r.ts,dur:0,signed:!!r.signed,raw:r.raw};g.byId[id]=n;g.items.push(n);g.actions++;}if(r.hook==="PostToolUse"){if(r.dur)n.dur=r.dur;if(!n.raw)n.raw=r.raw;}else{n.verdict=r.verdict;if((r.caps||[]).length)n.caps=r.caps.slice();n.raw=r.raw;n.ts=r.ts;}if(r.signed)n.signed=true;});order.forEach(function(a){var g=ags[a];g.blocked=g.items.filter(function(it){return it.t==="a"&&it.verdict==="blocked";}).length;g.items.sort(function(x,y){return (x.ts<y.ts)?-1:1;});});return order.map(function(a){return ags[a];});}
 function renderTree(ags){if(!ags.length){document.getElementById("list").innerHTML='<p style="color:#8a837a">No records match.</p>';return;}var html="",N=0;ags.forEach(function(g,gi){var capstr=Object.keys(g.caps).sort(function(a,b){return g.caps[b]-g.caps[a];}).slice(0,5).map(function(c){return '<span class="cap">'+esc(c)+'</span>';}).join('');var ak="ag:"+g.name;var op=(OPEN.hasOwnProperty(ak)?OPEN[ak]:(ags.length===1||gi===0))?" open":"";html+='<div class="agent'+op+'" data-k="'+esc(ak)+'"><div class="ahead"><span class="atwist">▸</span><b>'+esc(g.name)+'</b><span class="acount">'+g.actions+' action'+(g.actions===1?'':'s')+'</span>'+(g.blocked?'<span class="badge blk">'+g.blocked+' blocked</span>':'')+capstr+'</div><div class="akids">';g.items.forEach(function(it){if(N++>1500)return;if(it.t==="e"){var r=it.r;html+='<div class="ev"><span class="evdot"></span>'+esc(r.hook||r.tool)+' <span class="evre">'+esc(r.reason)+'</span><span class="when">'+esc(when(r.ts))+'</span></div>';}else{var ct=(it.caps||[]).map(function(c){return '<span class="cap">'+esc(c)+'</span>';}).join('');var dur=it.dur?'<span class="dg">'+it.dur+'ms</span>':'';var ik="act:"+it.id;html+='<div class="act '+it.verdict+(OPEN[ik]?" open":"")+'" data-k="'+esc(ik)+'"><span class="pill '+it.verdict+'">'+vlabel(it.verdict)+'</span><b>'+esc(it.tool)+'</b>'+ct+(it.signed?'<span class="badge sgn">signed</span>':'')+dur+'<span class="when">'+esc(when(it.ts))+'</span><div class="det">'+esc(JSON.stringify(it.raw||{},null,2))+'</div></div>';}});html+='</div></div>';});if(N>1500)html+='<p style="color:#8a837a;font-size:12px;margin-top:10px">Showing the first 1500 items. Search or pick a facet to narrow.</p>';document.getElementById("list").innerHTML=html;}
@@ -2371,8 +2412,8 @@ if(VIEW==="tree"){renderTree(buildTree(rows));}else{renderList(rows);}}
 document.getElementById("q").addEventListener("input",function(e){Q=e.target.value.toLowerCase().trim();render()});
 document.getElementById("chips").addEventListener("click",function(e){var c=e.target.closest(".chip");if(!c)return;var k=c.getAttribute("data-k"),v=c.getAttribute("data-v");ACT[k]=ACT[k]===v?undefined:v;render()});
 document.getElementById("list").addEventListener("click",function(e){var ah=e.target.closest(".ahead");if(ah){var ag=ah.parentNode;ag.classList.toggle("open");var ak=ag.getAttribute("data-k");if(ak)OPEN[ak]=ag.classList.contains("open");return;}var el=e.target.closest(".act")||e.target.closest(".row");if(el){el.classList.toggle("open");var k=el.getAttribute("data-k");if(k)OPEN[k]=el.classList.contains("open");}});
-render();
-if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){var nr=d.recs||[];var changed=nr.length!==RECORDS.length;RECORDS=nr;META.count=RECORDS.length;if(typeof d.signed==='boolean')META.signed=d.signed;if(changed)render()}).catch(function(){})};poll();setInterval(poll,2000);}
+render();kickVerify();
+if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){var nr=d.recs||[];var changed=nr.length!==RECORDS.length;RECORDS=nr;META.count=RECORDS.length;if(typeof d.signed==='boolean')META.signed=d.signed;if(changed){render();kickVerify()}}).catch(function(){})};poll();setInterval(poll,2000);}
 </script></body></html>`;
 
 // ── claim: a signed, position-blind attestation of a predicate over your record ──
@@ -2471,11 +2512,52 @@ async function handleVerifyClaim(argv: string[]): Promise<void> {
   process.stdout.write(`  Signature:  ${ok(v.authentic)} ${v.authentic ? 'valid' : 'INVALID'}  ${dim('issuer kid ' + ((pack.issuer && pack.issuer.kid) || '?'))}\n`);
   process.stdout.write(`  Commitment: ${ok(v.root_ok)} ${v.root_ok ? 'Merkle root matches the ' + v.total + ' disclosed decisions' : 'MISMATCH'}\n`);
   process.stdout.write(`  Predicate:  ${ok(v.predicate_ok)} ${v.predicate_ok ? 'recomputed independently and matches' : 'MISMATCH'}\n`);
-  process.stdout.write(`\n  ${v.valid ? green('VALID') : red('INVALID')} attestation.\n`);
+
+  // ── Anchor: auto-detect the .anchor.json sidecar and verify it end-to-end ──
+  // Local checks bind the anchored envelope to THIS claim; one GET confirms the
+  // public log holds it. --anchor-file <p> overrides the path, --check-anchor
+  // makes a missing/failed anchor fatal, --offline skips the network hop.
+  const ai = argv.indexOf('--anchor-file');
+  const sidecarPath = ai !== -1 && argv[ai + 1] ? argv[ai + 1] : file.replace(/\.json$/, '') + '.anchor.json';
+  const requireAnchor = argv.includes('--check-anchor');
+  let anchorOk = true; // only flips false on a real refutation, never on "no sidecar" (unless required)
+  if (existsSync(sidecarPath)) {
+    const { checkClaimAnchor } = await import('./claim.js');
+    let sidecar: import('./claim.js').AnchorSidecar | null = null;
+    try { sidecar = JSON.parse(readFileSync(sidecarPath, 'utf-8')); } catch { /* unreadable */ }
+    if (!sidecar) {
+      anchorOk = false;
+      process.stdout.write(`  Anchor:     ${red('✗')} ${sidecarPath} is not valid JSON\n`);
+    } else {
+      const a = await checkClaimAnchor(pack, sidecar, { offline: argv.includes('--offline') });
+      anchorOk = a.local_ok && a.log_ok !== false;
+      if (a.local_ok) {
+        process.stdout.write(`  Anchor:     ${green('✓')} anchored envelope binds this exact claim and its record root\n`);
+        process.stdout.write(`              ${green('✓')} envelope signed by the claim issuer's key\n`);
+      } else {
+        for (const r of a.reasons.slice(0, 3)) process.stdout.write(`  Anchor:     ${red('✗')} ${r}\n`);
+      }
+      if (a.log_ok === true) {
+        process.stdout.write(`              ${green('✓')} public log confirms it${typeof a.seq === 'number' ? ': entry ' + bold('#' + a.seq) : ''}${a.anchored_at ? dim(' · anchored ' + a.anchored_at) : ''}\n`);
+      } else if (a.log_ok === false) {
+        process.stdout.write(`              ${red('✗')} ${a.reasons[a.reasons.length - 1]}\n`);
+      } else if (a.local_ok) {
+        process.stdout.write(`              ${yellow('~')} log not checked ${dim(argv.includes('--offline') ? '(--offline)' : '(unreachable; local binding checks stand)')}\n`);
+      }
+    }
+  } else if (requireAnchor) {
+    anchorOk = false;
+    process.stdout.write(`  Anchor:     ${red('✗')} no anchor sidecar at ${sidecarPath} ${dim('(mint with: protect-mcp claim ... --anchor)')}\n`);
+  } else {
+    process.stdout.write(`  Anchor:     ${dim('none found (' + sidecarPath + '). Anchoring proves the claim was fixed at a time: claim ... --anchor')}\n`);
+  }
+
+  const finalValid = v.valid && anchorOk;
+  process.stdout.write(`\n  ${finalValid ? green('VALID') : red('INVALID')} attestation${v.valid && !anchorOk ? red(' (anchor check failed)') : ''}.\n`);
   process.stdout.write(`  ${dim('Proves the pack came from the issuer key and the claim is true over the disclosed decision')}\n`);
   process.stdout.write(`  ${dim('categories (verdict + capabilities), which reveal no tool inputs, outputs, or data. Completeness')}\n`);
-  process.stdout.write(`  ${dim('of the disclosed set is attested by the issuer; pin the key or anchor to the log for more.')}\n\n`);
-  process.exit(v.valid ? 0 : 1);
+  process.stdout.write(`  ${dim('of the disclosed set is attested by the issuer; the anchor fixes it in a public append-only log.')}\n\n`);
+  process.exit(finalValid ? 0 : 1);
 }
 
 async function handleBundle(argv: string[]): Promise<void> {

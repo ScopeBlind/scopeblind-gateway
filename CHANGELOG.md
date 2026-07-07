@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.3: the skeptic's tools sharpen
+
+Two verification upgrades: the anchor check moves into the verifier, and the
+record viewer proves signatures instead of just labelling them.
+
+- `verify-claim` now verifies the anchor automatically: it finds the
+  `<claim>.anchor.json` sidecar, checks offline that the anchored envelope binds
+  this exact claim (digest, record root, and the same issuer key), and confirms
+  against the public log that the digest sits at the recorded entry. A failed
+  binding makes the attestation INVALID; an unreachable log does not (the local
+  checks stand alone). `--check-anchor` makes a missing anchor fatal,
+  `--anchor-file <p>` overrides the path, `--offline` skips the network hop.
+- The `record` viewer now verifies Ed25519 signatures in the browser, locally:
+  each row shows `✓ verified`, `✗ invalid signature`, or `signed · unpinned
+  key`, and the stat strip counts how many verified. The CLI injects your
+  gateway's PUBLIC key so rows verify against your own key (the private key
+  never reaches the page).
+- Receipts now embed the signer's public key inside the signed payload
+  (`payload.public_key`), so a receipt is self-contained: any verifier can check
+  it without a side channel, and the key cannot be swapped without breaking the
+  signature. Older receipts still verify against a pinned or pasted key.
+
 ## 0.9.2: anchor a claim to the public log
 
 Closes the one honest gap in a bare claim: that the disclosed set is complete.

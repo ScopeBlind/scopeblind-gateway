@@ -372,9 +372,9 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 | `dashboard` | Start a local-only dashboard on `127.0.0.1` showing tool inventory, risk, policy coverage, exact-action approvals, receipt chains, and audit export. |
 | `recommend` | Draft a reviewable JSON policy from observed local calls. Dry-run by default; use `--write` to create `protect-mcp.recommended.json`. |
 | `registry` | Create an org identity, anchor receipt digests, and write a static verifier page. Hosted mode uploads digests only. |
-| `record` | Open a local, searchable viewer over your receipts (`--live` streams as the agent runs): capability tags, a provenance tree, and one-click signed export. All local, nothing uploaded. |
+| `record` | Open a local, searchable viewer over your receipts (`--live` streams as the agent runs): Ed25519 signatures verified in your browser against your gateway key, capability tags, a provenance tree, and one-click signed export. All local, nothing uploaded. |
 | `claim` | Mint a signed, position-blind attestation of a predicate over the record (`--no <cap>`, `--only <c1,c2>`, `--no-verdict <verdict>`, `--count <verdict>`), disclosing only decision categories. Add `--anchor` to record the claim digest in the public transparency log. |
-| `verify-claim` | Verify a claim pack offline: signature, recomputed Merkle root, and independently recomputed predicate. Reveals the shape, not the content. |
+| `verify-claim` | Verify a claim pack offline: signature, recomputed Merkle root, independently recomputed predicate, and the anchor sidecar when present (binds the anchored envelope to this exact claim, then confirms the public log holds it). `--check-anchor` requires the anchor; `--offline` skips the log hop. |
 | `killer-demo` | Generate a complete shadow-mode to policy to approval to signed-receipt demo pack. |
 | `verify-disclosure` | Verify a `scopeblind.selective_disclosure.v0` package and explain disclosed versus hidden fields. |
 | `policy-packs` | List, inspect, and install starter Cedar policy packs. |
