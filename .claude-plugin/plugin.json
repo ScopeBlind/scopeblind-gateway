@@ -1,6 +1,6 @@
 {
   "name": "protect-mcp",
-  "version": "0.7.1",
+  "version": "0.9.6",
   "description": "Fail-closed Cedar policy gate plus Ed25519 signed receipts for AI agent tool calls. Blocks what breaks the rules before it runs, denies on any policy error, and proves the gate is live with a startup self-test.",
   "author": {
     "name": "ScopeBlind",
@@ -8,7 +8,7 @@
   },
   "license": "MIT",
   "homepage": "https://scopeblind.com",
-  "repository": "https://github.com/scopeblind/scopeblind-gateway",
+  "repository": "https://github.com/ScopeBlind/scopeblind-gateway",
   "keywords": [
     "security",
     "mcp",

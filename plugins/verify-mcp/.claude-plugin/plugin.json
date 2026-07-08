@@ -1,0 +1,23 @@
+{
+  "name": "verify-mcp",
+  "version": "0.1.4",
+  "description": "Offline verifier for signed receipts, audit bundles, and trust artifacts. Ed25519 + JCS, no accounts, no network calls. Verify what an agent's gate decided without trusting the operator.",
+  "author": {
+    "name": "ScopeBlind",
+    "url": "https://scopeblind.com"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/ScopeBlind/verify-mcp",
+  "repository": "https://github.com/ScopeBlind/verify-mcp",
+  "keywords": [
+    "security",
+    "mcp",
+    "verification",
+    "ed25519",
+    "receipts",
+    "offline",
+    "claude-code",
+    "agent-governance",
+    "veritas-acta"
+  ]
+}
