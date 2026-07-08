@@ -3,15 +3,15 @@
   "name": "com.scopeblind/protect-mcp",
   "description": "Fail-closed Cedar policy gate + Ed25519 signed receipts for agent tool calls. Denies on any error.",
   "repository": {
-    "url": "https://github.com/scopeblind/scopeblind-gateway",
+    "url": "https://github.com/ScopeBlind/scopeblind-gateway",
     "source": "github"
   },
-  "version": "0.9.5",
+  "version": "0.9.6",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "protect-mcp",
-      "version": "0.9.5",
+      "version": "0.9.6",
       "transport": {
         "type": "stdio"
       },
