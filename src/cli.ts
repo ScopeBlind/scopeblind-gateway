@@ -51,6 +51,7 @@ protect-mcp: Enterprise security gateway for MCP servers & Claude Code hooks
 Usage:
   protect-mcp [options] -- <command> [args...]
   protect-mcp serve [--port <port>] [--enforce] [--policy <path>] [--cedar <dir>]
+  protect-mcp mcp                                 # the gate as an MCP server (evaluate/sign/verify/self_test tools)
   protect-mcp init-hooks [--dir <path>] [--port <port>]
   protect-mcp quickstart [--connect]
   protect-mcp wrap [--write] [--claude-desktop] [-- <command>]
@@ -4207,6 +4208,11 @@ async function main(): Promise<void> {
   // are what hook configs invoke per tool call (exit 0 allow, exit 2 deny).
   if (args[0] === 'evaluate') { await handleEvaluate(args.slice(1)); return; }
   if (args[0] === 'sign') { await handleSign(args.slice(1)); return; }
+
+  // The gate as an MCP server (JSON-RPC over stdio): evaluate_action,
+  // sign_decision, verify_receipt, self_test. Lets an agent call the gate as
+  // tools instead of only via hooks. Takes over stdin/stdout until it closes.
+  if (args[0] === 'mcp') { await (await import('./mcp-server.js')).runMcpServer(); return; }
 
   // Handle serve command — Claude Code Hook Server
   if (args[0] === 'serve') {

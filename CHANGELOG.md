@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.7: the gate as an MCP server
+
+`protect-mcp mcp` boots a stdio MCP server exposing the gate itself as four
+tools, so an agent can call the gate directly instead of only through the
+PreToolUse/PostToolUse hooks: `evaluate_action` (Cedar decision, fail-closed),
+`sign_decision` (Ed25519 receipt, byte-compatible with the runtime gate's),
+`verify_receipt` (offline check), and `self_test` (proves a known-forbidden
+action is denied and a signed receipt round-trips). All four are read-only
+and annotated with what they return. A bare-spawnable bin,
+`protect-mcp-mcp`, is included alongside the `mcp` subcommand so any MCP
+host or registry can point at either.
+
 ## 0.9.6: policy you can see and change
 
 The gate is default-deny and fail-closed, but a deny used to be a dead end: an

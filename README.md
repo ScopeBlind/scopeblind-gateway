@@ -57,6 +57,36 @@ The dashboard binds to `127.0.0.1`, reads only local log/receipt files, and does
 not upload anything. Use `npx protect-mcp connect` only if you explicitly want a
 hosted ScopeBlind dashboard.
 
+## The gate as an MCP server
+
+If you would rather call the gate as tools than wire the Claude Code hooks, run
+it as an MCP server:
+
+```bash
+npx protect-mcp mcp
+```
+
+It speaks MCP over stdio and exposes four read-only tools, the whole loop:
+
+- **`evaluate_action`**: decide a proposed tool call against an inline Cedar policy, fail-closed (any policy error is DENY). Returns `{ allowed, decision, reason, policy_digest }`.
+- **`sign_decision`**: turn a decision into an Ed25519 signed receipt (a denial signs a `gateway_restraint`, an allow a `decision_receipt`). Returns the receipt and its public key; generates an ephemeral key if you do not supply one.
+- **`verify_receipt`**: verify a signed receipt offline against a public key. Returns `{ valid, error, type, kid, issuer }`.
+- **`self_test`**: prove it, no inputs. A known-forbidden action is denied, then a signed receipt round-trips and a tampered copy fails.
+
+Point any MCP host at it, for example Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "protect-mcp": { "command": "npx", "args": ["-y", "protect-mcp", "mcp"] }
+  }
+}
+```
+
+Receipts are byte-compatible with the ones the gate signs at runtime, so a
+receipt minted here verifies with [`@veritasacta/verify`](https://www.npmjs.com/package/@veritasacta/verify)
+and the browser verifier just the same.
+
 ### Local Action Dashboard
 
 `protect-mcp dashboard` is the operator view for moving from visibility to

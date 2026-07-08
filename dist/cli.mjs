@@ -11,22 +11,24 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-7MHK5RF4.mjs";
+} from "./chunk-MOXINIMB.mjs";
 import {
   ProtectGateway,
   validateCredentials
-} from "./chunk-PB3TC7E3.mjs";
+} from "./chunk-YM6SOJBR.mjs";
 import {
   buildActionReadback,
-  evaluateCedar,
   initSigning,
+  loadPolicy,
+  signDecision
+} from "./chunk-G6X763MH.mjs";
+import {
+  evaluateCedar,
   isCedarAvailable,
   loadCedarPolicies,
-  loadPolicy,
   policySetFromSource,
-  runEvaluatorSelfTest,
-  signDecision
-} from "./chunk-XLJUZ4WO.mjs";
+  runEvaluatorSelfTest
+} from "./chunk-MWXDXYWH.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/cli.ts
@@ -41,6 +43,7 @@ protect-mcp: Enterprise security gateway for MCP servers & Claude Code hooks
 Usage:
   protect-mcp [options] -- <command> [args...]
   protect-mcp serve [--port <port>] [--enforce] [--policy <path>] [--cedar <dir>]
+  protect-mcp mcp                                 # the gate as an MCP server (evaluate/sign/verify/self_test tools)
   protect-mcp init-hooks [--dir <path>] [--port <port>]
   protect-mcp quickstart [--connect]
   protect-mcp wrap [--write] [--claude-desktop] [-- <command>]
@@ -4330,6 +4333,10 @@ async function main() {
     await handleSign(args.slice(1));
     return;
   }
+  if (args[0] === "mcp") {
+    await (await import("./mcp-server.mjs")).runMcpServer();
+    return;
+  }
   if (args[0] === "serve") {
     const { startHookServer } = await import("./hook-server.mjs");
     const portIdx = args.indexOf("--port");
@@ -4568,7 +4575,7 @@ async function main() {
   if (useHttp) {
     const portIdx = args.indexOf("--port");
     const httpPort = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 3e3;
-    const { startHttpTransport } = await import("./http-transport-HLSMVBI6.mjs");
+    const { startHttpTransport } = await import("./http-transport-VHD3YBT5.mjs");
     startHttpTransport({ port: httpPort, config, serverCommand: childCommand });
     return;
   }
