@@ -26,7 +26,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { createHash, randomUUID, randomBytes } from 'node:crypto';
-import { appendFileSync, readFileSync, existsSync, readdirSync } from 'node:fs';
+import { appendFileSync, readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
   HookInput,
@@ -62,6 +62,12 @@ const PAYLOAD_HASH_THRESHOLD = 1024; // bytes
 interface HookServerState {
   /** Cedar policy set (if loaded) */
   cedarPolicies: CedarPolicySet | null;
+  /** Directory the Cedar policies were loaded from (for teaching denies + hot reload) */
+  cedarDir: string | null;
+  /** Newest .cedar mtime seen, so an on-disk policy edit hot-reloads the cache */
+  cedarMtimeMs: number;
+  /** Last time we stat-checked the policy dir, to throttle the FS check off the hot path */
+  cedarCheckedMs: number;
   /** JSON policy (if loaded) */
   jsonPolicy: ReturnType<typeof loadPolicy> | null;
   /** Rate limit store */
@@ -217,6 +223,7 @@ async function handlePreToolUse(
   };
 
   // ── Cedar evaluation ──
+  maybeReloadCedar(state);
   if (state.cedarPolicies) {
     try {
       const cedarDecision = await evaluateCedar(state.cedarPolicies, {
@@ -260,11 +267,19 @@ async function handlePreToolUse(
           plan_receipt_id: state.activePlanReceiptId || undefined,
         });
 
-        // Log suggestion to stderr
+        // A deny that teaches: name the policy file and the one command that
+        // fixes it, and distinguish default-deny (no permit matched) from an
+        // explicit forbid, so the operator knows where to look.
+        const isDefaultDeny = !reason || reason === 'cedar_deny' || /reason":\[\]/.test(reason);
+        const policyRef = state.cedarDir ? ` Policy: ${state.cedarDir}.` : '';
+        const howTo = isDefaultDeny
+          ? ` No permit matched (default-deny, fail-closed).${policyRef} Allow it: npx protect-mcp policy allow ${toolName}`
+          : ` Blocked by an explicit forbid rule.${policyRef} Review: npx protect-mcp policy show`;
+
         if (denyCount === 1) {
           process.stderr.write(
-            `[PROTECT_MCP] No Cedar permit for "${toolName}" — suggest:\n` +
-            `  ${suggestion}\n`,
+            `[PROTECT_MCP] Denied "${toolName}" (${isDefaultDeny ? 'default-deny' : 'forbid'}).\n` +
+            `  Allow with: npx protect-mcp policy allow ${toolName}\n`,
           );
         }
 
@@ -273,8 +288,7 @@ async function handlePreToolUse(
             hookEventName: 'PreToolUse',
             permissionDecision: 'deny',
             permissionDecisionReason:
-              `[ScopeBlind] Denied by Cedar policy. ${reason}. ` +
-              `Forbidden: "${toolName}" is not permitted. Try a read-only alternative.` +
+              `[ScopeBlind] Denied "${toolName}".${howTo}` +
               (denyCount > 1 ? ` (attempt ${denyCount})` : ''),
           },
         };
@@ -877,6 +891,9 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
   // ── Build state ──
   const state: HookServerState = {
     cedarPolicies,
+    cedarDir: cedarDir || null,
+    cedarMtimeMs: cedarDir ? newestCedarMtime(cedarDir) : 0,
+    cedarCheckedMs: 0,
     jsonPolicy,
     rateLimitStore: new Map(),
     receiptBuffer: new ReceiptBuffer(),
@@ -1070,6 +1087,46 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
 // ============================================================
 // Helpers
 // ============================================================
+
+/** Newest mtime (ms) across the .cedar files in a dir, for change detection. */
+function newestCedarMtime(dir: string): number {
+  try {
+    let newest = 0;
+    for (const f of readdirSync(dir)) {
+      if (!f.endsWith('.cedar')) continue;
+      const m = statSync(join(dir, f)).mtimeMs;
+      if (m > newest) newest = m;
+    }
+    return newest;
+  } catch { return 0; }
+}
+
+/**
+ * Hot-reload the Cedar policy cache if a .cedar file changed on disk since the
+ * last load, so `protect-mcp policy allow/deny` (or a hand edit) takes effect
+ * without restarting the gate. Fail-closed: if a reload throws (unparseable
+ * policy), the OLD policy stays active rather than opening the gate.
+ */
+const CEDAR_CHECK_THROTTLE_MS = 2000; // keep policies cached; stat the dir at most this often
+function maybeReloadCedar(state: HookServerState): void {
+  if (!state.cedarDir) return;
+  const nowMs = Date.now();
+  if (nowMs - state.cedarCheckedMs < CEDAR_CHECK_THROTTLE_MS) return; // off the hot path
+  state.cedarCheckedMs = nowMs;
+  const m = newestCedarMtime(state.cedarDir);
+  if (m <= state.cedarMtimeMs) return;
+  try {
+    const reloaded = loadCedarPolicies(state.cedarDir);
+    state.cedarPolicies = reloaded;
+    state.policyDigest = reloaded.digest;
+    state.cedarMtimeMs = m;
+    process.stderr.write(`[PROTECT_MCP] Cedar policy reloaded (digest: ${reloaded.digest}) after on-disk change.\n`);
+  } catch (err) {
+    // Keep the prior policy; do not open the gate on a bad edit.
+    process.stderr.write(`[PROTECT_MCP] Cedar reload failed, keeping the previous policy: ${err instanceof Error ? err.message : err}\n`);
+    state.cedarMtimeMs = m; // avoid retrying the same broken file every request
+  }
+}
 
 function findCedarDir(): string | undefined {
   for (const candidate of ['cedar', 'policies', '.']) {

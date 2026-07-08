@@ -389,6 +389,7 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 | `serve` | Start the HTTP hook server for Claude Code (port 9377). `--enforce` runs the restraint self-test first; `--cedar <dir>` and `--policy <path>` select the policy. |
 | `init` | Generate an Ed25519 keypair (`keys/gateway.json`), a config template, and a sample policy. |
 | `sample` | Seed a clearly-labeled sample record (8 decisions: one blocked call, two payments; kid `sample-demo`) plus a tampered copy, so `record`, `claim`, `verify-claim`, and `anchor-record` are replayable from scratch before wiring an agent. Refuses to touch an existing record; `--force` overrides. |
+| `policy` | See and change the Cedar policy from the terminal: `policy list` (permit / forbid / default-deny per tool, with how often the gate allowed or denied it), `policy show`, `policy allow <tool>`, `policy deny <tool>`, `policy path`. A running `serve` hot-reloads on the change. |
 | `wrap` | Print a protected MCP command or patch Claude Desktop MCP servers. Dry-run by default; use `--write` to update Claude Desktop config. |
 | `dashboard` | Start a local-only dashboard on `127.0.0.1` showing tool inventory, risk, policy coverage, exact-action approvals, receipt chains, and audit export. |
 | `recommend` | Draft a reviewable JSON policy from observed local calls. Dry-run by default; use `--write` to create `protect-mcp.recommended.json`. |

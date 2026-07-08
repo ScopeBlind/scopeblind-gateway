@@ -65,6 +65,7 @@ Usage:
   protect-mcp connect
   protect-mcp init [--dir <path>]
   protect-mcp sample [--dir <path>] [--force]
+  protect-mcp policy list|show|allow <tool>|deny <tool>|path
   protect-mcp demo
   protect-mcp trace <receipt_id> [--endpoint <url>] [--depth <n>]
   protect-mcp status [--dir <path>]
@@ -4062,6 +4063,122 @@ async function handleSample(argv: string[]): Promise<void> {
   process.exit(0);
 }
 
+// Manage the Cedar policy from the terminal. The gate is default-deny and
+// fail-closed, and denies used to be a dead end (empty reason, no pointer to the
+// file). This makes the policy legible and editable in one place: list what the
+// gate has seen and how it ruled, show the active policy + digest, and
+// allow/deny a tool by appending a Cedar rule (the running gate hot-reloads on
+// the file change, so it takes effect without a restart).
+async function handlePolicy(argv: string[]): Promise<void> {
+  const { readFileSync: rf, writeFileSync: wf, existsSync: ex, readdirSync: rd, appendFileSync: af } = await import('node:fs');
+  const { join: pj } = await import('node:path');
+  const { createHash } = await import('node:crypto');
+  const sub = argv[0] || 'list';
+
+  const findDir = (): string | null => {
+    for (const c of ['cedar', 'policies', '.']) {
+      try { if (ex(c) && rd(c).some((f) => f.endsWith('.cedar'))) return c; } catch { /* skip */ }
+    }
+    return null;
+  };
+  const dir = findDir();
+  const cedarFiles = dir ? rd(dir).filter((f) => f.endsWith('.cedar')).sort() : [];
+  const readAll = (): string => cedarFiles.map((f) => rf(pj(dir!, f), 'utf-8')).join('\n\n');
+  const digestOf = (src: string): string => createHash('sha256').update(src).digest('hex').slice(0, 16);
+  // Strip // line comments and /* */ block comments so a commented-out rule is
+  // not read as active (Cedar uses // for comments; it has no # comments).
+  const stripComments = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  // The file rules are appended to: prefer agent.cedar, else the first file.
+  const targetFile = cedarFiles.includes('agent.cedar') ? 'agent.cedar' : cedarFiles[0];
+
+  if (sub === 'path') {
+    if (!dir) { process.stdout.write('No Cedar policy directory found (looked in ./cedar, ./policies, .).\n'); process.exit(0); }
+    process.stdout.write(`${pj(dir, targetFile)}\n`);
+    process.exit(0);
+  }
+
+  if (sub === 'show') {
+    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    const src = readAll();
+    process.stdout.write(`${bold('Cedar policy')} ${dim(`(${cedarFiles.length} file${cedarFiles.length === 1 ? '' : 's'} in ${dir}, digest ${digestOf(src)})`)}\n\n`);
+    process.stdout.write(src.endsWith('\n') ? src : src + '\n');
+    process.exit(0);
+  }
+
+  if (sub === 'allow' || sub === 'deny') {
+    const tool = argv[1];
+    if (!tool) { process.stderr.write(`Usage: npx protect-mcp policy ${sub} <ToolName>\n`); process.exit(1); }
+    if (!/^[A-Za-z0-9_.:-]+$/.test(tool)) { process.stderr.write(`Refusing: "${tool}" is not a valid tool name.\n`); process.exit(1); }
+    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    const effect = sub === 'allow' ? 'permit' : 'forbid';
+    const before = readAll();
+    // Idempotent: skip if an identical-effect rule for this tool already exists
+    // (ignoring commented-out rules).
+    const ruleRe = new RegExp(`${effect}\\s*\\([^)]*resource\\s*==\\s*Tool::"${tool.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}"`, 's');
+    if (ruleRe.test(stripComments(before))) {
+      process.stdout.write(`${dim('No change:')} a ${effect} rule for ${bold(tool)} already exists in ${targetFile}.\n`);
+      process.exit(0);
+    }
+    const block = `\n// ${effect === 'permit' ? 'Allow' : 'Block'} ${tool} (added by \`protect-mcp policy ${sub}\`)\n${effect}(\n  principal,\n  action == Action::"MCP::Tool::call",\n  resource == Tool::"${tool}"\n);\n`;
+    af(pj(dir, targetFile), block);
+    const after = readAll();
+    process.stdout.write(`${bold(sub === 'allow' ? '✓ Allowed' : '✓ Denied')} ${tool}\n`);
+    process.stdout.write(`  ${dim(`appended to ${pj(dir, targetFile)}`)}\n`);
+    process.stdout.write(`  ${dim(`policy digest ${digestOf(before)} → ${digestOf(after)}`)}\n`);
+    process.stdout.write(`\n${dim('A running gate (protect-mcp serve) hot-reloads on this change; no restart needed. The one-shot hook path re-reads per call.')}\n`);
+    process.exit(0);
+  }
+
+  if (sub === 'list') {
+    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    const src = readAll();
+    const active = stripComments(src);
+    // Cheap static read of which tools are named in ACTIVE permit vs forbid blocks.
+    const named = (effect: string): Set<string> => {
+      const set = new Set<string>();
+      const re = new RegExp(`${effect}\\s*\\([\\s\\S]*?resource\\s*==\\s*Tool::"([^"]+)"[\\s\\S]*?\\);`, 'g');
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(active))) set.add(m[1]);
+      return set;
+    };
+    const permitted = named('permit'), forbidden = named('forbid');
+    // Cross-reference the local decision log for tools actually seen.
+    const seen = new Map<string, { allow: number; deny: number }>();
+    try {
+      const logPath = pj(process.cwd(), '.protect-mcp-log.jsonl');
+      if (ex(logPath)) {
+        for (const line of rf(logPath, 'utf-8').split('\n')) {
+          if (!line.trim()) continue;
+          try {
+            const e = JSON.parse(line);
+            if (!e.tool) continue;
+            const rec = seen.get(e.tool) || { allow: 0, deny: 0 };
+            if (e.decision === 'deny') rec.deny++; else rec.allow++;
+            seen.set(e.tool, rec);
+          } catch { /* skip */ }
+        }
+      }
+    } catch { /* no log */ }
+    process.stdout.write(`${bold('Cedar policy')} ${dim(`(${dir}, digest ${digestOf(src)}) · default-deny, fail-closed`)}\n\n`);
+    const allTools = new Set<string>([...permitted, ...forbidden, ...seen.keys()]);
+    if (allTools.size === 0) { process.stdout.write(dim('  No rules and no decisions logged yet.\n')); process.exit(0); }
+    const rows = [...allTools].sort().map((t) => {
+      const label = forbidden.has(t) ? 'forbid' : permitted.has(t) ? 'permit' : 'default-deny';
+      const colored = forbidden.has(t) ? red(label) : permitted.has(t) ? green(label) : yellow(label);
+      const pad = ' '.repeat(Math.max(1, 13 - label.length)); // pad the VISIBLE text, not ANSI bytes
+      const s = seen.get(t);
+      const hits = s ? dim(`  ${s.allow} allowed, ${s.deny} denied`) : '';
+      return `  ${colored}${pad}${bold(t)}${hits}`;
+    });
+    process.stdout.write(rows.join('\n') + '\n');
+    process.stdout.write(`\n${dim('Allow a tool: npx protect-mcp policy allow <ToolName>  ·  Block one: policy deny <ToolName>')}\n`);
+    process.exit(0);
+  }
+
+  process.stderr.write('Usage: npx protect-mcp policy <list|show|allow <tool>|deny <tool>|path>\n');
+  process.exit(1);
+}
+
 async function main(): Promise<void> {
   // Fire-and-forget install telemetry (once per machine, opt-out via env)
   sendInstallTelemetry().catch(() => {});
@@ -4136,6 +4253,9 @@ async function main(): Promise<void> {
 
   // Seed a labeled sample record so the demo is replayable from scratch
   if (args[0] === 'sample') { await handleSample(args.slice(1)); return; }
+
+  // Manage the Cedar policy from the terminal (list/show/allow/deny/path)
+  if (args[0] === 'policy') { await handlePolicy(args.slice(1)); return; }
 
   // Handle init-hooks command — Claude Code integration setup
   if (args[0] === 'init-hooks') {

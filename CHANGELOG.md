@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.9.6: policy you can see and change
+
+The gate is default-deny and fail-closed, but a deny used to be a dead end: an
+empty reason and no pointer to the file that decides. This release makes the
+policy legible and editable from the terminal, and lets a running gate pick up
+a policy change without a restart.
+
+- **`policy` command.** `policy list` shows every tool named in the policy
+  (permit / forbid / default-deny) cross-referenced with how often the gate
+  actually allowed or denied it; `policy show` prints the active policy and its
+  digest; `policy allow <tool>` / `policy deny <tool>` append a Cedar rule and
+  print the digest change; `policy path` prints the file. Idempotent and
+  tool-name validated.
+- **Denies that teach.** A blocked call now says whether it was default-deny
+  (no permit matched) or an explicit forbid, names the policy directory, and
+  gives the exact fix: `npx protect-mcp policy allow <tool>`.
+- **Hot reload.** `protect-mcp serve` watches the .cedar files and reloads the
+  policy on an on-disk change, so `policy allow/deny` (or a hand edit) takes
+  effect without restarting the gate. Fail-closed: an unparseable edit keeps the
+  previous policy rather than opening the gate, and the reload is logged.
+
 ## 0.9.5: replayable from scratch
 
 The public demo film (legate.scopeblind.com/record) is now reproducible by

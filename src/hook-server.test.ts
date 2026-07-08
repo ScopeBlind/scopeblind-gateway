@@ -138,7 +138,11 @@ describe('PreToolUse handler with Cedar policies', () => {
     expect(result.status).toBe(200);
     const output = result.body.hookSpecificOutput as Record<string, unknown> | undefined;
     expect(output?.permissionDecision).toBe('deny');
-    expect(String(output?.permissionDecisionReason)).toContain('Denied by Cedar policy');
+    // The deny reason teaches: it names the denied tool and how the policy
+    // decided (an explicit forbid here, vs default-deny when no permit matches).
+    const reason = String(output?.permissionDecisionReason);
+    expect(reason).toContain('Denied "read_file"');
+    expect(reason).toMatch(/forbid|default-deny/);
   });
 
   it('allows safe tool input through the same Cedar policy', async () => {

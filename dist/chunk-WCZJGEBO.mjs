@@ -20,7 +20,7 @@ import {
 // src/hook-server.ts
 import { createServer } from "http";
 import { createHash, randomUUID, randomBytes } from "crypto";
-import { appendFileSync, readFileSync, existsSync, readdirSync } from "fs";
+import { appendFileSync, readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 
 // src/scopeblind-bridge.ts
@@ -256,6 +256,7 @@ async function handlePreToolUse(input, state) {
     ...input.teamName && { team_name: input.teamName },
     ...input.agentType && { agent_type: input.agentType }
   };
+  maybeReloadCedar(state);
   if (state.cedarPolicies) {
     try {
       const cedarDecision = await evaluateCedar(state.cedarPolicies, {
@@ -293,10 +294,13 @@ async function handlePreToolUse(input, state) {
           sandbox_state: detectSandboxState(),
           plan_receipt_id: state.activePlanReceiptId || void 0
         });
+        const isDefaultDeny = !reason || reason === "cedar_deny" || /reason":\[\]/.test(reason);
+        const policyRef = state.cedarDir ? ` Policy: ${state.cedarDir}.` : "";
+        const howTo = isDefaultDeny ? ` No permit matched (default-deny, fail-closed).${policyRef} Allow it: npx protect-mcp policy allow ${toolName}` : ` Blocked by an explicit forbid rule.${policyRef} Review: npx protect-mcp policy show`;
         if (denyCount === 1) {
           process.stderr.write(
-            `[PROTECT_MCP] No Cedar permit for "${toolName}" \u2014 suggest:
-  ${suggestion}
+            `[PROTECT_MCP] Denied "${toolName}" (${isDefaultDeny ? "default-deny" : "forbid"}).
+  Allow with: npx protect-mcp policy allow ${toolName}
 `
           );
         }
@@ -304,7 +308,7 @@ async function handlePreToolUse(input, state) {
           hookSpecificOutput: {
             hookEventName: "PreToolUse",
             permissionDecision: "deny",
-            permissionDecisionReason: `[ScopeBlind] Denied by Cedar policy. ${reason}. Forbidden: "${toolName}" is not permitted. Try a read-only alternative.` + (denyCount > 1 ? ` (attempt ${denyCount})` : "")
+            permissionDecisionReason: `[ScopeBlind] Denied "${toolName}".${howTo}` + (denyCount > 1 ? ` (attempt ${denyCount})` : "")
           }
         };
       }
@@ -803,6 +807,9 @@ async function startHookServer(options = {}) {
   }
   const state = {
     cedarPolicies,
+    cedarDir: cedarDir || null,
+    cedarMtimeMs: cedarDir ? newestCedarMtime(cedarDir) : 0,
+    cedarCheckedMs: 0,
     jsonPolicy,
     rateLimitStore: /* @__PURE__ */ new Map(),
     receiptBuffer: new ReceiptBuffer(),
@@ -992,6 +999,40 @@ async function startHookServer(options = {}) {
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
   return server;
+}
+function newestCedarMtime(dir) {
+  try {
+    let newest = 0;
+    for (const f of readdirSync(dir)) {
+      if (!f.endsWith(".cedar")) continue;
+      const m = statSync(join(dir, f)).mtimeMs;
+      if (m > newest) newest = m;
+    }
+    return newest;
+  } catch {
+    return 0;
+  }
+}
+var CEDAR_CHECK_THROTTLE_MS = 2e3;
+function maybeReloadCedar(state) {
+  if (!state.cedarDir) return;
+  const nowMs = Date.now();
+  if (nowMs - state.cedarCheckedMs < CEDAR_CHECK_THROTTLE_MS) return;
+  state.cedarCheckedMs = nowMs;
+  const m = newestCedarMtime(state.cedarDir);
+  if (m <= state.cedarMtimeMs) return;
+  try {
+    const reloaded = loadCedarPolicies(state.cedarDir);
+    state.cedarPolicies = reloaded;
+    state.policyDigest = reloaded.digest;
+    state.cedarMtimeMs = m;
+    process.stderr.write(`[PROTECT_MCP] Cedar policy reloaded (digest: ${reloaded.digest}) after on-disk change.
+`);
+  } catch (err) {
+    process.stderr.write(`[PROTECT_MCP] Cedar reload failed, keeping the previous policy: ${err instanceof Error ? err.message : err}
+`);
+    state.cedarMtimeMs = m;
+  }
 }
 function findCedarDir() {
   for (const candidate of ["cedar", "policies", "."]) {

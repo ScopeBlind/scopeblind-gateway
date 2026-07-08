@@ -6650,6 +6650,7 @@ async function handlePreToolUse(input, state) {
     ...input.teamName && { team_name: input.teamName },
     ...input.agentType && { agent_type: input.agentType }
   };
+  maybeReloadCedar(state);
   if (state.cedarPolicies) {
     try {
       const cedarDecision = await evaluateCedar(state.cedarPolicies, {
@@ -6687,10 +6688,13 @@ async function handlePreToolUse(input, state) {
           sandbox_state: detectSandboxState(),
           plan_receipt_id: state.activePlanReceiptId || void 0
         });
+        const isDefaultDeny = !reason || reason === "cedar_deny" || /reason":\[\]/.test(reason);
+        const policyRef = state.cedarDir ? ` Policy: ${state.cedarDir}.` : "";
+        const howTo = isDefaultDeny ? ` No permit matched (default-deny, fail-closed).${policyRef} Allow it: npx protect-mcp policy allow ${toolName}` : ` Blocked by an explicit forbid rule.${policyRef} Review: npx protect-mcp policy show`;
         if (denyCount === 1) {
           process.stderr.write(
-            `[PROTECT_MCP] No Cedar permit for "${toolName}" \u2014 suggest:
-  ${suggestion}
+            `[PROTECT_MCP] Denied "${toolName}" (${isDefaultDeny ? "default-deny" : "forbid"}).
+  Allow with: npx protect-mcp policy allow ${toolName}
 `
           );
         }
@@ -6698,7 +6702,7 @@ async function handlePreToolUse(input, state) {
           hookSpecificOutput: {
             hookEventName: "PreToolUse",
             permissionDecision: "deny",
-            permissionDecisionReason: `[ScopeBlind] Denied by Cedar policy. ${reason}. Forbidden: "${toolName}" is not permitted. Try a read-only alternative.` + (denyCount > 1 ? ` (attempt ${denyCount})` : "")
+            permissionDecisionReason: `[ScopeBlind] Denied "${toolName}".${howTo}` + (denyCount > 1 ? ` (attempt ${denyCount})` : "")
           }
         };
       }
@@ -7197,6 +7201,9 @@ async function startHookServer(options = {}) {
   }
   const state = {
     cedarPolicies,
+    cedarDir: cedarDir || null,
+    cedarMtimeMs: cedarDir ? newestCedarMtime(cedarDir) : 0,
+    cedarCheckedMs: 0,
     jsonPolicy,
     rateLimitStore: /* @__PURE__ */ new Map(),
     receiptBuffer: new ReceiptBuffer(),
@@ -7387,6 +7394,39 @@ async function startHookServer(options = {}) {
   process.on("SIGTERM", shutdown);
   return server;
 }
+function newestCedarMtime(dir) {
+  try {
+    let newest = 0;
+    for (const f of (0, import_node_fs11.readdirSync)(dir)) {
+      if (!f.endsWith(".cedar")) continue;
+      const m = (0, import_node_fs11.statSync)((0, import_node_path8.join)(dir, f)).mtimeMs;
+      if (m > newest) newest = m;
+    }
+    return newest;
+  } catch {
+    return 0;
+  }
+}
+function maybeReloadCedar(state) {
+  if (!state.cedarDir) return;
+  const nowMs = Date.now();
+  if (nowMs - state.cedarCheckedMs < CEDAR_CHECK_THROTTLE_MS) return;
+  state.cedarCheckedMs = nowMs;
+  const m = newestCedarMtime(state.cedarDir);
+  if (m <= state.cedarMtimeMs) return;
+  try {
+    const reloaded = loadCedarPolicies(state.cedarDir);
+    state.cedarPolicies = reloaded;
+    state.policyDigest = reloaded.digest;
+    state.cedarMtimeMs = m;
+    process.stderr.write(`[PROTECT_MCP] Cedar policy reloaded (digest: ${reloaded.digest}) after on-disk change.
+`);
+  } catch (err) {
+    process.stderr.write(`[PROTECT_MCP] Cedar reload failed, keeping the previous policy: ${err instanceof Error ? err.message : err}
+`);
+    state.cedarMtimeMs = m;
+  }
+}
 function findCedarDir() {
   for (const candidate of ["cedar", "policies", "."]) {
     try {
@@ -7412,7 +7452,7 @@ function normalizeHookInput(raw) {
   }
   return result;
 }
-var import_node_http2, import_node_crypto6, import_node_fs11, import_node_path8, DEFAULT_PORT, LOG_FILE3, RECEIPTS_FILE2, PAYLOAD_HASH_THRESHOLD, SNAKE_TO_CAMEL_MAP;
+var import_node_http2, import_node_crypto6, import_node_fs11, import_node_path8, DEFAULT_PORT, LOG_FILE3, RECEIPTS_FILE2, PAYLOAD_HASH_THRESHOLD, CEDAR_CHECK_THROTTLE_MS, SNAKE_TO_CAMEL_MAP;
 var init_hook_server = __esm({
   "src/hook-server.ts"() {
     "use strict";
@@ -7431,6 +7471,7 @@ var init_hook_server = __esm({
     LOG_FILE3 = ".protect-mcp-log.jsonl";
     RECEIPTS_FILE2 = ".protect-mcp-receipts.jsonl";
     PAYLOAD_HASH_THRESHOLD = 1024;
+    CEDAR_CHECK_THROTTLE_MS = 2e3;
     SNAKE_TO_CAMEL_MAP = {
       hook_event_name: "hookEventName",
       session_id: "sessionId",
@@ -8871,6 +8912,7 @@ Usage:
   protect-mcp connect
   protect-mcp init [--dir <path>]
   protect-mcp sample [--dir <path>] [--force]
+  protect-mcp policy list|show|allow <tool>|deny <tool>|path
   protect-mcp demo
   protect-mcp trace <receipt_id> [--endpoint <url>] [--depth <n>]
   protect-mcp status [--dir <path>]
@@ -12977,6 +13019,151 @@ ${bold("\u{1F6E1} Sample record seeded")} \xB7 8 decisions (1 blocked, 2 payment
 `);
   process.exit(0);
 }
+async function handlePolicy(argv) {
+  const { readFileSync: rf, writeFileSync: wf, existsSync: ex, readdirSync: rd, appendFileSync: af } = await import("fs");
+  const { join: pj } = await import("path");
+  const { createHash: createHash6 } = await import("crypto");
+  const sub = argv[0] || "list";
+  const findDir = () => {
+    for (const c of ["cedar", "policies", "."]) {
+      try {
+        if (ex(c) && rd(c).some((f) => f.endsWith(".cedar"))) return c;
+      } catch {
+      }
+    }
+    return null;
+  };
+  const dir = findDir();
+  const cedarFiles = dir ? rd(dir).filter((f) => f.endsWith(".cedar")).sort() : [];
+  const readAll = () => cedarFiles.map((f) => rf(pj(dir, f), "utf-8")).join("\n\n");
+  const digestOf = (src) => createHash6("sha256").update(src).digest("hex").slice(0, 16);
+  const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  const targetFile = cedarFiles.includes("agent.cedar") ? "agent.cedar" : cedarFiles[0];
+  if (sub === "path") {
+    if (!dir) {
+      process.stdout.write("No Cedar policy directory found (looked in ./cedar, ./policies, .).\n");
+      process.exit(0);
+    }
+    process.stdout.write(`${pj(dir, targetFile)}
+`);
+    process.exit(0);
+  }
+  if (sub === "show") {
+    if (!dir) {
+      process.stderr.write("No Cedar policy found. Run: npx protect-mcp init-hooks\n");
+      process.exit(1);
+    }
+    const src = readAll();
+    process.stdout.write(`${bold("Cedar policy")} ${dim(`(${cedarFiles.length} file${cedarFiles.length === 1 ? "" : "s"} in ${dir}, digest ${digestOf(src)})`)}
+
+`);
+    process.stdout.write(src.endsWith("\n") ? src : src + "\n");
+    process.exit(0);
+  }
+  if (sub === "allow" || sub === "deny") {
+    const tool = argv[1];
+    if (!tool) {
+      process.stderr.write(`Usage: npx protect-mcp policy ${sub} <ToolName>
+`);
+      process.exit(1);
+    }
+    if (!/^[A-Za-z0-9_.:-]+$/.test(tool)) {
+      process.stderr.write(`Refusing: "${tool}" is not a valid tool name.
+`);
+      process.exit(1);
+    }
+    if (!dir) {
+      process.stderr.write("No Cedar policy found. Run: npx protect-mcp init-hooks\n");
+      process.exit(1);
+    }
+    const effect = sub === "allow" ? "permit" : "forbid";
+    const before = readAll();
+    const ruleRe = new RegExp(`${effect}\\s*\\([^)]*resource\\s*==\\s*Tool::"${tool.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}"`, "s");
+    if (ruleRe.test(stripComments(before))) {
+      process.stdout.write(`${dim("No change:")} a ${effect} rule for ${bold(tool)} already exists in ${targetFile}.
+`);
+      process.exit(0);
+    }
+    const block = `
+// ${effect === "permit" ? "Allow" : "Block"} ${tool} (added by \`protect-mcp policy ${sub}\`)
+${effect}(
+  principal,
+  action == Action::"MCP::Tool::call",
+  resource == Tool::"${tool}"
+);
+`;
+    af(pj(dir, targetFile), block);
+    const after = readAll();
+    process.stdout.write(`${bold(sub === "allow" ? "\u2713 Allowed" : "\u2713 Denied")} ${tool}
+`);
+    process.stdout.write(`  ${dim(`appended to ${pj(dir, targetFile)}`)}
+`);
+    process.stdout.write(`  ${dim(`policy digest ${digestOf(before)} \u2192 ${digestOf(after)}`)}
+`);
+    process.stdout.write(`
+${dim("A running gate (protect-mcp serve) hot-reloads on this change; no restart needed. The one-shot hook path re-reads per call.")}
+`);
+    process.exit(0);
+  }
+  if (sub === "list") {
+    if (!dir) {
+      process.stderr.write("No Cedar policy found. Run: npx protect-mcp init-hooks\n");
+      process.exit(1);
+    }
+    const src = readAll();
+    const active = stripComments(src);
+    const named = (effect) => {
+      const set = /* @__PURE__ */ new Set();
+      const re = new RegExp(`${effect}\\s*\\([\\s\\S]*?resource\\s*==\\s*Tool::"([^"]+)"[\\s\\S]*?\\);`, "g");
+      let m;
+      while (m = re.exec(active)) set.add(m[1]);
+      return set;
+    };
+    const permitted = named("permit"), forbidden = named("forbid");
+    const seen = /* @__PURE__ */ new Map();
+    try {
+      const logPath = pj(process.cwd(), ".protect-mcp-log.jsonl");
+      if (ex(logPath)) {
+        for (const line of rf(logPath, "utf-8").split("\n")) {
+          if (!line.trim()) continue;
+          try {
+            const e = JSON.parse(line);
+            if (!e.tool) continue;
+            const rec = seen.get(e.tool) || { allow: 0, deny: 0 };
+            if (e.decision === "deny") rec.deny++;
+            else rec.allow++;
+            seen.set(e.tool, rec);
+          } catch {
+          }
+        }
+      }
+    } catch {
+    }
+    process.stdout.write(`${bold("Cedar policy")} ${dim(`(${dir}, digest ${digestOf(src)}) \xB7 default-deny, fail-closed`)}
+
+`);
+    const allTools = /* @__PURE__ */ new Set([...permitted, ...forbidden, ...seen.keys()]);
+    if (allTools.size === 0) {
+      process.stdout.write(dim("  No rules and no decisions logged yet.\n"));
+      process.exit(0);
+    }
+    const rows = [...allTools].sort().map((t) => {
+      const label = forbidden.has(t) ? "forbid" : permitted.has(t) ? "permit" : "default-deny";
+      const colored = forbidden.has(t) ? red(label) : permitted.has(t) ? green(label) : yellow(label);
+      const pad = " ".repeat(Math.max(1, 13 - label.length));
+      const s = seen.get(t);
+      const hits = s ? dim(`  ${s.allow} allowed, ${s.deny} denied`) : "";
+      return `  ${colored}${pad}${bold(t)}${hits}`;
+    });
+    process.stdout.write(rows.join("\n") + "\n");
+    process.stdout.write(`
+${dim("Allow a tool: npx protect-mcp policy allow <ToolName>  \xB7  Block one: policy deny <ToolName>")}
+`);
+    process.exit(0);
+  }
+  process.stderr.write("Usage: npx protect-mcp policy <list|show|allow <tool>|deny <tool>|path>\n");
+  process.exit(1);
+}
 async function main() {
   sendInstallTelemetry().catch(() => {
   });
@@ -13044,6 +13231,10 @@ async function main() {
   }
   if (args[0] === "sample") {
     await handleSample(args.slice(1));
+    return;
+  }
+  if (args[0] === "policy") {
+    await handlePolicy(args.slice(1));
     return;
   }
   if (args[0] === "init-hooks") {
