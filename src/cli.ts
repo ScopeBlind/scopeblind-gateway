@@ -64,14 +64,16 @@ Usage:
   protect-mcp policy-packs list|show|install [pack] [--dir ./cedar] [--force]
   protect-mcp connect
   protect-mcp init [--dir <path>]
+  protect-mcp sample [--dir <path>] [--force]
   protect-mcp demo
   protect-mcp trace <receipt_id> [--endpoint <url>] [--depth <n>]
   protect-mcp status [--dir <path>]
   protect-mcp digest [--today] [--dir <path>]
   protect-mcp receipts [--last <n>] [--dir <path>]
   protect-mcp record [--dir <path>] [--live] [--no-open]
-  protect-mcp claim [--no <cap>] [--only <c,c>] [--count <verdict>] [--dir <path>] [--output <path>]
-  protect-mcp verify-claim <claim.json> [--key <public-hex>]
+  protect-mcp claim [--no <cap>] [--only <c,c>] [--count <verdict>] [--payment-under <amount>] [--anchor] [--dir <path>] [--output <path>]
+  protect-mcp verify-claim <claim.json> [--key <public-hex>] [--check-anchor] [--offline]
+  protect-mcp anchor-record [--dir <path>] [--force]
   protect-mcp bundle [--output <path>] [--dir <path>]
   protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]
   protect-mcp report [--period <days>d] [--format md|json] [--output <path>] [--dir <path>]
@@ -85,6 +87,7 @@ Options:
   --port <port>     HTTP server port (default: 3000 for --http, 9377 for serve)
   --verbose         Enable debug logging to stderr
   --help            Show this help
+  --version         Print the installed version
 
 Commands:
   serve             Start HTTP hook server for Claude Code integration (port 9377)
@@ -4024,6 +4027,41 @@ async function handleSign(argv: string[]): Promise<void> {
   process.exit(0);
 }
 
+// Seed a labeled sample record (fresh key, kid "sample-demo") so the public
+// demo is replayable from scratch: no agent wired, nothing to configure. The
+// receipts are real signed artifacts, so record / claim / verify-claim /
+// anchor-record all work on them. Refuses to touch an existing record or key.
+async function handleSample(argv: string[]): Promise<void> {
+  const dir = flagValue(argv, '--dir') || process.cwd();
+  const { buildSampleKit } = await import('./sample.js');
+  let kit: import('./sample.js').SampleKit;
+  try {
+    kit = buildSampleKit(dir, { force: argv.includes('--force') });
+  } catch (err) {
+    if ((err as { code?: string } | null)?.code === 'SAMPLE_EXISTS') {
+      process.stderr.write(
+        '\nprotect-mcp sample: this folder already has a record or signing key.\n' +
+        'This command seeds a LABELED SAMPLE record and will not touch a real one.\n' +
+        'Run it in an empty folder, or pass --force to overwrite.\n\n',
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
+  process.stdout.write(`\n${bold('🛡 Sample record seeded')} · 8 decisions (1 blocked, 2 payments), signed with a fresh key ${dim(`(kid ${kit.kid})`)}\n\n`);
+  process.stdout.write('  .protect-mcp-receipts.jsonl   the signed sample record\n');
+  process.stdout.write('  demo-tampered.jsonl           the same record with ONE decision edited after signing\n');
+  process.stdout.write(`  keys/gateway.json             sample keypair ${dim('(never commit)')}\n\n`);
+  process.stdout.write(`${bold('Replay the demo')} ${dim('(the film: legate.scopeblind.com/record)')}\n`);
+  process.stdout.write('  npx protect-mcp record\n');
+  process.stdout.write('  npx protect-mcp claim --payment-under 100 --anchor --output payments-under-100.json\n');
+  process.stdout.write('  npx protect-mcp verify-claim payments-under-100.json\n');
+  process.stdout.write('  npx protect-mcp anchor-record\n\n');
+  process.stdout.write(`${dim('Drop demo-tampered.jsonl into the record page to watch tampering get caught.')}\n`);
+  process.stdout.write(`${dim('Everything runs locally; --anchor publishes only a digest to the public log.')}\n\n`);
+  process.exit(0);
+}
+
 async function main(): Promise<void> {
   // Fire-and-forget install telemetry (once per machine, opt-out via env)
   sendInstallTelemetry().catch(() => {});
@@ -4035,7 +4073,15 @@ async function main(): Promise<void> {
   // and serverInfo block reports what the user actually installed.
   process.env.PROTECT_MCP_VERSION = process.env.PROTECT_MCP_VERSION || await pkgVersion();
 
-  if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
+  // Version and help must never fall through to wrap-mode parsing (which
+  // demands a "--" separator and errors). Only args BEFORE the separator
+  // count: `protect-mcp -- node server.js --version` wraps that command.
+  const preSep = args.includes('--') ? args.slice(0, args.indexOf('--')) : args;
+  if (args[0] === 'version' || preSep.includes('--version') || preSep.includes('-V')) {
+    process.stdout.write(`${process.env.PROTECT_MCP_VERSION || 'unknown'}\n`);
+    process.exit(0);
+  }
+  if (args.length === 0 || args[0] === 'help' || preSep.includes('--help') || preSep.includes('-h')) {
     printHelp();
     process.exit(0);
   }
@@ -4087,6 +4133,9 @@ async function main(): Promise<void> {
   if (args[0] === 'claim') { await handleClaim(args.slice(1)); return; }
   if (args[0] === 'verify-claim') { await handleVerifyClaim(args.slice(1)); return; }
   if (args[0] === 'anchor-record') { await handleAnchorRecord(args.slice(1)); return; }
+
+  // Seed a labeled sample record so the demo is replayable from scratch
+  if (args[0] === 'sample') { await handleSample(args.slice(1)); return; }
 
   // Handle init-hooks command — Claude Code integration setup
   if (args[0] === 'init-hooks') {

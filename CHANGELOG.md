@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.5: replayable from scratch
+
+The public demo film (legate.scopeblind.com/record) is now reproducible by
+anyone in 60 seconds, and the CLI answers the first two commands every new
+user types.
+
+- **`sample`.** Seeds a clearly-labeled sample record (fresh Ed25519 keypair,
+  kid `sample-demo`): 8 decisions including one BLOCKED network call and two
+  payments ($0.02 x402-style per-call, $12.50 invoice), plus
+  `demo-tampered.jsonl` with one decision flipped after signing. The receipts
+  are real signed artifacts (same envelope and canonical-JSON preimage as the
+  gate's signer), so `record`, `claim --payment-under`, `verify-claim`, and
+  `anchor-record` work on the folder immediately. Refuses to touch an existing
+  record or signing key; `--force` overrides.
+- **`--version` / `version` / `-V`.** Prints the installed version. Previously
+  these fell through to wrap-mode parsing and errored demanding a `--`
+  separator, which was the first thing many new users saw.
+- **`help` word.** `npx protect-mcp help` prints usage (previously errored).
+  Help and version flags are now only recognized BEFORE the `--` separator, so
+  `protect-mcp -- node server.js --version` wraps that command as intended
+  instead of printing our help.
+
 ## 0.9.4: agent payments get receipts, records get heartbeats, anchors get names
 
 The provenance layer reaches the agentic economy's payment rails (x402), the

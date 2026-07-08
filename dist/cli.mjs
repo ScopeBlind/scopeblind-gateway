@@ -54,14 +54,16 @@ Usage:
   protect-mcp policy-packs list|show|install [pack] [--dir ./cedar] [--force]
   protect-mcp connect
   protect-mcp init [--dir <path>]
+  protect-mcp sample [--dir <path>] [--force]
   protect-mcp demo
   protect-mcp trace <receipt_id> [--endpoint <url>] [--depth <n>]
   protect-mcp status [--dir <path>]
   protect-mcp digest [--today] [--dir <path>]
   protect-mcp receipts [--last <n>] [--dir <path>]
   protect-mcp record [--dir <path>] [--live] [--no-open]
-  protect-mcp claim [--no <cap>] [--only <c,c>] [--count <verdict>] [--dir <path>] [--output <path>]
-  protect-mcp verify-claim <claim.json> [--key <public-hex>]
+  protect-mcp claim [--no <cap>] [--only <c,c>] [--count <verdict>] [--payment-under <amount>] [--anchor] [--dir <path>] [--output <path>]
+  protect-mcp verify-claim <claim.json> [--key <public-hex>] [--check-anchor] [--offline]
+  protect-mcp anchor-record [--dir <path>] [--force]
   protect-mcp bundle [--output <path>] [--dir <path>]
   protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]
   protect-mcp report [--period <days>d] [--format md|json] [--output <path>] [--dir <path>]
@@ -75,6 +77,7 @@ Options:
   --port <port>     HTTP server port (default: 3000 for --http, 9377 for serve)
   --verbose         Enable debug logging to stderr
   --help            Show this help
+  --version         Print the installed version
 
 Commands:
   serve             Start HTTP hook server for Claude Code integration (port 9377)
@@ -4121,12 +4124,55 @@ async function handleSign(argv) {
   process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), artifact_type: signed.artifact_type, request_id: requestId }) + "\n");
   process.exit(0);
 }
+async function handleSample(argv) {
+  const dir = flagValue(argv, "--dir") || process.cwd();
+  const { buildSampleKit } = await import("./sample-6LRP73ZD.mjs");
+  let kit;
+  try {
+    kit = buildSampleKit(dir, { force: argv.includes("--force") });
+  } catch (err) {
+    if (err?.code === "SAMPLE_EXISTS") {
+      process.stderr.write(
+        "\nprotect-mcp sample: this folder already has a record or signing key.\nThis command seeds a LABELED SAMPLE record and will not touch a real one.\nRun it in an empty folder, or pass --force to overwrite.\n\n"
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
+  process.stdout.write(`
+${bold("\u{1F6E1} Sample record seeded")} \xB7 8 decisions (1 blocked, 2 payments), signed with a fresh key ${dim(`(kid ${kit.kid})`)}
+
+`);
+  process.stdout.write("  .protect-mcp-receipts.jsonl   the signed sample record\n");
+  process.stdout.write("  demo-tampered.jsonl           the same record with ONE decision edited after signing\n");
+  process.stdout.write(`  keys/gateway.json             sample keypair ${dim("(never commit)")}
+
+`);
+  process.stdout.write(`${bold("Replay the demo")} ${dim("(the film: legate.scopeblind.com/record)")}
+`);
+  process.stdout.write("  npx protect-mcp record\n");
+  process.stdout.write("  npx protect-mcp claim --payment-under 100 --anchor --output payments-under-100.json\n");
+  process.stdout.write("  npx protect-mcp verify-claim payments-under-100.json\n");
+  process.stdout.write("  npx protect-mcp anchor-record\n\n");
+  process.stdout.write(`${dim("Drop demo-tampered.jsonl into the record page to watch tampering get caught.")}
+`);
+  process.stdout.write(`${dim("Everything runs locally; --anchor publishes only a digest to the public log.")}
+
+`);
+  process.exit(0);
+}
 async function main() {
   sendInstallTelemetry().catch(() => {
   });
   const args = process.argv.slice(2);
   process.env.PROTECT_MCP_VERSION = process.env.PROTECT_MCP_VERSION || await pkgVersion();
-  if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
+  const preSep = args.includes("--") ? args.slice(0, args.indexOf("--")) : args;
+  if (args[0] === "version" || preSep.includes("--version") || preSep.includes("-V")) {
+    process.stdout.write(`${process.env.PROTECT_MCP_VERSION || "unknown"}
+`);
+    process.exit(0);
+  }
+  if (args.length === 0 || args[0] === "help" || preSep.includes("--help") || preSep.includes("-h")) {
     printHelp();
     process.exit(0);
   }
@@ -4178,6 +4224,10 @@ async function main() {
   }
   if (args[0] === "anchor-record") {
     await handleAnchorRecord(args.slice(1));
+    return;
+  }
+  if (args[0] === "sample") {
+    await handleSample(args.slice(1));
     return;
   }
   if (args[0] === "init-hooks") {

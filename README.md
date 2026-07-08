@@ -185,6 +185,26 @@ npx protect-mcp claim --no net.egress --anchor
 This is an accountable, position-blind attestation, not full zero-knowledge: it
 reveals the shape, not the content.
 
+## Try it in 60 seconds (no agent required)
+
+[![Watch the two-minute demo film](https://legate.scopeblind.com/media/scopeblind-demo-poster.jpg)](https://legate.scopeblind.com/record)
+
+Watch the two-minute film at [legate.scopeblind.com/record](https://legate.scopeblind.com/record), then replay it against your own copy:
+
+```bash
+npx protect-mcp sample     # seed a labeled sample record (8 decisions: 1 blocked, 2 payments)
+npx protect-mcp record     # open it: signatures verified in your browser
+
+npx protect-mcp claim --payment-under 100 --anchor --output payments-under-100.json
+npx protect-mcp verify-claim payments-under-100.json
+npx protect-mcp anchor-record
+```
+
+Drop the generated `demo-tampered.jsonl` into the record page to watch a
+post-signing edit get caught. `sample` refuses to touch an existing record, so
+run it in an empty folder. When you are ready for the real thing, wire the gate
+below and the same commands run against your agent's own record.
+
 ## Claude Code hook quickstart
 
 ```bash
@@ -368,6 +388,7 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 |---------|-------------|
 | `serve` | Start the HTTP hook server for Claude Code (port 9377). `--enforce` runs the restraint self-test first; `--cedar <dir>` and `--policy <path>` select the policy. |
 | `init` | Generate an Ed25519 keypair (`keys/gateway.json`), a config template, and a sample policy. |
+| `sample` | Seed a clearly-labeled sample record (8 decisions: one blocked call, two payments; kid `sample-demo`) plus a tampered copy, so `record`, `claim`, `verify-claim`, and `anchor-record` are replayable from scratch before wiring an agent. Refuses to touch an existing record; `--force` overrides. |
 | `wrap` | Print a protected MCP command or patch Claude Desktop MCP servers. Dry-run by default; use `--write` to update Claude Desktop config. |
 | `dashboard` | Start a local-only dashboard on `127.0.0.1` showing tool inventory, risk, policy coverage, exact-action approvals, receipt chains, and audit export. |
 | `recommend` | Draft a reviewable JSON policy from observed local calls. Dry-run by default; use `--write` to create `protect-mcp.recommended.json`. |
