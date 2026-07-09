@@ -695,6 +695,8 @@ declare class ProtectGateway {
     private clientReader;
     private logFilePath;
     private receiptFilePath;
+    /** s5.7 hash of the last line appended to the receipt file (chain link) */
+    private lastReceiptHash;
     private evidenceStore;
     private receiptBuffer;
     /** Approval grants keyed by request_id (scoped to the specific action that was requested) */

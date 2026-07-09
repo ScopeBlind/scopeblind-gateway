@@ -21,6 +21,8 @@ interface HttpTransportOptions {
   port: number;
   config: ProtectConfig;
   serverCommand: string[];
+  /** Loaded Cedar policy set; attached to the gateway before the child starts */
+  cedarPolicySet?: import('./cedar-evaluator.js').CedarPolicySet;
 }
 
 export async function startHttpTransport(options: HttpTransportOptions): Promise<void> {
@@ -37,6 +39,13 @@ export async function startHttpTransport(options: HttpTransportOptions): Promise
     args: serverCommand.slice(1),
   };
   const gateway = new ProtectGateway(httpConfig);
+
+  // Cedar policies MUST be attached before the child starts. Before 0.10.1
+  // the stdio path attached them after the HTTP branch returned, so in HTTP
+  // mode loaded Cedar policies were silently never enforced (fail-open).
+  if (options.cedarPolicySet) {
+    gateway.setCedarPolicies(options.cedarPolicySet);
+  }
 
   // Start the child process (without stdin reading)
   await gateway.startForHttp();

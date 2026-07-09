@@ -1,6 +1,6 @@
 import {
   ProtectGateway
-} from "./chunk-JUI6AZTI.mjs";
+} from "./chunk-ZX7MTVDL.mjs";
 import "./chunk-5AYAOZ34.mjs";
 import "./chunk-FGCNKEEW.mjs";
 import "./chunk-XOP3PEBM.mjs";
@@ -17,6 +17,9 @@ async function startHttpTransport(options) {
     args: serverCommand.slice(1)
   };
   const gateway = new ProtectGateway(httpConfig);
+  if (options.cedarPolicySet) {
+    gateway.setCedarPolicies(options.cedarPolicySet);
+  }
   await gateway.startForHttp();
   const server = createServer(async (req, res) => {
     const origin = req.headers.origin || "*";

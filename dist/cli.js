@@ -1592,6 +1592,7 @@ var init_gateway = __esm({
     import_node_crypto3 = require("crypto");
     import_node_readline = require("readline");
     import_node_fs7 = require("fs");
+    init_acta_envelope();
     import_node_path5 = require("path");
     init_policy();
     init_admission();
@@ -1612,6 +1613,8 @@ var init_gateway = __esm({
       clientReader = null;
       logFilePath;
       receiptFilePath;
+      /** s5.7 hash of the last line appended to the receipt file (chain link) */
+      lastReceiptHash = null;
       evidenceStore;
       receiptBuffer;
       /** Approval grants keyed by request_id (scoped to the specific action that was requested) */
@@ -1631,6 +1634,11 @@ var init_gateway = __esm({
         this.config = config;
         this.logFilePath = (0, import_node_path5.join)(process.cwd(), LOG_FILE2);
         this.receiptFilePath = (0, import_node_path5.join)(process.cwd(), RECEIPTS_FILE);
+        try {
+          const existing = (0, import_node_fs7.readFileSync)(this.receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+          if (existing.length > 0) this.lastReceiptHash = receiptHash(JSON.parse(existing[existing.length - 1]));
+        } catch {
+        }
         this.evidenceStore = new EvidenceStore();
         this.receiptBuffer = new ReceiptBuffer();
         this.notificationConfig = parseNotificationConfigFromEnv();
@@ -1977,12 +1985,13 @@ var init_gateway = __esm({
         } catch {
         }
         if (isSigningEnabled()) {
-          const signed = signDecision(log);
+          const signed = signDecision(log, this.lastReceiptHash || void 0);
           if (signed.signed) {
             process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}
 `);
             try {
               (0, import_node_fs7.appendFileSync)(this.receiptFilePath, signed.signed + "\n");
+              if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
             } catch {
             }
             this.receiptBuffer.add(log.request_id, signed.signed);
@@ -5225,6 +5234,9 @@ async function startHttpTransport(options) {
     args: serverCommand.slice(1)
   };
   const gateway = new ProtectGateway(httpConfig);
+  if (options.cedarPolicySet) {
+    gateway.setCedarPolicies(options.cedarPolicySet);
+  }
   await gateway.startForHttp();
   const server = (0, import_node_http3.createServer)(async (req, res) => {
     const origin = req.headers.origin || "*";
@@ -6947,7 +6959,7 @@ Starting demo server with 5 tools...
   await gateway.start();
 }
 async function handleStatus2(argv) {
-  const { readFileSync: readFileSync12, existsSync: existsSync11 } = await import("fs");
+  const { readFileSync: readFileSync13, existsSync: existsSync11 } = await import("fs");
   const { join: join10 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
@@ -6965,7 +6977,7 @@ async function handleStatus2(argv) {
 `);
     process.exit(0);
   }
-  const raw = readFileSync12(logPath, "utf-8");
+  const raw = readFileSync13(logPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   if (lines.length === 0) {
     process.stderr.write(`${bold("protect-mcp status")}
@@ -7047,7 +7059,7 @@ ${bold("protect-mcp status")}
   const evidencePath = join10(dir, ".protect-mcp-evidence.json");
   if (existsSync11(evidencePath)) {
     try {
-      const evidenceRaw = readFileSync12(evidencePath, "utf-8");
+      const evidenceRaw = readFileSync13(evidencePath, "utf-8");
       const evidence = JSON.parse(evidenceRaw);
       const agentCount = Object.keys(evidence.agents || {}).length;
       process.stdout.write(`
@@ -7059,7 +7071,7 @@ ${bold("protect-mcp status")}
   const keyPath = join10(dir, "keys", "gateway.json");
   if (existsSync11(keyPath)) {
     try {
-      const keyData = JSON.parse(readFileSync12(keyPath, "utf-8"));
+      const keyData = JSON.parse(readFileSync13(keyPath, "utf-8"));
       if (keyData.publicKey) {
         const fingerprint = keyData.publicKey.slice(0, 16) + "...";
         process.stdout.write(`
@@ -8235,7 +8247,7 @@ ${green("\u2713 Wrote recommended policy")}
 `);
 }
 async function handleWrap(argv) {
-  const { existsSync: existsSync11, readFileSync: readFileSync12, writeFileSync: writeFileSync5 } = await import("fs");
+  const { existsSync: existsSync11, readFileSync: readFileSync13, writeFileSync: writeFileSync5 } = await import("fs");
   const { resolve } = await import("path");
   const configFlag = flagValue(argv, "--config");
   const cedarFlag = flagValue(argv, "--cedar");
@@ -8296,7 +8308,7 @@ ${bold("protect-mcp wrap")}
   }
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync12(claudePath, "utf-8"));
+    parsed = JSON.parse(readFileSync13(claudePath, "utf-8"));
   } catch (err) {
     process.stderr.write(`protect-mcp wrap: could not parse ${claudePath}: ${err instanceof Error ? err.message : err}
 `);
@@ -8360,7 +8372,7 @@ Dry run only. Apply with:
     return;
   }
   const backupPath = `${claudePath}.bak.${Date.now()}`;
-  writeFileSync5(backupPath, readFileSync12(claudePath, "utf-8"));
+  writeFileSync5(backupPath, readFileSync13(claudePath, "utf-8"));
   writeFileSync5(claudePath, JSON.stringify(next, null, 2) + "\n");
   process.stdout.write(`
 ${green("\u2713 Claude Desktop config updated")}
@@ -8387,7 +8399,7 @@ function yellow(s) {
   return process.env.NO_COLOR ? s : `\x1B[33m${s}\x1B[0m`;
 }
 async function handleDigest(argv) {
-  const { readFileSync: readFileSync12, existsSync: existsSync11 } = await import("fs");
+  const { readFileSync: readFileSync13, existsSync: existsSync11 } = await import("fs");
   const { join: join10 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
@@ -8401,7 +8413,7 @@ No log file found. Run protect-mcp first.
 `);
     process.exit(0);
   }
-  const raw = readFileSync12(logPath, "utf-8");
+  const raw = readFileSync13(logPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   let entries = [];
   for (const line of lines) {
@@ -8478,7 +8490,7 @@ ${bold("\u{1F6E1}\uFE0F Agent Daily Digest")}
 `);
 }
 async function handleReceipts2(argv) {
-  const { readFileSync: readFileSync12, existsSync: existsSync11 } = await import("fs");
+  const { readFileSync: readFileSync13, existsSync: existsSync11 } = await import("fs");
   const { join: join10 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
@@ -8493,7 +8505,7 @@ No signed receipt file found. Run protect-mcp with signing enabled first.
 `);
     process.exit(0);
   }
-  const raw = readFileSync12(receiptsPath, "utf-8");
+  const raw = readFileSync13(receiptsPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   const recent = lines.slice(-count);
   process.stdout.write(`
@@ -8520,7 +8532,7 @@ async function pkgVersion() {
   if (_pkgV) return _pkgV;
   let v = "0.0.0";
   try {
-    const { readFileSync: readFileSync12, existsSync: existsSync11, realpathSync } = await import("fs");
+    const { readFileSync: readFileSync13, existsSync: existsSync11, realpathSync } = await import("fs");
     const { dirname: dirname3, join: join10, resolve } = await import("path");
     let base = "";
     try {
@@ -8533,7 +8545,7 @@ async function pkgVersion() {
     ].filter(Boolean);
     for (const p of candidates) {
       if (existsSync11(p)) {
-        const parsed = JSON.parse(readFileSync12(p, "utf-8"));
+        const parsed = JSON.parse(readFileSync13(p, "utf-8"));
         if (parsed && parsed.name === "protect-mcp" && parsed.version) {
           v = parsed.version;
           break;
@@ -8569,7 +8581,7 @@ function mapRecordEntry(e) {
   return { ts, tool, verdict, reason, hook, signed, caps, agent, dur, id: String(e.request_id || p.request_id || ""), digest, raw: e };
 }
 async function handleRecord(argv) {
-  const { readFileSync: readFileSync12, existsSync: existsSync11, writeFileSync: writeFileSync5 } = await import("fs");
+  const { readFileSync: readFileSync13, existsSync: existsSync11, writeFileSync: writeFileSync5 } = await import("fs");
   const { join: join10 } = await import("path");
   const osMod = await import("os");
   const cp = await import("child_process");
@@ -8593,7 +8605,7 @@ Start the gate with ${bold("npx protect-mcp serve")}, use your agent, then run t
     process.exit(0);
     return;
   }
-  const readRecs = (file) => readFileSync12(file, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const readRecs = (file) => readFileSync13(file, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
@@ -8603,7 +8615,7 @@ Start the gate with ${bold("npx protect-mcp serve")}, use your agent, then run t
   let pinnedKey = "";
   let pinnedKid = "";
   try {
-    const kd = JSON.parse(readFileSync12(join10(dir, "keys", "gateway.json"), "utf-8"));
+    const kd = JSON.parse(readFileSync13(join10(dir, "keys", "gateway.json"), "utf-8"));
     if (kd && typeof kd.publicKey === "string" && /^[0-9a-f]{64}$/i.test(kd.publicKey)) {
       pinnedKey = kd.publicKey;
       pinnedKid = typeof kd.kid === "string" ? kd.kid : "";
@@ -8841,7 +8853,7 @@ render();kickVerify();
 if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){var nr=d.recs||[];var changed=nr.length!==RECORDS.length;RECORDS=nr;META.count=RECORDS.length;if(typeof d.signed==='boolean')META.signed=d.signed;if(changed){render();kickVerify()}}).catch(function(){})};poll();setInterval(poll,2000);}
 </script></body></html>`;
 async function handleClaim(argv) {
-  const { readFileSync: readFileSync12, existsSync: existsSync11, writeFileSync: writeFileSync5 } = await import("fs");
+  const { readFileSync: readFileSync13, existsSync: existsSync11, writeFileSync: writeFileSync5 } = await import("fs");
   const { join: join10 } = await import("path");
   const { buildClaim: buildClaim2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
   let dir = process.cwd();
@@ -8888,7 +8900,7 @@ No signing key at ${keyPath}. A claim must be signed. Run ${bold("npx protect-mc
   }
   let key;
   try {
-    key = JSON.parse(readFileSync12(keyPath, "utf-8"));
+    key = JSON.parse(readFileSync13(keyPath, "utf-8"));
   } catch {
     process.stderr.write(`
 protect-mcp claim: ${keyPath} is not valid JSON.
@@ -8916,7 +8928,7 @@ No signed receipts in ${dir}. Run the gate with signing on, then try again.
     process.exit(0);
     return;
   }
-  const receipts = readFileSync12(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const receipts = readFileSync13(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
@@ -8989,7 +9001,7 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
   process.exit(0);
 }
 async function handleAnchorRecord(argv) {
-  const { readFileSync: readFileSync12, existsSync: existsSync11, appendFileSync: appendFileSync3 } = await import("fs");
+  const { readFileSync: readFileSync13, existsSync: existsSync11, appendFileSync: appendFileSync3 } = await import("fs");
   const { join: join10 } = await import("path");
   const { anchorRecordCheckpoint: anchorRecordCheckpoint2, buildRecordCheckpoint: buildRecordCheckpoint2, lookupPinnedIdentity: lookupPinnedIdentity2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
   let dir = process.cwd();
@@ -9010,7 +9022,7 @@ No signing key at ${keyPath}. A checkpoint must be signed. Run ${bold("npx prote
   }
   let key;
   try {
-    key = JSON.parse(readFileSync12(keyPath, "utf-8"));
+    key = JSON.parse(readFileSync13(keyPath, "utf-8"));
   } catch {
     process.stderr.write(`
 protect-mcp anchor-record: ${keyPath} is not valid JSON.
@@ -9038,7 +9050,7 @@ No signed receipts in ${dir}. Run the gate with signing on, then try again.
     process.exit(0);
     return;
   }
-  const receipts = readFileSync12(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const receipts = readFileSync13(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
@@ -9057,7 +9069,7 @@ protect-mcp anchor-record: no readable receipts in ${recPath}.
   const historyPath = join10(dir, ".protect-mcp-anchors.jsonl");
   const preview = buildRecordCheckpoint2(receipts, claimKey, "preview");
   if (!argv.includes("--force") && existsSync11(historyPath)) {
-    const lines = readFileSync12(historyPath, "utf-8").split(/\r?\n/).filter(Boolean);
+    const lines = readFileSync13(historyPath, "utf-8").split(/\r?\n/).filter(Boolean);
     const last = lines.length ? (() => {
       try {
         return JSON.parse(lines[lines.length - 1]);
@@ -9115,7 +9127,7 @@ ${bold("\u{1F6E1}\uFE0F  Record checkpoint")}
   process.exit(0);
 }
 async function handleVerifyClaim(argv) {
-  const { readFileSync: readFileSync12, existsSync: existsSync11 } = await import("fs");
+  const { readFileSync: readFileSync13, existsSync: existsSync11 } = await import("fs");
   const { verifyClaim: verifyClaim2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
   const file = argv.find((a) => !a.startsWith("--"));
   if (!file || !existsSync11(file)) {
@@ -9130,7 +9142,7 @@ Provide a claim pack file.
   }
   let pack;
   try {
-    pack = JSON.parse(readFileSync12(file, "utf-8"));
+    pack = JSON.parse(readFileSync13(file, "utf-8"));
   } catch {
     process.stderr.write(`
 protect-mcp verify-claim: ${file} is not valid JSON.
@@ -9171,7 +9183,7 @@ ${bold("protect-mcp verify-claim")}
     const { checkClaimAnchor: checkClaimAnchor2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
     let sidecar = null;
     try {
-      sidecar = JSON.parse(readFileSync12(sidecarPath, "utf-8"));
+      sidecar = JSON.parse(readFileSync13(sidecarPath, "utf-8"));
     } catch {
     }
     if (!sidecar) {
@@ -9238,7 +9250,7 @@ ${bold("protect-mcp verify-claim")}
   process.exit(finalValid ? 0 : 1);
 }
 async function handleBundle(argv) {
-  const { readFileSync: readFileSync12, writeFileSync: writeFileSync5, existsSync: existsSync11 } = await import("fs");
+  const { readFileSync: readFileSync13, writeFileSync: writeFileSync5, existsSync: existsSync11 } = await import("fs");
   const { join: join10 } = await import("path");
   const { createAuditBundle: createAuditBundle2 } = await Promise.resolve().then(() => (init_bundle(), bundle_exports));
   let dir = process.cwd();
@@ -9262,8 +9274,8 @@ No key file found at ${keyPath}
 `);
     process.exit(1);
   }
-  const receipts = readFileSync12(receiptsPath, "utf-8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
-  const keyData = JSON.parse(readFileSync12(keyPath, "utf-8"));
+  const receipts = readFileSync13(receiptsPath, "utf-8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  const keyData = JSON.parse(readFileSync13(keyPath, "utf-8"));
   const bundle = createAuditBundle2({
     tenant: keyData.issuer || "protect-mcp",
     receipts,
@@ -9292,7 +9304,7 @@ ${bold("protect-mcp bundle")}
 `);
 }
 async function createSandbox() {
-  const { mkdirSync: mkdirSync4, writeFileSync: writeFileSync5, existsSync: existsSync11, readFileSync: readFileSync12 } = await import("fs");
+  const { mkdirSync: mkdirSync4, writeFileSync: writeFileSync5, existsSync: existsSync11, readFileSync: readFileSync13 } = await import("fs");
   const { join: join10 } = await import("path");
   const { homedir } = await import("os");
   let response;
@@ -9331,7 +9343,7 @@ async function createSandbox() {
   let existing = {};
   if (existsSync11(configPath)) {
     try {
-      existing = JSON.parse(readFileSync12(configPath, "utf-8"));
+      existing = JSON.parse(readFileSync13(configPath, "utf-8"));
     } catch {
     }
   }
@@ -9368,7 +9380,7 @@ ${"\u2500".repeat(50)}
 }
 async function handleQuickstart(argv) {
   const connectFlag = argv.includes("--connect");
-  const { mkdtempSync, writeFileSync: writeFileSync5, existsSync: existsSync11, mkdirSync: mkdirSync4, readFileSync: readFileSync12 } = await import("fs");
+  const { mkdtempSync, writeFileSync: writeFileSync5, existsSync: existsSync11, mkdirSync: mkdirSync4, readFileSync: readFileSync13 } = await import("fs");
   const { join: join10 } = await import("path");
   const { tmpdir } = await import("os");
   const dir = mkdtempSync(join10(tmpdir(), "protect-mcp-quickstart-"));
@@ -10263,7 +10275,7 @@ ${"\u2500".repeat(60)}
 `);
 }
 async function traceLocal(receiptId) {
-  const { readFileSync: readFileSync12, existsSync: existsSync11 } = await import("fs");
+  const { readFileSync: readFileSync13, existsSync: existsSync11 } = await import("fs");
   const { join: join10 } = await import("path");
   const dir = process.cwd();
   const receiptsDir = join10(dir, ".protect-mcp", "receipts");
@@ -10281,7 +10293,7 @@ async function traceLocal(receiptId) {
   const receipts = [];
   for (const file of files) {
     try {
-      const content = readFileSync12(join10(receiptsDir, file), "utf-8");
+      const content = readFileSync13(join10(receiptsDir, file), "utf-8");
       const receipt = JSON.parse(content);
       receipts.push(receipt);
     } catch {
@@ -10338,7 +10350,7 @@ function getTypeEmoji(type) {
   }
 }
 async function handleInitHooks(argv) {
-  const { writeFileSync: writeFileSync5, existsSync: existsSync11, mkdirSync: mkdirSync4, readFileSync: readFileSync12 } = await import("fs");
+  const { writeFileSync: writeFileSync5, existsSync: existsSync11, mkdirSync: mkdirSync4, readFileSync: readFileSync13 } = await import("fs");
   const { join: join10 } = await import("path");
   const { generateHookSettings: generateHookSettings2, generateSampleCedarPolicy: generateSampleCedarPolicy2, generateVerifyReceiptSkill: generateVerifyReceiptSkill2 } = await Promise.resolve().then(() => (init_hook_patterns(), hook_patterns_exports));
   let dir = process.cwd();
@@ -10361,7 +10373,7 @@ ${bold("protect-mcp init-hooks")}
   }
   if (existsSync11(settingsPath)) {
     try {
-      existingSettings = JSON.parse(readFileSync12(settingsPath, "utf-8"));
+      existingSettings = JSON.parse(readFileSync13(settingsPath, "utf-8"));
     } catch {
       process.stderr.write(`[PROTECT_MCP] Warning: Could not parse existing ${settingsPath}
 `);
@@ -10508,7 +10520,7 @@ ${bold("protect-mcp init-hooks")}
 }
 async function sendInstallTelemetry() {
   try {
-    const { existsSync: existsSync11, mkdirSync: mkdirSync4, writeFileSync: writeFileSync5, readFileSync: readFileSync12 } = await import("fs");
+    const { existsSync: existsSync11, mkdirSync: mkdirSync4, writeFileSync: writeFileSync5, readFileSync: readFileSync13 } = await import("fs");
     const { join: join10, dirname: dirname3 } = await import("path");
     const { homedir } = await import("os");
     const { fileURLToPath } = await import("url");
@@ -11146,6 +11158,18 @@ async function main() {
         process.stderr.write(`[PROTECT_MCP] Cedar files: ${cedarPolicySet.files.join(", ")}
 `);
       }
+      const { existsSync: cfgExists } = await import("fs");
+      if (cfgExists("protect-mcp.json")) {
+        try {
+          const cfg = loadPolicy("protect-mcp.json");
+          signing = cfg.signing;
+          credentials = cfg.credentials;
+          if (signing) process.stderr.write("[PROTECT_MCP] Signing config loaded from protect-mcp.json (receipts enabled)\n");
+        } catch (err) {
+          process.stderr.write(`[PROTECT_MCP] Warning: could not read signing config from protect-mcp.json: ${err instanceof Error ? err.message : err}
+`);
+        }
+      }
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error loading Cedar policies: ${err instanceof Error ? err.message : err}
 `);
@@ -11198,7 +11222,7 @@ async function main() {
     const portIdx = args.indexOf("--port");
     const httpPort = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 3e3;
     const { startHttpTransport: startHttpTransport2 } = await Promise.resolve().then(() => (init_http_transport(), http_transport_exports));
-    startHttpTransport2({ port: httpPort, config, serverCommand: childCommand });
+    startHttpTransport2({ port: httpPort, config, serverCommand: childCommand, cedarPolicySet: cedarPolicySet ?? void 0 });
     return;
   }
   const gateway = new ProtectGateway(config);
@@ -11250,7 +11274,7 @@ async function handleSimulate(args) {
   }
 }
 async function handleDoctor() {
-  const { existsSync: existsSync11, readFileSync: readFileSync12, readdirSync: readdirSync5 } = await import("fs");
+  const { existsSync: existsSync11, readFileSync: readFileSync13, readdirSync: readdirSync5 } = await import("fs");
   const { join: join10 } = await import("path");
   const { execSync } = await import("child_process");
   const green2 = (s) => `\x1B[32m\u2713\x1B[0m ${s}`;
@@ -11273,7 +11297,7 @@ async function handleDoctor() {
   const configPath = join10(process.cwd(), "scopeblind.config.json");
   if (existsSync11(configPath)) {
     try {
-      const config = JSON.parse(readFileSync12(configPath, "utf-8"));
+      const config = JSON.parse(readFileSync13(configPath, "utf-8"));
       if (config.signing?.private_key || config.signing?.key_file) {
         process.stdout.write(green2("Signing keys configured\n"));
       } else {
@@ -11326,7 +11350,7 @@ async function handleDoctor() {
   const receiptFile = join10(process.cwd(), "protect-mcp-receipts.jsonl");
   if (existsSync11(logFile)) {
     try {
-      const lines = readFileSync12(logFile, "utf-8").trim().split("\n").length;
+      const lines = readFileSync13(logFile, "utf-8").trim().split("\n").length;
       process.stdout.write(green2(`Decision log: ${lines} entries
 `));
     } catch {
@@ -11337,7 +11361,7 @@ async function handleDoctor() {
   }
   if (existsSync11(receiptFile)) {
     try {
-      const lines = readFileSync12(receiptFile, "utf-8").trim().split("\n").length;
+      const lines = readFileSync13(receiptFile, "utf-8").trim().split("\n").length;
       process.stdout.write(green2(`Receipt file: ${lines} signed receipts
 `));
     } catch {

@@ -4496,6 +4496,21 @@ async function main(): Promise<void> {
       if (verbose) {
         process.stderr.write(`[PROTECT_MCP] Cedar files: ${cedarPolicySet.files.join(', ')}\n`);
       }
+      // Cedar rules come from .cedar files, but signing and credentials still
+      // live in protect-mcp.json. Before 0.10.1 a Cedar-mode gateway never
+      // read them, so it silently emitted no receipts (an unsigned gate that
+      // LOOKED configured). Pick them up when the config file is present.
+      const { existsSync: cfgExists } = await import('node:fs');
+      if (cfgExists('protect-mcp.json')) {
+        try {
+          const cfg = loadPolicy('protect-mcp.json');
+          signing = cfg.signing;
+          credentials = cfg.credentials;
+          if (signing) process.stderr.write('[PROTECT_MCP] Signing config loaded from protect-mcp.json (receipts enabled)\n');
+        } catch (err) {
+          process.stderr.write(`[PROTECT_MCP] Warning: could not read signing config from protect-mcp.json: ${err instanceof Error ? err.message : err}\n`);
+        }
+      }
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error loading Cedar policies: ${err instanceof Error ? err.message : err}\n`);
       process.exit(1);
@@ -4550,7 +4565,7 @@ async function main(): Promise<void> {
     const portIdx = args.indexOf('--port');
     const httpPort = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 3000;
     const { startHttpTransport } = await import('./http-transport.js');
-    startHttpTransport({ port: httpPort, config, serverCommand: childCommand });
+    startHttpTransport({ port: httpPort, config, serverCommand: childCommand, cedarPolicySet: cedarPolicySet ?? undefined });
     return;
   }
 

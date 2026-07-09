@@ -11,6 +11,9 @@ import {
 import {
   evaluateCedar
 } from "./chunk-FGCNKEEW.mjs";
+import {
+  receiptHash
+} from "./chunk-XOP3PEBM.mjs";
 
 // src/evidence-store.ts
 import { readFileSync, writeFileSync, existsSync } from "fs";
@@ -589,7 +592,7 @@ function parseNotificationConfigFromEnv() {
 import { spawn } from "child_process";
 import { randomUUID, randomBytes } from "crypto";
 import { createInterface } from "readline";
-import { appendFileSync } from "fs";
+import { appendFileSync, readFileSync as readFileSync2 } from "fs";
 import { join as join2 } from "path";
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE = ".protect-mcp-receipts.jsonl";
@@ -600,6 +603,8 @@ var ProtectGateway = class {
   clientReader = null;
   logFilePath;
   receiptFilePath;
+  /** s5.7 hash of the last line appended to the receipt file (chain link) */
+  lastReceiptHash = null;
   evidenceStore;
   receiptBuffer;
   /** Approval grants keyed by request_id (scoped to the specific action that was requested) */
@@ -619,6 +624,11 @@ var ProtectGateway = class {
     this.config = config;
     this.logFilePath = join2(process.cwd(), LOG_FILE);
     this.receiptFilePath = join2(process.cwd(), RECEIPTS_FILE);
+    try {
+      const existing = readFileSync2(this.receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+      if (existing.length > 0) this.lastReceiptHash = receiptHash(JSON.parse(existing[existing.length - 1]));
+    } catch {
+    }
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();
     this.notificationConfig = parseNotificationConfigFromEnv();
@@ -965,12 +975,13 @@ var ProtectGateway = class {
     } catch {
     }
     if (isSigningEnabled()) {
-      const signed = signDecision(log);
+      const signed = signDecision(log, this.lastReceiptHash || void 0);
       if (signed.signed) {
         process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}
 `);
         try {
           appendFileSync(this.receiptFilePath, signed.signed + "\n");
+          if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
         } catch {
         }
         this.receiptBuffer.add(log.request_id, signed.signed);

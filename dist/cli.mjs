@@ -11,11 +11,11 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-VMOZJXYM.mjs";
+} from "./chunk-5WH4VGW2.mjs";
 import {
   ProtectGateway,
   validateCredentials
-} from "./chunk-JUI6AZTI.mjs";
+} from "./chunk-ZX7MTVDL.mjs";
 import {
   buildActionReadback,
   initSigning,
@@ -4597,6 +4597,18 @@ async function main() {
         process.stderr.write(`[PROTECT_MCP] Cedar files: ${cedarPolicySet.files.join(", ")}
 `);
       }
+      const { existsSync: cfgExists } = await import("fs");
+      if (cfgExists("protect-mcp.json")) {
+        try {
+          const cfg = loadPolicy("protect-mcp.json");
+          signing = cfg.signing;
+          credentials = cfg.credentials;
+          if (signing) process.stderr.write("[PROTECT_MCP] Signing config loaded from protect-mcp.json (receipts enabled)\n");
+        } catch (err) {
+          process.stderr.write(`[PROTECT_MCP] Warning: could not read signing config from protect-mcp.json: ${err instanceof Error ? err.message : err}
+`);
+        }
+      }
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error loading Cedar policies: ${err instanceof Error ? err.message : err}
 `);
@@ -4648,8 +4660,8 @@ async function main() {
   if (useHttp) {
     const portIdx = args.indexOf("--port");
     const httpPort = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 3e3;
-    const { startHttpTransport } = await import("./http-transport-QRLBLBLV.mjs");
-    startHttpTransport({ port: httpPort, config, serverCommand: childCommand });
+    const { startHttpTransport } = await import("./http-transport-TTVNALF4.mjs");
+    startHttpTransport({ port: httpPort, config, serverCommand: childCommand, cedarPolicySet: cedarPolicySet ?? void 0 });
     return;
   }
   const gateway = new ProtectGateway(config);

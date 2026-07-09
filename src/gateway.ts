@@ -1,7 +1,8 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { createInterface, type Interface } from 'node:readline';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
+import { receiptHash } from './acta-envelope.js';
 import { join } from 'node:path';
 import type {
   ProtectConfig,
@@ -39,6 +40,8 @@ export class ProtectGateway {
   private clientReader: Interface | null = null;
   private logFilePath: string;
   private receiptFilePath: string;
+  /** s5.7 hash of the last line appended to the receipt file (chain link) */
+  private lastReceiptHash: string | null = null;
   private evidenceStore: EvidenceStore;
   private receiptBuffer: ReceiptBuffer;
 
@@ -68,6 +71,11 @@ export class ProtectGateway {
     this.config = config;
     this.logFilePath = join(process.cwd(), LOG_FILE);
     this.receiptFilePath = join(process.cwd(), RECEIPTS_FILE);
+    // Resume the s5.7 receipt chain across restarts from the existing log tail.
+    try {
+      const existing = readFileSync(this.receiptFilePath, 'utf-8').split('\n').filter((l) => l.trim());
+      if (existing.length > 0) this.lastReceiptHash = receiptHash(JSON.parse(existing[existing.length - 1]));
+    } catch { /* missing or unparseable log starts a fresh chain */ }
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();
     this.notificationConfig = parseNotificationConfigFromEnv();
@@ -471,10 +479,13 @@ export class ProtectGateway {
     try { appendFileSync(this.logFilePath, JSON.stringify(log) + '\n'); } catch { /* best-effort */ }
 
     if (isSigningEnabled()) {
-      const signed = signDecision(log);
+      const signed = signDecision(log, this.lastReceiptHash || undefined);
       if (signed.signed) {
         process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}\n`);
-        try { appendFileSync(this.receiptFilePath, signed.signed + '\n'); } catch { /* best-effort */ }
+        try {
+          appendFileSync(this.receiptFilePath, signed.signed + '\n');
+          if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
+        } catch { /* best-effort */ }
         // Feed to HTTP receipt buffer
         this.receiptBuffer.add(log.request_id, signed.signed);
         // Record in evidence store

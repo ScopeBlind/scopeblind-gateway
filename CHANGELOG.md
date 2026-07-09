@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.10.1: HTTP gateway mode enforces Cedar and emits chained receipts
+
+Three fixes found by running the cloud-gateway path end to end before
+documenting it:
+
+- Fail-open fixed: in `--http` mode, loaded Cedar policies were never
+  attached to the gateway (the stdio path attached them after the HTTP
+  branch returned), so a remote gate started with `--enforce` and a Cedar
+  policy silently allowed everything. Cedar policies are now attached
+  before the child starts, and a forbidden tool call over HTTP is denied.
+- Silent-unsigned fixed: a Cedar-mode gateway never read `signing` from
+  protect-mcp.json (only the JSON-policy branch did), so it emitted no
+  receipts while looking fully configured. Cedar mode now picks up signing
+  and credentials from protect-mcp.json when present and says so on stderr.
+- Gateway receipts now chain: the wrapped-server path (stdio and HTTP)
+  threads previousReceiptHash per draft s5.7 and resumes the chain across
+  restarts from the log tail, matching the hook server. Verified end to
+  end: a cloud-style client over Streamable HTTP, one allow and one deny,
+  chained draft-02 receipts, replayed offline with the published
+  @veritasacta/verify with zero chain breaks.
+
+
 ## 0.10.0: receipts migrate to the draft-02 Acta envelope
 
 Also in this release, the policy digest becomes a recomputable commitment

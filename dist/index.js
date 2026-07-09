@@ -35131,15 +35131,6 @@ var import_node_child_process = require("child_process");
 var import_node_crypto3 = require("crypto");
 var import_node_readline = require("readline");
 var import_node_fs7 = require("fs");
-var import_node_path5 = require("path");
-
-// src/policy.ts
-var import_node_fs2 = require("fs");
-
-// src/policy-digest.ts
-var import_node_crypto = require("crypto");
-var import_node_fs = require("fs");
-var import_node_path = require("path");
 
 // src/acta-envelope.ts
 var import_ed25519 = require("@noble/curves/ed25519");
@@ -35247,7 +35238,16 @@ function receiptIdentity(envelope) {
   };
 }
 
+// src/gateway.ts
+var import_node_path5 = require("path");
+
+// src/policy.ts
+var import_node_fs2 = require("fs");
+
 // src/policy-digest.ts
+var import_node_crypto = require("crypto");
+var import_node_fs = require("fs");
+var import_node_path = require("path");
 var POLICY_DIGEST_CONSTRUCTION = "acta-policy-digest-v1";
 var sha256hex = (data) => (0, import_node_crypto.createHash)("sha256").update(data).digest("hex");
 function digestPolicyFiles(engine, files) {
@@ -36591,6 +36591,8 @@ var ProtectGateway = class {
   clientReader = null;
   logFilePath;
   receiptFilePath;
+  /** s5.7 hash of the last line appended to the receipt file (chain link) */
+  lastReceiptHash = null;
   evidenceStore;
   receiptBuffer;
   /** Approval grants keyed by request_id (scoped to the specific action that was requested) */
@@ -36610,6 +36612,11 @@ var ProtectGateway = class {
     this.config = config;
     this.logFilePath = (0, import_node_path5.join)(process.cwd(), LOG_FILE2);
     this.receiptFilePath = (0, import_node_path5.join)(process.cwd(), RECEIPTS_FILE);
+    try {
+      const existing = (0, import_node_fs7.readFileSync)(this.receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+      if (existing.length > 0) this.lastReceiptHash = receiptHash(JSON.parse(existing[existing.length - 1]));
+    } catch {
+    }
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();
     this.notificationConfig = parseNotificationConfigFromEnv();
@@ -36956,12 +36963,13 @@ var ProtectGateway = class {
     } catch {
     }
     if (isSigningEnabled()) {
-      const signed = signDecision(log);
+      const signed = signDecision(log, this.lastReceiptHash || void 0);
       if (signed.signed) {
         process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}
 `);
         try {
           (0, import_node_fs7.appendFileSync)(this.receiptFilePath, signed.signed + "\n");
+          if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
         } catch {
         }
         this.receiptBuffer.add(log.request_id, signed.signed);

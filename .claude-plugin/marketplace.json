@@ -13,7 +13,7 @@
       "name": "protect-mcp",
       "source": "./",
       "description": "Fail-closed Cedar policy gate plus Ed25519 signed receipts for every tool call. Denies on any policy error, proves the gate is live with a startup self-test, and lets you inspect and edit the policy from the CLI. Receipts verify offline with no vendor trust.",
-      "version": "0.10.0",
+      "version": "0.10.1",
       "author": {
         "name": "ScopeBlind",
         "url": "https://scopeblind.com"
