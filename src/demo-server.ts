@@ -205,25 +205,32 @@ function handleRequest(request: JsonRpcRequest): string {
   return '';
 }
 
-// Main: read JSON-RPC lines from stdin, write responses to stdout
-const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
+// Main: read JSON-RPC lines from stdin, write responses to stdout.
+// Guarded: only when this module is the process entry point. Without the
+// guard, any library import of the package attached a stdin listener and
+// kept the host process's event loop alive.
+const isMainModule = /demo-server\.(js|cjs|mjs|ts)$/.test(process.argv[1] || '');
 
-rl.on('line', (line: string) => {
-  const trimmed = line.trim();
-  if (!trimmed) return;
+if (isMainModule) {
+  const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
 
-  try {
-    const request = JSON.parse(trimmed) as JsonRpcRequest;
-    const response = handleRequest(request);
-    if (response) {
-      process.stdout.write(response + '\n');
+  rl.on('line', (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    try {
+      const request = JSON.parse(trimmed) as JsonRpcRequest;
+      const response = handleRequest(request);
+      if (response) {
+        process.stdout.write(response + '\n');
+      }
+    } catch {
+      // Ignore malformed input
     }
-  } catch {
-    // Ignore malformed input
-  }
-});
+  });
 
-process.stderr.write('[DEMO_SERVER] protect-mcp demo server started — 5 tools registered\n');
+  process.stderr.write('[DEMO_SERVER] protect-mcp demo server started — 5 tools registered\n');
+}
 
 /**
  * Smithery sandbox server — returns a McpServer instance

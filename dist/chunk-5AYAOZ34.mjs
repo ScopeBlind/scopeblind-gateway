@@ -1,5 +1,12 @@
+import {
+  digestBuiltinPolicy
+} from "./chunk-FGCNKEEW.mjs";
+import {
+  computeSbIssuerKid,
+  createReceiptEnvelope
+} from "./chunk-XOP3PEBM.mjs";
+
 // src/policy.ts
-import { createHash } from "crypto";
 import { readFileSync } from "fs";
 function loadPolicy(path) {
   const raw = readFileSync(path, "utf-8");
@@ -22,17 +29,7 @@ function loadPolicy(path) {
   };
 }
 function computePolicyDigest(policy) {
-  const canonical = JSON.stringify(sortKeysDeep(policy));
-  return createHash("sha256").update(canonical).digest("hex").slice(0, 16);
-}
-function sortKeysDeep(obj) {
-  if (obj === null || typeof obj !== "object") return obj;
-  if (Array.isArray(obj)) return obj.map(sortKeysDeep);
-  const sorted = {};
-  for (const key of Object.keys(obj).sort()) {
-    sorted[key] = sortKeysDeep(obj[key]);
-  }
-  return sorted;
+  return digestBuiltinPolicy(policy).policy_digest;
 }
 function getToolPolicy(toolName, policy) {
   if (!policy) {
@@ -77,13 +74,11 @@ function checkRateLimit(key, limit, store) {
 // src/signing.ts
 import { readFileSync as readFileSync2, existsSync } from "fs";
 var signerState = null;
-var artifactsModule = null;
 var signingConfigured = false;
 var signingInitError = null;
 async function initSigning(config) {
   const warnings = [];
   signerState = null;
-  artifactsModule = null;
   signingConfigured = Boolean(config && config.enabled !== false);
   signingInitError = null;
   if (!config || config.enabled === false) {
@@ -113,31 +108,21 @@ async function initSigning(config) {
     return warnings;
   }
   try {
-    const moduleName = "@veritasacta/artifacts";
-    artifactsModule = await import(
-      /* @vite-ignore */
-      moduleName
-    );
-  } catch {
-    signingInitError = "@veritasacta/artifacts not available";
-    warnings.push(`signing: ${signingInitError} \u2014 enforce mode will fail closed`);
-    return warnings;
-  }
-  try {
     signerState = {
       privateKey: keyData.privateKey,
       publicKey: keyData.publicKey,
-      kid: keyData.kid || artifactsModule.computeKid(keyData.publicKey),
+      // kid is opaque per draft-02; existing key files keep their explicit kid,
+      // and keys without one get the s2.1.1 RECOMMENDED sb:issuer format.
+      kid: keyData.kid || computeSbIssuerKid(keyData.publicKey),
       issuer: config.issuer || keyData.issuer || "protect-mcp"
     };
   } catch (err) {
     signingInitError = `failed to initialize signer: ${err instanceof Error ? err.message : err}`;
-    artifactsModule = null;
     warnings.push(`signing: ${signingInitError} \u2014 enforce mode will fail closed`);
   }
   return warnings;
 }
-function signDecision(entry) {
+function signDecision(entry, prevReceiptHash) {
   const artifactType = entry.decision === "deny" ? "gateway_restraint" : "decision_receipt";
   if (signingConfigured && signingInitError) {
     return {
@@ -148,7 +133,7 @@ function signDecision(entry) {
       error: signingInitError
     };
   }
-  if (signingConfigured && (!signerState || !artifactsModule)) {
+  if (signingConfigured && !signerState) {
     const error = "signing was configured but no signer is ready";
     return {
       ok: false,
@@ -158,21 +143,24 @@ function signDecision(entry) {
       error
     };
   }
-  if (!signerState || !artifactsModule) {
+  if (!signerState) {
     return { ok: false, signed: null, artifact_type: "none" };
   }
   try {
     const payload = {
-      tool: entry.tool,
+      // draft-02 s3.1 access-decision fields
+      type: "protectmcp:decision",
+      tool_name: entry.tool,
       decision: entry.decision,
-      reason_code: entry.reason_code,
+      reason: entry.reason_code,
       policy_digest: entry.policy_digest,
+      // Extension fields (signed alongside the s3.1 core)
       scope: entry.request_id,
       // request scope
       mode: entry.mode,
       request_id: entry.request_id,
       // Spec version: ties every receipt to the IETF standard
-      spec: "draft-farley-acta-signed-receipts-01",
+      spec: "draft-farley-acta-signed-receipts-02",
       // Issuer certification: distinguishes VOPRF-backed receipts from self-signed ones
       // - scopeblind:verified  = issued via ScopeBlind VOPRF backend (paid tier)
       // - self-signed          = signed with local Ed25519 key (free tier, protect-mcp default)
@@ -185,6 +173,10 @@ function signDecision(entry) {
       // authenticity (that the key is YOUR gate's) still comes from pinning it.
       public_key: signerState.publicKey
     };
+    if (signerState.issuer && signerState.issuer !== signerState.kid) {
+      payload.issuer_name = signerState.issuer;
+    }
+    if (prevReceiptHash) payload.previousReceiptHash = prevReceiptHash;
     if (entry.tier) payload.tier = entry.tier;
     if (entry.credential_ref) payload.credential_ref = entry.credential_ref;
     if (entry.rate_limit_remaining !== void 0) {
@@ -199,19 +191,17 @@ function signDecision(entry) {
     if (entry.enrichment) payload.enrichment = entry.enrichment;
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
-    const result = artifactsModule.createSignedArtifact(
-      artifactType,
+    const result = createReceiptEnvelope(
       payload,
       signerState.privateKey,
-      {
-        kid: signerState.kid,
-        issuer: signerState.issuer
-      }
+      signerState.kid,
+      Number.isFinite(entry.timestamp) ? new Date(entry.timestamp).toISOString() : void 0
     );
     return {
       ok: true,
-      signed: JSON.stringify(result.artifact),
-      artifact_type: artifactType
+      signed: JSON.stringify(result.envelope),
+      artifact_type: artifactType,
+      receipt_hash: result.hash
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
@@ -233,7 +223,7 @@ function getSignerInfo() {
   };
 }
 function isSigningEnabled() {
-  return signingConfigured && signingInitError === null && signerState !== null && artifactsModule !== null;
+  return signingConfigured && signingInitError === null && signerState !== null;
 }
 
 // src/http-server.ts
@@ -462,7 +452,7 @@ function handleListApprovals(res, approvalStore) {
 }
 
 // src/action-readback.ts
-import { createHash as createHash2 } from "crypto";
+import { createHash } from "crypto";
 var SECRET_KEY_RE = /(api[_-]?key|authorization|bearer|credential|password|secret|session|token|private[_-]?key)/i;
 var DESTINATION_KEYS = [
   "path",
@@ -542,7 +532,7 @@ function buildActionReadback(tool, input) {
     action,
     destination,
     payload_preview: payloadPreview,
-    payload_hash: createHash2("sha256").update(canonical).digest("hex"),
+    payload_hash: createHash("sha256").update(canonical).digest("hex"),
     payload_bytes: Buffer.byteLength(canonical, "utf-8"),
     disclosed_fields: [...new Set(disclosedFields)].slice(0, 80),
     redacted_fields: [...new Set(redactedFields)].slice(0, 80),

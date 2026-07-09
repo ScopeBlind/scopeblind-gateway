@@ -35182,20 +35182,23 @@ Contents: Hello from protect-mcp demo server!`;
   }
   return "";
 }
-var rl = (0, import_node_readline.createInterface)({ input: process.stdin, crlfDelay: Infinity });
-rl.on("line", (line) => {
-  const trimmed = line.trim();
-  if (!trimmed) return;
-  try {
-    const request = JSON.parse(trimmed);
-    const response = handleRequest(request);
-    if (response) {
-      process.stdout.write(response + "\n");
+var isMainModule = /demo-server\.(js|cjs|mjs|ts)$/.test(process.argv[1] || "");
+if (isMainModule) {
+  const rl = (0, import_node_readline.createInterface)({ input: process.stdin, crlfDelay: Infinity });
+  rl.on("line", (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    try {
+      const request = JSON.parse(trimmed);
+      const response = handleRequest(request);
+      if (response) {
+        process.stdout.write(response + "\n");
+      }
+    } catch {
     }
-  } catch {
-  }
-});
-process.stderr.write("[DEMO_SERVER] protect-mcp demo server started \u2014 5 tools registered\n");
+  });
+  process.stderr.write("[DEMO_SERVER] protect-mcp demo server started \u2014 5 tools registered\n");
+}
 function createSandboxServer() {
   const { McpServer } = require_mcp();
   const { z } = require_zod();

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { ProtectPolicy, ToolPolicy, RateLimit, CredentialConfig, SigningConfig } from './types.js';
+import { digestBuiltinPolicy } from './policy-digest.js';
 
 // ============================================================
 // Policy loading
@@ -44,8 +45,7 @@ export function loadPolicy(path: string): {
  * Uses recursive key sorting so nested tool rules are preserved.
  */
 function computePolicyDigest(policy: ProtectPolicy): string {
-  const canonical = JSON.stringify(sortKeysDeep(policy));
-  return createHash('sha256').update(canonical).digest('hex').slice(0, 16);
+  return digestBuiltinPolicy(policy).policy_digest;
 }
 
 /**

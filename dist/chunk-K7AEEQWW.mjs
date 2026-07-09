@@ -1,22 +1,11 @@
-import {
-  sha256
-} from "./chunk-AYNQIEN7.mjs";
-import {
-  ed25519
-} from "./chunk-FFVJL3KQ.mjs";
-import {
-  Hash,
-  abytes,
-  aexists,
-  ahash,
-  bytesToHex,
-  clean,
-  hexToBytes,
-  randomBytes,
-  toBytes
-} from "./chunk-D733KAPG.mjs";
+// src/signing-committed.ts
+import { ed25519 } from "@noble/curves/ed25519";
+import { sha256 as sha2563 } from "@noble/hashes/sha256";
+import { bytesToHex as bytesToHex3, hexToBytes as hexToBytes3, randomBytes as randomBytes2 } from "@noble/hashes/utils";
 
 // src/commitments/merkle.ts
+import { sha256 } from "@noble/hashes/sha256";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
 var DOMAIN_LEAF = 0;
 var DOMAIN_INTERNAL = 1;
 function hashLeaf(leafBytes) {
@@ -127,75 +116,10 @@ function largestPowerOfTwoLessThan(n) {
   return k;
 }
 
-// node_modules/@noble/hashes/esm/hmac.js
-var HMAC = class extends Hash {
-  constructor(hash, _key) {
-    super();
-    this.finished = false;
-    this.destroyed = false;
-    ahash(hash);
-    const key = toBytes(_key);
-    this.iHash = hash.create();
-    if (typeof this.iHash.update !== "function")
-      throw new Error("Expected instance of class which extends utils.Hash");
-    this.blockLen = this.iHash.blockLen;
-    this.outputLen = this.iHash.outputLen;
-    const blockLen = this.blockLen;
-    const pad = new Uint8Array(blockLen);
-    pad.set(key.length > blockLen ? hash.create().update(key).digest() : key);
-    for (let i = 0; i < pad.length; i++)
-      pad[i] ^= 54;
-    this.iHash.update(pad);
-    this.oHash = hash.create();
-    for (let i = 0; i < pad.length; i++)
-      pad[i] ^= 54 ^ 92;
-    this.oHash.update(pad);
-    clean(pad);
-  }
-  update(buf) {
-    aexists(this);
-    this.iHash.update(buf);
-    return this;
-  }
-  digestInto(out) {
-    aexists(this);
-    abytes(out, this.outputLen);
-    this.finished = true;
-    this.iHash.digestInto(out);
-    this.oHash.update(out);
-    this.oHash.digestInto(out);
-    this.destroy();
-  }
-  digest() {
-    const out = new Uint8Array(this.oHash.outputLen);
-    this.digestInto(out);
-    return out;
-  }
-  _cloneInto(to) {
-    to || (to = Object.create(Object.getPrototypeOf(this), {}));
-    const { oHash, iHash, finished, destroyed, blockLen, outputLen } = this;
-    to = to;
-    to.finished = finished;
-    to.destroyed = destroyed;
-    to.blockLen = blockLen;
-    to.outputLen = outputLen;
-    to.oHash = oHash._cloneInto(to.oHash);
-    to.iHash = iHash._cloneInto(to.iHash);
-    return to;
-  }
-  clone() {
-    return this._cloneInto();
-  }
-  destroy() {
-    this.destroyed = true;
-    this.oHash.destroy();
-    this.iHash.destroy();
-  }
-};
-var hmac = (hash, key, message) => new HMAC(hash, key).update(message).digest();
-hmac.create = (hash, key) => new HMAC(hash, key);
-
 // src/commitments/primitives.ts
+import { sha256 as sha2562 } from "@noble/hashes/sha256";
+import { hmac } from "@noble/hashes/hmac";
+import { bytesToHex as bytesToHex2, hexToBytes as hexToBytes2, randomBytes } from "@noble/hashes/utils";
 function jcs(value) {
   if (value === null || value === void 0) return "null";
   if (typeof value === "boolean" || typeof value === "number")
@@ -257,7 +181,7 @@ function leavesFromFields(fields) {
 
 // src/signing-committed.ts
 function freshSalt() {
-  return randomBytes(32);
+  return randomBytes2(32);
 }
 function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey, kid, issuer) {
   const allFields = {
@@ -297,7 +221,7 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     const { sorted, leafBytes } = leavesFromFields(committedFields);
     const leafHashes = leafBytes.map(hashLeaf);
     const root = merkleRoot(leafHashes);
-    committedFieldsRoot = bytesToHex(root);
+    committedFieldsRoot = bytesToHex3(root);
     sorted.forEach((f, i) => {
       openings[f.name] = { name: f.name, value: f.value, salt: f.salt, index: i };
     });
@@ -314,8 +238,8 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
   const canonical = jcs(payload);
-  const messageHash = sha256(new TextEncoder().encode(canonical));
-  const signatureBytes = ed25519.sign(messageHash, hexToBytes(signingKey));
+  const messageHash = sha2563(new TextEncoder().encode(canonical));
+  const signatureBytes = ed25519.sign(messageHash, hexToBytes3(signingKey));
   const signedReceipt = {
     ...payload,
     signature: {
@@ -328,7 +252,7 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     }
   };
   const signedJson = JSON.stringify(signedReceipt);
-  const receiptHash = bytesToHex(sha256(new TextEncoder().encode(jcs(signedReceipt))));
+  const receiptHash = bytesToHex3(sha2563(new TextEncoder().encode(jcs(signedReceipt))));
   return {
     signed: signedJson,
     artifact_type: "decision_receipt_committed_v1",
@@ -457,7 +381,7 @@ function committedFieldNamesFromReceipt(receipt, openings) {
   return Array.from(new Set(names)).sort();
 }
 function receiptHashHex(receipt) {
-  return bytesToHex(sha256(new TextEncoder().encode(jcs(receipt))));
+  return bytesToHex3(sha2563(new TextEncoder().encode(jcs(receipt))));
 }
 function verifyCommittedReceiptSignature(receipt) {
   const signature = receipt.signature;
@@ -467,16 +391,15 @@ function verifyCommittedReceiptSignature(receipt) {
     return null;
   }
   const { signature: _signature, ...payloadWithoutSig } = receipt;
-  const messageHash = sha256(new TextEncoder().encode(jcs(payloadWithoutSig)));
+  const messageHash = sha2563(new TextEncoder().encode(jcs(payloadWithoutSig)));
   try {
-    return ed25519.verify(base64urlDecode(sig.sig), messageHash, hexToBytes(sig.public_key));
+    return ed25519.verify(base64urlDecode(sig.sig), messageHash, hexToBytes3(sig.public_key));
   } catch {
     return false;
   }
 }
 
 export {
-  hmac,
   signCommittedDecision,
   discloseField,
   createSelectiveDisclosurePackage,

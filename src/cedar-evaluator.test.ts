@@ -29,8 +29,7 @@ describe('loadCedarPolicies', () => {
     expect(result.fileCount).toBe(1);
     expect(result.files).toEqual(['test.cedar']);
     expect(result.source).toContain('test-001');
-    expect(result.digest).toHaveLength(16);
-    expect(/^[a-f0-9]{16}$/.test(result.digest)).toBe(true);
+    expect(result.digest).toMatch(/^sha256:[0-9a-f]{64}$/); // acta-policy-digest-v1
   });
 
   it('loads multiple .cedar files sorted alphabetically', () => {

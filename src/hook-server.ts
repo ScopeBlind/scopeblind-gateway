@@ -40,6 +40,7 @@ import type {
 } from './types.js';
 import { loadCedarPolicies, evaluateCedar, isCedarAvailable, type CedarPolicySet } from './cedar-evaluator.js';
 import { initSigning, signDecision, isSigningEnabled, getSignerInfo } from './signing.js';
+import { receiptHash } from './acta-envelope.js';
 import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
 import { ReceiptBuffer } from './http-server.js';
 import { getScopeBlindBridge } from './scopeblind-bridge.js';
@@ -96,6 +97,8 @@ interface HookServerState {
   logFilePath: string;
   /** Receipt file path */
   receiptFilePath: string;
+  /** s5.7 hash of the last line appended to the receipt file (chain link), null until known */
+  lastReceiptHash: string | null;
   /** Permission suggestions accumulated during session */
   permissionSuggestions: Map<string, string>;
   /** Config change alerts issued */
@@ -105,6 +108,23 @@ interface HookServerState {
 // ============================================================
 // Swarm Detection
 // ============================================================
+
+/**
+ * Resume the s5.7 receipt chain across restarts: hash the last line of the
+ * existing receipt log (whatever its shape: draft-02 envelope, legacy
+ * envelope, or tombstone) so the next receipt links to it. Returns null for
+ * a missing/empty/unparseable log, which starts a fresh chain.
+ */
+function resumeReceiptChain(receiptFilePath: string): string | null {
+  try {
+    if (!existsSync(receiptFilePath)) return null;
+    const lines = readFileSync(receiptFilePath, 'utf-8').split('\n').filter((l) => l.trim());
+    if (lines.length === 0) return null;
+    return receiptHash(JSON.parse(lines[lines.length - 1]));
+  } catch {
+    return null;
+  }
+}
 
 function detectSwarmContext(): SwarmContext {
   const teamName = process.env.CLAUDE_CODE_TEAM_NAME;
@@ -746,9 +766,13 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
   try { appendFileSync(state.logFilePath, JSON.stringify(log) + '\n'); } catch { /* best-effort */ }
 
   if (isSigningEnabled()) {
-    const signed = signDecision(log);
+    const signed = signDecision(log, state.lastReceiptHash || undefined);
     if (signed.signed) {
-      try { appendFileSync(state.receiptFilePath, signed.signed + '\n'); } catch { /* best-effort */ }
+      try {
+        appendFileSync(state.receiptFilePath, signed.signed + '\n');
+        // Advance the s5.7 chain only when the line actually landed on disk.
+        if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
+      } catch { /* best-effort */ }
       state.receiptBuffer.add(log.request_id, signed.signed);
 
       // Forward to ScopeBlind tenant dashboard when SCOPEBLIND_TOKEN is set.
@@ -768,12 +792,19 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
       // A signer is configured but signing FAILED. Never emit a silent gap:
       // write an auditable tombstone to the receipt log and a distinct marker,
       // then signal the caller so an allow can fail closed.
-      const tombstone = JSON.stringify({
+      const tombstoneObj = {
         type: 'scopeblind.signing_failure.v1',
         request_id: log.request_id, tool: log.tool, decision: log.decision,
         error: signed.error, at: new Date(log.timestamp).toISOString(),
-      });
-      try { appendFileSync(state.receiptFilePath, tombstone + '\n'); } catch { /* best-effort */ }
+        ...(state.lastReceiptHash ? { previousReceiptHash: state.lastReceiptHash } : {}),
+      };
+      const tombstone = JSON.stringify(tombstoneObj);
+      try {
+        appendFileSync(state.receiptFilePath, tombstone + '\n');
+        // Tombstones are chain links too: an unsigned gap must not detach the
+        // chain, or omission of the gap becomes undetectable.
+        state.lastReceiptHash = receiptHash(tombstoneObj);
+      } catch { /* best-effort */ }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}\n`);
       return { signingFailed: true };
     }
@@ -908,6 +939,7 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
     policyDigest,
     logFilePath: join(process.cwd(), LOG_FILE),
     receiptFilePath: join(process.cwd(), RECEIPTS_FILE),
+    lastReceiptHash: resumeReceiptChain(join(process.cwd(), RECEIPTS_FILE)),
     permissionSuggestions: new Map(),
     configAlerts: [],
   };

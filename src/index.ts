@@ -14,6 +14,16 @@ export { resolveCredential, listCredentialLabels, validateCredentials } from './
 // ── Signing ─────────────────────────────────────────────────────
 export { initSigning, signDecision, getSignerInfo, isSigningEnabled } from './signing.js';
 
+// Acta draft-02 receipt envelope: create, dual-shape verify, s5.7 chain hash
+export {
+  createReceiptEnvelope,
+  verifyReceipt,
+  receiptHash,
+  receiptIdentity,
+  computeSbIssuerKid,
+} from './acta-envelope.js';
+export type { ActaEnvelope, ActaSignature, ReceiptShape } from './acta-envelope.js';
+
 // ── Commitment-mode signing (v0.6.0+) ──────────────────────────
 // draft-farley-acta-signed-receipts-01 §commitment-mode
 export {

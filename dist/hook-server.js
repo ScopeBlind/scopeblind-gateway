@@ -24,14 +24,96 @@ __export(hook_server_exports, {
 });
 module.exports = __toCommonJS(hook_server_exports);
 var import_node_http2 = require("http");
-var import_node_crypto4 = require("crypto");
-var import_node_fs5 = require("fs");
-var import_node_path3 = require("path");
+var import_node_crypto3 = require("crypto");
+var import_node_fs6 = require("fs");
+var import_node_path4 = require("path");
 
 // src/cedar-evaluator.ts
+var import_node_fs2 = require("fs");
+var import_node_path2 = require("path");
+
+// src/policy-digest.ts
 var import_node_crypto = require("crypto");
 var import_node_fs = require("fs");
 var import_node_path = require("path");
+
+// src/acta-envelope.ts
+var import_ed25519 = require("@noble/curves/ed25519");
+var import_sha256 = require("@noble/hashes/sha256");
+var import_utils = require("@noble/hashes/utils");
+function canonicalize(obj) {
+  return JSON.stringify(obj, (_key, value) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const sorted = {};
+      for (const k of Object.keys(value).sort()) {
+        if (!/^[\x20-\x7E]*$/.test(k)) {
+          throw new Error(`Non-ASCII key "${k}" in receipt payload. Only ASCII keys are permitted.`);
+        }
+        sorted[k] = value[k];
+      }
+      return sorted;
+    }
+    return value;
+  });
+}
+function receiptHash(obj) {
+  return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
+}
+var B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function base58(bytes) {
+  let n = BigInt("0x" + (0, import_utils.bytesToHex)(bytes));
+  let out = "";
+  while (n > 0n) {
+    out = B58_ALPHABET[Number(n % 58n)] + out;
+    n /= 58n;
+  }
+  for (const b of bytes) {
+    if (b === 0) out = "1" + out;
+    else break;
+  }
+  return out;
+}
+function computeSbIssuerKid(publicKeyHex) {
+  return `sb:issuer:${base58((0, import_utils.hexToBytes)(publicKeyHex)).slice(0, 12)}`;
+}
+function createReceiptEnvelope(fields, privateKeyHex, kid, issuedAt) {
+  if (!fields.type) throw new Error("receipt payload requires a type");
+  if (!kid) throw new Error("kid is required");
+  const payload = {
+    ...fields,
+    issued_at: fields.issued_at || issuedAt || (/* @__PURE__ */ new Date()).toISOString(),
+    issuer_id: kid
+  };
+  const sig = (0, import_utils.bytesToHex)(import_ed25519.ed25519.sign((0, import_utils.utf8ToBytes)(canonicalize(payload)), (0, import_utils.hexToBytes)(privateKeyHex)));
+  const envelope = { payload, signature: { alg: "EdDSA", kid, sig } };
+  return { envelope, hash: receiptHash(envelope) };
+}
+
+// src/policy-digest.ts
+var POLICY_DIGEST_CONSTRUCTION = "acta-policy-digest-v1";
+var sha256hex = (data) => (0, import_node_crypto.createHash)("sha256").update(data).digest("hex");
+function digestPolicyFiles(engine, files) {
+  if (files.length === 0) throw new Error("policy digest requires at least one file");
+  const names = /* @__PURE__ */ new Set();
+  for (const f of files) {
+    if (!f.name) throw new Error("policy file entries require a name");
+    if (names.has(f.name)) throw new Error(`duplicate policy file name: ${f.name}`);
+    names.add(f.name);
+  }
+  const entries = files.map((f) => ({ name: f.name, sha256: sha256hex(Buffer.from(f.content, "utf-8")) })).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  const manifest = { construction: POLICY_DIGEST_CONSTRUCTION, engine, files: entries };
+  return {
+    policy_digest: `sha256:${sha256hex(Buffer.from(canonicalize(manifest), "utf-8"))}`,
+    construction: POLICY_DIGEST_CONSTRUCTION,
+    engine,
+    files: entries
+  };
+}
+function digestBuiltinPolicy(policy) {
+  return digestPolicyFiles("builtin", [{ name: "policy.json", content: canonicalize(policy) }]);
+}
+
+// src/cedar-evaluator.ts
 var cedarWasm = null;
 var loadAttempted = false;
 async function ensureCedarWasm() {
@@ -50,20 +132,19 @@ async function ensureCedarWasm() {
   }
 }
 function loadCedarPolicies(dirPath) {
-  if (!(0, import_node_fs.existsSync)(dirPath)) {
+  if (!(0, import_node_fs2.existsSync)(dirPath)) {
     throw new Error(`Cedar policy directory not found: ${dirPath}`);
   }
-  const entries = (0, import_node_fs.readdirSync)(dirPath).filter((f) => (0, import_node_path.extname)(f) === ".cedar").sort();
+  const entries = (0, import_node_fs2.readdirSync)(dirPath).filter((f) => (0, import_node_path2.extname)(f) === ".cedar").sort();
   if (entries.length === 0) {
     throw new Error(`No .cedar files found in: ${dirPath}`);
   }
-  const sources = [];
+  const files = [];
   for (const file of entries) {
-    const content = (0, import_node_fs.readFileSync)((0, import_node_path.join)(dirPath, file), "utf-8");
-    sources.push(content);
+    files.push({ name: file, content: (0, import_node_fs2.readFileSync)((0, import_node_path2.join)(dirPath, file), "utf-8") });
   }
-  const concatenated = sources.join("\n\n");
-  const digest = (0, import_node_crypto.createHash)("sha256").update(concatenated).digest("hex").slice(0, 16);
+  const concatenated = files.map((f) => f.content).join("\n\n");
+  const digest = digestPolicyFiles("cedar", files).policy_digest;
   return {
     source: concatenated,
     digest,
@@ -205,15 +286,13 @@ async function isCedarAvailable() {
 }
 
 // src/signing.ts
-var import_node_fs2 = require("fs");
+var import_node_fs3 = require("fs");
 var signerState = null;
-var artifactsModule = null;
 var signingConfigured = false;
 var signingInitError = null;
 async function initSigning(config) {
   const warnings = [];
   signerState = null;
-  artifactsModule = null;
   signingConfigured = Boolean(config && config.enabled !== false);
   signingInitError = null;
   if (!config || config.enabled === false) {
@@ -224,14 +303,14 @@ async function initSigning(config) {
     warnings.push(`signing: ${signingInitError}`);
     return warnings;
   }
-  if (!(0, import_node_fs2.existsSync)(config.key_path)) {
+  if (!(0, import_node_fs3.existsSync)(config.key_path)) {
     signingInitError = `key file not found at ${config.key_path}`;
     warnings.push(`signing: ${signingInitError} \u2014 run "protect-mcp init" to generate`);
     return warnings;
   }
   let keyData;
   try {
-    keyData = JSON.parse((0, import_node_fs2.readFileSync)(config.key_path, "utf-8"));
+    keyData = JSON.parse((0, import_node_fs3.readFileSync)(config.key_path, "utf-8"));
     if (!keyData.privateKey || !keyData.publicKey) {
       signingInitError = "key file missing privateKey or publicKey fields";
       warnings.push(`signing: ${signingInitError}`);
@@ -243,31 +322,21 @@ async function initSigning(config) {
     return warnings;
   }
   try {
-    const moduleName = "@veritasacta/artifacts";
-    artifactsModule = await import(
-      /* @vite-ignore */
-      moduleName
-    );
-  } catch {
-    signingInitError = "@veritasacta/artifacts not available";
-    warnings.push(`signing: ${signingInitError} \u2014 enforce mode will fail closed`);
-    return warnings;
-  }
-  try {
     signerState = {
       privateKey: keyData.privateKey,
       publicKey: keyData.publicKey,
-      kid: keyData.kid || artifactsModule.computeKid(keyData.publicKey),
+      // kid is opaque per draft-02; existing key files keep their explicit kid,
+      // and keys without one get the s2.1.1 RECOMMENDED sb:issuer format.
+      kid: keyData.kid || computeSbIssuerKid(keyData.publicKey),
       issuer: config.issuer || keyData.issuer || "protect-mcp"
     };
   } catch (err) {
     signingInitError = `failed to initialize signer: ${err instanceof Error ? err.message : err}`;
-    artifactsModule = null;
     warnings.push(`signing: ${signingInitError} \u2014 enforce mode will fail closed`);
   }
   return warnings;
 }
-function signDecision(entry) {
+function signDecision(entry, prevReceiptHash) {
   const artifactType = entry.decision === "deny" ? "gateway_restraint" : "decision_receipt";
   if (signingConfigured && signingInitError) {
     return {
@@ -278,7 +347,7 @@ function signDecision(entry) {
       error: signingInitError
     };
   }
-  if (signingConfigured && (!signerState || !artifactsModule)) {
+  if (signingConfigured && !signerState) {
     const error = "signing was configured but no signer is ready";
     return {
       ok: false,
@@ -288,21 +357,24 @@ function signDecision(entry) {
       error
     };
   }
-  if (!signerState || !artifactsModule) {
+  if (!signerState) {
     return { ok: false, signed: null, artifact_type: "none" };
   }
   try {
     const payload = {
-      tool: entry.tool,
+      // draft-02 s3.1 access-decision fields
+      type: "protectmcp:decision",
+      tool_name: entry.tool,
       decision: entry.decision,
-      reason_code: entry.reason_code,
+      reason: entry.reason_code,
       policy_digest: entry.policy_digest,
+      // Extension fields (signed alongside the s3.1 core)
       scope: entry.request_id,
       // request scope
       mode: entry.mode,
       request_id: entry.request_id,
       // Spec version: ties every receipt to the IETF standard
-      spec: "draft-farley-acta-signed-receipts-01",
+      spec: "draft-farley-acta-signed-receipts-02",
       // Issuer certification: distinguishes VOPRF-backed receipts from self-signed ones
       // - scopeblind:verified  = issued via ScopeBlind VOPRF backend (paid tier)
       // - self-signed          = signed with local Ed25519 key (free tier, protect-mcp default)
@@ -315,6 +387,10 @@ function signDecision(entry) {
       // authenticity (that the key is YOUR gate's) still comes from pinning it.
       public_key: signerState.publicKey
     };
+    if (signerState.issuer && signerState.issuer !== signerState.kid) {
+      payload.issuer_name = signerState.issuer;
+    }
+    if (prevReceiptHash) payload.previousReceiptHash = prevReceiptHash;
     if (entry.tier) payload.tier = entry.tier;
     if (entry.credential_ref) payload.credential_ref = entry.credential_ref;
     if (entry.rate_limit_remaining !== void 0) {
@@ -329,19 +405,17 @@ function signDecision(entry) {
     if (entry.enrichment) payload.enrichment = entry.enrichment;
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
-    const result = artifactsModule.createSignedArtifact(
-      artifactType,
+    const result = createReceiptEnvelope(
       payload,
       signerState.privateKey,
-      {
-        kid: signerState.kid,
-        issuer: signerState.issuer
-      }
+      signerState.kid,
+      Number.isFinite(entry.timestamp) ? new Date(entry.timestamp).toISOString() : void 0
     );
     return {
       ok: true,
-      signed: JSON.stringify(result.artifact),
-      artifact_type: artifactType
+      signed: JSON.stringify(result.envelope),
+      artifact_type: artifactType,
+      receipt_hash: result.hash
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
@@ -363,14 +437,13 @@ function getSignerInfo() {
   };
 }
 function isSigningEnabled() {
-  return signingConfigured && signingInitError === null && signerState !== null && artifactsModule !== null;
+  return signingConfigured && signingInitError === null && signerState !== null;
 }
 
 // src/policy.ts
-var import_node_crypto2 = require("crypto");
-var import_node_fs3 = require("fs");
+var import_node_fs4 = require("fs");
 function loadPolicy(path) {
-  const raw = (0, import_node_fs3.readFileSync)(path, "utf-8");
+  const raw = (0, import_node_fs4.readFileSync)(path, "utf-8");
   const parsed = JSON.parse(raw);
   if (!parsed.tools || typeof parsed.tools !== "object") {
     throw new Error(`Invalid policy file: missing "tools" object in ${path}`);
@@ -390,17 +463,7 @@ function loadPolicy(path) {
   };
 }
 function computePolicyDigest(policy) {
-  const canonical = JSON.stringify(sortKeysDeep(policy));
-  return (0, import_node_crypto2.createHash)("sha256").update(canonical).digest("hex").slice(0, 16);
-}
-function sortKeysDeep(obj) {
-  if (obj === null || typeof obj !== "object") return obj;
-  if (Array.isArray(obj)) return obj.map(sortKeysDeep);
-  const sorted = {};
-  for (const key of Object.keys(obj).sort()) {
-    sorted[key] = sortKeysDeep(obj[key]);
-  }
-  return sorted;
+  return digestBuiltinPolicy(policy).policy_digest;
 }
 function getToolPolicy(toolName, policy) {
   if (!policy) {
@@ -444,8 +507,8 @@ function checkRateLimit(key, limit, store) {
 
 // src/http-server.ts
 var import_node_http = require("http");
-var import_node_fs4 = require("fs");
-var import_node_path2 = require("path");
+var import_node_fs5 = require("fs");
+var import_node_path3 = require("path");
 var MAX_RECEIPTS = 100;
 var ReceiptBuffer = class {
   receipts = [];
@@ -622,7 +685,7 @@ function getScopeBlindBridge() {
 }
 
 // src/action-readback.ts
-var import_node_crypto3 = require("crypto");
+var import_node_crypto2 = require("crypto");
 var SECRET_KEY_RE = /(api[_-]?key|authorization|bearer|credential|password|secret|session|token|private[_-]?key)/i;
 var DESTINATION_KEYS = [
   "path",
@@ -702,7 +765,7 @@ function buildActionReadback(tool, input) {
     action,
     destination,
     payload_preview: payloadPreview,
-    payload_hash: (0, import_node_crypto3.createHash)("sha256").update(canonical).digest("hex"),
+    payload_hash: (0, import_node_crypto2.createHash)("sha256").update(canonical).digest("hex"),
     payload_bytes: Buffer.byteLength(canonical, "utf-8"),
     disclosed_fields: [...new Set(disclosedFields)].slice(0, 80),
     redacted_fields: [...new Set(redactedFields)].slice(0, 80),
@@ -710,341 +773,9 @@ function buildActionReadback(tool, input) {
   };
 }
 
-// node_modules/@noble/hashes/esm/utils.js
-function isBytes(a) {
-  return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array";
-}
-function abytes(b, ...lengths) {
-  if (!isBytes(b))
-    throw new Error("Uint8Array expected");
-  if (lengths.length > 0 && !lengths.includes(b.length))
-    throw new Error("Uint8Array expected of length " + lengths + ", got length=" + b.length);
-}
-function aexists(instance, checkFinished = true) {
-  if (instance.destroyed)
-    throw new Error("Hash instance has been destroyed");
-  if (checkFinished && instance.finished)
-    throw new Error("Hash#digest() has already been called");
-}
-function aoutput(out, instance) {
-  abytes(out);
-  const min = instance.outputLen;
-  if (out.length < min) {
-    throw new Error("digestInto() expects output buffer of length at least " + min);
-  }
-}
-function clean(...arrays) {
-  for (let i = 0; i < arrays.length; i++) {
-    arrays[i].fill(0);
-  }
-}
-function createView(arr) {
-  return new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-}
-function rotr(word, shift) {
-  return word << 32 - shift | word >>> shift;
-}
-var hasHexBuiltin = /* @__PURE__ */ (() => (
-  // @ts-ignore
-  typeof Uint8Array.from([]).toHex === "function" && typeof Uint8Array.fromHex === "function"
-))();
-var hexes = /* @__PURE__ */ Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
-function bytesToHex(bytes) {
-  abytes(bytes);
-  if (hasHexBuiltin)
-    return bytes.toHex();
-  let hex = "";
-  for (let i = 0; i < bytes.length; i++) {
-    hex += hexes[bytes[i]];
-  }
-  return hex;
-}
-function utf8ToBytes(str) {
-  if (typeof str !== "string")
-    throw new Error("string expected");
-  return new Uint8Array(new TextEncoder().encode(str));
-}
-function toBytes(data) {
-  if (typeof data === "string")
-    data = utf8ToBytes(data);
-  abytes(data);
-  return data;
-}
-var Hash = class {
-};
-function createHasher(hashCons) {
-  const hashC = (msg) => hashCons().update(toBytes(msg)).digest();
-  const tmp = hashCons();
-  hashC.outputLen = tmp.outputLen;
-  hashC.blockLen = tmp.blockLen;
-  hashC.create = () => hashCons();
-  return hashC;
-}
-
-// node_modules/@noble/hashes/esm/_md.js
-function setBigUint64(view, byteOffset, value, isLE) {
-  if (typeof view.setBigUint64 === "function")
-    return view.setBigUint64(byteOffset, value, isLE);
-  const _32n = BigInt(32);
-  const _u32_max = BigInt(4294967295);
-  const wh = Number(value >> _32n & _u32_max);
-  const wl = Number(value & _u32_max);
-  const h = isLE ? 4 : 0;
-  const l = isLE ? 0 : 4;
-  view.setUint32(byteOffset + h, wh, isLE);
-  view.setUint32(byteOffset + l, wl, isLE);
-}
-function Chi(a, b, c) {
-  return a & b ^ ~a & c;
-}
-function Maj(a, b, c) {
-  return a & b ^ a & c ^ b & c;
-}
-var HashMD = class extends Hash {
-  constructor(blockLen, outputLen, padOffset, isLE) {
-    super();
-    this.finished = false;
-    this.length = 0;
-    this.pos = 0;
-    this.destroyed = false;
-    this.blockLen = blockLen;
-    this.outputLen = outputLen;
-    this.padOffset = padOffset;
-    this.isLE = isLE;
-    this.buffer = new Uint8Array(blockLen);
-    this.view = createView(this.buffer);
-  }
-  update(data) {
-    aexists(this);
-    data = toBytes(data);
-    abytes(data);
-    const { view, buffer, blockLen } = this;
-    const len = data.length;
-    for (let pos = 0; pos < len; ) {
-      const take = Math.min(blockLen - this.pos, len - pos);
-      if (take === blockLen) {
-        const dataView = createView(data);
-        for (; blockLen <= len - pos; pos += blockLen)
-          this.process(dataView, pos);
-        continue;
-      }
-      buffer.set(data.subarray(pos, pos + take), this.pos);
-      this.pos += take;
-      pos += take;
-      if (this.pos === blockLen) {
-        this.process(view, 0);
-        this.pos = 0;
-      }
-    }
-    this.length += data.length;
-    this.roundClean();
-    return this;
-  }
-  digestInto(out) {
-    aexists(this);
-    aoutput(out, this);
-    this.finished = true;
-    const { buffer, view, blockLen, isLE } = this;
-    let { pos } = this;
-    buffer[pos++] = 128;
-    clean(this.buffer.subarray(pos));
-    if (this.padOffset > blockLen - pos) {
-      this.process(view, 0);
-      pos = 0;
-    }
-    for (let i = pos; i < blockLen; i++)
-      buffer[i] = 0;
-    setBigUint64(view, blockLen - 8, BigInt(this.length * 8), isLE);
-    this.process(view, 0);
-    const oview = createView(out);
-    const len = this.outputLen;
-    if (len % 4)
-      throw new Error("_sha2: outputLen should be aligned to 32bit");
-    const outLen = len / 4;
-    const state = this.get();
-    if (outLen > state.length)
-      throw new Error("_sha2: outputLen bigger than state");
-    for (let i = 0; i < outLen; i++)
-      oview.setUint32(4 * i, state[i], isLE);
-  }
-  digest() {
-    const { buffer, outputLen } = this;
-    this.digestInto(buffer);
-    const res = buffer.slice(0, outputLen);
-    this.destroy();
-    return res;
-  }
-  _cloneInto(to) {
-    to || (to = new this.constructor());
-    to.set(...this.get());
-    const { blockLen, buffer, length, finished, destroyed, pos } = this;
-    to.destroyed = destroyed;
-    to.finished = finished;
-    to.length = length;
-    to.pos = pos;
-    if (length % blockLen)
-      to.buffer.set(buffer);
-    return to;
-  }
-  clone() {
-    return this._cloneInto();
-  }
-};
-var SHA256_IV = /* @__PURE__ */ Uint32Array.from([
-  1779033703,
-  3144134277,
-  1013904242,
-  2773480762,
-  1359893119,
-  2600822924,
-  528734635,
-  1541459225
-]);
-
-// node_modules/@noble/hashes/esm/sha2.js
-var SHA256_K = /* @__PURE__ */ Uint32Array.from([
-  1116352408,
-  1899447441,
-  3049323471,
-  3921009573,
-  961987163,
-  1508970993,
-  2453635748,
-  2870763221,
-  3624381080,
-  310598401,
-  607225278,
-  1426881987,
-  1925078388,
-  2162078206,
-  2614888103,
-  3248222580,
-  3835390401,
-  4022224774,
-  264347078,
-  604807628,
-  770255983,
-  1249150122,
-  1555081692,
-  1996064986,
-  2554220882,
-  2821834349,
-  2952996808,
-  3210313671,
-  3336571891,
-  3584528711,
-  113926993,
-  338241895,
-  666307205,
-  773529912,
-  1294757372,
-  1396182291,
-  1695183700,
-  1986661051,
-  2177026350,
-  2456956037,
-  2730485921,
-  2820302411,
-  3259730800,
-  3345764771,
-  3516065817,
-  3600352804,
-  4094571909,
-  275423344,
-  430227734,
-  506948616,
-  659060556,
-  883997877,
-  958139571,
-  1322822218,
-  1537002063,
-  1747873779,
-  1955562222,
-  2024104815,
-  2227730452,
-  2361852424,
-  2428436474,
-  2756734187,
-  3204031479,
-  3329325298
-]);
-var SHA256_W = /* @__PURE__ */ new Uint32Array(64);
-var SHA256 = class extends HashMD {
-  constructor(outputLen = 32) {
-    super(64, outputLen, 8, false);
-    this.A = SHA256_IV[0] | 0;
-    this.B = SHA256_IV[1] | 0;
-    this.C = SHA256_IV[2] | 0;
-    this.D = SHA256_IV[3] | 0;
-    this.E = SHA256_IV[4] | 0;
-    this.F = SHA256_IV[5] | 0;
-    this.G = SHA256_IV[6] | 0;
-    this.H = SHA256_IV[7] | 0;
-  }
-  get() {
-    const { A, B, C, D, E, F, G, H } = this;
-    return [A, B, C, D, E, F, G, H];
-  }
-  // prettier-ignore
-  set(A, B, C, D, E, F, G, H) {
-    this.A = A | 0;
-    this.B = B | 0;
-    this.C = C | 0;
-    this.D = D | 0;
-    this.E = E | 0;
-    this.F = F | 0;
-    this.G = G | 0;
-    this.H = H | 0;
-  }
-  process(view, offset) {
-    for (let i = 0; i < 16; i++, offset += 4)
-      SHA256_W[i] = view.getUint32(offset, false);
-    for (let i = 16; i < 64; i++) {
-      const W15 = SHA256_W[i - 15];
-      const W2 = SHA256_W[i - 2];
-      const s0 = rotr(W15, 7) ^ rotr(W15, 18) ^ W15 >>> 3;
-      const s1 = rotr(W2, 17) ^ rotr(W2, 19) ^ W2 >>> 10;
-      SHA256_W[i] = s1 + SHA256_W[i - 7] + s0 + SHA256_W[i - 16] | 0;
-    }
-    let { A, B, C, D, E, F, G, H } = this;
-    for (let i = 0; i < 64; i++) {
-      const sigma1 = rotr(E, 6) ^ rotr(E, 11) ^ rotr(E, 25);
-      const T1 = H + sigma1 + Chi(E, F, G) + SHA256_K[i] + SHA256_W[i] | 0;
-      const sigma0 = rotr(A, 2) ^ rotr(A, 13) ^ rotr(A, 22);
-      const T2 = sigma0 + Maj(A, B, C) | 0;
-      H = G;
-      G = F;
-      F = E;
-      E = D + T1 | 0;
-      D = C;
-      C = B;
-      B = A;
-      A = T1 + T2 | 0;
-    }
-    A = A + this.A | 0;
-    B = B + this.B | 0;
-    C = C + this.C | 0;
-    D = D + this.D | 0;
-    E = E + this.E | 0;
-    F = F + this.F | 0;
-    G = G + this.G | 0;
-    H = H + this.H | 0;
-    this.set(A, B, C, D, E, F, G, H);
-  }
-  roundClean() {
-    clean(SHA256_W);
-  }
-  destroy() {
-    this.set(0, 0, 0, 0, 0, 0, 0, 0);
-    clean(this.buffer);
-  }
-};
-var sha256 = /* @__PURE__ */ createHasher(() => new SHA256());
-
-// node_modules/@noble/hashes/esm/sha256.js
-var sha2562 = sha256;
-
 // src/receipt-enrichment.ts
+var import_sha2562 = require("@noble/hashes/sha256");
+var import_utils2 = require("@noble/hashes/utils");
 var ENRICHMENT_VERSION = 2;
 function canonicalJson(value) {
   const seen = /* @__PURE__ */ new WeakSet();
@@ -1069,7 +800,7 @@ function canonicalJson(value) {
   return enc(value);
 }
 function sha256Hex(s) {
-  return bytesToHex(sha2562(new TextEncoder().encode(s)));
+  return (0, import_utils2.bytesToHex)((0, import_sha2562.sha256)(new TextEncoder().encode(s)));
 }
 var RULES = [
   { cap: "exec.shell", tool: /bash|shell|exec|terminal|run_command|command/ },
@@ -1165,6 +896,16 @@ var DEFAULT_PORT = 9377;
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE = ".protect-mcp-receipts.jsonl";
 var PAYLOAD_HASH_THRESHOLD = 1024;
+function resumeReceiptChain(receiptFilePath) {
+  try {
+    if (!(0, import_node_fs6.existsSync)(receiptFilePath)) return null;
+    const lines = (0, import_node_fs6.readFileSync)(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+    if (lines.length === 0) return null;
+    return receiptHash(JSON.parse(lines[lines.length - 1]));
+  } catch {
+    return null;
+  }
+}
 function detectSwarmContext() {
   const teamName = process.env.CLAUDE_CODE_TEAM_NAME;
   const agentId = process.env.CLAUDE_CODE_AGENT_ID;
@@ -1188,7 +929,7 @@ function computePayloadDigest(input) {
     return void 0;
   }
   return {
-    input_hash: (0, import_node_crypto4.createHash)("sha256").update(content).digest("hex"),
+    input_hash: (0, import_node_crypto3.createHash)("sha256").update(content).digest("hex"),
     input_size: size,
     truncated: true,
     preview: content.slice(0, 256)
@@ -1201,7 +942,7 @@ function computeOutputDigest(output) {
     return void 0;
   }
   return {
-    output_hash: (0, import_node_crypto4.createHash)("sha256").update(content).digest("hex"),
+    output_hash: (0, import_node_crypto3.createHash)("sha256").update(content).digest("hex"),
     output_size: size
   };
 }
@@ -1214,7 +955,7 @@ function detectSandboxState() {
   }
   if (process.platform === "linux") {
     try {
-      const procStatus = (0, import_node_fs5.readFileSync)("/proc/self/status", "utf-8");
+      const procStatus = (0, import_node_fs6.readFileSync)("/proc/self/status", "utf-8");
       if (procStatus.includes("Seccomp:	2")) return "enabled";
     } catch {
     }
@@ -1224,7 +965,7 @@ function detectSandboxState() {
 async function handlePreToolUse(input, state) {
   const hookStart = Date.now();
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto4.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto3.randomUUID)().slice(0, 12);
   state.inflightTools.set(requestId, {
     tool: toolName,
     startedAt: hookStart,
@@ -1429,7 +1170,7 @@ async function handlePreToolUse(input, state) {
 }
 async function handlePostToolUse(input, state) {
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto4.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto3.randomUUID)().slice(0, 12);
   const now = Date.now();
   const inflight = state.inflightTools.get(requestId);
   const timing = {
@@ -1441,7 +1182,7 @@ async function handlePostToolUse(input, state) {
     state.inflightTools.delete(requestId);
   }
   const outputDigest = computeOutputDigest(input.toolResult);
-  const receiptId = (0, import_node_crypto4.randomUUID)().slice(0, 8);
+  const receiptId = (0, import_node_crypto3.randomUUID)().slice(0, 8);
   const policyName = state.cedarPolicies ? `cedar:${state.policyDigest}` : state.policyDigest;
   const additionalContext = `[ScopeBlind] Tool call receipted. Policy: ${policyName}. Decision: allow. Receipt: #${receiptId}.` + (timing.tool_duration_ms !== void 0 ? ` Duration: ${timing.tool_duration_ms}ms.` : "") + (timing.hook_latency_ms !== void 0 ? ` Overhead: ${timing.hook_latency_ms}ms.` : "");
   emitDecisionLog(state, {
@@ -1473,7 +1214,7 @@ function handleSubagentStart(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_started",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto3.randomUUID)().slice(0, 12),
     hook_event: "SubagentStart",
     swarm: {
       ...state.swarmContext,
@@ -1494,7 +1235,7 @@ function handleSubagentStop(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_stopped",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto3.randomUUID)().slice(0, 12),
     hook_event: "SubagentStop",
     swarm: {
       ...state.swarmContext,
@@ -1509,7 +1250,7 @@ function handleTaskCreated(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_created",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto3.randomUUID)().slice(0, 12),
     hook_event: "TaskCreated",
     swarm: {
       ...state.swarmContext,
@@ -1523,7 +1264,7 @@ function handleTaskCompleted(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_completed",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto3.randomUUID)().slice(0, 12),
     hook_event: "TaskCompleted",
     swarm: state.swarmContext
   });
@@ -1534,7 +1275,7 @@ function handleSessionStart(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_started",
-    request_id: input.sessionId || (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto3.randomUUID)().slice(0, 12),
     hook_event: "SessionStart",
     swarm: state.swarmContext,
     sandbox_state: detectSandboxState()
@@ -1557,7 +1298,7 @@ function handleSessionEnd(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_ended",
-    request_id: input.sessionId || (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto3.randomUUID)().slice(0, 12),
     hook_event: "SessionEnd",
     swarm: state.swarmContext
   });
@@ -1568,7 +1309,7 @@ function handleTeammateIdle(input, state) {
     tool: `teammate:${input.agentId || "unknown"}`,
     decision: "allow",
     reason_code: "teammate_idle",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto3.randomUUID)().slice(0, 12),
     hook_event: "TeammateIdle",
     swarm: {
       ...state.swarmContext,
@@ -1596,7 +1337,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "deny",
       reason_code: "config_tamper_detected",
-      request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto3.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange",
       swarm: state.swarmContext
     });
@@ -1605,7 +1346,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "allow",
       reason_code: "config_changed",
-      request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto3.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange"
     });
   }
@@ -1627,7 +1368,7 @@ function handleStop(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "agent_stopped",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto3.randomUUID)().slice(0, 12),
     hook_event: "Stop",
     swarm: state.swarmContext
   });
@@ -1635,8 +1376,8 @@ function handleStop(input, state) {
 }
 function emitDecisionLog(state, entry) {
   const mode = state.enforce ? "enforce" : "shadow";
-  const otelTraceId = (0, import_node_crypto4.randomBytes)(16).toString("hex");
-  const otelSpanId = (0, import_node_crypto4.randomBytes)(8).toString("hex");
+  const otelTraceId = (0, import_node_crypto3.randomBytes)(16).toString("hex");
+  const otelSpanId = (0, import_node_crypto3.randomBytes)(8).toString("hex");
   const log = {
     v: 2,
     tool: entry.tool || "unknown",
@@ -1644,7 +1385,7 @@ function emitDecisionLog(state, entry) {
     reason_code: entry.reason_code || "default_allow",
     policy_digest: state.policyDigest,
     policy_engine: state.cedarPolicies ? "cedar" : "built-in",
-    request_id: entry.request_id || (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: entry.request_id || (0, import_node_crypto3.randomUUID)().slice(0, 12),
     timestamp: Date.now(),
     mode,
     otel_trace_id: otelTraceId,
@@ -1663,14 +1404,15 @@ function emitDecisionLog(state, entry) {
   process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
   try {
-    (0, import_node_fs5.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
+    (0, import_node_fs6.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
   } catch {
   }
   if (isSigningEnabled()) {
-    const signed = signDecision(log);
+    const signed = signDecision(log, state.lastReceiptHash || void 0);
     if (signed.signed) {
       try {
-        (0, import_node_fs5.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
+        (0, import_node_fs6.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
+        if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
       } catch {
       }
       state.receiptBuffer.add(log.request_id, signed.signed);
@@ -1685,16 +1427,19 @@ function emitDecisionLog(state, entry) {
 `);
       }
     } else if (signed.error) {
-      const tombstone = JSON.stringify({
+      const tombstoneObj = {
         type: "scopeblind.signing_failure.v1",
         request_id: log.request_id,
         tool: log.tool,
         decision: log.decision,
         error: signed.error,
-        at: new Date(log.timestamp).toISOString()
-      });
+        at: new Date(log.timestamp).toISOString(),
+        ...state.lastReceiptHash ? { previousReceiptHash: state.lastReceiptHash } : {}
+      };
+      const tombstone = JSON.stringify(tombstoneObj);
       try {
-        (0, import_node_fs5.appendFileSync)(state.receiptFilePath, tombstone + "\n");
+        (0, import_node_fs6.appendFileSync)(state.receiptFilePath, tombstone + "\n");
+        state.lastReceiptHash = receiptHash(tombstoneObj);
       } catch {
       }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
@@ -1782,8 +1527,8 @@ async function startHookServer(options = {}) {
     }
   }
   if (!jsonPolicy?.signing) {
-    const keyPath = (0, import_node_path3.join)(process.cwd(), "keys", "gateway.json");
-    if ((0, import_node_fs5.existsSync)(keyPath)) {
+    const keyPath = (0, import_node_path4.join)(process.cwd(), "keys", "gateway.json");
+    if ((0, import_node_fs6.existsSync)(keyPath)) {
       const warnings = await initSigning({ key_path: keyPath, issuer: "protect-mcp", enabled: true });
       for (const w of warnings) {
         process.stderr.write(`[PROTECT_MCP] Warning: ${w}
@@ -1808,8 +1553,9 @@ async function startHookServer(options = {}) {
     verbose,
     enforce,
     policyDigest,
-    logFilePath: (0, import_node_path3.join)(process.cwd(), LOG_FILE),
-    receiptFilePath: (0, import_node_path3.join)(process.cwd(), RECEIPTS_FILE),
+    logFilePath: (0, import_node_path4.join)(process.cwd(), LOG_FILE),
+    receiptFilePath: (0, import_node_path4.join)(process.cwd(), RECEIPTS_FILE),
+    lastReceiptHash: resumeReceiptChain((0, import_node_path4.join)(process.cwd(), RECEIPTS_FILE)),
     permissionSuggestions: /* @__PURE__ */ new Map(),
     configAlerts: []
   };
@@ -1958,7 +1704,7 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs5.existsSync)((0, import_node_path3.join)(process.cwd(), ".scopeblind"));
+    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs6.existsSync)((0, import_node_path4.join)(process.cwd(), ".scopeblind"));
     if (!hasSlug) {
       w(`  Dashboard  npx protect-mcp connect
 `);
@@ -1989,9 +1735,9 @@ async function startHookServer(options = {}) {
 function newestCedarMtime(dir) {
   try {
     let newest = 0;
-    for (const f of (0, import_node_fs5.readdirSync)(dir)) {
+    for (const f of (0, import_node_fs6.readdirSync)(dir)) {
       if (!f.endsWith(".cedar")) continue;
-      const m = (0, import_node_fs5.statSync)((0, import_node_path3.join)(dir, f)).mtimeMs;
+      const m = (0, import_node_fs6.statSync)((0, import_node_path4.join)(dir, f)).mtimeMs;
       if (m > newest) newest = m;
     }
     return newest;
@@ -2023,8 +1769,8 @@ function maybeReloadCedar(state) {
 function findCedarDir() {
   for (const candidate of ["cedar", "policies", "."]) {
     try {
-      if ((0, import_node_fs5.existsSync)(candidate)) {
-        const files = (0, import_node_fs5.readdirSync)(candidate, { encoding: "utf-8" });
+      if ((0, import_node_fs6.existsSync)(candidate)) {
+        const files = (0, import_node_fs6.readdirSync)(candidate, { encoding: "utf-8" });
         if (files.some((f) => f.endsWith(".cedar"))) {
           return candidate;
         }
@@ -2118,8 +1864,3 @@ function normalizeHookInput(raw) {
  *
  * @license MIT
  */
-/*! Bundled license information:
-
-@noble/hashes/esm/utils.js:
-  (*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
-*/

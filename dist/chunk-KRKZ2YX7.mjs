@@ -1,11 +1,6 @@
-import {
-  sha256
-} from "./chunk-AYNQIEN7.mjs";
-import {
-  bytesToHex
-} from "./chunk-D733KAPG.mjs";
-
 // src/receipt-enrichment.ts
+import { sha256 } from "@noble/hashes/sha256";
+import { bytesToHex } from "@noble/hashes/utils";
 var ENRICHMENT_VERSION = 2;
 function canonicalJson(value) {
   const seen = /* @__PURE__ */ new WeakSet();

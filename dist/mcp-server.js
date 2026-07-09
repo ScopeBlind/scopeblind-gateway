@@ -27,9 +27,145 @@ module.exports = __toCommonJS(mcp_server_exports);
 var import_node_readline = require("readline");
 
 // src/cedar-evaluator.ts
+var import_node_fs2 = require("fs");
+var import_node_path2 = require("path");
+
+// src/policy-digest.ts
 var import_node_crypto = require("crypto");
 var import_node_fs = require("fs");
 var import_node_path = require("path");
+
+// src/acta-envelope.ts
+var import_ed25519 = require("@noble/curves/ed25519");
+var import_sha256 = require("@noble/hashes/sha256");
+var import_utils = require("@noble/hashes/utils");
+function canonicalize(obj) {
+  return JSON.stringify(obj, (_key, value) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const sorted = {};
+      for (const k of Object.keys(value).sort()) {
+        if (!/^[\x20-\x7E]*$/.test(k)) {
+          throw new Error(`Non-ASCII key "${k}" in receipt payload. Only ASCII keys are permitted.`);
+        }
+        sorted[k] = value[k];
+      }
+      return sorted;
+    }
+    return value;
+  });
+}
+function receiptHash(obj) {
+  return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
+}
+var B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function base58(bytes) {
+  let n = BigInt("0x" + (0, import_utils.bytesToHex)(bytes));
+  let out = "";
+  while (n > 0n) {
+    out = B58_ALPHABET[Number(n % 58n)] + out;
+    n /= 58n;
+  }
+  for (const b of bytes) {
+    if (b === 0) out = "1" + out;
+    else break;
+  }
+  return out;
+}
+function computeSbIssuerKid(publicKeyHex) {
+  return `sb:issuer:${base58((0, import_utils.hexToBytes)(publicKeyHex)).slice(0, 12)}`;
+}
+function createReceiptEnvelope(fields, privateKeyHex, kid, issuedAt) {
+  if (!fields.type) throw new Error("receipt payload requires a type");
+  if (!kid) throw new Error("kid is required");
+  const payload = {
+    ...fields,
+    issued_at: fields.issued_at || issuedAt || (/* @__PURE__ */ new Date()).toISOString(),
+    issuer_id: kid
+  };
+  const sig = (0, import_utils.bytesToHex)(import_ed25519.ed25519.sign((0, import_utils.utf8ToBytes)(canonicalize(payload)), (0, import_utils.hexToBytes)(privateKeyHex)));
+  const envelope = { payload, signature: { alg: "EdDSA", kid, sig } };
+  return { envelope, hash: receiptHash(envelope) };
+}
+function verifyReceipt(envelope, publicKeyHex) {
+  try {
+    if (!envelope || typeof envelope !== "object") {
+      return { valid: false, shape: null, error: "not_an_object" };
+    }
+    const env = envelope;
+    const signature = env.signature;
+    if (signature && typeof signature === "object" && !Array.isArray(signature)) {
+      const sigObj = signature;
+      if (sigObj.alg !== "EdDSA") {
+        return { valid: false, shape: "acta-02", error: `unsupported_alg:${String(sigObj.alg)}` };
+      }
+      if (typeof sigObj.sig !== "string" || !env.payload || typeof env.payload !== "object") {
+        return { valid: false, shape: "acta-02", error: "malformed_envelope" };
+      }
+      const message = (0, import_utils.utf8ToBytes)(canonicalize(env.payload));
+      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(sigObj.sig), message, (0, import_utils.hexToBytes)(publicKeyHex));
+      return valid ? { valid: true, shape: "acta-02", hash: receiptHash(env) } : { valid: false, shape: "acta-02", error: "invalid_signature" };
+    }
+    if (typeof signature === "string") {
+      const rest = {};
+      for (const k of Object.keys(env)) if (k !== "signature") rest[k] = env[k];
+      const message = (0, import_utils.utf8ToBytes)(canonicalize(rest));
+      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), message, (0, import_utils.hexToBytes)(publicKeyHex));
+      const shape = env.v === 2 ? "legacy-v2" : "legacy-v1";
+      return valid ? { valid: true, shape, hash: receiptHash(env) } : { valid: false, shape, error: "invalid_signature" };
+    }
+    return { valid: false, shape: null, error: "missing_signature" };
+  } catch (err) {
+    return {
+      valid: false,
+      shape: null,
+      error: `verification_error:${err instanceof Error ? err.message : "unknown"}`
+    };
+  }
+}
+function receiptIdentity(envelope) {
+  if (!envelope || typeof envelope !== "object") return { kid: null, issuer: null, type: null };
+  const env = envelope;
+  if (env.signature && typeof env.signature === "object") {
+    const payload = env.payload || {};
+    const sig = env.signature;
+    return {
+      kid: typeof sig.kid === "string" ? sig.kid : null,
+      issuer: typeof payload.issuer_id === "string" ? payload.issuer_id : typeof payload.issuer_name === "string" ? payload.issuer_name : null,
+      type: typeof payload.type === "string" ? payload.type : null
+    };
+  }
+  return {
+    kid: typeof env.kid === "string" ? env.kid : null,
+    issuer: typeof env.issuer === "string" ? env.issuer : null,
+    type: typeof env.type === "string" ? env.type : null
+  };
+}
+
+// src/policy-digest.ts
+var POLICY_DIGEST_CONSTRUCTION = "acta-policy-digest-v1";
+var sha256hex = (data) => (0, import_node_crypto.createHash)("sha256").update(data).digest("hex");
+function digestPolicyFiles(engine, files) {
+  if (files.length === 0) throw new Error("policy digest requires at least one file");
+  const names = /* @__PURE__ */ new Set();
+  for (const f of files) {
+    if (!f.name) throw new Error("policy file entries require a name");
+    if (names.has(f.name)) throw new Error(`duplicate policy file name: ${f.name}`);
+    names.add(f.name);
+  }
+  const entries = files.map((f) => ({ name: f.name, sha256: sha256hex(Buffer.from(f.content, "utf-8")) })).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  const manifest = { construction: POLICY_DIGEST_CONSTRUCTION, engine, files: entries };
+  return {
+    policy_digest: `sha256:${sha256hex(Buffer.from(canonicalize(manifest), "utf-8"))}`,
+    construction: POLICY_DIGEST_CONSTRUCTION,
+    engine,
+    files: entries
+  };
+}
+function digestCedarSource(source) {
+  return digestPolicyFiles("cedar", [{ name: "policy.cedar", content: source }]);
+}
+
+// src/cedar-evaluator.ts
 var cedarWasm = null;
 var loadAttempted = false;
 async function ensureCedarWasm() {
@@ -177,7 +313,7 @@ function extractPolicyErrors(result) {
   return raw.map((e) => typeof e === "string" ? e : e?.message ?? e?.error ?? JSON.stringify(e)).filter(Boolean);
 }
 function policySetFromSource(source, name = "inline") {
-  const digest = (0, import_node_crypto.createHash)("sha256").update(source).digest("hex").slice(0, 16);
+  const digest = digestCedarSource(source).policy_digest;
   return { source, digest, fileCount: 1, files: [name] };
 }
 
@@ -248,14 +384,17 @@ var TOOLS = [
 ];
 function buildReceiptPayload(args) {
   return {
-    tool: args.tool,
+    // draft-02 s3.1 access-decision fields
+    type: "protectmcp:decision",
+    tool_name: args.tool,
     decision: args.decision,
-    reason_code: args.reason_code ?? (args.decision === "deny" ? "policy_denied" : "post_execution_receipt"),
+    reason: args.reason_code ?? (args.decision === "deny" ? "policy_denied" : "post_execution_receipt"),
     policy_digest: args.policy_digest ?? "none",
+    // Extension fields (signed alongside the s3.1 core)
     scope: args.request_id,
     mode: "enforce",
     request_id: args.request_id,
-    spec: "draft-farley-acta-signed-receipts-01",
+    spec: "draft-farley-acta-signed-receipts-02",
     issuer_certification: "self-signed",
     public_key: args.public_key
   };
@@ -310,25 +449,26 @@ async function callSign(args) {
     public_key: publicKey
   });
   const artifactType = decision === "deny" ? "gateway_restraint" : "decision_receipt";
-  const { artifact } = a.createSignedArtifact(artifactType, payload, privateKey, { kid: "mcp", issuer: "protect-mcp" });
-  return { receipt: artifact, artifact_type: artifactType, public_key: publicKey, ephemeral };
+  const { envelope } = createReceiptEnvelope(payload, privateKey, computeSbIssuerKid(publicKey));
+  return { receipt: envelope, artifact_type: artifactType, public_key: publicKey, ephemeral };
 }
 async function callVerify(args) {
   const receipt = args.receipt;
   if (!receipt || typeof receipt !== "object") return { valid: false, error: "missing_receipt" };
-  const a = await loadArtifacts();
+  const identity = receiptIdentity(receipt);
   const embedded = receipt.payload?.public_key;
   const key = typeof args.public_key_hex === "string" && args.public_key_hex ? args.public_key_hex : typeof embedded === "string" ? embedded : null;
   if (!key) {
-    return { valid: false, error: "no_public_key", type: receipt.type ?? "unknown", kid: null, issuer: null };
+    return { valid: false, error: "no_public_key", type: identity.type ?? "unknown", kid: identity.kid, issuer: identity.issuer };
   }
-  const result = a.verifyArtifact(receipt, key);
+  const result = verifyReceipt(receipt, key);
   return {
-    valid: !!result.valid,
+    valid: result.valid,
     error: result.valid ? null : result.error || "invalid_signature",
-    type: receipt.type ?? "unknown",
-    kid: receipt.kid ?? null,
-    issuer: receipt.issuer ?? null
+    shape: result.shape,
+    type: identity.type ?? "unknown",
+    kid: identity.kid,
+    issuer: identity.issuer
   };
 }
 var SELF_TEST_POLICY = `
@@ -352,7 +492,7 @@ async function callSelfTest() {
     if (signed.receipt && signed.public_key) {
       const ok = await callVerify({ receipt: signed.receipt, public_key_hex: signed.public_key });
       const tampered = JSON.parse(JSON.stringify(signed.receipt));
-      if (tampered.payload) tampered.payload.tool = "tampered";
+      if (tampered.payload) tampered.payload.tool_name = "tampered";
       const bad = await callVerify({ receipt: tampered, public_key_hex: signed.public_key });
       signVerifyRoundtrip = ok.valid === true && bad.valid === false;
       details.sign_verify = { valid_verifies: ok.valid, tampered_rejected: bad.valid === false };

@@ -10,6 +10,7 @@
  */
 
 import { readFileSync, existsSync } from 'node:fs';
+import { receiptIdentity } from './acta-envelope.js';
 
 export interface ComplianceReport {
   generated_at: string;
@@ -102,8 +103,11 @@ export function generateReport(
         const parsed = JSON.parse(trimmed);
         if (parsed.signature) {
           receiptsSigned++;
-          if (parsed.kid && !signerKid) signerKid = parsed.kid;
-          if (parsed.issuer && !signerIssuer) signerIssuer = parsed.issuer;
+          // Shape-agnostic: draft-02 envelopes carry kid in signature.kid and
+          // issuer in payload.issuer_id; legacy envelopes carry both top-level.
+          const identity = receiptIdentity(parsed);
+          if (identity.kid && !signerKid) signerKid = identity.kid;
+          if (identity.issuer && !signerIssuer) signerIssuer = identity.issuer;
         }
       } catch {
         // Skip

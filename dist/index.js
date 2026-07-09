@@ -5,8 +5,8 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __commonJS = (cb, mod2) => function __require() {
-  return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
+var __commonJS = (cb, mod) => function __require() {
+  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
 var __export = (target, all) => {
   for (var name in all)
@@ -20,15 +20,15 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod2, isNodeMode, target) => (target = mod2 != null ? __create(__getProtoOf(mod2)) : {}, __copyProps(
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
   // If the importer is in node compatibility mode or this is not an ESM
   // file that has been converted to a CommonJS file using a Babel-
   // compatible transform (i.e. "__esModule" has not been set), then set
   // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod2 || !mod2.__esModule ? __defProp(target, "default", { value: mod2, enumerable: true }) : target,
-  mod2
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
 ));
-var __toCommonJS = (mod2) => __copyProps(__defProp({}, "__esModule", { value: true }), mod2);
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // node_modules/zod/v3/helpers/util.cjs
 var require_util = __commonJS({
@@ -416,8 +416,8 @@ var require_en = __commonJS({
 var require_errors = __commonJS({
   "node_modules/zod/v3/errors.cjs"(exports2) {
     "use strict";
-    var __importDefault = exports2 && exports2.__importDefault || function(mod2) {
-      return mod2 && mod2.__esModule ? mod2 : { "default": mod2 };
+    var __importDefault = exports2 && exports2.__importDefault || function(mod) {
+      return mod && mod.__esModule ? mod : { "default": mod };
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.defaultErrorMap = void 0;
@@ -439,8 +439,8 @@ var require_errors = __commonJS({
 var require_parseUtil = __commonJS({
   "node_modules/zod/v3/helpers/parseUtil.cjs"(exports2) {
     "use strict";
-    var __importDefault = exports2 && exports2.__importDefault || function(mod2) {
-      return mod2 && mod2.__esModule ? mod2 : { "default": mod2 };
+    var __importDefault = exports2 && exports2.__importDefault || function(mod) {
+      return mod && mod.__esModule ? mod : { "default": mod };
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.isAsync = exports2.isValid = exports2.isDirty = exports2.isAborted = exports2.OK = exports2.DIRTY = exports2.INVALID = exports2.ParseStatus = exports2.EMPTY_PATH = exports2.makeIssue = void 0;
@@ -4182,13 +4182,13 @@ var require_v3 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
@@ -4987,13 +4987,13 @@ var require_errors2 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -5164,13 +5164,13 @@ var require_parse = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -5301,13 +5301,13 @@ var require_regexes = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -5441,13 +5441,13 @@ var require_checks = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -6084,13 +6084,13 @@ var require_schemas = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -8104,13 +8104,13 @@ var require_ar = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -8247,13 +8247,13 @@ var require_az = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -8389,13 +8389,13 @@ var require_be = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -8582,13 +8582,13 @@ var require_bg = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -8739,13 +8739,13 @@ var require_ca = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -8884,13 +8884,13 @@ var require_cs = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -9032,13 +9032,13 @@ var require_da = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -9184,13 +9184,13 @@ var require_de = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -9329,13 +9329,13 @@ var require_en2 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -9474,13 +9474,13 @@ var require_eo = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -9620,13 +9620,13 @@ var require_es = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -9789,13 +9789,13 @@ var require_fa = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -9940,13 +9940,13 @@ var require_fi = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -10089,13 +10089,13 @@ var require_fr = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -10234,13 +10234,13 @@ var require_fr_CA = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -10378,13 +10378,13 @@ var require_he = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -10609,13 +10609,13 @@ var require_hu = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -10754,13 +10754,13 @@ var require_hy = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -10938,13 +10938,13 @@ var require_id = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -11081,13 +11081,13 @@ var require_is = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -11227,13 +11227,13 @@ var require_it = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -11372,13 +11372,13 @@ var require_ja = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -11516,13 +11516,13 @@ var require_ka = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -11665,13 +11665,13 @@ var require_km = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -11794,8 +11794,8 @@ var require_km = __commonJS({
 var require_kh = __commonJS({
   "node_modules/zod/v4/locales/kh.cjs"(exports2, module2) {
     "use strict";
-    var __importDefault = exports2 && exports2.__importDefault || function(mod2) {
-      return mod2 && mod2.__esModule ? mod2 : { "default": mod2 };
+    var __importDefault = exports2 && exports2.__importDefault || function(mod) {
+      return mod && mod.__esModule ? mod : { "default": mod };
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = default_1;
@@ -11829,13 +11829,13 @@ var require_ko = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -11977,13 +11977,13 @@ var require_lt = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -12217,13 +12217,13 @@ var require_mk = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -12363,13 +12363,13 @@ var require_ms = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -12507,13 +12507,13 @@ var require_nl = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -12654,13 +12654,13 @@ var require_no = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -12799,13 +12799,13 @@ var require_ota = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -12945,13 +12945,13 @@ var require_ps = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -13096,13 +13096,13 @@ var require_pl = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -13242,13 +13242,13 @@ var require_pt = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -13387,13 +13387,13 @@ var require_ru = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -13580,13 +13580,13 @@ var require_sl = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -13726,13 +13726,13 @@ var require_sv = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -13873,13 +13873,13 @@ var require_ta = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -14020,13 +14020,13 @@ var require_th = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -14167,13 +14167,13 @@ var require_tr = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -14309,13 +14309,13 @@ var require_uk = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -14436,8 +14436,8 @@ var require_uk = __commonJS({
 var require_ua = __commonJS({
   "node_modules/zod/v4/locales/ua.cjs"(exports2, module2) {
     "use strict";
-    var __importDefault = exports2 && exports2.__importDefault || function(mod2) {
-      return mod2 && mod2.__esModule ? mod2 : { "default": mod2 };
+    var __importDefault = exports2 && exports2.__importDefault || function(mod) {
+      return mod && mod.__esModule ? mod : { "default": mod };
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = default_1;
@@ -14471,13 +14471,13 @@ var require_ur = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -14618,13 +14618,13 @@ var require_uz = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -14764,13 +14764,13 @@ var require_vi = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -14909,13 +14909,13 @@ var require_zh_CN = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -15055,13 +15055,13 @@ var require_zh_TW = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -15199,13 +15199,13 @@ var require_yo = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -15325,8 +15325,8 @@ var require_yo = __commonJS({
 var require_locales = __commonJS({
   "node_modules/zod/v4/locales/index.cjs"(exports2) {
     "use strict";
-    var __importDefault = exports2 && exports2.__importDefault || function(mod2) {
-      return mod2 && mod2.__esModule ? mod2 : { "default": mod2 };
+    var __importDefault = exports2 && exports2.__importDefault || function(mod) {
+      return mod && mod.__esModule ? mod : { "default": mod };
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.yo = exports2.zhTW = exports2.zhCN = exports2.vi = exports2.uz = exports2.ur = exports2.uk = exports2.ua = exports2.tr = exports2.th = exports2.ta = exports2.sv = exports2.sl = exports2.ru = exports2.pt = exports2.pl = exports2.ps = exports2.ota = exports2.no = exports2.nl = exports2.ms = exports2.mk = exports2.lt = exports2.ko = exports2.km = exports2.kh = exports2.ka = exports2.ja = exports2.it = exports2.is = exports2.id = exports2.hy = exports2.hu = exports2.he = exports2.frCA = exports2.fr = exports2.fi = exports2.fa = exports2.es = exports2.eo = exports2.en = exports2.de = exports2.da = exports2.cs = exports2.ca = exports2.bg = exports2.be = exports2.az = exports2.ar = void 0;
@@ -15610,13 +15610,13 @@ var require_api = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -17869,13 +17869,13 @@ var require_core2 = __commonJS({
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
       for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
     };
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -17973,13 +17973,13 @@ var require_schemas2 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -19088,13 +19088,13 @@ var require_iso = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -19162,13 +19162,13 @@ var require_coerce = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -19224,13 +19224,13 @@ var require_external2 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
@@ -19333,13 +19333,13 @@ var require_v4_mini = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
@@ -19375,13 +19375,13 @@ var require_zod_compat = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -19661,13 +19661,13 @@ var require_iso2 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -19731,13 +19731,13 @@ var require_errors3 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -19808,13 +19808,13 @@ var require_parse3 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -19858,13 +19858,13 @@ var require_schemas3 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -21074,13 +21074,13 @@ var require_compat = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -21144,13 +21144,13 @@ var require_from_json_schema = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -21656,13 +21656,13 @@ var require_coerce2 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -21713,20 +21713,20 @@ var require_external3 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
       for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
     };
-    var __importDefault = exports2 && exports2.__importDefault || function(mod2) {
-      return mod2 && mod2.__esModule ? mod2 : { "default": mod2 };
+    var __importDefault = exports2 && exports2.__importDefault || function(mod) {
+      return mod && mod.__esModule ? mod : { "default": mod };
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.coerce = exports2.iso = exports2.ZodISODuration = exports2.ZodISOTime = exports2.ZodISODate = exports2.ZodISODateTime = exports2.locales = exports2.fromJSONSchema = exports2.toJSONSchema = exports2.NEVER = exports2.util = exports2.TimePrecision = exports2.flattenError = exports2.formatError = exports2.prettifyError = exports2.treeifyError = exports2.regexes = exports2.clone = exports2.$brand = exports2.$input = exports2.$output = exports2.config = exports2.registry = exports2.globalRegistry = exports2.core = void 0;
@@ -21834,13 +21834,13 @@ var require_classic = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
@@ -21875,8 +21875,8 @@ var require_v4 = __commonJS({
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
       for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
     };
-    var __importDefault = exports2 && exports2.__importDefault || function(mod2) {
-      return mod2 && mod2.__esModule ? mod2 : { "default": mod2 };
+    var __importDefault = exports2 && exports2.__importDefault || function(mod) {
+      return mod && mod.__esModule ? mod : { "default": mod };
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     var index_js_1 = __importDefault(require_classic());
@@ -21907,13 +21907,13 @@ var require_types2 = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -25248,13 +25248,13 @@ var require_zod_json_schema_compat = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
@@ -33047,8 +33047,8 @@ var require_dist = __commonJS({
 var require_ajv_provider = __commonJS({
   "node_modules/@modelcontextprotocol/sdk/dist/cjs/validation/ajv-provider.js"(exports2) {
     "use strict";
-    var __importDefault = exports2 && exports2.__importDefault || function(mod2) {
-      return mod2 && mod2.__esModule ? mod2 : { "default": mod2 };
+    var __importDefault = exports2 && exports2.__importDefault || function(mod) {
+      return mod && mod.__esModule ? mod : { "default": mod };
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.AjvJsonSchemaValidator = void 0;
@@ -34160,13 +34160,13 @@ var require_zod = __commonJS({
     }) : function(o, v) {
       o["default"] = v;
     });
-    var __importStar = exports2 && exports2.__importStar || function(mod2) {
-      if (mod2 && mod2.__esModule) return mod2;
+    var __importStar = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule) return mod;
       var result = {};
-      if (mod2 != null) {
-        for (var k in mod2) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod2, k)) __createBinding(result, mod2, k);
+      if (mod != null) {
+        for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
       }
-      __setModuleDefault(result, mod2);
+      __setModuleDefault(result, mod);
       return result;
     };
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
@@ -35030,6 +35030,7 @@ __export(index_exports, {
   checkRateLimit: () => checkRateLimit,
   collectSignedReceipts: () => collectSignedReceipts,
   computeCalibration: () => computeCalibration,
+  computeSbIssuerKid: () => computeSbIssuerKid,
   confidentialInference: () => confidentialInference,
   connectorDirectory: () => connectorDirectory,
   connectorDoctor: () => connectorDoctor,
@@ -35043,6 +35044,7 @@ __export(index_exports, {
   createEvidenceAttestation: () => createEvidenceAttestation,
   createLogAnchorField: () => createLogAnchorField,
   createReceiptChannel: () => createReceiptChannel,
+  createReceiptEnvelope: () => createReceiptEnvelope,
   createSandbox: () => createSandbox,
   createSandboxServer: () => createSandboxServer,
   createSelectiveDisclosurePackage: () => createSelectiveDisclosurePackage,
@@ -35092,6 +35094,8 @@ __export(index_exports, {
   policySetFromSource: () => policySetFromSource,
   queryExternalPDP: () => queryExternalPDP,
   readInstalledConnectorPilots: () => readInstalledConnectorPilots,
+  receiptHash: () => receiptHash,
+  receiptIdentity: () => receiptIdentity,
   receiptToVP: () => receiptToVP,
   receiptsToHFRows: () => receiptsToHFRows,
   redactFields: () => redactFields,
@@ -35115,6 +35119,7 @@ __export(index_exports, {
   verifyApprovalAssertion: () => verifyApprovalAssertion,
   verifyCommitment: () => verifyCommitment,
   verifyEvidenceAttestation: () => verifyEvidenceAttestation,
+  verifyReceipt: () => verifyReceipt,
   verifyRekorAnchor: () => verifyRekorAnchor,
   verifySelectiveDisclosurePackage: () => verifySelectiveDisclosurePackage,
   writeConnectorPilots: () => writeConnectorPilots
@@ -35123,16 +35128,155 @@ module.exports = __toCommonJS(index_exports);
 
 // src/gateway.ts
 var import_node_child_process = require("child_process");
-var import_node_crypto4 = require("crypto");
+var import_node_crypto3 = require("crypto");
 var import_node_readline = require("readline");
-var import_node_fs6 = require("fs");
-var import_node_path4 = require("path");
+var import_node_fs7 = require("fs");
+var import_node_path5 = require("path");
 
 // src/policy.ts
+var import_node_fs2 = require("fs");
+
+// src/policy-digest.ts
 var import_node_crypto = require("crypto");
 var import_node_fs = require("fs");
+var import_node_path = require("path");
+
+// src/acta-envelope.ts
+var import_ed25519 = require("@noble/curves/ed25519");
+var import_sha256 = require("@noble/hashes/sha256");
+var import_utils = require("@noble/hashes/utils");
+function canonicalize(obj) {
+  return JSON.stringify(obj, (_key, value) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const sorted = {};
+      for (const k of Object.keys(value).sort()) {
+        if (!/^[\x20-\x7E]*$/.test(k)) {
+          throw new Error(`Non-ASCII key "${k}" in receipt payload. Only ASCII keys are permitted.`);
+        }
+        sorted[k] = value[k];
+      }
+      return sorted;
+    }
+    return value;
+  });
+}
+function receiptHash(obj) {
+  return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
+}
+var B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function base58(bytes) {
+  let n = BigInt("0x" + (0, import_utils.bytesToHex)(bytes));
+  let out = "";
+  while (n > 0n) {
+    out = B58_ALPHABET[Number(n % 58n)] + out;
+    n /= 58n;
+  }
+  for (const b of bytes) {
+    if (b === 0) out = "1" + out;
+    else break;
+  }
+  return out;
+}
+function computeSbIssuerKid(publicKeyHex) {
+  return `sb:issuer:${base58((0, import_utils.hexToBytes)(publicKeyHex)).slice(0, 12)}`;
+}
+function createReceiptEnvelope(fields, privateKeyHex, kid, issuedAt) {
+  if (!fields.type) throw new Error("receipt payload requires a type");
+  if (!kid) throw new Error("kid is required");
+  const payload = {
+    ...fields,
+    issued_at: fields.issued_at || issuedAt || (/* @__PURE__ */ new Date()).toISOString(),
+    issuer_id: kid
+  };
+  const sig = (0, import_utils.bytesToHex)(import_ed25519.ed25519.sign((0, import_utils.utf8ToBytes)(canonicalize(payload)), (0, import_utils.hexToBytes)(privateKeyHex)));
+  const envelope = { payload, signature: { alg: "EdDSA", kid, sig } };
+  return { envelope, hash: receiptHash(envelope) };
+}
+function verifyReceipt(envelope, publicKeyHex) {
+  try {
+    if (!envelope || typeof envelope !== "object") {
+      return { valid: false, shape: null, error: "not_an_object" };
+    }
+    const env = envelope;
+    const signature = env.signature;
+    if (signature && typeof signature === "object" && !Array.isArray(signature)) {
+      const sigObj = signature;
+      if (sigObj.alg !== "EdDSA") {
+        return { valid: false, shape: "acta-02", error: `unsupported_alg:${String(sigObj.alg)}` };
+      }
+      if (typeof sigObj.sig !== "string" || !env.payload || typeof env.payload !== "object") {
+        return { valid: false, shape: "acta-02", error: "malformed_envelope" };
+      }
+      const message = (0, import_utils.utf8ToBytes)(canonicalize(env.payload));
+      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(sigObj.sig), message, (0, import_utils.hexToBytes)(publicKeyHex));
+      return valid ? { valid: true, shape: "acta-02", hash: receiptHash(env) } : { valid: false, shape: "acta-02", error: "invalid_signature" };
+    }
+    if (typeof signature === "string") {
+      const rest = {};
+      for (const k of Object.keys(env)) if (k !== "signature") rest[k] = env[k];
+      const message = (0, import_utils.utf8ToBytes)(canonicalize(rest));
+      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), message, (0, import_utils.hexToBytes)(publicKeyHex));
+      const shape = env.v === 2 ? "legacy-v2" : "legacy-v1";
+      return valid ? { valid: true, shape, hash: receiptHash(env) } : { valid: false, shape, error: "invalid_signature" };
+    }
+    return { valid: false, shape: null, error: "missing_signature" };
+  } catch (err) {
+    return {
+      valid: false,
+      shape: null,
+      error: `verification_error:${err instanceof Error ? err.message : "unknown"}`
+    };
+  }
+}
+function receiptIdentity(envelope) {
+  if (!envelope || typeof envelope !== "object") return { kid: null, issuer: null, type: null };
+  const env = envelope;
+  if (env.signature && typeof env.signature === "object") {
+    const payload = env.payload || {};
+    const sig = env.signature;
+    return {
+      kid: typeof sig.kid === "string" ? sig.kid : null,
+      issuer: typeof payload.issuer_id === "string" ? payload.issuer_id : typeof payload.issuer_name === "string" ? payload.issuer_name : null,
+      type: typeof payload.type === "string" ? payload.type : null
+    };
+  }
+  return {
+    kid: typeof env.kid === "string" ? env.kid : null,
+    issuer: typeof env.issuer === "string" ? env.issuer : null,
+    type: typeof env.type === "string" ? env.type : null
+  };
+}
+
+// src/policy-digest.ts
+var POLICY_DIGEST_CONSTRUCTION = "acta-policy-digest-v1";
+var sha256hex = (data) => (0, import_node_crypto.createHash)("sha256").update(data).digest("hex");
+function digestPolicyFiles(engine, files) {
+  if (files.length === 0) throw new Error("policy digest requires at least one file");
+  const names = /* @__PURE__ */ new Set();
+  for (const f of files) {
+    if (!f.name) throw new Error("policy file entries require a name");
+    if (names.has(f.name)) throw new Error(`duplicate policy file name: ${f.name}`);
+    names.add(f.name);
+  }
+  const entries = files.map((f) => ({ name: f.name, sha256: sha256hex(Buffer.from(f.content, "utf-8")) })).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  const manifest = { construction: POLICY_DIGEST_CONSTRUCTION, engine, files: entries };
+  return {
+    policy_digest: `sha256:${sha256hex(Buffer.from(canonicalize(manifest), "utf-8"))}`,
+    construction: POLICY_DIGEST_CONSTRUCTION,
+    engine,
+    files: entries
+  };
+}
+function digestCedarSource(source) {
+  return digestPolicyFiles("cedar", [{ name: "policy.cedar", content: source }]);
+}
+function digestBuiltinPolicy(policy) {
+  return digestPolicyFiles("builtin", [{ name: "policy.json", content: canonicalize(policy) }]);
+}
+
+// src/policy.ts
 function loadPolicy(path) {
-  const raw = (0, import_node_fs.readFileSync)(path, "utf-8");
+  const raw = (0, import_node_fs2.readFileSync)(path, "utf-8");
   const parsed = JSON.parse(raw);
   if (!parsed.tools || typeof parsed.tools !== "object") {
     throw new Error(`Invalid policy file: missing "tools" object in ${path}`);
@@ -35152,17 +35296,7 @@ function loadPolicy(path) {
   };
 }
 function computePolicyDigest(policy) {
-  const canonical = JSON.stringify(sortKeysDeep(policy));
-  return (0, import_node_crypto.createHash)("sha256").update(canonical).digest("hex").slice(0, 16);
-}
-function sortKeysDeep(obj) {
-  if (obj === null || typeof obj !== "object") return obj;
-  if (Array.isArray(obj)) return obj.map(sortKeysDeep);
-  const sorted = {};
-  for (const key of Object.keys(obj).sort()) {
-    sorted[key] = sortKeysDeep(obj[key]);
-  }
-  return sorted;
+  return digestBuiltinPolicy(policy).policy_digest;
 }
 function getToolPolicy(toolName, policy) {
   if (!policy) {
@@ -35205,8 +35339,8 @@ function checkRateLimit(key, limit, store) {
 }
 
 // src/evidence-store.ts
-var import_node_fs2 = require("fs");
-var import_node_path = require("path");
+var import_node_fs3 = require("fs");
+var import_node_path2 = require("path");
 var DEFAULT_THRESHOLDS = {
   min_receipts: 10,
   min_epoch_span: 3,
@@ -35217,7 +35351,7 @@ var EvidenceStore = class {
   filePath;
   dirty = false;
   constructor(dir) {
-    this.filePath = (0, import_node_path.join)(dir || process.cwd(), ".protect-mcp-evidence.json");
+    this.filePath = (0, import_node_path2.join)(dir || process.cwd(), ".protect-mcp-evidence.json");
     this.load();
   }
   /**
@@ -35281,7 +35415,7 @@ var EvidenceStore = class {
       data[id] = record;
     }
     try {
-      (0, import_node_fs2.writeFileSync)(this.filePath, JSON.stringify({ v: 1, agents: data }, null, 2) + "\n");
+      (0, import_node_fs3.writeFileSync)(this.filePath, JSON.stringify({ v: 1, agents: data }, null, 2) + "\n");
       this.dirty = false;
     } catch {
     }
@@ -35290,9 +35424,9 @@ var EvidenceStore = class {
    * Load from disk.
    */
   load() {
-    if (!(0, import_node_fs2.existsSync)(this.filePath)) return;
+    if (!(0, import_node_fs3.existsSync)(this.filePath)) return;
     try {
-      const raw = (0, import_node_fs2.readFileSync)(this.filePath, "utf-8");
+      const raw = (0, import_node_fs3.readFileSync)(this.filePath, "utf-8");
       const parsed = JSON.parse(raw);
       if (parsed.agents && typeof parsed.agents === "object") {
         for (const [id, record] of Object.entries(parsed.agents)) {
@@ -35438,15 +35572,13 @@ function validateCredentials(credentials) {
 }
 
 // src/signing.ts
-var import_node_fs3 = require("fs");
+var import_node_fs4 = require("fs");
 var signerState = null;
-var artifactsModule = null;
 var signingConfigured = false;
 var signingInitError = null;
 async function initSigning(config) {
   const warnings = [];
   signerState = null;
-  artifactsModule = null;
   signingConfigured = Boolean(config && config.enabled !== false);
   signingInitError = null;
   if (!config || config.enabled === false) {
@@ -35457,14 +35589,14 @@ async function initSigning(config) {
     warnings.push(`signing: ${signingInitError}`);
     return warnings;
   }
-  if (!(0, import_node_fs3.existsSync)(config.key_path)) {
+  if (!(0, import_node_fs4.existsSync)(config.key_path)) {
     signingInitError = `key file not found at ${config.key_path}`;
     warnings.push(`signing: ${signingInitError} \u2014 run "protect-mcp init" to generate`);
     return warnings;
   }
   let keyData;
   try {
-    keyData = JSON.parse((0, import_node_fs3.readFileSync)(config.key_path, "utf-8"));
+    keyData = JSON.parse((0, import_node_fs4.readFileSync)(config.key_path, "utf-8"));
     if (!keyData.privateKey || !keyData.publicKey) {
       signingInitError = "key file missing privateKey or publicKey fields";
       warnings.push(`signing: ${signingInitError}`);
@@ -35476,31 +35608,21 @@ async function initSigning(config) {
     return warnings;
   }
   try {
-    const moduleName = "@veritasacta/artifacts";
-    artifactsModule = await import(
-      /* @vite-ignore */
-      moduleName
-    );
-  } catch {
-    signingInitError = "@veritasacta/artifacts not available";
-    warnings.push(`signing: ${signingInitError} \u2014 enforce mode will fail closed`);
-    return warnings;
-  }
-  try {
     signerState = {
       privateKey: keyData.privateKey,
       publicKey: keyData.publicKey,
-      kid: keyData.kid || artifactsModule.computeKid(keyData.publicKey),
+      // kid is opaque per draft-02; existing key files keep their explicit kid,
+      // and keys without one get the s2.1.1 RECOMMENDED sb:issuer format.
+      kid: keyData.kid || computeSbIssuerKid(keyData.publicKey),
       issuer: config.issuer || keyData.issuer || "protect-mcp"
     };
   } catch (err) {
     signingInitError = `failed to initialize signer: ${err instanceof Error ? err.message : err}`;
-    artifactsModule = null;
     warnings.push(`signing: ${signingInitError} \u2014 enforce mode will fail closed`);
   }
   return warnings;
 }
-function signDecision(entry) {
+function signDecision(entry, prevReceiptHash) {
   const artifactType = entry.decision === "deny" ? "gateway_restraint" : "decision_receipt";
   if (signingConfigured && signingInitError) {
     return {
@@ -35511,7 +35633,7 @@ function signDecision(entry) {
       error: signingInitError
     };
   }
-  if (signingConfigured && (!signerState || !artifactsModule)) {
+  if (signingConfigured && !signerState) {
     const error = "signing was configured but no signer is ready";
     return {
       ok: false,
@@ -35521,21 +35643,24 @@ function signDecision(entry) {
       error
     };
   }
-  if (!signerState || !artifactsModule) {
+  if (!signerState) {
     return { ok: false, signed: null, artifact_type: "none" };
   }
   try {
     const payload = {
-      tool: entry.tool,
+      // draft-02 s3.1 access-decision fields
+      type: "protectmcp:decision",
+      tool_name: entry.tool,
       decision: entry.decision,
-      reason_code: entry.reason_code,
+      reason: entry.reason_code,
       policy_digest: entry.policy_digest,
+      // Extension fields (signed alongside the s3.1 core)
       scope: entry.request_id,
       // request scope
       mode: entry.mode,
       request_id: entry.request_id,
       // Spec version: ties every receipt to the IETF standard
-      spec: "draft-farley-acta-signed-receipts-01",
+      spec: "draft-farley-acta-signed-receipts-02",
       // Issuer certification: distinguishes VOPRF-backed receipts from self-signed ones
       // - scopeblind:verified  = issued via ScopeBlind VOPRF backend (paid tier)
       // - self-signed          = signed with local Ed25519 key (free tier, protect-mcp default)
@@ -35548,6 +35673,10 @@ function signDecision(entry) {
       // authenticity (that the key is YOUR gate's) still comes from pinning it.
       public_key: signerState.publicKey
     };
+    if (signerState.issuer && signerState.issuer !== signerState.kid) {
+      payload.issuer_name = signerState.issuer;
+    }
+    if (prevReceiptHash) payload.previousReceiptHash = prevReceiptHash;
     if (entry.tier) payload.tier = entry.tier;
     if (entry.credential_ref) payload.credential_ref = entry.credential_ref;
     if (entry.rate_limit_remaining !== void 0) {
@@ -35562,19 +35691,17 @@ function signDecision(entry) {
     if (entry.enrichment) payload.enrichment = entry.enrichment;
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
-    const result = artifactsModule.createSignedArtifact(
-      artifactType,
+    const result = createReceiptEnvelope(
       payload,
       signerState.privateKey,
-      {
-        kid: signerState.kid,
-        issuer: signerState.issuer
-      }
+      signerState.kid,
+      Number.isFinite(entry.timestamp) ? new Date(entry.timestamp).toISOString() : void 0
     );
     return {
       ok: true,
-      signed: JSON.stringify(result.artifact),
-      artifact_type: artifactType
+      signed: JSON.stringify(result.envelope),
+      artifact_type: artifactType,
+      receipt_hash: result.hash
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
@@ -35596,7 +35723,7 @@ function getSignerInfo() {
   };
 }
 function isSigningEnabled() {
-  return signingConfigured && signingInitError === null && signerState !== null && artifactsModule !== null;
+  return signingConfigured && signingInitError === null && signerState !== null;
 }
 
 // src/external-pdp.ts
@@ -35760,9 +35887,8 @@ function buildDecisionContext(toolName, tier, opts) {
 }
 
 // src/cedar-evaluator.ts
-var import_node_crypto2 = require("crypto");
-var import_node_fs4 = require("fs");
-var import_node_path2 = require("path");
+var import_node_fs5 = require("fs");
+var import_node_path3 = require("path");
 var cedarWasm = null;
 var loadAttempted = false;
 async function ensureCedarWasm() {
@@ -35781,20 +35907,19 @@ async function ensureCedarWasm() {
   }
 }
 function loadCedarPolicies(dirPath) {
-  if (!(0, import_node_fs4.existsSync)(dirPath)) {
+  if (!(0, import_node_fs5.existsSync)(dirPath)) {
     throw new Error(`Cedar policy directory not found: ${dirPath}`);
   }
-  const entries = (0, import_node_fs4.readdirSync)(dirPath).filter((f) => (0, import_node_path2.extname)(f) === ".cedar").sort();
+  const entries = (0, import_node_fs5.readdirSync)(dirPath).filter((f) => (0, import_node_path3.extname)(f) === ".cedar").sort();
   if (entries.length === 0) {
     throw new Error(`No .cedar files found in: ${dirPath}`);
   }
-  const sources = [];
+  const files = [];
   for (const file of entries) {
-    const content = (0, import_node_fs4.readFileSync)((0, import_node_path2.join)(dirPath, file), "utf-8");
-    sources.push(content);
+    files.push({ name: file, content: (0, import_node_fs5.readFileSync)((0, import_node_path3.join)(dirPath, file), "utf-8") });
   }
-  const concatenated = sources.join("\n\n");
-  const digest = (0, import_node_crypto2.createHash)("sha256").update(concatenated).digest("hex").slice(0, 16);
+  const concatenated = files.map((f) => f.content).join("\n\n");
+  const digest = digestPolicyFiles("cedar", files).policy_digest;
   return {
     source: concatenated,
     digest,
@@ -35935,7 +36060,7 @@ async function isCedarAvailable() {
   return ensureCedarWasm();
 }
 function policySetFromSource(source, name = "inline") {
-  const digest = (0, import_node_crypto2.createHash)("sha256").update(source).digest("hex").slice(0, 16);
+  const digest = digestCedarSource(source).policy_digest;
   return { source, digest, fileCount: 1, files: [name] };
 }
 async function runEvaluatorSelfTest() {
@@ -36144,8 +36269,8 @@ function parseNotificationConfigFromEnv() {
 
 // src/http-server.ts
 var import_node_http = require("http");
-var import_node_fs5 = require("fs");
-var import_node_path3 = require("path");
+var import_node_fs6 = require("fs");
+var import_node_path4 = require("path");
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var MAX_RECEIPTS = 100;
 var ReceiptBuffer = class {
@@ -36238,13 +36363,13 @@ function handleHealth(res, startTime, config) {
   }));
 }
 function handleStatus(res, logDir) {
-  const logPath = (0, import_node_path3.join)(logDir, LOG_FILE);
-  if (!(0, import_node_fs5.existsSync)(logPath)) {
+  const logPath = (0, import_node_path4.join)(logDir, LOG_FILE);
+  if (!(0, import_node_fs6.existsSync)(logPath)) {
     res.writeHead(200);
     res.end(JSON.stringify({ entries: 0, message: "no log file yet" }));
     return;
   }
-  const raw = (0, import_node_fs5.readFileSync)(logPath, "utf-8");
+  const raw = (0, import_node_fs6.readFileSync)(logPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   const entries = [];
   for (const line of lines) {
@@ -36368,7 +36493,7 @@ function handleListApprovals(res, approvalStore) {
 }
 
 // src/action-readback.ts
-var import_node_crypto3 = require("crypto");
+var import_node_crypto2 = require("crypto");
 var SECRET_KEY_RE = /(api[_-]?key|authorization|bearer|credential|password|secret|session|token|private[_-]?key)/i;
 var DESTINATION_KEYS = [
   "path",
@@ -36448,7 +36573,7 @@ function buildActionReadback(tool, input) {
     action,
     destination,
     payload_preview: payloadPreview,
-    payload_hash: (0, import_node_crypto3.createHash)("sha256").update(canonical).digest("hex"),
+    payload_hash: (0, import_node_crypto2.createHash)("sha256").update(canonical).digest("hex"),
     payload_bytes: Buffer.byteLength(canonical, "utf-8"),
     disclosed_fields: [...new Set(disclosedFields)].slice(0, 80),
     redacted_fields: [...new Set(redactedFields)].slice(0, 80),
@@ -36471,7 +36596,7 @@ var ProtectGateway = class {
   /** Approval grants keyed by request_id (scoped to the specific action that was requested) */
   approvalStore = /* @__PURE__ */ new Map();
   /** Random nonce generated at startup — required for approval endpoint authentication */
-  approvalNonce = (0, import_node_crypto4.randomBytes)(16).toString("hex");
+  approvalNonce = (0, import_node_crypto3.randomBytes)(16).toString("hex");
   currentTier = "unknown";
   admissionResult = null;
   /** Notification config for approval gates (SMS, webhook, email) */
@@ -36483,8 +36608,8 @@ var ProtectGateway = class {
   cedarPolicySet = null;
   constructor(config) {
     this.config = config;
-    this.logFilePath = (0, import_node_path4.join)(process.cwd(), LOG_FILE2);
-    this.receiptFilePath = (0, import_node_path4.join)(process.cwd(), RECEIPTS_FILE);
+    this.logFilePath = (0, import_node_path5.join)(process.cwd(), LOG_FILE2);
+    this.receiptFilePath = (0, import_node_path5.join)(process.cwd(), RECEIPTS_FILE);
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();
     this.notificationConfig = parseNotificationConfigFromEnv();
@@ -36625,7 +36750,7 @@ var ProtectGateway = class {
   }
   async interceptToolCall(request) {
     const toolName = request.params?.name || "unknown";
-    const requestId = (0, import_node_crypto4.randomUUID)().slice(0, 12);
+    const requestId = (0, import_node_crypto3.randomUUID)().slice(0, 12);
     const mode = this.config.enforce ? "enforce" : "shadow";
     const toolInput = request.params?.arguments && typeof request.params.arguments === "object" ? request.params.arguments : request.params || {};
     const actionReadback = buildActionReadback(toolName, toolInput);
@@ -36805,8 +36930,8 @@ var ProtectGateway = class {
    */
   emitDecisionLog(entry) {
     const mode = this.config.enforce ? "enforce" : "shadow";
-    const otelTraceId = entry.otel_trace_id || (0, import_node_crypto4.randomBytes)(16).toString("hex");
-    const otelSpanId = entry.otel_span_id || (0, import_node_crypto4.randomBytes)(8).toString("hex");
+    const otelTraceId = entry.otel_trace_id || (0, import_node_crypto3.randomBytes)(16).toString("hex");
+    const otelSpanId = entry.otel_span_id || (0, import_node_crypto3.randomBytes)(8).toString("hex");
     const log = {
       v: 2,
       tool: entry.tool || "unknown",
@@ -36814,7 +36939,7 @@ var ProtectGateway = class {
       reason_code: entry.reason_code || "default_allow",
       policy_digest: this.config.policyDigest,
       policy_engine: this.config.policy?.policy_engine || "built-in",
-      request_id: entry.request_id || (0, import_node_crypto4.randomUUID)().slice(0, 12),
+      request_id: entry.request_id || (0, import_node_crypto3.randomUUID)().slice(0, 12),
       timestamp: Date.now(),
       mode,
       ...entry.rate_limit_remaining !== void 0 && { rate_limit_remaining: entry.rate_limit_remaining },
@@ -36827,7 +36952,7 @@ var ProtectGateway = class {
     process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
     try {
-      (0, import_node_fs6.appendFileSync)(this.logFilePath, JSON.stringify(log) + "\n");
+      (0, import_node_fs7.appendFileSync)(this.logFilePath, JSON.stringify(log) + "\n");
     } catch {
     }
     if (isSigningEnabled()) {
@@ -36836,7 +36961,7 @@ var ProtectGateway = class {
         process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}
 `);
         try {
-          (0, import_node_fs6.appendFileSync)(this.receiptFilePath, signed.signed + "\n");
+          (0, import_node_fs7.appendFileSync)(this.receiptFilePath, signed.signed + "\n");
         } catch {
         }
         this.receiptBuffer.add(log.request_id, signed.signed);
@@ -36856,7 +36981,7 @@ var ProtectGateway = class {
           at: new Date(log.timestamp).toISOString()
         });
         try {
-          (0, import_node_fs6.appendFileSync)(this.receiptFilePath, tombstone + "\n");
+          (0, import_node_fs7.appendFileSync)(this.receiptFilePath, tombstone + "\n");
         } catch {
         }
         process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
@@ -36988,2280 +37113,28 @@ var ProtectGateway = class {
   }
 };
 
-// node_modules/@noble/hashes/esm/cryptoNode.js
-var nc = __toESM(require("crypto"), 1);
-var crypto = nc && typeof nc === "object" && "webcrypto" in nc ? nc.webcrypto : nc && typeof nc === "object" && "randomBytes" in nc ? nc : void 0;
-
-// node_modules/@noble/hashes/esm/utils.js
-function isBytes(a) {
-  return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array";
-}
-function anumber(n) {
-  if (!Number.isSafeInteger(n) || n < 0)
-    throw new Error("positive integer expected, got " + n);
-}
-function abytes(b, ...lengths) {
-  if (!isBytes(b))
-    throw new Error("Uint8Array expected");
-  if (lengths.length > 0 && !lengths.includes(b.length))
-    throw new Error("Uint8Array expected of length " + lengths + ", got length=" + b.length);
-}
-function ahash(h) {
-  if (typeof h !== "function" || typeof h.create !== "function")
-    throw new Error("Hash should be wrapped by utils.createHasher");
-  anumber(h.outputLen);
-  anumber(h.blockLen);
-}
-function aexists(instance, checkFinished = true) {
-  if (instance.destroyed)
-    throw new Error("Hash instance has been destroyed");
-  if (checkFinished && instance.finished)
-    throw new Error("Hash#digest() has already been called");
-}
-function aoutput(out, instance) {
-  abytes(out);
-  const min = instance.outputLen;
-  if (out.length < min) {
-    throw new Error("digestInto() expects output buffer of length at least " + min);
-  }
-}
-function clean(...arrays) {
-  for (let i = 0; i < arrays.length; i++) {
-    arrays[i].fill(0);
-  }
-}
-function createView(arr) {
-  return new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-}
-function rotr(word, shift) {
-  return word << 32 - shift | word >>> shift;
-}
-var hasHexBuiltin = /* @__PURE__ */ (() => (
-  // @ts-ignore
-  typeof Uint8Array.from([]).toHex === "function" && typeof Uint8Array.fromHex === "function"
-))();
-var hexes = /* @__PURE__ */ Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
-function bytesToHex(bytes) {
-  abytes(bytes);
-  if (hasHexBuiltin)
-    return bytes.toHex();
-  let hex = "";
-  for (let i = 0; i < bytes.length; i++) {
-    hex += hexes[bytes[i]];
-  }
-  return hex;
-}
-var asciis = { _0: 48, _9: 57, A: 65, F: 70, a: 97, f: 102 };
-function asciiToBase16(ch) {
-  if (ch >= asciis._0 && ch <= asciis._9)
-    return ch - asciis._0;
-  if (ch >= asciis.A && ch <= asciis.F)
-    return ch - (asciis.A - 10);
-  if (ch >= asciis.a && ch <= asciis.f)
-    return ch - (asciis.a - 10);
-  return;
-}
-function hexToBytes(hex) {
-  if (typeof hex !== "string")
-    throw new Error("hex string expected, got " + typeof hex);
-  if (hasHexBuiltin)
-    return Uint8Array.fromHex(hex);
-  const hl = hex.length;
-  const al = hl / 2;
-  if (hl % 2)
-    throw new Error("hex string expected, got unpadded hex of length " + hl);
-  const array = new Uint8Array(al);
-  for (let ai = 0, hi = 0; ai < al; ai++, hi += 2) {
-    const n1 = asciiToBase16(hex.charCodeAt(hi));
-    const n2 = asciiToBase16(hex.charCodeAt(hi + 1));
-    if (n1 === void 0 || n2 === void 0) {
-      const char = hex[hi] + hex[hi + 1];
-      throw new Error('hex string expected, got non-hex character "' + char + '" at index ' + hi);
-    }
-    array[ai] = n1 * 16 + n2;
-  }
-  return array;
-}
-function utf8ToBytes(str) {
-  if (typeof str !== "string")
-    throw new Error("string expected");
-  return new Uint8Array(new TextEncoder().encode(str));
-}
-function toBytes(data) {
-  if (typeof data === "string")
-    data = utf8ToBytes(data);
-  abytes(data);
-  return data;
-}
-function concatBytes(...arrays) {
-  let sum = 0;
-  for (let i = 0; i < arrays.length; i++) {
-    const a = arrays[i];
-    abytes(a);
-    sum += a.length;
-  }
-  const res = new Uint8Array(sum);
-  for (let i = 0, pad = 0; i < arrays.length; i++) {
-    const a = arrays[i];
-    res.set(a, pad);
-    pad += a.length;
-  }
-  return res;
-}
-var Hash = class {
-};
-function createHasher(hashCons) {
-  const hashC = (msg) => hashCons().update(toBytes(msg)).digest();
-  const tmp = hashCons();
-  hashC.outputLen = tmp.outputLen;
-  hashC.blockLen = tmp.blockLen;
-  hashC.create = () => hashCons();
-  return hashC;
-}
-function randomBytes2(bytesLength = 32) {
-  if (crypto && typeof crypto.getRandomValues === "function") {
-    return crypto.getRandomValues(new Uint8Array(bytesLength));
-  }
-  if (crypto && typeof crypto.randomBytes === "function") {
-    return Uint8Array.from(crypto.randomBytes(bytesLength));
-  }
-  throw new Error("crypto.getRandomValues must be defined");
-}
-
-// node_modules/@noble/hashes/esm/_md.js
-function setBigUint64(view, byteOffset, value, isLE) {
-  if (typeof view.setBigUint64 === "function")
-    return view.setBigUint64(byteOffset, value, isLE);
-  const _32n2 = BigInt(32);
-  const _u32_max = BigInt(4294967295);
-  const wh = Number(value >> _32n2 & _u32_max);
-  const wl = Number(value & _u32_max);
-  const h = isLE ? 4 : 0;
-  const l = isLE ? 0 : 4;
-  view.setUint32(byteOffset + h, wh, isLE);
-  view.setUint32(byteOffset + l, wl, isLE);
-}
-function Chi(a, b, c) {
-  return a & b ^ ~a & c;
-}
-function Maj(a, b, c) {
-  return a & b ^ a & c ^ b & c;
-}
-var HashMD = class extends Hash {
-  constructor(blockLen, outputLen, padOffset, isLE) {
-    super();
-    this.finished = false;
-    this.length = 0;
-    this.pos = 0;
-    this.destroyed = false;
-    this.blockLen = blockLen;
-    this.outputLen = outputLen;
-    this.padOffset = padOffset;
-    this.isLE = isLE;
-    this.buffer = new Uint8Array(blockLen);
-    this.view = createView(this.buffer);
-  }
-  update(data) {
-    aexists(this);
-    data = toBytes(data);
-    abytes(data);
-    const { view, buffer, blockLen } = this;
-    const len = data.length;
-    for (let pos = 0; pos < len; ) {
-      const take = Math.min(blockLen - this.pos, len - pos);
-      if (take === blockLen) {
-        const dataView = createView(data);
-        for (; blockLen <= len - pos; pos += blockLen)
-          this.process(dataView, pos);
-        continue;
-      }
-      buffer.set(data.subarray(pos, pos + take), this.pos);
-      this.pos += take;
-      pos += take;
-      if (this.pos === blockLen) {
-        this.process(view, 0);
-        this.pos = 0;
-      }
-    }
-    this.length += data.length;
-    this.roundClean();
-    return this;
-  }
-  digestInto(out) {
-    aexists(this);
-    aoutput(out, this);
-    this.finished = true;
-    const { buffer, view, blockLen, isLE } = this;
-    let { pos } = this;
-    buffer[pos++] = 128;
-    clean(this.buffer.subarray(pos));
-    if (this.padOffset > blockLen - pos) {
-      this.process(view, 0);
-      pos = 0;
-    }
-    for (let i = pos; i < blockLen; i++)
-      buffer[i] = 0;
-    setBigUint64(view, blockLen - 8, BigInt(this.length * 8), isLE);
-    this.process(view, 0);
-    const oview = createView(out);
-    const len = this.outputLen;
-    if (len % 4)
-      throw new Error("_sha2: outputLen should be aligned to 32bit");
-    const outLen = len / 4;
-    const state = this.get();
-    if (outLen > state.length)
-      throw new Error("_sha2: outputLen bigger than state");
-    for (let i = 0; i < outLen; i++)
-      oview.setUint32(4 * i, state[i], isLE);
-  }
-  digest() {
-    const { buffer, outputLen } = this;
-    this.digestInto(buffer);
-    const res = buffer.slice(0, outputLen);
-    this.destroy();
-    return res;
-  }
-  _cloneInto(to) {
-    to || (to = new this.constructor());
-    to.set(...this.get());
-    const { blockLen, buffer, length, finished, destroyed, pos } = this;
-    to.destroyed = destroyed;
-    to.finished = finished;
-    to.length = length;
-    to.pos = pos;
-    if (length % blockLen)
-      to.buffer.set(buffer);
-    return to;
-  }
-  clone() {
-    return this._cloneInto();
-  }
-};
-var SHA256_IV = /* @__PURE__ */ Uint32Array.from([
-  1779033703,
-  3144134277,
-  1013904242,
-  2773480762,
-  1359893119,
-  2600822924,
-  528734635,
-  1541459225
-]);
-var SHA384_IV = /* @__PURE__ */ Uint32Array.from([
-  3418070365,
-  3238371032,
-  1654270250,
-  914150663,
-  2438529370,
-  812702999,
-  355462360,
-  4144912697,
-  1731405415,
-  4290775857,
-  2394180231,
-  1750603025,
-  3675008525,
-  1694076839,
-  1203062813,
-  3204075428
-]);
-var SHA512_IV = /* @__PURE__ */ Uint32Array.from([
-  1779033703,
-  4089235720,
-  3144134277,
-  2227873595,
-  1013904242,
-  4271175723,
-  2773480762,
-  1595750129,
-  1359893119,
-  2917565137,
-  2600822924,
-  725511199,
-  528734635,
-  4215389547,
-  1541459225,
-  327033209
-]);
-
-// node_modules/@noble/hashes/esm/_u64.js
-var U32_MASK64 = /* @__PURE__ */ BigInt(2 ** 32 - 1);
-var _32n = /* @__PURE__ */ BigInt(32);
-function fromBig(n, le = false) {
-  if (le)
-    return { h: Number(n & U32_MASK64), l: Number(n >> _32n & U32_MASK64) };
-  return { h: Number(n >> _32n & U32_MASK64) | 0, l: Number(n & U32_MASK64) | 0 };
-}
-function split(lst, le = false) {
-  const len = lst.length;
-  let Ah = new Uint32Array(len);
-  let Al = new Uint32Array(len);
-  for (let i = 0; i < len; i++) {
-    const { h, l } = fromBig(lst[i], le);
-    [Ah[i], Al[i]] = [h, l];
-  }
-  return [Ah, Al];
-}
-var shrSH = (h, _l, s) => h >>> s;
-var shrSL = (h, l, s) => h << 32 - s | l >>> s;
-var rotrSH = (h, l, s) => h >>> s | l << 32 - s;
-var rotrSL = (h, l, s) => h << 32 - s | l >>> s;
-var rotrBH = (h, l, s) => h << 64 - s | l >>> s - 32;
-var rotrBL = (h, l, s) => h >>> s - 32 | l << 64 - s;
-function add(Ah, Al, Bh, Bl) {
-  const l = (Al >>> 0) + (Bl >>> 0);
-  return { h: Ah + Bh + (l / 2 ** 32 | 0) | 0, l: l | 0 };
-}
-var add3L = (Al, Bl, Cl) => (Al >>> 0) + (Bl >>> 0) + (Cl >>> 0);
-var add3H = (low, Ah, Bh, Ch) => Ah + Bh + Ch + (low / 2 ** 32 | 0) | 0;
-var add4L = (Al, Bl, Cl, Dl) => (Al >>> 0) + (Bl >>> 0) + (Cl >>> 0) + (Dl >>> 0);
-var add4H = (low, Ah, Bh, Ch, Dh) => Ah + Bh + Ch + Dh + (low / 2 ** 32 | 0) | 0;
-var add5L = (Al, Bl, Cl, Dl, El) => (Al >>> 0) + (Bl >>> 0) + (Cl >>> 0) + (Dl >>> 0) + (El >>> 0);
-var add5H = (low, Ah, Bh, Ch, Dh, Eh) => Ah + Bh + Ch + Dh + Eh + (low / 2 ** 32 | 0) | 0;
-
-// node_modules/@noble/hashes/esm/sha2.js
-var SHA256_K = /* @__PURE__ */ Uint32Array.from([
-  1116352408,
-  1899447441,
-  3049323471,
-  3921009573,
-  961987163,
-  1508970993,
-  2453635748,
-  2870763221,
-  3624381080,
-  310598401,
-  607225278,
-  1426881987,
-  1925078388,
-  2162078206,
-  2614888103,
-  3248222580,
-  3835390401,
-  4022224774,
-  264347078,
-  604807628,
-  770255983,
-  1249150122,
-  1555081692,
-  1996064986,
-  2554220882,
-  2821834349,
-  2952996808,
-  3210313671,
-  3336571891,
-  3584528711,
-  113926993,
-  338241895,
-  666307205,
-  773529912,
-  1294757372,
-  1396182291,
-  1695183700,
-  1986661051,
-  2177026350,
-  2456956037,
-  2730485921,
-  2820302411,
-  3259730800,
-  3345764771,
-  3516065817,
-  3600352804,
-  4094571909,
-  275423344,
-  430227734,
-  506948616,
-  659060556,
-  883997877,
-  958139571,
-  1322822218,
-  1537002063,
-  1747873779,
-  1955562222,
-  2024104815,
-  2227730452,
-  2361852424,
-  2428436474,
-  2756734187,
-  3204031479,
-  3329325298
-]);
-var SHA256_W = /* @__PURE__ */ new Uint32Array(64);
-var SHA256 = class extends HashMD {
-  constructor(outputLen = 32) {
-    super(64, outputLen, 8, false);
-    this.A = SHA256_IV[0] | 0;
-    this.B = SHA256_IV[1] | 0;
-    this.C = SHA256_IV[2] | 0;
-    this.D = SHA256_IV[3] | 0;
-    this.E = SHA256_IV[4] | 0;
-    this.F = SHA256_IV[5] | 0;
-    this.G = SHA256_IV[6] | 0;
-    this.H = SHA256_IV[7] | 0;
-  }
-  get() {
-    const { A, B, C, D, E, F, G, H } = this;
-    return [A, B, C, D, E, F, G, H];
-  }
-  // prettier-ignore
-  set(A, B, C, D, E, F, G, H) {
-    this.A = A | 0;
-    this.B = B | 0;
-    this.C = C | 0;
-    this.D = D | 0;
-    this.E = E | 0;
-    this.F = F | 0;
-    this.G = G | 0;
-    this.H = H | 0;
-  }
-  process(view, offset) {
-    for (let i = 0; i < 16; i++, offset += 4)
-      SHA256_W[i] = view.getUint32(offset, false);
-    for (let i = 16; i < 64; i++) {
-      const W15 = SHA256_W[i - 15];
-      const W2 = SHA256_W[i - 2];
-      const s0 = rotr(W15, 7) ^ rotr(W15, 18) ^ W15 >>> 3;
-      const s1 = rotr(W2, 17) ^ rotr(W2, 19) ^ W2 >>> 10;
-      SHA256_W[i] = s1 + SHA256_W[i - 7] + s0 + SHA256_W[i - 16] | 0;
-    }
-    let { A, B, C, D, E, F, G, H } = this;
-    for (let i = 0; i < 64; i++) {
-      const sigma1 = rotr(E, 6) ^ rotr(E, 11) ^ rotr(E, 25);
-      const T1 = H + sigma1 + Chi(E, F, G) + SHA256_K[i] + SHA256_W[i] | 0;
-      const sigma0 = rotr(A, 2) ^ rotr(A, 13) ^ rotr(A, 22);
-      const T2 = sigma0 + Maj(A, B, C) | 0;
-      H = G;
-      G = F;
-      F = E;
-      E = D + T1 | 0;
-      D = C;
-      C = B;
-      B = A;
-      A = T1 + T2 | 0;
-    }
-    A = A + this.A | 0;
-    B = B + this.B | 0;
-    C = C + this.C | 0;
-    D = D + this.D | 0;
-    E = E + this.E | 0;
-    F = F + this.F | 0;
-    G = G + this.G | 0;
-    H = H + this.H | 0;
-    this.set(A, B, C, D, E, F, G, H);
-  }
-  roundClean() {
-    clean(SHA256_W);
-  }
-  destroy() {
-    this.set(0, 0, 0, 0, 0, 0, 0, 0);
-    clean(this.buffer);
-  }
-};
-var K512 = /* @__PURE__ */ (() => split([
-  "0x428a2f98d728ae22",
-  "0x7137449123ef65cd",
-  "0xb5c0fbcfec4d3b2f",
-  "0xe9b5dba58189dbbc",
-  "0x3956c25bf348b538",
-  "0x59f111f1b605d019",
-  "0x923f82a4af194f9b",
-  "0xab1c5ed5da6d8118",
-  "0xd807aa98a3030242",
-  "0x12835b0145706fbe",
-  "0x243185be4ee4b28c",
-  "0x550c7dc3d5ffb4e2",
-  "0x72be5d74f27b896f",
-  "0x80deb1fe3b1696b1",
-  "0x9bdc06a725c71235",
-  "0xc19bf174cf692694",
-  "0xe49b69c19ef14ad2",
-  "0xefbe4786384f25e3",
-  "0x0fc19dc68b8cd5b5",
-  "0x240ca1cc77ac9c65",
-  "0x2de92c6f592b0275",
-  "0x4a7484aa6ea6e483",
-  "0x5cb0a9dcbd41fbd4",
-  "0x76f988da831153b5",
-  "0x983e5152ee66dfab",
-  "0xa831c66d2db43210",
-  "0xb00327c898fb213f",
-  "0xbf597fc7beef0ee4",
-  "0xc6e00bf33da88fc2",
-  "0xd5a79147930aa725",
-  "0x06ca6351e003826f",
-  "0x142929670a0e6e70",
-  "0x27b70a8546d22ffc",
-  "0x2e1b21385c26c926",
-  "0x4d2c6dfc5ac42aed",
-  "0x53380d139d95b3df",
-  "0x650a73548baf63de",
-  "0x766a0abb3c77b2a8",
-  "0x81c2c92e47edaee6",
-  "0x92722c851482353b",
-  "0xa2bfe8a14cf10364",
-  "0xa81a664bbc423001",
-  "0xc24b8b70d0f89791",
-  "0xc76c51a30654be30",
-  "0xd192e819d6ef5218",
-  "0xd69906245565a910",
-  "0xf40e35855771202a",
-  "0x106aa07032bbd1b8",
-  "0x19a4c116b8d2d0c8",
-  "0x1e376c085141ab53",
-  "0x2748774cdf8eeb99",
-  "0x34b0bcb5e19b48a8",
-  "0x391c0cb3c5c95a63",
-  "0x4ed8aa4ae3418acb",
-  "0x5b9cca4f7763e373",
-  "0x682e6ff3d6b2b8a3",
-  "0x748f82ee5defb2fc",
-  "0x78a5636f43172f60",
-  "0x84c87814a1f0ab72",
-  "0x8cc702081a6439ec",
-  "0x90befffa23631e28",
-  "0xa4506cebde82bde9",
-  "0xbef9a3f7b2c67915",
-  "0xc67178f2e372532b",
-  "0xca273eceea26619c",
-  "0xd186b8c721c0c207",
-  "0xeada7dd6cde0eb1e",
-  "0xf57d4f7fee6ed178",
-  "0x06f067aa72176fba",
-  "0x0a637dc5a2c898a6",
-  "0x113f9804bef90dae",
-  "0x1b710b35131c471b",
-  "0x28db77f523047d84",
-  "0x32caab7b40c72493",
-  "0x3c9ebe0a15c9bebc",
-  "0x431d67c49c100d4c",
-  "0x4cc5d4becb3e42b6",
-  "0x597f299cfc657e2a",
-  "0x5fcb6fab3ad6faec",
-  "0x6c44198c4a475817"
-].map((n) => BigInt(n))))();
-var SHA512_Kh = /* @__PURE__ */ (() => K512[0])();
-var SHA512_Kl = /* @__PURE__ */ (() => K512[1])();
-var SHA512_W_H = /* @__PURE__ */ new Uint32Array(80);
-var SHA512_W_L = /* @__PURE__ */ new Uint32Array(80);
-var SHA512 = class extends HashMD {
-  constructor(outputLen = 64) {
-    super(128, outputLen, 16, false);
-    this.Ah = SHA512_IV[0] | 0;
-    this.Al = SHA512_IV[1] | 0;
-    this.Bh = SHA512_IV[2] | 0;
-    this.Bl = SHA512_IV[3] | 0;
-    this.Ch = SHA512_IV[4] | 0;
-    this.Cl = SHA512_IV[5] | 0;
-    this.Dh = SHA512_IV[6] | 0;
-    this.Dl = SHA512_IV[7] | 0;
-    this.Eh = SHA512_IV[8] | 0;
-    this.El = SHA512_IV[9] | 0;
-    this.Fh = SHA512_IV[10] | 0;
-    this.Fl = SHA512_IV[11] | 0;
-    this.Gh = SHA512_IV[12] | 0;
-    this.Gl = SHA512_IV[13] | 0;
-    this.Hh = SHA512_IV[14] | 0;
-    this.Hl = SHA512_IV[15] | 0;
-  }
-  // prettier-ignore
-  get() {
-    const { Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl } = this;
-    return [Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl];
-  }
-  // prettier-ignore
-  set(Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl) {
-    this.Ah = Ah | 0;
-    this.Al = Al | 0;
-    this.Bh = Bh | 0;
-    this.Bl = Bl | 0;
-    this.Ch = Ch | 0;
-    this.Cl = Cl | 0;
-    this.Dh = Dh | 0;
-    this.Dl = Dl | 0;
-    this.Eh = Eh | 0;
-    this.El = El | 0;
-    this.Fh = Fh | 0;
-    this.Fl = Fl | 0;
-    this.Gh = Gh | 0;
-    this.Gl = Gl | 0;
-    this.Hh = Hh | 0;
-    this.Hl = Hl | 0;
-  }
-  process(view, offset) {
-    for (let i = 0; i < 16; i++, offset += 4) {
-      SHA512_W_H[i] = view.getUint32(offset);
-      SHA512_W_L[i] = view.getUint32(offset += 4);
-    }
-    for (let i = 16; i < 80; i++) {
-      const W15h = SHA512_W_H[i - 15] | 0;
-      const W15l = SHA512_W_L[i - 15] | 0;
-      const s0h = rotrSH(W15h, W15l, 1) ^ rotrSH(W15h, W15l, 8) ^ shrSH(W15h, W15l, 7);
-      const s0l = rotrSL(W15h, W15l, 1) ^ rotrSL(W15h, W15l, 8) ^ shrSL(W15h, W15l, 7);
-      const W2h = SHA512_W_H[i - 2] | 0;
-      const W2l = SHA512_W_L[i - 2] | 0;
-      const s1h = rotrSH(W2h, W2l, 19) ^ rotrBH(W2h, W2l, 61) ^ shrSH(W2h, W2l, 6);
-      const s1l = rotrSL(W2h, W2l, 19) ^ rotrBL(W2h, W2l, 61) ^ shrSL(W2h, W2l, 6);
-      const SUMl = add4L(s0l, s1l, SHA512_W_L[i - 7], SHA512_W_L[i - 16]);
-      const SUMh = add4H(SUMl, s0h, s1h, SHA512_W_H[i - 7], SHA512_W_H[i - 16]);
-      SHA512_W_H[i] = SUMh | 0;
-      SHA512_W_L[i] = SUMl | 0;
-    }
-    let { Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl } = this;
-    for (let i = 0; i < 80; i++) {
-      const sigma1h = rotrSH(Eh, El, 14) ^ rotrSH(Eh, El, 18) ^ rotrBH(Eh, El, 41);
-      const sigma1l = rotrSL(Eh, El, 14) ^ rotrSL(Eh, El, 18) ^ rotrBL(Eh, El, 41);
-      const CHIh = Eh & Fh ^ ~Eh & Gh;
-      const CHIl = El & Fl ^ ~El & Gl;
-      const T1ll = add5L(Hl, sigma1l, CHIl, SHA512_Kl[i], SHA512_W_L[i]);
-      const T1h = add5H(T1ll, Hh, sigma1h, CHIh, SHA512_Kh[i], SHA512_W_H[i]);
-      const T1l = T1ll | 0;
-      const sigma0h = rotrSH(Ah, Al, 28) ^ rotrBH(Ah, Al, 34) ^ rotrBH(Ah, Al, 39);
-      const sigma0l = rotrSL(Ah, Al, 28) ^ rotrBL(Ah, Al, 34) ^ rotrBL(Ah, Al, 39);
-      const MAJh = Ah & Bh ^ Ah & Ch ^ Bh & Ch;
-      const MAJl = Al & Bl ^ Al & Cl ^ Bl & Cl;
-      Hh = Gh | 0;
-      Hl = Gl | 0;
-      Gh = Fh | 0;
-      Gl = Fl | 0;
-      Fh = Eh | 0;
-      Fl = El | 0;
-      ({ h: Eh, l: El } = add(Dh | 0, Dl | 0, T1h | 0, T1l | 0));
-      Dh = Ch | 0;
-      Dl = Cl | 0;
-      Ch = Bh | 0;
-      Cl = Bl | 0;
-      Bh = Ah | 0;
-      Bl = Al | 0;
-      const All = add3L(T1l, sigma0l, MAJl);
-      Ah = add3H(All, T1h, sigma0h, MAJh);
-      Al = All | 0;
-    }
-    ({ h: Ah, l: Al } = add(this.Ah | 0, this.Al | 0, Ah | 0, Al | 0));
-    ({ h: Bh, l: Bl } = add(this.Bh | 0, this.Bl | 0, Bh | 0, Bl | 0));
-    ({ h: Ch, l: Cl } = add(this.Ch | 0, this.Cl | 0, Ch | 0, Cl | 0));
-    ({ h: Dh, l: Dl } = add(this.Dh | 0, this.Dl | 0, Dh | 0, Dl | 0));
-    ({ h: Eh, l: El } = add(this.Eh | 0, this.El | 0, Eh | 0, El | 0));
-    ({ h: Fh, l: Fl } = add(this.Fh | 0, this.Fl | 0, Fh | 0, Fl | 0));
-    ({ h: Gh, l: Gl } = add(this.Gh | 0, this.Gl | 0, Gh | 0, Gl | 0));
-    ({ h: Hh, l: Hl } = add(this.Hh | 0, this.Hl | 0, Hh | 0, Hl | 0));
-    this.set(Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl);
-  }
-  roundClean() {
-    clean(SHA512_W_H, SHA512_W_L);
-  }
-  destroy() {
-    clean(this.buffer);
-    this.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-  }
-};
-var SHA384 = class extends SHA512 {
-  constructor() {
-    super(48);
-    this.Ah = SHA384_IV[0] | 0;
-    this.Al = SHA384_IV[1] | 0;
-    this.Bh = SHA384_IV[2] | 0;
-    this.Bl = SHA384_IV[3] | 0;
-    this.Ch = SHA384_IV[4] | 0;
-    this.Cl = SHA384_IV[5] | 0;
-    this.Dh = SHA384_IV[6] | 0;
-    this.Dl = SHA384_IV[7] | 0;
-    this.Eh = SHA384_IV[8] | 0;
-    this.El = SHA384_IV[9] | 0;
-    this.Fh = SHA384_IV[10] | 0;
-    this.Fl = SHA384_IV[11] | 0;
-    this.Gh = SHA384_IV[12] | 0;
-    this.Gl = SHA384_IV[13] | 0;
-    this.Hh = SHA384_IV[14] | 0;
-    this.Hl = SHA384_IV[15] | 0;
-  }
-};
-var sha256 = /* @__PURE__ */ createHasher(() => new SHA256());
-var sha512 = /* @__PURE__ */ createHasher(() => new SHA512());
-var sha384 = /* @__PURE__ */ createHasher(() => new SHA384());
-
-// node_modules/@noble/curves/esm/utils.js
-var _0n = /* @__PURE__ */ BigInt(0);
-var _1n = /* @__PURE__ */ BigInt(1);
-function _abool2(value, title = "") {
-  if (typeof value !== "boolean") {
-    const prefix = title && `"${title}"`;
-    throw new Error(prefix + "expected boolean, got type=" + typeof value);
-  }
-  return value;
-}
-function _abytes2(value, length, title = "") {
-  const bytes = isBytes(value);
-  const len = value?.length;
-  const needsLen = length !== void 0;
-  if (!bytes || needsLen && len !== length) {
-    const prefix = title && `"${title}" `;
-    const ofLen = needsLen ? ` of length ${length}` : "";
-    const got = bytes ? `length=${len}` : `type=${typeof value}`;
-    throw new Error(prefix + "expected Uint8Array" + ofLen + ", got " + got);
-  }
-  return value;
-}
-function numberToHexUnpadded(num) {
-  const hex = num.toString(16);
-  return hex.length & 1 ? "0" + hex : hex;
-}
-function hexToNumber(hex) {
-  if (typeof hex !== "string")
-    throw new Error("hex string expected, got " + typeof hex);
-  return hex === "" ? _0n : BigInt("0x" + hex);
-}
-function bytesToNumberBE(bytes) {
-  return hexToNumber(bytesToHex(bytes));
-}
-function bytesToNumberLE(bytes) {
-  abytes(bytes);
-  return hexToNumber(bytesToHex(Uint8Array.from(bytes).reverse()));
-}
-function numberToBytesBE(n, len) {
-  return hexToBytes(n.toString(16).padStart(len * 2, "0"));
-}
-function numberToBytesLE(n, len) {
-  return numberToBytesBE(n, len).reverse();
-}
-function ensureBytes(title, hex, expectedLength) {
-  let res;
-  if (typeof hex === "string") {
-    try {
-      res = hexToBytes(hex);
-    } catch (e) {
-      throw new Error(title + " must be hex string or Uint8Array, cause: " + e);
-    }
-  } else if (isBytes(hex)) {
-    res = Uint8Array.from(hex);
-  } else {
-    throw new Error(title + " must be hex string or Uint8Array");
-  }
-  const len = res.length;
-  if (typeof expectedLength === "number" && len !== expectedLength)
-    throw new Error(title + " of length " + expectedLength + " expected, got " + len);
-  return res;
-}
-function equalBytes(a, b) {
-  if (a.length !== b.length)
-    return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++)
-    diff |= a[i] ^ b[i];
-  return diff === 0;
-}
-function copyBytes(bytes) {
-  return Uint8Array.from(bytes);
-}
-var isPosBig = (n) => typeof n === "bigint" && _0n <= n;
-function inRange(n, min, max) {
-  return isPosBig(n) && isPosBig(min) && isPosBig(max) && min <= n && n < max;
-}
-function aInRange(title, n, min, max) {
-  if (!inRange(n, min, max))
-    throw new Error("expected valid " + title + ": " + min + " <= n < " + max + ", got " + n);
-}
-function bitLen(n) {
-  let len;
-  for (len = 0; n > _0n; n >>= _1n, len += 1)
-    ;
-  return len;
-}
-var bitMask = (n) => (_1n << BigInt(n)) - _1n;
-function createHmacDrbg(hashLen, qByteLen, hmacFn) {
-  if (typeof hashLen !== "number" || hashLen < 2)
-    throw new Error("hashLen must be a number");
-  if (typeof qByteLen !== "number" || qByteLen < 2)
-    throw new Error("qByteLen must be a number");
-  if (typeof hmacFn !== "function")
-    throw new Error("hmacFn must be a function");
-  const u8n = (len) => new Uint8Array(len);
-  const u8of = (byte) => Uint8Array.of(byte);
-  let v = u8n(hashLen);
-  let k = u8n(hashLen);
-  let i = 0;
-  const reset = () => {
-    v.fill(1);
-    k.fill(0);
-    i = 0;
-  };
-  const h = (...b) => hmacFn(k, v, ...b);
-  const reseed = (seed = u8n(0)) => {
-    k = h(u8of(0), seed);
-    v = h();
-    if (seed.length === 0)
-      return;
-    k = h(u8of(1), seed);
-    v = h();
-  };
-  const gen = () => {
-    if (i++ >= 1e3)
-      throw new Error("drbg: tried 1000 values");
-    let len = 0;
-    const out = [];
-    while (len < qByteLen) {
-      v = h();
-      const sl = v.slice();
-      out.push(sl);
-      len += v.length;
-    }
-    return concatBytes(...out);
-  };
-  const genUntil = (seed, pred) => {
-    reset();
-    reseed(seed);
-    let res = void 0;
-    while (!(res = pred(gen())))
-      reseed();
-    reset();
-    return res;
-  };
-  return genUntil;
-}
-function _validateObject(object, fields, optFields = {}) {
-  if (!object || typeof object !== "object")
-    throw new Error("expected valid options object");
-  function checkField(fieldName, expectedType, isOpt) {
-    const val = object[fieldName];
-    if (isOpt && val === void 0)
-      return;
-    const current = typeof val;
-    if (current !== expectedType || val === null)
-      throw new Error(`param "${fieldName}" is invalid: expected ${expectedType}, got ${current}`);
-  }
-  Object.entries(fields).forEach(([k, v]) => checkField(k, v, false));
-  Object.entries(optFields).forEach(([k, v]) => checkField(k, v, true));
-}
-var notImplemented = () => {
-  throw new Error("not implemented");
-};
-function memoized(fn) {
-  const map = /* @__PURE__ */ new WeakMap();
-  return (arg, ...args) => {
-    const val = map.get(arg);
-    if (val !== void 0)
-      return val;
-    const computed = fn(arg, ...args);
-    map.set(arg, computed);
-    return computed;
-  };
-}
-
-// node_modules/@noble/curves/esm/abstract/modular.js
-var _0n2 = BigInt(0);
-var _1n2 = BigInt(1);
-var _2n = /* @__PURE__ */ BigInt(2);
-var _3n = /* @__PURE__ */ BigInt(3);
-var _4n = /* @__PURE__ */ BigInt(4);
-var _5n = /* @__PURE__ */ BigInt(5);
-var _7n = /* @__PURE__ */ BigInt(7);
-var _8n = /* @__PURE__ */ BigInt(8);
-var _9n = /* @__PURE__ */ BigInt(9);
-var _16n = /* @__PURE__ */ BigInt(16);
-function mod(a, b) {
-  const result = a % b;
-  return result >= _0n2 ? result : b + result;
-}
-function pow2(x, power, modulo) {
-  let res = x;
-  while (power-- > _0n2) {
-    res *= res;
-    res %= modulo;
-  }
-  return res;
-}
-function invert(number, modulo) {
-  if (number === _0n2)
-    throw new Error("invert: expected non-zero number");
-  if (modulo <= _0n2)
-    throw new Error("invert: expected positive modulus, got " + modulo);
-  let a = mod(number, modulo);
-  let b = modulo;
-  let x = _0n2, y = _1n2, u = _1n2, v = _0n2;
-  while (a !== _0n2) {
-    const q = b / a;
-    const r = b % a;
-    const m = x - u * q;
-    const n = y - v * q;
-    b = a, a = r, x = u, y = v, u = m, v = n;
-  }
-  const gcd = b;
-  if (gcd !== _1n2)
-    throw new Error("invert: does not exist");
-  return mod(x, modulo);
-}
-function assertIsSquare(Fp2, root, n) {
-  if (!Fp2.eql(Fp2.sqr(root), n))
-    throw new Error("Cannot find square root");
-}
-function sqrt3mod4(Fp2, n) {
-  const p1div4 = (Fp2.ORDER + _1n2) / _4n;
-  const root = Fp2.pow(n, p1div4);
-  assertIsSquare(Fp2, root, n);
-  return root;
-}
-function sqrt5mod8(Fp2, n) {
-  const p5div8 = (Fp2.ORDER - _5n) / _8n;
-  const n2 = Fp2.mul(n, _2n);
-  const v = Fp2.pow(n2, p5div8);
-  const nv = Fp2.mul(n, v);
-  const i = Fp2.mul(Fp2.mul(nv, _2n), v);
-  const root = Fp2.mul(nv, Fp2.sub(i, Fp2.ONE));
-  assertIsSquare(Fp2, root, n);
-  return root;
-}
-function sqrt9mod16(P) {
-  const Fp_ = Field(P);
-  const tn = tonelliShanks(P);
-  const c1 = tn(Fp_, Fp_.neg(Fp_.ONE));
-  const c2 = tn(Fp_, c1);
-  const c3 = tn(Fp_, Fp_.neg(c1));
-  const c4 = (P + _7n) / _16n;
-  return (Fp2, n) => {
-    let tv1 = Fp2.pow(n, c4);
-    let tv2 = Fp2.mul(tv1, c1);
-    const tv3 = Fp2.mul(tv1, c2);
-    const tv4 = Fp2.mul(tv1, c3);
-    const e1 = Fp2.eql(Fp2.sqr(tv2), n);
-    const e2 = Fp2.eql(Fp2.sqr(tv3), n);
-    tv1 = Fp2.cmov(tv1, tv2, e1);
-    tv2 = Fp2.cmov(tv4, tv3, e2);
-    const e3 = Fp2.eql(Fp2.sqr(tv2), n);
-    const root = Fp2.cmov(tv1, tv2, e3);
-    assertIsSquare(Fp2, root, n);
-    return root;
-  };
-}
-function tonelliShanks(P) {
-  if (P < _3n)
-    throw new Error("sqrt is not defined for small field");
-  let Q = P - _1n2;
-  let S = 0;
-  while (Q % _2n === _0n2) {
-    Q /= _2n;
-    S++;
-  }
-  let Z = _2n;
-  const _Fp = Field(P);
-  while (FpLegendre(_Fp, Z) === 1) {
-    if (Z++ > 1e3)
-      throw new Error("Cannot find square root: probably non-prime P");
-  }
-  if (S === 1)
-    return sqrt3mod4;
-  let cc = _Fp.pow(Z, Q);
-  const Q1div2 = (Q + _1n2) / _2n;
-  return function tonelliSlow(Fp2, n) {
-    if (Fp2.is0(n))
-      return n;
-    if (FpLegendre(Fp2, n) !== 1)
-      throw new Error("Cannot find square root");
-    let M = S;
-    let c = Fp2.mul(Fp2.ONE, cc);
-    let t = Fp2.pow(n, Q);
-    let R = Fp2.pow(n, Q1div2);
-    while (!Fp2.eql(t, Fp2.ONE)) {
-      if (Fp2.is0(t))
-        return Fp2.ZERO;
-      let i = 1;
-      let t_tmp = Fp2.sqr(t);
-      while (!Fp2.eql(t_tmp, Fp2.ONE)) {
-        i++;
-        t_tmp = Fp2.sqr(t_tmp);
-        if (i === M)
-          throw new Error("Cannot find square root");
-      }
-      const exponent = _1n2 << BigInt(M - i - 1);
-      const b = Fp2.pow(c, exponent);
-      M = i;
-      c = Fp2.sqr(b);
-      t = Fp2.mul(t, c);
-      R = Fp2.mul(R, b);
-    }
-    return R;
-  };
-}
-function FpSqrt(P) {
-  if (P % _4n === _3n)
-    return sqrt3mod4;
-  if (P % _8n === _5n)
-    return sqrt5mod8;
-  if (P % _16n === _9n)
-    return sqrt9mod16(P);
-  return tonelliShanks(P);
-}
-var isNegativeLE = (num, modulo) => (mod(num, modulo) & _1n2) === _1n2;
-var FIELD_FIELDS = [
-  "create",
-  "isValid",
-  "is0",
-  "neg",
-  "inv",
-  "sqrt",
-  "sqr",
-  "eql",
-  "add",
-  "sub",
-  "mul",
-  "pow",
-  "div",
-  "addN",
-  "subN",
-  "mulN",
-  "sqrN"
-];
-function validateField(field) {
-  const initial = {
-    ORDER: "bigint",
-    MASK: "bigint",
-    BYTES: "number",
-    BITS: "number"
-  };
-  const opts = FIELD_FIELDS.reduce((map, val) => {
-    map[val] = "function";
-    return map;
-  }, initial);
-  _validateObject(field, opts);
-  return field;
-}
-function FpPow(Fp2, num, power) {
-  if (power < _0n2)
-    throw new Error("invalid exponent, negatives unsupported");
-  if (power === _0n2)
-    return Fp2.ONE;
-  if (power === _1n2)
-    return num;
-  let p = Fp2.ONE;
-  let d = num;
-  while (power > _0n2) {
-    if (power & _1n2)
-      p = Fp2.mul(p, d);
-    d = Fp2.sqr(d);
-    power >>= _1n2;
-  }
-  return p;
-}
-function FpInvertBatch(Fp2, nums, passZero = false) {
-  const inverted = new Array(nums.length).fill(passZero ? Fp2.ZERO : void 0);
-  const multipliedAcc = nums.reduce((acc, num, i) => {
-    if (Fp2.is0(num))
-      return acc;
-    inverted[i] = acc;
-    return Fp2.mul(acc, num);
-  }, Fp2.ONE);
-  const invertedAcc = Fp2.inv(multipliedAcc);
-  nums.reduceRight((acc, num, i) => {
-    if (Fp2.is0(num))
-      return acc;
-    inverted[i] = Fp2.mul(acc, inverted[i]);
-    return Fp2.mul(acc, num);
-  }, invertedAcc);
-  return inverted;
-}
-function FpLegendre(Fp2, n) {
-  const p1mod2 = (Fp2.ORDER - _1n2) / _2n;
-  const powered = Fp2.pow(n, p1mod2);
-  const yes = Fp2.eql(powered, Fp2.ONE);
-  const zero = Fp2.eql(powered, Fp2.ZERO);
-  const no = Fp2.eql(powered, Fp2.neg(Fp2.ONE));
-  if (!yes && !zero && !no)
-    throw new Error("invalid Legendre symbol result");
-  return yes ? 1 : zero ? 0 : -1;
-}
-function nLength(n, nBitLength) {
-  if (nBitLength !== void 0)
-    anumber(nBitLength);
-  const _nBitLength = nBitLength !== void 0 ? nBitLength : n.toString(2).length;
-  const nByteLength = Math.ceil(_nBitLength / 8);
-  return { nBitLength: _nBitLength, nByteLength };
-}
-function Field(ORDER, bitLenOrOpts, isLE = false, opts = {}) {
-  if (ORDER <= _0n2)
-    throw new Error("invalid field: expected ORDER > 0, got " + ORDER);
-  let _nbitLength = void 0;
-  let _sqrt = void 0;
-  let modFromBytes = false;
-  let allowedLengths = void 0;
-  if (typeof bitLenOrOpts === "object" && bitLenOrOpts != null) {
-    if (opts.sqrt || isLE)
-      throw new Error("cannot specify opts in two arguments");
-    const _opts = bitLenOrOpts;
-    if (_opts.BITS)
-      _nbitLength = _opts.BITS;
-    if (_opts.sqrt)
-      _sqrt = _opts.sqrt;
-    if (typeof _opts.isLE === "boolean")
-      isLE = _opts.isLE;
-    if (typeof _opts.modFromBytes === "boolean")
-      modFromBytes = _opts.modFromBytes;
-    allowedLengths = _opts.allowedLengths;
-  } else {
-    if (typeof bitLenOrOpts === "number")
-      _nbitLength = bitLenOrOpts;
-    if (opts.sqrt)
-      _sqrt = opts.sqrt;
-  }
-  const { nBitLength: BITS, nByteLength: BYTES } = nLength(ORDER, _nbitLength);
-  if (BYTES > 2048)
-    throw new Error("invalid field: expected ORDER of <= 2048 bytes");
-  let sqrtP;
-  const f = Object.freeze({
-    ORDER,
-    isLE,
-    BITS,
-    BYTES,
-    MASK: bitMask(BITS),
-    ZERO: _0n2,
-    ONE: _1n2,
-    allowedLengths,
-    create: (num) => mod(num, ORDER),
-    isValid: (num) => {
-      if (typeof num !== "bigint")
-        throw new Error("invalid field element: expected bigint, got " + typeof num);
-      return _0n2 <= num && num < ORDER;
-    },
-    is0: (num) => num === _0n2,
-    // is valid and invertible
-    isValidNot0: (num) => !f.is0(num) && f.isValid(num),
-    isOdd: (num) => (num & _1n2) === _1n2,
-    neg: (num) => mod(-num, ORDER),
-    eql: (lhs, rhs) => lhs === rhs,
-    sqr: (num) => mod(num * num, ORDER),
-    add: (lhs, rhs) => mod(lhs + rhs, ORDER),
-    sub: (lhs, rhs) => mod(lhs - rhs, ORDER),
-    mul: (lhs, rhs) => mod(lhs * rhs, ORDER),
-    pow: (num, power) => FpPow(f, num, power),
-    div: (lhs, rhs) => mod(lhs * invert(rhs, ORDER), ORDER),
-    // Same as above, but doesn't normalize
-    sqrN: (num) => num * num,
-    addN: (lhs, rhs) => lhs + rhs,
-    subN: (lhs, rhs) => lhs - rhs,
-    mulN: (lhs, rhs) => lhs * rhs,
-    inv: (num) => invert(num, ORDER),
-    sqrt: _sqrt || ((n) => {
-      if (!sqrtP)
-        sqrtP = FpSqrt(ORDER);
-      return sqrtP(f, n);
-    }),
-    toBytes: (num) => isLE ? numberToBytesLE(num, BYTES) : numberToBytesBE(num, BYTES),
-    fromBytes: (bytes, skipValidation = true) => {
-      if (allowedLengths) {
-        if (!allowedLengths.includes(bytes.length) || bytes.length > BYTES) {
-          throw new Error("Field.fromBytes: expected " + allowedLengths + " bytes, got " + bytes.length);
-        }
-        const padded = new Uint8Array(BYTES);
-        padded.set(bytes, isLE ? 0 : padded.length - bytes.length);
-        bytes = padded;
-      }
-      if (bytes.length !== BYTES)
-        throw new Error("Field.fromBytes: expected " + BYTES + " bytes, got " + bytes.length);
-      let scalar = isLE ? bytesToNumberLE(bytes) : bytesToNumberBE(bytes);
-      if (modFromBytes)
-        scalar = mod(scalar, ORDER);
-      if (!skipValidation) {
-        if (!f.isValid(scalar))
-          throw new Error("invalid field element: outside of range 0..ORDER");
-      }
-      return scalar;
-    },
-    // TODO: we don't need it here, move out to separate fn
-    invertBatch: (lst) => FpInvertBatch(f, lst),
-    // We can't move this out because Fp6, Fp12 implement it
-    // and it's unclear what to return in there.
-    cmov: (a, b, c) => c ? b : a
-  });
-  return Object.freeze(f);
-}
-function getFieldBytesLength(fieldOrder) {
-  if (typeof fieldOrder !== "bigint")
-    throw new Error("field order must be bigint");
-  const bitLength = fieldOrder.toString(2).length;
-  return Math.ceil(bitLength / 8);
-}
-function getMinHashLength(fieldOrder) {
-  const length = getFieldBytesLength(fieldOrder);
-  return length + Math.ceil(length / 2);
-}
-function mapHashToField(key, fieldOrder, isLE = false) {
-  const len = key.length;
-  const fieldLen = getFieldBytesLength(fieldOrder);
-  const minLen = getMinHashLength(fieldOrder);
-  if (len < 16 || len < minLen || len > 1024)
-    throw new Error("expected " + minLen + "-1024 bytes of input, got " + len);
-  const num = isLE ? bytesToNumberLE(key) : bytesToNumberBE(key);
-  const reduced = mod(num, fieldOrder - _1n2) + _1n2;
-  return isLE ? numberToBytesLE(reduced, fieldLen) : numberToBytesBE(reduced, fieldLen);
-}
-
-// node_modules/@noble/curves/esm/abstract/curve.js
-var _0n3 = BigInt(0);
-var _1n3 = BigInt(1);
-function negateCt(condition, item) {
-  const neg = item.negate();
-  return condition ? neg : item;
-}
-function normalizeZ(c, points) {
-  const invertedZs = FpInvertBatch(c.Fp, points.map((p) => p.Z));
-  return points.map((p, i) => c.fromAffine(p.toAffine(invertedZs[i])));
-}
-function validateW(W, bits) {
-  if (!Number.isSafeInteger(W) || W <= 0 || W > bits)
-    throw new Error("invalid window size, expected [1.." + bits + "], got W=" + W);
-}
-function calcWOpts(W, scalarBits) {
-  validateW(W, scalarBits);
-  const windows = Math.ceil(scalarBits / W) + 1;
-  const windowSize = 2 ** (W - 1);
-  const maxNumber = 2 ** W;
-  const mask = bitMask(W);
-  const shiftBy = BigInt(W);
-  return { windows, windowSize, mask, maxNumber, shiftBy };
-}
-function calcOffsets(n, window, wOpts) {
-  const { windowSize, mask, maxNumber, shiftBy } = wOpts;
-  let wbits = Number(n & mask);
-  let nextN = n >> shiftBy;
-  if (wbits > windowSize) {
-    wbits -= maxNumber;
-    nextN += _1n3;
-  }
-  const offsetStart = window * windowSize;
-  const offset = offsetStart + Math.abs(wbits) - 1;
-  const isZero = wbits === 0;
-  const isNeg = wbits < 0;
-  const isNegF = window % 2 !== 0;
-  const offsetF = offsetStart;
-  return { nextN, offset, isZero, isNeg, isNegF, offsetF };
-}
-function validateMSMPoints(points, c) {
-  if (!Array.isArray(points))
-    throw new Error("array expected");
-  points.forEach((p, i) => {
-    if (!(p instanceof c))
-      throw new Error("invalid point at index " + i);
-  });
-}
-function validateMSMScalars(scalars, field) {
-  if (!Array.isArray(scalars))
-    throw new Error("array of scalars expected");
-  scalars.forEach((s, i) => {
-    if (!field.isValid(s))
-      throw new Error("invalid scalar at index " + i);
-  });
-}
-var pointPrecomputes = /* @__PURE__ */ new WeakMap();
-var pointWindowSizes = /* @__PURE__ */ new WeakMap();
-function getW(P) {
-  return pointWindowSizes.get(P) || 1;
-}
-function assert0(n) {
-  if (n !== _0n3)
-    throw new Error("invalid wNAF");
-}
-var wNAF = class {
-  // Parametrized with a given Point class (not individual point)
-  constructor(Point, bits) {
-    this.BASE = Point.BASE;
-    this.ZERO = Point.ZERO;
-    this.Fn = Point.Fn;
-    this.bits = bits;
-  }
-  // non-const time multiplication ladder
-  _unsafeLadder(elm, n, p = this.ZERO) {
-    let d = elm;
-    while (n > _0n3) {
-      if (n & _1n3)
-        p = p.add(d);
-      d = d.double();
-      n >>= _1n3;
-    }
-    return p;
-  }
-  /**
-   * Creates a wNAF precomputation window. Used for caching.
-   * Default window size is set by `utils.precompute()` and is equal to 8.
-   * Number of precomputed points depends on the curve size:
-   * 2^(𝑊−1) * (Math.ceil(𝑛 / 𝑊) + 1), where:
-   * - 𝑊 is the window size
-   * - 𝑛 is the bitlength of the curve order.
-   * For a 256-bit curve and window size 8, the number of precomputed points is 128 * 33 = 4224.
-   * @param point Point instance
-   * @param W window size
-   * @returns precomputed point tables flattened to a single array
-   */
-  precomputeWindow(point, W) {
-    const { windows, windowSize } = calcWOpts(W, this.bits);
-    const points = [];
-    let p = point;
-    let base = p;
-    for (let window = 0; window < windows; window++) {
-      base = p;
-      points.push(base);
-      for (let i = 1; i < windowSize; i++) {
-        base = base.add(p);
-        points.push(base);
-      }
-      p = base.double();
-    }
-    return points;
-  }
-  /**
-   * Implements ec multiplication using precomputed tables and w-ary non-adjacent form.
-   * More compact implementation:
-   * https://github.com/paulmillr/noble-secp256k1/blob/47cb1669b6e506ad66b35fe7d76132ae97465da2/index.ts#L502-L541
-   * @returns real and fake (for const-time) points
-   */
-  wNAF(W, precomputes, n) {
-    if (!this.Fn.isValid(n))
-      throw new Error("invalid scalar");
-    let p = this.ZERO;
-    let f = this.BASE;
-    const wo = calcWOpts(W, this.bits);
-    for (let window = 0; window < wo.windows; window++) {
-      const { nextN, offset, isZero, isNeg, isNegF, offsetF } = calcOffsets(n, window, wo);
-      n = nextN;
-      if (isZero) {
-        f = f.add(negateCt(isNegF, precomputes[offsetF]));
-      } else {
-        p = p.add(negateCt(isNeg, precomputes[offset]));
-      }
-    }
-    assert0(n);
-    return { p, f };
-  }
-  /**
-   * Implements ec unsafe (non const-time) multiplication using precomputed tables and w-ary non-adjacent form.
-   * @param acc accumulator point to add result of multiplication
-   * @returns point
-   */
-  wNAFUnsafe(W, precomputes, n, acc = this.ZERO) {
-    const wo = calcWOpts(W, this.bits);
-    for (let window = 0; window < wo.windows; window++) {
-      if (n === _0n3)
-        break;
-      const { nextN, offset, isZero, isNeg } = calcOffsets(n, window, wo);
-      n = nextN;
-      if (isZero) {
-        continue;
-      } else {
-        const item = precomputes[offset];
-        acc = acc.add(isNeg ? item.negate() : item);
-      }
-    }
-    assert0(n);
-    return acc;
-  }
-  getPrecomputes(W, point, transform) {
-    let comp = pointPrecomputes.get(point);
-    if (!comp) {
-      comp = this.precomputeWindow(point, W);
-      if (W !== 1) {
-        if (typeof transform === "function")
-          comp = transform(comp);
-        pointPrecomputes.set(point, comp);
-      }
-    }
-    return comp;
-  }
-  cached(point, scalar, transform) {
-    const W = getW(point);
-    return this.wNAF(W, this.getPrecomputes(W, point, transform), scalar);
-  }
-  unsafe(point, scalar, transform, prev) {
-    const W = getW(point);
-    if (W === 1)
-      return this._unsafeLadder(point, scalar, prev);
-    return this.wNAFUnsafe(W, this.getPrecomputes(W, point, transform), scalar, prev);
-  }
-  // We calculate precomputes for elliptic curve point multiplication
-  // using windowed method. This specifies window size and
-  // stores precomputed values. Usually only base point would be precomputed.
-  createCache(P, W) {
-    validateW(W, this.bits);
-    pointWindowSizes.set(P, W);
-    pointPrecomputes.delete(P);
-  }
-  hasCache(elm) {
-    return getW(elm) !== 1;
-  }
-};
-function mulEndoUnsafe(Point, point, k1, k2) {
-  let acc = point;
-  let p1 = Point.ZERO;
-  let p2 = Point.ZERO;
-  while (k1 > _0n3 || k2 > _0n3) {
-    if (k1 & _1n3)
-      p1 = p1.add(acc);
-    if (k2 & _1n3)
-      p2 = p2.add(acc);
-    acc = acc.double();
-    k1 >>= _1n3;
-    k2 >>= _1n3;
-  }
-  return { p1, p2 };
-}
-function pippenger(c, fieldN, points, scalars) {
-  validateMSMPoints(points, c);
-  validateMSMScalars(scalars, fieldN);
-  const plength = points.length;
-  const slength = scalars.length;
-  if (plength !== slength)
-    throw new Error("arrays of points and scalars must have equal length");
-  const zero = c.ZERO;
-  const wbits = bitLen(BigInt(plength));
-  let windowSize = 1;
-  if (wbits > 12)
-    windowSize = wbits - 3;
-  else if (wbits > 4)
-    windowSize = wbits - 2;
-  else if (wbits > 0)
-    windowSize = 2;
-  const MASK = bitMask(windowSize);
-  const buckets = new Array(Number(MASK) + 1).fill(zero);
-  const lastBits = Math.floor((fieldN.BITS - 1) / windowSize) * windowSize;
-  let sum = zero;
-  for (let i = lastBits; i >= 0; i -= windowSize) {
-    buckets.fill(zero);
-    for (let j = 0; j < slength; j++) {
-      const scalar = scalars[j];
-      const wbits2 = Number(scalar >> BigInt(i) & MASK);
-      buckets[wbits2] = buckets[wbits2].add(points[j]);
-    }
-    let resI = zero;
-    for (let j = buckets.length - 1, sumI = zero; j > 0; j--) {
-      sumI = sumI.add(buckets[j]);
-      resI = resI.add(sumI);
-    }
-    sum = sum.add(resI);
-    if (i !== 0)
-      for (let j = 0; j < windowSize; j++)
-        sum = sum.double();
-  }
-  return sum;
-}
-function createField(order, field, isLE) {
-  if (field) {
-    if (field.ORDER !== order)
-      throw new Error("Field.ORDER must match order: Fp == p, Fn == n");
-    validateField(field);
-    return field;
-  } else {
-    return Field(order, { isLE });
-  }
-}
-function _createCurveFields(type, CURVE, curveOpts = {}, FpFnLE) {
-  if (FpFnLE === void 0)
-    FpFnLE = type === "edwards";
-  if (!CURVE || typeof CURVE !== "object")
-    throw new Error(`expected valid ${type} CURVE object`);
-  for (const p of ["p", "n", "h"]) {
-    const val = CURVE[p];
-    if (!(typeof val === "bigint" && val > _0n3))
-      throw new Error(`CURVE.${p} must be positive bigint`);
-  }
-  const Fp2 = createField(CURVE.p, curveOpts.Fp, FpFnLE);
-  const Fn2 = createField(CURVE.n, curveOpts.Fn, FpFnLE);
-  const _b = type === "weierstrass" ? "b" : "d";
-  const params = ["Gx", "Gy", "a", _b];
-  for (const p of params) {
-    if (!Fp2.isValid(CURVE[p]))
-      throw new Error(`CURVE.${p} must be valid field element of CURVE.Fp`);
-  }
-  CURVE = Object.freeze(Object.assign({}, CURVE));
-  return { CURVE, Fp: Fp2, Fn: Fn2 };
-}
-
-// node_modules/@noble/curves/esm/abstract/edwards.js
-var _0n4 = BigInt(0);
-var _1n4 = BigInt(1);
-var _2n2 = BigInt(2);
-var _8n2 = BigInt(8);
-function isEdValidXY(Fp2, CURVE, x, y) {
-  const x2 = Fp2.sqr(x);
-  const y2 = Fp2.sqr(y);
-  const left = Fp2.add(Fp2.mul(CURVE.a, x2), y2);
-  const right = Fp2.add(Fp2.ONE, Fp2.mul(CURVE.d, Fp2.mul(x2, y2)));
-  return Fp2.eql(left, right);
-}
-function edwards(params, extraOpts = {}) {
-  const validated = _createCurveFields("edwards", params, extraOpts, extraOpts.FpFnLE);
-  const { Fp: Fp2, Fn: Fn2 } = validated;
-  let CURVE = validated.CURVE;
-  const { h: cofactor } = CURVE;
-  _validateObject(extraOpts, {}, { uvRatio: "function" });
-  const MASK = _2n2 << BigInt(Fn2.BYTES * 8) - _1n4;
-  const modP = (n) => Fp2.create(n);
-  const uvRatio2 = extraOpts.uvRatio || ((u, v) => {
-    try {
-      return { isValid: true, value: Fp2.sqrt(Fp2.div(u, v)) };
-    } catch (e) {
-      return { isValid: false, value: _0n4 };
-    }
-  });
-  if (!isEdValidXY(Fp2, CURVE, CURVE.Gx, CURVE.Gy))
-    throw new Error("bad curve params: generator point");
-  function acoord(title, n, banZero = false) {
-    const min = banZero ? _1n4 : _0n4;
-    aInRange("coordinate " + title, n, min, MASK);
-    return n;
-  }
-  function aextpoint(other) {
-    if (!(other instanceof Point))
-      throw new Error("ExtendedPoint expected");
-  }
-  const toAffineMemo = memoized((p, iz) => {
-    const { X, Y, Z } = p;
-    const is0 = p.is0();
-    if (iz == null)
-      iz = is0 ? _8n2 : Fp2.inv(Z);
-    const x = modP(X * iz);
-    const y = modP(Y * iz);
-    const zz = Fp2.mul(Z, iz);
-    if (is0)
-      return { x: _0n4, y: _1n4 };
-    if (zz !== _1n4)
-      throw new Error("invZ was invalid");
-    return { x, y };
-  });
-  const assertValidMemo = memoized((p) => {
-    const { a, d } = CURVE;
-    if (p.is0())
-      throw new Error("bad point: ZERO");
-    const { X, Y, Z, T } = p;
-    const X2 = modP(X * X);
-    const Y2 = modP(Y * Y);
-    const Z2 = modP(Z * Z);
-    const Z4 = modP(Z2 * Z2);
-    const aX2 = modP(X2 * a);
-    const left = modP(Z2 * modP(aX2 + Y2));
-    const right = modP(Z4 + modP(d * modP(X2 * Y2)));
-    if (left !== right)
-      throw new Error("bad point: equation left != right (1)");
-    const XY = modP(X * Y);
-    const ZT = modP(Z * T);
-    if (XY !== ZT)
-      throw new Error("bad point: equation left != right (2)");
-    return true;
-  });
-  class Point {
-    constructor(X, Y, Z, T) {
-      this.X = acoord("x", X);
-      this.Y = acoord("y", Y);
-      this.Z = acoord("z", Z, true);
-      this.T = acoord("t", T);
-      Object.freeze(this);
-    }
-    static CURVE() {
-      return CURVE;
-    }
-    static fromAffine(p) {
-      if (p instanceof Point)
-        throw new Error("extended point not allowed");
-      const { x, y } = p || {};
-      acoord("x", x);
-      acoord("y", y);
-      return new Point(x, y, _1n4, modP(x * y));
-    }
-    // Uses algo from RFC8032 5.1.3.
-    static fromBytes(bytes, zip215 = false) {
-      const len = Fp2.BYTES;
-      const { a, d } = CURVE;
-      bytes = copyBytes(_abytes2(bytes, len, "point"));
-      _abool2(zip215, "zip215");
-      const normed = copyBytes(bytes);
-      const lastByte = bytes[len - 1];
-      normed[len - 1] = lastByte & ~128;
-      const y = bytesToNumberLE(normed);
-      const max = zip215 ? MASK : Fp2.ORDER;
-      aInRange("point.y", y, _0n4, max);
-      const y2 = modP(y * y);
-      const u = modP(y2 - _1n4);
-      const v = modP(d * y2 - a);
-      let { isValid, value: x } = uvRatio2(u, v);
-      if (!isValid)
-        throw new Error("bad point: invalid y coordinate");
-      const isXOdd = (x & _1n4) === _1n4;
-      const isLastByteOdd = (lastByte & 128) !== 0;
-      if (!zip215 && x === _0n4 && isLastByteOdd)
-        throw new Error("bad point: x=0 and x_0=1");
-      if (isLastByteOdd !== isXOdd)
-        x = modP(-x);
-      return Point.fromAffine({ x, y });
-    }
-    static fromHex(bytes, zip215 = false) {
-      return Point.fromBytes(ensureBytes("point", bytes), zip215);
-    }
-    get x() {
-      return this.toAffine().x;
-    }
-    get y() {
-      return this.toAffine().y;
-    }
-    precompute(windowSize = 8, isLazy = true) {
-      wnaf.createCache(this, windowSize);
-      if (!isLazy)
-        this.multiply(_2n2);
-      return this;
-    }
-    // Useful in fromAffine() - not for fromBytes(), which always created valid points.
-    assertValidity() {
-      assertValidMemo(this);
-    }
-    // Compare one point to another.
-    equals(other) {
-      aextpoint(other);
-      const { X: X1, Y: Y1, Z: Z1 } = this;
-      const { X: X2, Y: Y2, Z: Z2 } = other;
-      const X1Z2 = modP(X1 * Z2);
-      const X2Z1 = modP(X2 * Z1);
-      const Y1Z2 = modP(Y1 * Z2);
-      const Y2Z1 = modP(Y2 * Z1);
-      return X1Z2 === X2Z1 && Y1Z2 === Y2Z1;
-    }
-    is0() {
-      return this.equals(Point.ZERO);
-    }
-    negate() {
-      return new Point(modP(-this.X), this.Y, this.Z, modP(-this.T));
-    }
-    // Fast algo for doubling Extended Point.
-    // https://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#doubling-dbl-2008-hwcd
-    // Cost: 4M + 4S + 1*a + 6add + 1*2.
-    double() {
-      const { a } = CURVE;
-      const { X: X1, Y: Y1, Z: Z1 } = this;
-      const A = modP(X1 * X1);
-      const B = modP(Y1 * Y1);
-      const C = modP(_2n2 * modP(Z1 * Z1));
-      const D = modP(a * A);
-      const x1y1 = X1 + Y1;
-      const E = modP(modP(x1y1 * x1y1) - A - B);
-      const G = D + B;
-      const F = G - C;
-      const H = D - B;
-      const X3 = modP(E * F);
-      const Y3 = modP(G * H);
-      const T3 = modP(E * H);
-      const Z3 = modP(F * G);
-      return new Point(X3, Y3, Z3, T3);
-    }
-    // Fast algo for adding 2 Extended Points.
-    // https://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#addition-add-2008-hwcd
-    // Cost: 9M + 1*a + 1*d + 7add.
-    add(other) {
-      aextpoint(other);
-      const { a, d } = CURVE;
-      const { X: X1, Y: Y1, Z: Z1, T: T1 } = this;
-      const { X: X2, Y: Y2, Z: Z2, T: T2 } = other;
-      const A = modP(X1 * X2);
-      const B = modP(Y1 * Y2);
-      const C = modP(T1 * d * T2);
-      const D = modP(Z1 * Z2);
-      const E = modP((X1 + Y1) * (X2 + Y2) - A - B);
-      const F = D - C;
-      const G = D + C;
-      const H = modP(B - a * A);
-      const X3 = modP(E * F);
-      const Y3 = modP(G * H);
-      const T3 = modP(E * H);
-      const Z3 = modP(F * G);
-      return new Point(X3, Y3, Z3, T3);
-    }
-    subtract(other) {
-      return this.add(other.negate());
-    }
-    // Constant-time multiplication.
-    multiply(scalar) {
-      if (!Fn2.isValidNot0(scalar))
-        throw new Error("invalid scalar: expected 1 <= sc < curve.n");
-      const { p, f } = wnaf.cached(this, scalar, (p2) => normalizeZ(Point, p2));
-      return normalizeZ(Point, [p, f])[0];
-    }
-    // Non-constant-time multiplication. Uses double-and-add algorithm.
-    // It's faster, but should only be used when you don't care about
-    // an exposed private key e.g. sig verification.
-    // Does NOT allow scalars higher than CURVE.n.
-    // Accepts optional accumulator to merge with multiply (important for sparse scalars)
-    multiplyUnsafe(scalar, acc = Point.ZERO) {
-      if (!Fn2.isValid(scalar))
-        throw new Error("invalid scalar: expected 0 <= sc < curve.n");
-      if (scalar === _0n4)
-        return Point.ZERO;
-      if (this.is0() || scalar === _1n4)
-        return this;
-      return wnaf.unsafe(this, scalar, (p) => normalizeZ(Point, p), acc);
-    }
-    // Checks if point is of small order.
-    // If you add something to small order point, you will have "dirty"
-    // point with torsion component.
-    // Multiplies point by cofactor and checks if the result is 0.
-    isSmallOrder() {
-      return this.multiplyUnsafe(cofactor).is0();
-    }
-    // Multiplies point by curve order and checks if the result is 0.
-    // Returns `false` is the point is dirty.
-    isTorsionFree() {
-      return wnaf.unsafe(this, CURVE.n).is0();
-    }
-    // Converts Extended point to default (x, y) coordinates.
-    // Can accept precomputed Z^-1 - for example, from invertBatch.
-    toAffine(invertedZ) {
-      return toAffineMemo(this, invertedZ);
-    }
-    clearCofactor() {
-      if (cofactor === _1n4)
-        return this;
-      return this.multiplyUnsafe(cofactor);
-    }
-    toBytes() {
-      const { x, y } = this.toAffine();
-      const bytes = Fp2.toBytes(y);
-      bytes[bytes.length - 1] |= x & _1n4 ? 128 : 0;
-      return bytes;
-    }
-    toHex() {
-      return bytesToHex(this.toBytes());
-    }
-    toString() {
-      return `<Point ${this.is0() ? "ZERO" : this.toHex()}>`;
-    }
-    // TODO: remove
-    get ex() {
-      return this.X;
-    }
-    get ey() {
-      return this.Y;
-    }
-    get ez() {
-      return this.Z;
-    }
-    get et() {
-      return this.T;
-    }
-    static normalizeZ(points) {
-      return normalizeZ(Point, points);
-    }
-    static msm(points, scalars) {
-      return pippenger(Point, Fn2, points, scalars);
-    }
-    _setWindowSize(windowSize) {
-      this.precompute(windowSize);
-    }
-    toRawBytes() {
-      return this.toBytes();
-    }
-  }
-  Point.BASE = new Point(CURVE.Gx, CURVE.Gy, _1n4, modP(CURVE.Gx * CURVE.Gy));
-  Point.ZERO = new Point(_0n4, _1n4, _1n4, _0n4);
-  Point.Fp = Fp2;
-  Point.Fn = Fn2;
-  const wnaf = new wNAF(Point, Fn2.BITS);
-  Point.BASE.precompute(8);
-  return Point;
-}
-var PrimeEdwardsPoint = class {
-  constructor(ep) {
-    this.ep = ep;
-  }
-  // Static methods that must be implemented by subclasses
-  static fromBytes(_bytes) {
-    notImplemented();
-  }
-  static fromHex(_hex) {
-    notImplemented();
-  }
-  get x() {
-    return this.toAffine().x;
-  }
-  get y() {
-    return this.toAffine().y;
-  }
-  // Common implementations
-  clearCofactor() {
-    return this;
-  }
-  assertValidity() {
-    this.ep.assertValidity();
-  }
-  toAffine(invertedZ) {
-    return this.ep.toAffine(invertedZ);
-  }
-  toHex() {
-    return bytesToHex(this.toBytes());
-  }
-  toString() {
-    return this.toHex();
-  }
-  isTorsionFree() {
-    return true;
-  }
-  isSmallOrder() {
-    return false;
-  }
-  add(other) {
-    this.assertSame(other);
-    return this.init(this.ep.add(other.ep));
-  }
-  subtract(other) {
-    this.assertSame(other);
-    return this.init(this.ep.subtract(other.ep));
-  }
-  multiply(scalar) {
-    return this.init(this.ep.multiply(scalar));
-  }
-  multiplyUnsafe(scalar) {
-    return this.init(this.ep.multiplyUnsafe(scalar));
-  }
-  double() {
-    return this.init(this.ep.double());
-  }
-  negate() {
-    return this.init(this.ep.negate());
-  }
-  precompute(windowSize, isLazy) {
-    return this.init(this.ep.precompute(windowSize, isLazy));
-  }
-  /** @deprecated use `toBytes` */
-  toRawBytes() {
-    return this.toBytes();
-  }
-};
-function eddsa(Point, cHash, eddsaOpts = {}) {
-  if (typeof cHash !== "function")
-    throw new Error('"hash" function param is required');
-  _validateObject(eddsaOpts, {}, {
-    adjustScalarBytes: "function",
-    randomBytes: "function",
-    domain: "function",
-    prehash: "function",
-    mapToCurve: "function"
-  });
-  const { prehash } = eddsaOpts;
-  const { BASE, Fp: Fp2, Fn: Fn2 } = Point;
-  const randomBytes6 = eddsaOpts.randomBytes || randomBytes2;
-  const adjustScalarBytes2 = eddsaOpts.adjustScalarBytes || ((bytes) => bytes);
-  const domain = eddsaOpts.domain || ((data, ctx, phflag) => {
-    _abool2(phflag, "phflag");
-    if (ctx.length || phflag)
-      throw new Error("Contexts/pre-hash are not supported");
-    return data;
-  });
-  function modN_LE(hash) {
-    return Fn2.create(bytesToNumberLE(hash));
-  }
-  function getPrivateScalar(key) {
-    const len = lengths.secretKey;
-    key = ensureBytes("private key", key, len);
-    const hashed = ensureBytes("hashed private key", cHash(key), 2 * len);
-    const head = adjustScalarBytes2(hashed.slice(0, len));
-    const prefix = hashed.slice(len, 2 * len);
-    const scalar = modN_LE(head);
-    return { head, prefix, scalar };
-  }
-  function getExtendedPublicKey(secretKey) {
-    const { head, prefix, scalar } = getPrivateScalar(secretKey);
-    const point = BASE.multiply(scalar);
-    const pointBytes = point.toBytes();
-    return { head, prefix, scalar, point, pointBytes };
-  }
-  function getPublicKey(secretKey) {
-    return getExtendedPublicKey(secretKey).pointBytes;
-  }
-  function hashDomainToScalar(context = Uint8Array.of(), ...msgs) {
-    const msg = concatBytes(...msgs);
-    return modN_LE(cHash(domain(msg, ensureBytes("context", context), !!prehash)));
-  }
-  function sign(msg, secretKey, options = {}) {
-    msg = ensureBytes("message", msg);
-    if (prehash)
-      msg = prehash(msg);
-    const { prefix, scalar, pointBytes } = getExtendedPublicKey(secretKey);
-    const r = hashDomainToScalar(options.context, prefix, msg);
-    const R = BASE.multiply(r).toBytes();
-    const k = hashDomainToScalar(options.context, R, pointBytes, msg);
-    const s = Fn2.create(r + k * scalar);
-    if (!Fn2.isValid(s))
-      throw new Error("sign failed: invalid s");
-    const rs = concatBytes(R, Fn2.toBytes(s));
-    return _abytes2(rs, lengths.signature, "result");
-  }
-  const verifyOpts = { zip215: true };
-  function verify(sig, msg, publicKey, options = verifyOpts) {
-    const { context, zip215 } = options;
-    const len = lengths.signature;
-    sig = ensureBytes("signature", sig, len);
-    msg = ensureBytes("message", msg);
-    publicKey = ensureBytes("publicKey", publicKey, lengths.publicKey);
-    if (zip215 !== void 0)
-      _abool2(zip215, "zip215");
-    if (prehash)
-      msg = prehash(msg);
-    const mid = len / 2;
-    const r = sig.subarray(0, mid);
-    const s = bytesToNumberLE(sig.subarray(mid, len));
-    let A, R, SB;
-    try {
-      A = Point.fromBytes(publicKey, zip215);
-      R = Point.fromBytes(r, zip215);
-      SB = BASE.multiplyUnsafe(s);
-    } catch (error) {
-      return false;
-    }
-    if (!zip215 && A.isSmallOrder())
-      return false;
-    const k = hashDomainToScalar(context, R.toBytes(), A.toBytes(), msg);
-    const RkA = R.add(A.multiplyUnsafe(k));
-    return RkA.subtract(SB).clearCofactor().is0();
-  }
-  const _size = Fp2.BYTES;
-  const lengths = {
-    secretKey: _size,
-    publicKey: _size,
-    signature: 2 * _size,
-    seed: _size
-  };
-  function randomSecretKey(seed = randomBytes6(lengths.seed)) {
-    return _abytes2(seed, lengths.seed, "seed");
-  }
-  function keygen(seed) {
-    const secretKey = utils.randomSecretKey(seed);
-    return { secretKey, publicKey: getPublicKey(secretKey) };
-  }
-  function isValidSecretKey(key) {
-    return isBytes(key) && key.length === Fn2.BYTES;
-  }
-  function isValidPublicKey(key, zip215) {
-    try {
-      return !!Point.fromBytes(key, zip215);
-    } catch (error) {
-      return false;
-    }
-  }
-  const utils = {
-    getExtendedPublicKey,
-    randomSecretKey,
-    isValidSecretKey,
-    isValidPublicKey,
-    /**
-     * Converts ed public key to x public key. Uses formula:
-     * - ed25519:
-     *   - `(u, v) = ((1+y)/(1-y), sqrt(-486664)*u/x)`
-     *   - `(x, y) = (sqrt(-486664)*u/v, (u-1)/(u+1))`
-     * - ed448:
-     *   - `(u, v) = ((y-1)/(y+1), sqrt(156324)*u/x)`
-     *   - `(x, y) = (sqrt(156324)*u/v, (1+u)/(1-u))`
-     */
-    toMontgomery(publicKey) {
-      const { y } = Point.fromBytes(publicKey);
-      const size = lengths.publicKey;
-      const is25519 = size === 32;
-      if (!is25519 && size !== 57)
-        throw new Error("only defined for 25519 and 448");
-      const u = is25519 ? Fp2.div(_1n4 + y, _1n4 - y) : Fp2.div(y - _1n4, y + _1n4);
-      return Fp2.toBytes(u);
-    },
-    toMontgomerySecret(secretKey) {
-      const size = lengths.secretKey;
-      _abytes2(secretKey, size);
-      const hashed = cHash(secretKey.subarray(0, size));
-      return adjustScalarBytes2(hashed).subarray(0, size);
-    },
-    /** @deprecated */
-    randomPrivateKey: randomSecretKey,
-    /** @deprecated */
-    precompute(windowSize = 8, point = Point.BASE) {
-      return point.precompute(windowSize, false);
-    }
-  };
-  return Object.freeze({
-    keygen,
-    getPublicKey,
-    sign,
-    verify,
-    utils,
-    Point,
-    lengths
-  });
-}
-function _eddsa_legacy_opts_to_new(c) {
-  const CURVE = {
-    a: c.a,
-    d: c.d,
-    p: c.Fp.ORDER,
-    n: c.n,
-    h: c.h,
-    Gx: c.Gx,
-    Gy: c.Gy
-  };
-  const Fp2 = c.Fp;
-  const Fn2 = Field(CURVE.n, c.nBitLength, true);
-  const curveOpts = { Fp: Fp2, Fn: Fn2, uvRatio: c.uvRatio };
-  const eddsaOpts = {
-    randomBytes: c.randomBytes,
-    adjustScalarBytes: c.adjustScalarBytes,
-    domain: c.domain,
-    prehash: c.prehash,
-    mapToCurve: c.mapToCurve
-  };
-  return { CURVE, curveOpts, hash: c.hash, eddsaOpts };
-}
-function _eddsa_new_output_to_legacy(c, eddsa2) {
-  const Point = eddsa2.Point;
-  const legacy = Object.assign({}, eddsa2, {
-    ExtendedPoint: Point,
-    CURVE: c,
-    nBitLength: Point.Fn.BITS,
-    nByteLength: Point.Fn.BYTES
-  });
-  return legacy;
-}
-function twistedEdwards(c) {
-  const { CURVE, curveOpts, hash, eddsaOpts } = _eddsa_legacy_opts_to_new(c);
-  const Point = edwards(CURVE, curveOpts);
-  const EDDSA = eddsa(Point, hash, eddsaOpts);
-  return _eddsa_new_output_to_legacy(c, EDDSA);
-}
-
-// node_modules/@noble/curves/esm/ed25519.js
-var _0n5 = /* @__PURE__ */ BigInt(0);
-var _1n5 = BigInt(1);
-var _2n3 = BigInt(2);
-var _3n2 = BigInt(3);
-var _5n2 = BigInt(5);
-var _8n3 = BigInt(8);
-var ed25519_CURVE_p = BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed");
-var ed25519_CURVE = /* @__PURE__ */ (() => ({
-  p: ed25519_CURVE_p,
-  n: BigInt("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"),
-  h: _8n3,
-  a: BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"),
-  d: BigInt("0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"),
-  Gx: BigInt("0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a"),
-  Gy: BigInt("0x6666666666666666666666666666666666666666666666666666666666666658")
-}))();
-function ed25519_pow_2_252_3(x) {
-  const _10n = BigInt(10), _20n = BigInt(20), _40n = BigInt(40), _80n = BigInt(80);
-  const P = ed25519_CURVE_p;
-  const x2 = x * x % P;
-  const b2 = x2 * x % P;
-  const b4 = pow2(b2, _2n3, P) * b2 % P;
-  const b5 = pow2(b4, _1n5, P) * x % P;
-  const b10 = pow2(b5, _5n2, P) * b5 % P;
-  const b20 = pow2(b10, _10n, P) * b10 % P;
-  const b40 = pow2(b20, _20n, P) * b20 % P;
-  const b80 = pow2(b40, _40n, P) * b40 % P;
-  const b160 = pow2(b80, _80n, P) * b80 % P;
-  const b240 = pow2(b160, _80n, P) * b80 % P;
-  const b250 = pow2(b240, _10n, P) * b10 % P;
-  const pow_p_5_8 = pow2(b250, _2n3, P) * x % P;
-  return { pow_p_5_8, b2 };
-}
-function adjustScalarBytes(bytes) {
-  bytes[0] &= 248;
-  bytes[31] &= 127;
-  bytes[31] |= 64;
-  return bytes;
-}
-var ED25519_SQRT_M1 = /* @__PURE__ */ BigInt("19681161376707505956807079304988542015446066515923890162744021073123829784752");
-function uvRatio(u, v) {
-  const P = ed25519_CURVE_p;
-  const v3 = mod(v * v * v, P);
-  const v7 = mod(v3 * v3 * v, P);
-  const pow = ed25519_pow_2_252_3(u * v7).pow_p_5_8;
-  let x = mod(u * v3 * pow, P);
-  const vx2 = mod(v * x * x, P);
-  const root1 = x;
-  const root2 = mod(x * ED25519_SQRT_M1, P);
-  const useRoot1 = vx2 === u;
-  const useRoot2 = vx2 === mod(-u, P);
-  const noRoot = vx2 === mod(-u * ED25519_SQRT_M1, P);
-  if (useRoot1)
-    x = root1;
-  if (useRoot2 || noRoot)
-    x = root2;
-  if (isNegativeLE(x, P))
-    x = mod(-x, P);
-  return { isValid: useRoot1 || useRoot2, value: x };
-}
-var Fp = /* @__PURE__ */ (() => Field(ed25519_CURVE.p, { isLE: true }))();
-var Fn = /* @__PURE__ */ (() => Field(ed25519_CURVE.n, { isLE: true }))();
-var ed25519Defaults = /* @__PURE__ */ (() => ({
-  ...ed25519_CURVE,
-  Fp,
-  hash: sha512,
-  adjustScalarBytes,
-  // dom2
-  // Ratio of u to v. Allows us to combine inversion and square root. Uses algo from RFC8032 5.1.3.
-  // Constant-time, u/√v
-  uvRatio
-}))();
-var ed25519 = /* @__PURE__ */ (() => twistedEdwards(ed25519Defaults))();
-var SQRT_M1 = ED25519_SQRT_M1;
-var SQRT_AD_MINUS_ONE = /* @__PURE__ */ BigInt("25063068953384623474111414158702152701244531502492656460079210482610430750235");
-var INVSQRT_A_MINUS_D = /* @__PURE__ */ BigInt("54469307008909316920995813868745141605393597292927456921205312896311721017578");
-var ONE_MINUS_D_SQ = /* @__PURE__ */ BigInt("1159843021668779879193775521855586647937357759715417654439879720876111806838");
-var D_MINUS_ONE_SQ = /* @__PURE__ */ BigInt("40440834346308536858101042469323190826248399146238708352240133220865137265952");
-var invertSqrt = (number) => uvRatio(_1n5, number);
-var MAX_255B = /* @__PURE__ */ BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-var bytes255ToNumberLE = (bytes) => ed25519.Point.Fp.create(bytesToNumberLE(bytes) & MAX_255B);
-function calcElligatorRistrettoMap(r0) {
-  const { d } = ed25519_CURVE;
-  const P = ed25519_CURVE_p;
-  const mod2 = (n) => Fp.create(n);
-  const r = mod2(SQRT_M1 * r0 * r0);
-  const Ns = mod2((r + _1n5) * ONE_MINUS_D_SQ);
-  let c = BigInt(-1);
-  const D = mod2((c - d * r) * mod2(r + d));
-  let { isValid: Ns_D_is_sq, value: s } = uvRatio(Ns, D);
-  let s_ = mod2(s * r0);
-  if (!isNegativeLE(s_, P))
-    s_ = mod2(-s_);
-  if (!Ns_D_is_sq)
-    s = s_;
-  if (!Ns_D_is_sq)
-    c = r;
-  const Nt = mod2(c * (r - _1n5) * D_MINUS_ONE_SQ - D);
-  const s2 = s * s;
-  const W0 = mod2((s + s) * D);
-  const W1 = mod2(Nt * SQRT_AD_MINUS_ONE);
-  const W2 = mod2(_1n5 - s2);
-  const W3 = mod2(_1n5 + s2);
-  return new ed25519.Point(mod2(W0 * W3), mod2(W2 * W1), mod2(W1 * W3), mod2(W0 * W2));
-}
-function ristretto255_map(bytes) {
-  abytes(bytes, 64);
-  const r1 = bytes255ToNumberLE(bytes.subarray(0, 32));
-  const R1 = calcElligatorRistrettoMap(r1);
-  const r2 = bytes255ToNumberLE(bytes.subarray(32, 64));
-  const R2 = calcElligatorRistrettoMap(r2);
-  return new _RistrettoPoint(R1.add(R2));
-}
-var _RistrettoPoint = class __RistrettoPoint extends PrimeEdwardsPoint {
-  constructor(ep) {
-    super(ep);
-  }
-  static fromAffine(ap) {
-    return new __RistrettoPoint(ed25519.Point.fromAffine(ap));
-  }
-  assertSame(other) {
-    if (!(other instanceof __RistrettoPoint))
-      throw new Error("RistrettoPoint expected");
-  }
-  init(ep) {
-    return new __RistrettoPoint(ep);
-  }
-  /** @deprecated use `import { ristretto255_hasher } from '@noble/curves/ed25519.js';` */
-  static hashToCurve(hex) {
-    return ristretto255_map(ensureBytes("ristrettoHash", hex, 64));
-  }
-  static fromBytes(bytes) {
-    abytes(bytes, 32);
-    const { a, d } = ed25519_CURVE;
-    const P = ed25519_CURVE_p;
-    const mod2 = (n) => Fp.create(n);
-    const s = bytes255ToNumberLE(bytes);
-    if (!equalBytes(Fp.toBytes(s), bytes) || isNegativeLE(s, P))
-      throw new Error("invalid ristretto255 encoding 1");
-    const s2 = mod2(s * s);
-    const u1 = mod2(_1n5 + a * s2);
-    const u2 = mod2(_1n5 - a * s2);
-    const u1_2 = mod2(u1 * u1);
-    const u2_2 = mod2(u2 * u2);
-    const v = mod2(a * d * u1_2 - u2_2);
-    const { isValid, value: I } = invertSqrt(mod2(v * u2_2));
-    const Dx = mod2(I * u2);
-    const Dy = mod2(I * Dx * v);
-    let x = mod2((s + s) * Dx);
-    if (isNegativeLE(x, P))
-      x = mod2(-x);
-    const y = mod2(u1 * Dy);
-    const t = mod2(x * y);
-    if (!isValid || isNegativeLE(t, P) || y === _0n5)
-      throw new Error("invalid ristretto255 encoding 2");
-    return new __RistrettoPoint(new ed25519.Point(x, y, _1n5, t));
-  }
-  /**
-   * Converts ristretto-encoded string to ristretto point.
-   * Described in [RFC9496](https://www.rfc-editor.org/rfc/rfc9496#name-decode).
-   * @param hex Ristretto-encoded 32 bytes. Not every 32-byte string is valid ristretto encoding
-   */
-  static fromHex(hex) {
-    return __RistrettoPoint.fromBytes(ensureBytes("ristrettoHex", hex, 32));
-  }
-  static msm(points, scalars) {
-    return pippenger(__RistrettoPoint, ed25519.Point.Fn, points, scalars);
-  }
-  /**
-   * Encodes ristretto point to Uint8Array.
-   * Described in [RFC9496](https://www.rfc-editor.org/rfc/rfc9496#name-encode).
-   */
-  toBytes() {
-    let { X, Y, Z, T } = this.ep;
-    const P = ed25519_CURVE_p;
-    const mod2 = (n) => Fp.create(n);
-    const u1 = mod2(mod2(Z + Y) * mod2(Z - Y));
-    const u2 = mod2(X * Y);
-    const u2sq = mod2(u2 * u2);
-    const { value: invsqrt } = invertSqrt(mod2(u1 * u2sq));
-    const D1 = mod2(invsqrt * u1);
-    const D2 = mod2(invsqrt * u2);
-    const zInv = mod2(D1 * D2 * T);
-    let D;
-    if (isNegativeLE(T * zInv, P)) {
-      let _x = mod2(Y * SQRT_M1);
-      let _y = mod2(X * SQRT_M1);
-      X = _x;
-      Y = _y;
-      D = mod2(D1 * INVSQRT_A_MINUS_D);
-    } else {
-      D = D2;
-    }
-    if (isNegativeLE(X * zInv, P))
-      Y = mod2(-Y);
-    let s = mod2((Z - Y) * D);
-    if (isNegativeLE(s, P))
-      s = mod2(-s);
-    return Fp.toBytes(s);
-  }
-  /**
-   * Compares two Ristretto points.
-   * Described in [RFC9496](https://www.rfc-editor.org/rfc/rfc9496#name-equals).
-   */
-  equals(other) {
-    this.assertSame(other);
-    const { X: X1, Y: Y1 } = this.ep;
-    const { X: X2, Y: Y2 } = other.ep;
-    const mod2 = (n) => Fp.create(n);
-    const one = mod2(X1 * Y2) === mod2(Y1 * X2);
-    const two = mod2(Y1 * Y2) === mod2(X1 * X2);
-    return one || two;
-  }
-  is0() {
-    return this.equals(__RistrettoPoint.ZERO);
-  }
-};
-_RistrettoPoint.BASE = /* @__PURE__ */ (() => new _RistrettoPoint(ed25519.Point.BASE))();
-_RistrettoPoint.ZERO = /* @__PURE__ */ (() => new _RistrettoPoint(ed25519.Point.ZERO))();
-_RistrettoPoint.Fp = /* @__PURE__ */ (() => Fp)();
-_RistrettoPoint.Fn = /* @__PURE__ */ (() => Fn)();
-
-// node_modules/@noble/hashes/esm/sha256.js
-var sha2562 = sha256;
+// src/signing-committed.ts
+var import_ed255192 = require("@noble/curves/ed25519");
+var import_sha2564 = require("@noble/hashes/sha256");
+var import_utils4 = require("@noble/hashes/utils");
 
 // src/commitments/merkle.ts
+var import_sha2562 = require("@noble/hashes/sha256");
+var import_utils2 = require("@noble/hashes/utils");
 var DOMAIN_LEAF = 0;
 var DOMAIN_INTERNAL = 1;
 function hashLeaf(leafBytes) {
   const buf = new Uint8Array(leafBytes.length + 1);
   buf[0] = DOMAIN_LEAF;
   buf.set(leafBytes, 1);
-  return sha2562(buf);
+  return (0, import_sha2562.sha256)(buf);
 }
 function hashInternal(left, right) {
   const buf = new Uint8Array(left.length + right.length + 1);
   buf[0] = DOMAIN_INTERNAL;
   buf.set(left, 1);
   buf.set(right, 1 + left.length);
-  return sha2562(buf);
+  return (0, import_sha2562.sha256)(buf);
 }
 function merkleRoot(leafHashes) {
   if (leafHashes.length === 0) {
@@ -39290,7 +37163,7 @@ function generateProof(leafHashes, index) {
   return {
     index,
     treeSize: leafHashes.length,
-    siblings: siblings.map((s) => bytesToHex(s))
+    siblings: siblings.map((s) => (0, import_utils2.bytesToHex)(s))
   };
 }
 function collectPath(leaves, index, out) {
@@ -39308,7 +37181,7 @@ function collectPath(leaves, index, out) {
 function verifyProof(expectedRootHex, leafHash, proof) {
   if (proof.index < 0 || proof.index >= proof.treeSize) return false;
   if (proof.treeSize === 1) {
-    return proof.siblings.length === 0 && bytesToHex(leafHash).toLowerCase() === expectedRootHex.toLowerCase();
+    return proof.siblings.length === 0 && (0, import_utils2.bytesToHex)(leafHash).toLowerCase() === expectedRootHex.toLowerCase();
   }
   let result;
   try {
@@ -39321,7 +37194,7 @@ function verifyProof(expectedRootHex, leafHash, proof) {
   } catch {
     return false;
   }
-  return bytesToHex(result).toLowerCase() === expectedRootHex.toLowerCase();
+  return (0, import_utils2.bytesToHex)(result).toLowerCase() === expectedRootHex.toLowerCase();
 }
 function reconstructRoot(leafHash, index, treeSize, siblings) {
   if (treeSize === 1) {
@@ -39334,7 +37207,7 @@ function reconstructRoot(leafHash, index, treeSize, siblings) {
     throw new Error("reconstructRoot: ran out of siblings before single-leaf");
   }
   const k = largestPowerOfTwoLessThan(treeSize);
-  const outermostSibling = hexToBytes(siblings[siblings.length - 1]);
+  const outermostSibling = (0, import_utils2.hexToBytes)(siblings[siblings.length - 1]);
   const innerSiblings = siblings.slice(0, -1);
   if (index < k) {
     const leftHash = reconstructRoot(leafHash, index, k, innerSiblings);
@@ -39358,75 +37231,10 @@ function largestPowerOfTwoLessThan(n) {
   return k;
 }
 
-// node_modules/@noble/hashes/esm/hmac.js
-var HMAC = class extends Hash {
-  constructor(hash, _key) {
-    super();
-    this.finished = false;
-    this.destroyed = false;
-    ahash(hash);
-    const key = toBytes(_key);
-    this.iHash = hash.create();
-    if (typeof this.iHash.update !== "function")
-      throw new Error("Expected instance of class which extends utils.Hash");
-    this.blockLen = this.iHash.blockLen;
-    this.outputLen = this.iHash.outputLen;
-    const blockLen = this.blockLen;
-    const pad = new Uint8Array(blockLen);
-    pad.set(key.length > blockLen ? hash.create().update(key).digest() : key);
-    for (let i = 0; i < pad.length; i++)
-      pad[i] ^= 54;
-    this.iHash.update(pad);
-    this.oHash = hash.create();
-    for (let i = 0; i < pad.length; i++)
-      pad[i] ^= 54 ^ 92;
-    this.oHash.update(pad);
-    clean(pad);
-  }
-  update(buf) {
-    aexists(this);
-    this.iHash.update(buf);
-    return this;
-  }
-  digestInto(out) {
-    aexists(this);
-    abytes(out, this.outputLen);
-    this.finished = true;
-    this.iHash.digestInto(out);
-    this.oHash.update(out);
-    this.oHash.digestInto(out);
-    this.destroy();
-  }
-  digest() {
-    const out = new Uint8Array(this.oHash.outputLen);
-    this.digestInto(out);
-    return out;
-  }
-  _cloneInto(to) {
-    to || (to = Object.create(Object.getPrototypeOf(this), {}));
-    const { oHash, iHash, finished, destroyed, blockLen, outputLen } = this;
-    to = to;
-    to.finished = finished;
-    to.destroyed = destroyed;
-    to.blockLen = blockLen;
-    to.outputLen = outputLen;
-    to.oHash = oHash._cloneInto(to.oHash);
-    to.iHash = iHash._cloneInto(to.iHash);
-    return to;
-  }
-  clone() {
-    return this._cloneInto();
-  }
-  destroy() {
-    this.destroyed = true;
-    this.oHash.destroy();
-    this.iHash.destroy();
-  }
-};
-var hmac = (hash, key, message) => new HMAC(hash, key).update(message).digest();
-hmac.create = (hash, key) => new HMAC(hash, key);
-
 // src/commitments/primitives.ts
+var import_sha2563 = require("@noble/hashes/sha256");
+var import_hmac = require("@noble/hashes/hmac");
+var import_utils3 = require("@noble/hashes/utils");
 function jcs(value) {
   if (value === null || value === void 0) return "null";
   if (typeof value === "boolean" || typeof value === "number")
@@ -39488,7 +37296,7 @@ function leavesFromFields(fields) {
 
 // src/signing-committed.ts
 function freshSalt() {
-  return randomBytes2(32);
+  return (0, import_utils4.randomBytes)(32);
 }
 function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey, kid, issuer) {
   const allFields = {
@@ -39528,7 +37336,7 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     const { sorted, leafBytes } = leavesFromFields(committedFields);
     const leafHashes = leafBytes.map(hashLeaf);
     const root = merkleRoot(leafHashes);
-    committedFieldsRoot = bytesToHex(root);
+    committedFieldsRoot = (0, import_utils4.bytesToHex)(root);
     sorted.forEach((f, i) => {
       openings[f.name] = { name: f.name, value: f.value, salt: f.salt, index: i };
     });
@@ -39545,8 +37353,8 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
   const canonical = jcs(payload);
-  const messageHash = sha2562(new TextEncoder().encode(canonical));
-  const signatureBytes = ed25519.sign(messageHash, hexToBytes(signingKey));
+  const messageHash = (0, import_sha2564.sha256)(new TextEncoder().encode(canonical));
+  const signatureBytes = import_ed255192.ed25519.sign(messageHash, (0, import_utils4.hexToBytes)(signingKey));
   const signedReceipt = {
     ...payload,
     signature: {
@@ -39559,15 +37367,15 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     }
   };
   const signedJson = JSON.stringify(signedReceipt);
-  const receiptHash = bytesToHex(sha2562(new TextEncoder().encode(jcs(signedReceipt))));
+  const receiptHash2 = (0, import_utils4.bytesToHex)((0, import_sha2564.sha256)(new TextEncoder().encode(jcs(signedReceipt))));
   return {
     signed: signedJson,
     artifact_type: "decision_receipt_committed_v1",
     openings,
-    receipt_hash: receiptHash
+    receipt_hash: receiptHash2
   };
 }
-function discloseField(receiptHash, fieldName, openings) {
+function discloseField(receiptHash2, fieldName, openings) {
   const o = openings[fieldName];
   if (!o) {
     throw new Error(`disclose: no opening recorded for field "${fieldName}"`);
@@ -39581,7 +37389,7 @@ function discloseField(receiptHash, fieldName, openings) {
   const leafHashes = leafBytes.map(hashLeaf);
   const proof = generateProof(leafHashes, o.index);
   return {
-    parent_receipt_hash: receiptHash,
+    parent_receipt_hash: receiptHash2,
     name: fieldName,
     value: o.value,
     salt: base64urlNoPad(o.salt),
@@ -39589,7 +37397,7 @@ function discloseField(receiptHash, fieldName, openings) {
   };
 }
 function createSelectiveDisclosurePackage(receipt, fieldNames, openings) {
-  const receiptHash = receiptHashHex(receipt);
+  const receiptHash2 = receiptHashHex(receipt);
   const committedFieldsRoot = typeof receipt.committed_fields_root === "string" ? receipt.committed_fields_root : "";
   if (!committedFieldsRoot) {
     throw new Error("selective disclosure requires a committed receipt with committed_fields_root");
@@ -39601,12 +37409,12 @@ function createSelectiveDisclosurePackage(receipt, fieldNames, openings) {
       throw new Error(`selective disclosure: field "${fieldName}" is not committed by this receipt`);
     }
   }
-  const disclosures = uniqueFields.map((fieldName) => discloseField(receiptHash, fieldName, openings));
+  const disclosures = uniqueFields.map((fieldName) => discloseField(receiptHash2, fieldName, openings));
   const hiddenFields = committedFieldNames.filter((fieldName) => !uniqueFields.includes(fieldName));
   return {
     type: "scopeblind.selective_disclosure.v0",
     version: 0,
-    parent_receipt_hash: receiptHash,
+    parent_receipt_hash: receiptHash2,
     committed_fields_root: committedFieldsRoot,
     disclosed_fields: uniqueFields,
     hidden_fields: hiddenFields,
@@ -39688,7 +37496,7 @@ function committedFieldNamesFromReceipt(receipt, openings) {
   return Array.from(new Set(names)).sort();
 }
 function receiptHashHex(receipt) {
-  return bytesToHex(sha2562(new TextEncoder().encode(jcs(receipt))));
+  return (0, import_utils4.bytesToHex)((0, import_sha2564.sha256)(new TextEncoder().encode(jcs(receipt))));
 }
 function verifyCommittedReceiptSignature(receipt) {
   const signature = receipt.signature;
@@ -39698,9 +37506,9 @@ function verifyCommittedReceiptSignature(receipt) {
     return null;
   }
   const { signature: _signature, ...payloadWithoutSig } = receipt;
-  const messageHash = sha2562(new TextEncoder().encode(jcs(payloadWithoutSig)));
+  const messageHash = (0, import_sha2564.sha256)(new TextEncoder().encode(jcs(payloadWithoutSig)));
   try {
-    return ed25519.verify(base64urlDecode(sig.sig), messageHash, hexToBytes(sig.public_key));
+    return import_ed255192.ed25519.verify(base64urlDecode(sig.sig), messageHash, (0, import_utils4.hexToBytes)(sig.public_key));
   } catch {
     return false;
   }
@@ -39764,9 +37572,9 @@ function collectSignedReceipts(logs) {
 }
 
 // src/simulate.ts
-var import_node_fs7 = require("fs");
+var import_node_fs8 = require("fs");
 function parseLogFile(path) {
-  const raw = (0, import_node_fs7.readFileSync)(path, "utf-8");
+  const raw = (0, import_node_fs8.readFileSync)(path, "utf-8");
   const entries = [];
   for (const line of raw.split("\n")) {
     const trimmed = line.trim();
@@ -39895,13 +37703,13 @@ function formatSimulation(summary) {
 }
 
 // src/report.ts
-var import_node_fs8 = require("fs");
+var import_node_fs9 = require("fs");
 function generateReport(logPath, receiptPath, periodDays) {
   const now = /* @__PURE__ */ new Date();
   const from = new Date(now.getTime() - periodDays * 864e5);
   const entries = [];
-  if ((0, import_node_fs8.existsSync)(logPath)) {
-    const raw = (0, import_node_fs8.readFileSync)(logPath, "utf-8");
+  if ((0, import_node_fs9.existsSync)(logPath)) {
+    const raw = (0, import_node_fs9.readFileSync)(logPath, "utf-8");
     for (const line of raw.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed) continue;
@@ -39921,8 +37729,8 @@ function generateReport(logPath, receiptPath, periodDays) {
   let receiptsSigned = 0;
   let signerKid = "";
   let signerIssuer = "";
-  if ((0, import_node_fs8.existsSync)(receiptPath)) {
-    const raw = (0, import_node_fs8.readFileSync)(receiptPath, "utf-8");
+  if ((0, import_node_fs9.existsSync)(receiptPath)) {
+    const raw = (0, import_node_fs9.readFileSync)(receiptPath, "utf-8");
     for (const line of raw.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed) continue;
@@ -39930,8 +37738,9 @@ function generateReport(logPath, receiptPath, periodDays) {
         const parsed = JSON.parse(trimmed);
         if (parsed.signature) {
           receiptsSigned++;
-          if (parsed.kid && !signerKid) signerKid = parsed.kid;
-          if (parsed.issuer && !signerIssuer) signerIssuer = parsed.issuer;
+          const identity = receiptIdentity(parsed);
+          if (identity.kid && !signerKid) signerKid = identity.kid;
+          if (identity.issuer && !signerIssuer) signerIssuer = identity.issuer;
         }
       } catch {
       }
@@ -40212,9 +38021,9 @@ function validateEvidenceReceipt(receipt) {
 
 // src/hook-server.ts
 var import_node_http2 = require("http");
-var import_node_crypto5 = require("crypto");
-var import_node_fs9 = require("fs");
-var import_node_path5 = require("path");
+var import_node_crypto4 = require("crypto");
+var import_node_fs10 = require("fs");
+var import_node_path6 = require("path");
 
 // src/scopeblind-bridge.ts
 var DEFAULT_BASE = "https://scopeblind.com";
@@ -40368,6 +38177,8 @@ function forwardReceipt(signedReceipt) {
 }
 
 // src/receipt-enrichment.ts
+var import_sha2565 = require("@noble/hashes/sha256");
+var import_utils5 = require("@noble/hashes/utils");
 var ENRICHMENT_VERSION = 2;
 function canonicalJson(value) {
   const seen = /* @__PURE__ */ new WeakSet();
@@ -40392,7 +38203,7 @@ function canonicalJson(value) {
   return enc(value);
 }
 function sha256Hex(s) {
-  return bytesToHex(sha2562(new TextEncoder().encode(s)));
+  return (0, import_utils5.bytesToHex)((0, import_sha2565.sha256)(new TextEncoder().encode(s)));
 }
 var RULES = [
   { cap: "exec.shell", tool: /bash|shell|exec|terminal|run_command|command/ },
@@ -40488,6 +38299,16 @@ var DEFAULT_PORT = 9377;
 var LOG_FILE3 = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE2 = ".protect-mcp-receipts.jsonl";
 var PAYLOAD_HASH_THRESHOLD = 1024;
+function resumeReceiptChain(receiptFilePath) {
+  try {
+    if (!(0, import_node_fs10.existsSync)(receiptFilePath)) return null;
+    const lines = (0, import_node_fs10.readFileSync)(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+    if (lines.length === 0) return null;
+    return receiptHash(JSON.parse(lines[lines.length - 1]));
+  } catch {
+    return null;
+  }
+}
 function detectSwarmContext() {
   const teamName = process.env.CLAUDE_CODE_TEAM_NAME;
   const agentId = process.env.CLAUDE_CODE_AGENT_ID;
@@ -40511,7 +38332,7 @@ function computePayloadDigest(input) {
     return void 0;
   }
   return {
-    input_hash: (0, import_node_crypto5.createHash)("sha256").update(content).digest("hex"),
+    input_hash: (0, import_node_crypto4.createHash)("sha256").update(content).digest("hex"),
     input_size: size,
     truncated: true,
     preview: content.slice(0, 256)
@@ -40524,7 +38345,7 @@ function computeOutputDigest(output) {
     return void 0;
   }
   return {
-    output_hash: (0, import_node_crypto5.createHash)("sha256").update(content).digest("hex"),
+    output_hash: (0, import_node_crypto4.createHash)("sha256").update(content).digest("hex"),
     output_size: size
   };
 }
@@ -40537,7 +38358,7 @@ function detectSandboxState() {
   }
   if (process.platform === "linux") {
     try {
-      const procStatus = (0, import_node_fs9.readFileSync)("/proc/self/status", "utf-8");
+      const procStatus = (0, import_node_fs10.readFileSync)("/proc/self/status", "utf-8");
       if (procStatus.includes("Seccomp:	2")) return "enabled";
     } catch {
     }
@@ -40547,7 +38368,7 @@ function detectSandboxState() {
 async function handlePreToolUse(input, state) {
   const hookStart = Date.now();
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto5.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto4.randomUUID)().slice(0, 12);
   state.inflightTools.set(requestId, {
     tool: toolName,
     startedAt: hookStart,
@@ -40752,7 +38573,7 @@ async function handlePreToolUse(input, state) {
 }
 async function handlePostToolUse(input, state) {
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto5.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto4.randomUUID)().slice(0, 12);
   const now = Date.now();
   const inflight = state.inflightTools.get(requestId);
   const timing = {
@@ -40764,7 +38585,7 @@ async function handlePostToolUse(input, state) {
     state.inflightTools.delete(requestId);
   }
   const outputDigest = computeOutputDigest(input.toolResult);
-  const receiptId = (0, import_node_crypto5.randomUUID)().slice(0, 8);
+  const receiptId = (0, import_node_crypto4.randomUUID)().slice(0, 8);
   const policyName = state.cedarPolicies ? `cedar:${state.policyDigest}` : state.policyDigest;
   const additionalContext = `[ScopeBlind] Tool call receipted. Policy: ${policyName}. Decision: allow. Receipt: #${receiptId}.` + (timing.tool_duration_ms !== void 0 ? ` Duration: ${timing.tool_duration_ms}ms.` : "") + (timing.hook_latency_ms !== void 0 ? ` Overhead: ${timing.hook_latency_ms}ms.` : "");
   emitDecisionLog(state, {
@@ -40796,7 +38617,7 @@ function handleSubagentStart(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_started",
-    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
     hook_event: "SubagentStart",
     swarm: {
       ...state.swarmContext,
@@ -40817,7 +38638,7 @@ function handleSubagentStop(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_stopped",
-    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
     hook_event: "SubagentStop",
     swarm: {
       ...state.swarmContext,
@@ -40832,7 +38653,7 @@ function handleTaskCreated(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_created",
-    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
     hook_event: "TaskCreated",
     swarm: {
       ...state.swarmContext,
@@ -40846,7 +38667,7 @@ function handleTaskCompleted(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_completed",
-    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
     hook_event: "TaskCompleted",
     swarm: state.swarmContext
   });
@@ -40857,7 +38678,7 @@ function handleSessionStart(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_started",
-    request_id: input.sessionId || (0, import_node_crypto5.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto4.randomUUID)().slice(0, 12),
     hook_event: "SessionStart",
     swarm: state.swarmContext,
     sandbox_state: detectSandboxState()
@@ -40880,7 +38701,7 @@ function handleSessionEnd(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_ended",
-    request_id: input.sessionId || (0, import_node_crypto5.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto4.randomUUID)().slice(0, 12),
     hook_event: "SessionEnd",
     swarm: state.swarmContext
   });
@@ -40891,7 +38712,7 @@ function handleTeammateIdle(input, state) {
     tool: `teammate:${input.agentId || "unknown"}`,
     decision: "allow",
     reason_code: "teammate_idle",
-    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
     hook_event: "TeammateIdle",
     swarm: {
       ...state.swarmContext,
@@ -40919,7 +38740,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "deny",
       reason_code: "config_tamper_detected",
-      request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange",
       swarm: state.swarmContext
     });
@@ -40928,7 +38749,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "allow",
       reason_code: "config_changed",
-      request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange"
     });
   }
@@ -40950,7 +38771,7 @@ function handleStop(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "agent_stopped",
-    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
     hook_event: "Stop",
     swarm: state.swarmContext
   });
@@ -40958,8 +38779,8 @@ function handleStop(input, state) {
 }
 function emitDecisionLog(state, entry) {
   const mode = state.enforce ? "enforce" : "shadow";
-  const otelTraceId = (0, import_node_crypto5.randomBytes)(16).toString("hex");
-  const otelSpanId = (0, import_node_crypto5.randomBytes)(8).toString("hex");
+  const otelTraceId = (0, import_node_crypto4.randomBytes)(16).toString("hex");
+  const otelSpanId = (0, import_node_crypto4.randomBytes)(8).toString("hex");
   const log = {
     v: 2,
     tool: entry.tool || "unknown",
@@ -40967,7 +38788,7 @@ function emitDecisionLog(state, entry) {
     reason_code: entry.reason_code || "default_allow",
     policy_digest: state.policyDigest,
     policy_engine: state.cedarPolicies ? "cedar" : "built-in",
-    request_id: entry.request_id || (0, import_node_crypto5.randomUUID)().slice(0, 12),
+    request_id: entry.request_id || (0, import_node_crypto4.randomUUID)().slice(0, 12),
     timestamp: Date.now(),
     mode,
     otel_trace_id: otelTraceId,
@@ -40986,14 +38807,15 @@ function emitDecisionLog(state, entry) {
   process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
   try {
-    (0, import_node_fs9.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
+    (0, import_node_fs10.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
   } catch {
   }
   if (isSigningEnabled()) {
-    const signed = signDecision(log);
+    const signed = signDecision(log, state.lastReceiptHash || void 0);
     if (signed.signed) {
       try {
-        (0, import_node_fs9.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
+        (0, import_node_fs10.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
+        if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
       } catch {
       }
       state.receiptBuffer.add(log.request_id, signed.signed);
@@ -41008,16 +38830,19 @@ function emitDecisionLog(state, entry) {
 `);
       }
     } else if (signed.error) {
-      const tombstone = JSON.stringify({
+      const tombstoneObj = {
         type: "scopeblind.signing_failure.v1",
         request_id: log.request_id,
         tool: log.tool,
         decision: log.decision,
         error: signed.error,
-        at: new Date(log.timestamp).toISOString()
-      });
+        at: new Date(log.timestamp).toISOString(),
+        ...state.lastReceiptHash ? { previousReceiptHash: state.lastReceiptHash } : {}
+      };
+      const tombstone = JSON.stringify(tombstoneObj);
       try {
-        (0, import_node_fs9.appendFileSync)(state.receiptFilePath, tombstone + "\n");
+        (0, import_node_fs10.appendFileSync)(state.receiptFilePath, tombstone + "\n");
+        state.lastReceiptHash = receiptHash(tombstoneObj);
       } catch {
       }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
@@ -41105,8 +38930,8 @@ async function startHookServer(options = {}) {
     }
   }
   if (!jsonPolicy?.signing) {
-    const keyPath = (0, import_node_path5.join)(process.cwd(), "keys", "gateway.json");
-    if ((0, import_node_fs9.existsSync)(keyPath)) {
+    const keyPath = (0, import_node_path6.join)(process.cwd(), "keys", "gateway.json");
+    if ((0, import_node_fs10.existsSync)(keyPath)) {
       const warnings = await initSigning({ key_path: keyPath, issuer: "protect-mcp", enabled: true });
       for (const w of warnings) {
         process.stderr.write(`[PROTECT_MCP] Warning: ${w}
@@ -41131,8 +38956,9 @@ async function startHookServer(options = {}) {
     verbose,
     enforce,
     policyDigest,
-    logFilePath: (0, import_node_path5.join)(process.cwd(), LOG_FILE3),
-    receiptFilePath: (0, import_node_path5.join)(process.cwd(), RECEIPTS_FILE2),
+    logFilePath: (0, import_node_path6.join)(process.cwd(), LOG_FILE3),
+    receiptFilePath: (0, import_node_path6.join)(process.cwd(), RECEIPTS_FILE2),
+    lastReceiptHash: resumeReceiptChain((0, import_node_path6.join)(process.cwd(), RECEIPTS_FILE2)),
     permissionSuggestions: /* @__PURE__ */ new Map(),
     configAlerts: []
   };
@@ -41281,7 +39107,7 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs9.existsSync)((0, import_node_path5.join)(process.cwd(), ".scopeblind"));
+    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs10.existsSync)((0, import_node_path6.join)(process.cwd(), ".scopeblind"));
     if (!hasSlug) {
       w(`  Dashboard  npx protect-mcp connect
 `);
@@ -41312,9 +39138,9 @@ async function startHookServer(options = {}) {
 function newestCedarMtime(dir) {
   try {
     let newest = 0;
-    for (const f of (0, import_node_fs9.readdirSync)(dir)) {
+    for (const f of (0, import_node_fs10.readdirSync)(dir)) {
       if (!f.endsWith(".cedar")) continue;
-      const m = (0, import_node_fs9.statSync)((0, import_node_path5.join)(dir, f)).mtimeMs;
+      const m = (0, import_node_fs10.statSync)((0, import_node_path6.join)(dir, f)).mtimeMs;
       if (m > newest) newest = m;
     }
     return newest;
@@ -41346,8 +39172,8 @@ function maybeReloadCedar(state) {
 function findCedarDir() {
   for (const candidate of ["cedar", "policies", "."]) {
     try {
-      if ((0, import_node_fs9.existsSync)(candidate)) {
-        const files = (0, import_node_fs9.readdirSync)(candidate, { encoding: "utf-8" });
+      if ((0, import_node_fs10.existsSync)(candidate)) {
+        const files = (0, import_node_fs10.readdirSync)(candidate, { encoding: "utf-8" });
         if (files.some((f) => f.endsWith(".cedar"))) {
           return candidate;
         }
@@ -42185,8 +40011,8 @@ function policyPackIds() {
 }
 
 // src/connector-pilots.ts
-var import_node_fs10 = require("fs");
-var import_node_path6 = require("path");
+var import_node_fs11 = require("fs");
+var import_node_path7 = require("path");
 var defaultPermit2 = `
 // Default posture: observe all non-matching tools so the connector can be piloted in shadow mode.
 permit(principal, action == Action::"MCP::Tool::call", resource);
@@ -42777,11 +40603,11 @@ function getConnectorPilot(id) {
   return CONNECTOR_PILOTS.find((pilot) => pilot.id === id);
 }
 function connectorDirectory(dir) {
-  return (0, import_node_path6.join)(dir, ".protect-mcp", "connectors");
+  return (0, import_node_path7.join)(dir, ".protect-mcp", "connectors");
 }
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
-  (0, import_node_fs10.mkdirSync)(directory, { recursive: true });
+  (0, import_node_fs11.mkdirSync)(directory, { recursive: true });
   const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id) => {
     const pilot = getConnectorPilot(id);
     if (!pilot) throw new Error(`Unknown connector pilot: ${id}`);
@@ -42789,42 +40615,42 @@ function writeConnectorPilots(opts) {
   }) : CONNECTOR_PILOTS;
   const written = [];
   for (const pilot of selected) {
-    const configPath = (0, import_node_path6.join)(directory, `${pilot.id}.json`);
-    const policyPath = (0, import_node_path6.join)(directory, `${pilot.id}.cedar`);
-    if (!opts.force && ((0, import_node_fs10.existsSync)(configPath) || (0, import_node_fs10.existsSync)(policyPath))) {
+    const configPath = (0, import_node_path7.join)(directory, `${pilot.id}.json`);
+    const policyPath = (0, import_node_path7.join)(directory, `${pilot.id}.cedar`);
+    if (!opts.force && ((0, import_node_fs11.existsSync)(configPath) || (0, import_node_fs11.existsSync)(policyPath))) {
       throw new Error(`Refusing to overwrite ${pilot.id}. Re-run with --force if intentional.`);
     }
-    (0, import_node_fs10.writeFileSync)(configPath, JSON.stringify({ ...pilot.config, id: pilot.id, name: pilot.name, category: pilot.category, tools: pilot.tools, actions: pilot.actions, setup: pilot.setup }, null, 2) + "\n");
-    (0, import_node_fs10.writeFileSync)(policyPath, pilot.cedar.endsWith("\n") ? pilot.cedar : `${pilot.cedar}
+    (0, import_node_fs11.writeFileSync)(configPath, JSON.stringify({ ...pilot.config, id: pilot.id, name: pilot.name, category: pilot.category, tools: pilot.tools, actions: pilot.actions, setup: pilot.setup }, null, 2) + "\n");
+    (0, import_node_fs11.writeFileSync)(policyPath, pilot.cedar.endsWith("\n") ? pilot.cedar : `${pilot.cedar}
 `);
     written.push(configPath, policyPath);
     for (const artifact of pilot.artifacts || []) {
       const artifactPath = connectorArtifactPath(directory, artifact.path);
-      (0, import_node_fs10.mkdirSync)((0, import_node_path6.dirname)(artifactPath), { recursive: true });
-      (0, import_node_fs10.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
+      (0, import_node_fs11.mkdirSync)((0, import_node_path7.dirname)(artifactPath), { recursive: true });
+      (0, import_node_fs11.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
 `);
-      if (artifact.executable) (0, import_node_fs10.chmodSync)(artifactPath, 493);
+      if (artifact.executable) (0, import_node_fs11.chmodSync)(artifactPath, 493);
       written.push(artifactPath);
     }
   }
-  (0, import_node_fs10.writeFileSync)((0, import_node_path6.join)(directory, "README.md"), renderConnectorReadme(selected));
-  written.push((0, import_node_path6.join)(directory, "README.md"));
+  (0, import_node_fs11.writeFileSync)((0, import_node_path7.join)(directory, "README.md"), renderConnectorReadme(selected));
+  written.push((0, import_node_path7.join)(directory, "README.md"));
   return { written, pilots: selected, directory };
 }
 function connectorArtifactPath(directory, relativePath) {
-  const clean2 = (0, import_node_path6.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
-  if (clean2.startsWith("/") || clean2.includes("..")) {
+  const clean = (0, import_node_path7.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
+  if (clean.startsWith("/") || clean.includes("..")) {
     throw new Error(`Unsafe connector artifact path: ${relativePath}`);
   }
-  return (0, import_node_path6.join)(directory, clean2);
+  return (0, import_node_path7.join)(directory, clean);
 }
 function readInstalledConnectorPilots(dir) {
   const directory = connectorDirectory(dir);
-  if (!(0, import_node_fs10.existsSync)(directory)) return [];
-  return (0, import_node_fs10.readdirSync)(directory).filter((name) => name.endsWith(".json")).map((name) => {
-    const configPath = (0, import_node_path6.join)(directory, name);
+  if (!(0, import_node_fs11.existsSync)(directory)) return [];
+  return (0, import_node_fs11.readdirSync)(directory).filter((name) => name.endsWith(".json")).map((name) => {
+    const configPath = (0, import_node_path7.join)(directory, name);
     try {
-      const parsed = JSON.parse((0, import_node_fs10.readFileSync)(configPath, "utf-8"));
+      const parsed = JSON.parse((0, import_node_fs11.readFileSync)(configPath, "utf-8"));
       const id = String(parsed.id || name.replace(/\.json$/, ""));
       const pilot = getConnectorPilot(id);
       return {
@@ -42833,7 +40659,7 @@ function readInstalledConnectorPilots(dir) {
         category: String(parsed.category || pilot?.category || "unknown"),
         status: String(parsed.status || parsed.type || "installed"),
         config_path: configPath,
-        policy_path: (0, import_node_path6.join)(directory, `${id}.cedar`)
+        policy_path: (0, import_node_path7.join)(directory, `${id}.cedar`)
       };
     } catch {
       return null;
@@ -42891,9 +40717,9 @@ Next: run \`npx protect-mcp dashboard --open\` and review tool inventory, policy
 }
 
 // src/rekor-anchor.ts
-var import_node_crypto6 = require("crypto");
+var import_node_crypto5 = require("crypto");
 var REKOR_API = "https://rekor.sigstore.dev/api/v1";
-async function anchorToRekor(receiptHash, signature, publicKeyPem) {
+async function anchorToRekor(receiptHash2, signature, publicKeyPem) {
   const entry = {
     apiVersion: "0.0.1",
     kind: "hashedrekord",
@@ -42901,7 +40727,7 @@ async function anchorToRekor(receiptHash, signature, publicKeyPem) {
       data: {
         hash: {
           algorithm: "sha256",
-          value: receiptHash
+          value: receiptHash2
         }
       },
       signature: {
@@ -42927,7 +40753,7 @@ async function anchorToRekor(receiptHash, signature, publicKeyPem) {
     logIndex: data.logIndex,
     uuid,
     integratedTime: new Date(data.integratedTime * 1e3).toISOString(),
-    receiptHash,
+    receiptHash: receiptHash2,
     logID: data.logID,
     body: data.body
   };
@@ -42960,7 +40786,7 @@ async function verifyRekorAnchor(logIndex, expectedHash) {
 }
 function hashReceipt(receipt) {
   const canonical = JSON.stringify(receipt, Object.keys(receipt).sort());
-  return (0, import_node_crypto6.createHash)("sha256").update(canonical).digest("hex");
+  return (0, import_node_crypto5.createHash)("sha256").update(canonical).digest("hex");
 }
 function createLogAnchorField(anchor) {
   return {
@@ -42973,7 +40799,7 @@ function createLogAnchorField(anchor) {
 }
 
 // src/selective-disclosure.ts
-var import_node_crypto7 = require("crypto");
+var import_node_crypto6 = require("crypto");
 function redactFields(receipt, fieldsToRedact) {
   const redacted = JSON.parse(JSON.stringify(receipt));
   const salts = [];
@@ -42989,7 +40815,7 @@ function redactFields(receipt, fieldsToRedact) {
       if (i === parts.length - 1) {
         if (key in current) {
           const originalValue = current[key];
-          const salt = (0, import_node_crypto7.randomBytes)(16).toString("hex");
+          const salt = (0, import_node_crypto6.randomBytes)(16).toString("hex");
           const commitment = computeCommitment(salt, originalValue);
           salts.push({ field: fieldPath, salt, originalValue });
           current[key] = `sha256(salt + ${typeof originalValue === "string" ? "..." : JSON.stringify(originalValue).slice(0, 20) + "..."})`;
@@ -43061,11 +40887,11 @@ function createDisclosurePackage(allSalts, fieldsToDisclose) {
 }
 function computeCommitment(salt, value) {
   const serialized = typeof value === "string" ? value : JSON.stringify(value);
-  return (0, import_node_crypto7.createHash)("sha256").update(salt + serialized).digest("hex");
+  return (0, import_node_crypto6.createHash)("sha256").update(salt + serialized).digest("hex");
 }
 function hashObject(obj) {
   const canonical = JSON.stringify(obj, Object.keys(obj).sort());
-  return (0, import_node_crypto7.createHash)("sha256").update(canonical).digest("hex");
+  return (0, import_node_crypto6.createHash)("sha256").update(canonical).digest("hex");
 }
 
 // src/huggingface-export.ts
@@ -43206,1070 +41032,14 @@ MIT
 }
 
 // src/webauthn-approval.ts
-var import_node_crypto8 = require("crypto");
-
-// node_modules/@noble/curves/esm/abstract/weierstrass.js
-var divNearest = (num, den) => (num + (num >= 0 ? den : -den) / _2n4) / den;
-function _splitEndoScalar(k, basis, n) {
-  const [[a1, b1], [a2, b2]] = basis;
-  const c1 = divNearest(b2 * k, n);
-  const c2 = divNearest(-b1 * k, n);
-  let k1 = k - c1 * a1 - c2 * a2;
-  let k2 = -c1 * b1 - c2 * b2;
-  const k1neg = k1 < _0n6;
-  const k2neg = k2 < _0n6;
-  if (k1neg)
-    k1 = -k1;
-  if (k2neg)
-    k2 = -k2;
-  const MAX_NUM = bitMask(Math.ceil(bitLen(n) / 2)) + _1n6;
-  if (k1 < _0n6 || k1 >= MAX_NUM || k2 < _0n6 || k2 >= MAX_NUM) {
-    throw new Error("splitScalar (endomorphism): failed, k=" + k);
-  }
-  return { k1neg, k1, k2neg, k2 };
-}
-function validateSigFormat(format) {
-  if (!["compact", "recovered", "der"].includes(format))
-    throw new Error('Signature format must be "compact", "recovered", or "der"');
-  return format;
-}
-function validateSigOpts(opts, def) {
-  const optsn = {};
-  for (let optName of Object.keys(def)) {
-    optsn[optName] = opts[optName] === void 0 ? def[optName] : opts[optName];
-  }
-  _abool2(optsn.lowS, "lowS");
-  _abool2(optsn.prehash, "prehash");
-  if (optsn.format !== void 0)
-    validateSigFormat(optsn.format);
-  return optsn;
-}
-var DERErr = class extends Error {
-  constructor(m = "") {
-    super(m);
-  }
-};
-var DER = {
-  // asn.1 DER encoding utils
-  Err: DERErr,
-  // Basic building block is TLV (Tag-Length-Value)
-  _tlv: {
-    encode: (tag, data) => {
-      const { Err: E } = DER;
-      if (tag < 0 || tag > 256)
-        throw new E("tlv.encode: wrong tag");
-      if (data.length & 1)
-        throw new E("tlv.encode: unpadded data");
-      const dataLen = data.length / 2;
-      const len = numberToHexUnpadded(dataLen);
-      if (len.length / 2 & 128)
-        throw new E("tlv.encode: long form length too big");
-      const lenLen = dataLen > 127 ? numberToHexUnpadded(len.length / 2 | 128) : "";
-      const t = numberToHexUnpadded(tag);
-      return t + lenLen + len + data;
-    },
-    // v - value, l - left bytes (unparsed)
-    decode(tag, data) {
-      const { Err: E } = DER;
-      let pos = 0;
-      if (tag < 0 || tag > 256)
-        throw new E("tlv.encode: wrong tag");
-      if (data.length < 2 || data[pos++] !== tag)
-        throw new E("tlv.decode: wrong tlv");
-      const first = data[pos++];
-      const isLong = !!(first & 128);
-      let length = 0;
-      if (!isLong)
-        length = first;
-      else {
-        const lenLen = first & 127;
-        if (!lenLen)
-          throw new E("tlv.decode(long): indefinite length not supported");
-        if (lenLen > 4)
-          throw new E("tlv.decode(long): byte length is too big");
-        const lengthBytes = data.subarray(pos, pos + lenLen);
-        if (lengthBytes.length !== lenLen)
-          throw new E("tlv.decode: length bytes not complete");
-        if (lengthBytes[0] === 0)
-          throw new E("tlv.decode(long): zero leftmost byte");
-        for (const b of lengthBytes)
-          length = length << 8 | b;
-        pos += lenLen;
-        if (length < 128)
-          throw new E("tlv.decode(long): not minimal encoding");
-      }
-      const v = data.subarray(pos, pos + length);
-      if (v.length !== length)
-        throw new E("tlv.decode: wrong value length");
-      return { v, l: data.subarray(pos + length) };
-    }
-  },
-  // https://crypto.stackexchange.com/a/57734 Leftmost bit of first byte is 'negative' flag,
-  // since we always use positive integers here. It must always be empty:
-  // - add zero byte if exists
-  // - if next byte doesn't have a flag, leading zero is not allowed (minimal encoding)
-  _int: {
-    encode(num) {
-      const { Err: E } = DER;
-      if (num < _0n6)
-        throw new E("integer: negative integers are not allowed");
-      let hex = numberToHexUnpadded(num);
-      if (Number.parseInt(hex[0], 16) & 8)
-        hex = "00" + hex;
-      if (hex.length & 1)
-        throw new E("unexpected DER parsing assertion: unpadded hex");
-      return hex;
-    },
-    decode(data) {
-      const { Err: E } = DER;
-      if (data[0] & 128)
-        throw new E("invalid signature integer: negative");
-      if (data[0] === 0 && !(data[1] & 128))
-        throw new E("invalid signature integer: unnecessary leading zero");
-      return bytesToNumberBE(data);
-    }
-  },
-  toSig(hex) {
-    const { Err: E, _int: int, _tlv: tlv } = DER;
-    const data = ensureBytes("signature", hex);
-    const { v: seqBytes, l: seqLeftBytes } = tlv.decode(48, data);
-    if (seqLeftBytes.length)
-      throw new E("invalid signature: left bytes after parsing");
-    const { v: rBytes, l: rLeftBytes } = tlv.decode(2, seqBytes);
-    const { v: sBytes, l: sLeftBytes } = tlv.decode(2, rLeftBytes);
-    if (sLeftBytes.length)
-      throw new E("invalid signature: left bytes after parsing");
-    return { r: int.decode(rBytes), s: int.decode(sBytes) };
-  },
-  hexFromSig(sig) {
-    const { _tlv: tlv, _int: int } = DER;
-    const rs = tlv.encode(2, int.encode(sig.r));
-    const ss = tlv.encode(2, int.encode(sig.s));
-    const seq = rs + ss;
-    return tlv.encode(48, seq);
-  }
-};
-var _0n6 = BigInt(0);
-var _1n6 = BigInt(1);
-var _2n4 = BigInt(2);
-var _3n3 = BigInt(3);
-var _4n2 = BigInt(4);
-function _normFnElement(Fn2, key) {
-  const { BYTES: expected } = Fn2;
-  let num;
-  if (typeof key === "bigint") {
-    num = key;
-  } else {
-    let bytes = ensureBytes("private key", key);
-    try {
-      num = Fn2.fromBytes(bytes);
-    } catch (error) {
-      throw new Error(`invalid private key: expected ui8a of size ${expected}, got ${typeof key}`);
-    }
-  }
-  if (!Fn2.isValidNot0(num))
-    throw new Error("invalid private key: out of range [1..N-1]");
-  return num;
-}
-function weierstrassN(params, extraOpts = {}) {
-  const validated = _createCurveFields("weierstrass", params, extraOpts);
-  const { Fp: Fp2, Fn: Fn2 } = validated;
-  let CURVE = validated.CURVE;
-  const { h: cofactor, n: CURVE_ORDER } = CURVE;
-  _validateObject(extraOpts, {}, {
-    allowInfinityPoint: "boolean",
-    clearCofactor: "function",
-    isTorsionFree: "function",
-    fromBytes: "function",
-    toBytes: "function",
-    endo: "object",
-    wrapPrivateKey: "boolean"
-  });
-  const { endo } = extraOpts;
-  if (endo) {
-    if (!Fp2.is0(CURVE.a) || typeof endo.beta !== "bigint" || !Array.isArray(endo.basises)) {
-      throw new Error('invalid endo: expected "beta": bigint and "basises": array');
-    }
-  }
-  const lengths = getWLengths(Fp2, Fn2);
-  function assertCompressionIsSupported() {
-    if (!Fp2.isOdd)
-      throw new Error("compression is not supported: Field does not have .isOdd()");
-  }
-  function pointToBytes(_c, point, isCompressed) {
-    const { x, y } = point.toAffine();
-    const bx = Fp2.toBytes(x);
-    _abool2(isCompressed, "isCompressed");
-    if (isCompressed) {
-      assertCompressionIsSupported();
-      const hasEvenY = !Fp2.isOdd(y);
-      return concatBytes(pprefix(hasEvenY), bx);
-    } else {
-      return concatBytes(Uint8Array.of(4), bx, Fp2.toBytes(y));
-    }
-  }
-  function pointFromBytes(bytes) {
-    _abytes2(bytes, void 0, "Point");
-    const { publicKey: comp, publicKeyUncompressed: uncomp } = lengths;
-    const length = bytes.length;
-    const head = bytes[0];
-    const tail = bytes.subarray(1);
-    if (length === comp && (head === 2 || head === 3)) {
-      const x = Fp2.fromBytes(tail);
-      if (!Fp2.isValid(x))
-        throw new Error("bad point: is not on curve, wrong x");
-      const y2 = weierstrassEquation(x);
-      let y;
-      try {
-        y = Fp2.sqrt(y2);
-      } catch (sqrtError) {
-        const err = sqrtError instanceof Error ? ": " + sqrtError.message : "";
-        throw new Error("bad point: is not on curve, sqrt error" + err);
-      }
-      assertCompressionIsSupported();
-      const isYOdd = Fp2.isOdd(y);
-      const isHeadOdd = (head & 1) === 1;
-      if (isHeadOdd !== isYOdd)
-        y = Fp2.neg(y);
-      return { x, y };
-    } else if (length === uncomp && head === 4) {
-      const L = Fp2.BYTES;
-      const x = Fp2.fromBytes(tail.subarray(0, L));
-      const y = Fp2.fromBytes(tail.subarray(L, L * 2));
-      if (!isValidXY(x, y))
-        throw new Error("bad point: is not on curve");
-      return { x, y };
-    } else {
-      throw new Error(`bad point: got length ${length}, expected compressed=${comp} or uncompressed=${uncomp}`);
-    }
-  }
-  const encodePoint = extraOpts.toBytes || pointToBytes;
-  const decodePoint = extraOpts.fromBytes || pointFromBytes;
-  function weierstrassEquation(x) {
-    const x2 = Fp2.sqr(x);
-    const x3 = Fp2.mul(x2, x);
-    return Fp2.add(Fp2.add(x3, Fp2.mul(x, CURVE.a)), CURVE.b);
-  }
-  function isValidXY(x, y) {
-    const left = Fp2.sqr(y);
-    const right = weierstrassEquation(x);
-    return Fp2.eql(left, right);
-  }
-  if (!isValidXY(CURVE.Gx, CURVE.Gy))
-    throw new Error("bad curve params: generator point");
-  const _4a3 = Fp2.mul(Fp2.pow(CURVE.a, _3n3), _4n2);
-  const _27b2 = Fp2.mul(Fp2.sqr(CURVE.b), BigInt(27));
-  if (Fp2.is0(Fp2.add(_4a3, _27b2)))
-    throw new Error("bad curve params: a or b");
-  function acoord(title, n, banZero = false) {
-    if (!Fp2.isValid(n) || banZero && Fp2.is0(n))
-      throw new Error(`bad point coordinate ${title}`);
-    return n;
-  }
-  function aprjpoint(other) {
-    if (!(other instanceof Point))
-      throw new Error("ProjectivePoint expected");
-  }
-  function splitEndoScalarN(k) {
-    if (!endo || !endo.basises)
-      throw new Error("no endo");
-    return _splitEndoScalar(k, endo.basises, Fn2.ORDER);
-  }
-  const toAffineMemo = memoized((p, iz) => {
-    const { X, Y, Z } = p;
-    if (Fp2.eql(Z, Fp2.ONE))
-      return { x: X, y: Y };
-    const is0 = p.is0();
-    if (iz == null)
-      iz = is0 ? Fp2.ONE : Fp2.inv(Z);
-    const x = Fp2.mul(X, iz);
-    const y = Fp2.mul(Y, iz);
-    const zz = Fp2.mul(Z, iz);
-    if (is0)
-      return { x: Fp2.ZERO, y: Fp2.ZERO };
-    if (!Fp2.eql(zz, Fp2.ONE))
-      throw new Error("invZ was invalid");
-    return { x, y };
-  });
-  const assertValidMemo = memoized((p) => {
-    if (p.is0()) {
-      if (extraOpts.allowInfinityPoint && !Fp2.is0(p.Y))
-        return;
-      throw new Error("bad point: ZERO");
-    }
-    const { x, y } = p.toAffine();
-    if (!Fp2.isValid(x) || !Fp2.isValid(y))
-      throw new Error("bad point: x or y not field elements");
-    if (!isValidXY(x, y))
-      throw new Error("bad point: equation left != right");
-    if (!p.isTorsionFree())
-      throw new Error("bad point: not in prime-order subgroup");
-    return true;
-  });
-  function finishEndo(endoBeta, k1p, k2p, k1neg, k2neg) {
-    k2p = new Point(Fp2.mul(k2p.X, endoBeta), k2p.Y, k2p.Z);
-    k1p = negateCt(k1neg, k1p);
-    k2p = negateCt(k2neg, k2p);
-    return k1p.add(k2p);
-  }
-  class Point {
-    /** Does NOT validate if the point is valid. Use `.assertValidity()`. */
-    constructor(X, Y, Z) {
-      this.X = acoord("x", X);
-      this.Y = acoord("y", Y, true);
-      this.Z = acoord("z", Z);
-      Object.freeze(this);
-    }
-    static CURVE() {
-      return CURVE;
-    }
-    /** Does NOT validate if the point is valid. Use `.assertValidity()`. */
-    static fromAffine(p) {
-      const { x, y } = p || {};
-      if (!p || !Fp2.isValid(x) || !Fp2.isValid(y))
-        throw new Error("invalid affine point");
-      if (p instanceof Point)
-        throw new Error("projective point not allowed");
-      if (Fp2.is0(x) && Fp2.is0(y))
-        return Point.ZERO;
-      return new Point(x, y, Fp2.ONE);
-    }
-    static fromBytes(bytes) {
-      const P = Point.fromAffine(decodePoint(_abytes2(bytes, void 0, "point")));
-      P.assertValidity();
-      return P;
-    }
-    static fromHex(hex) {
-      return Point.fromBytes(ensureBytes("pointHex", hex));
-    }
-    get x() {
-      return this.toAffine().x;
-    }
-    get y() {
-      return this.toAffine().y;
-    }
-    /**
-     *
-     * @param windowSize
-     * @param isLazy true will defer table computation until the first multiplication
-     * @returns
-     */
-    precompute(windowSize = 8, isLazy = true) {
-      wnaf.createCache(this, windowSize);
-      if (!isLazy)
-        this.multiply(_3n3);
-      return this;
-    }
-    // TODO: return `this`
-    /** A point on curve is valid if it conforms to equation. */
-    assertValidity() {
-      assertValidMemo(this);
-    }
-    hasEvenY() {
-      const { y } = this.toAffine();
-      if (!Fp2.isOdd)
-        throw new Error("Field doesn't support isOdd");
-      return !Fp2.isOdd(y);
-    }
-    /** Compare one point to another. */
-    equals(other) {
-      aprjpoint(other);
-      const { X: X1, Y: Y1, Z: Z1 } = this;
-      const { X: X2, Y: Y2, Z: Z2 } = other;
-      const U1 = Fp2.eql(Fp2.mul(X1, Z2), Fp2.mul(X2, Z1));
-      const U2 = Fp2.eql(Fp2.mul(Y1, Z2), Fp2.mul(Y2, Z1));
-      return U1 && U2;
-    }
-    /** Flips point to one corresponding to (x, -y) in Affine coordinates. */
-    negate() {
-      return new Point(this.X, Fp2.neg(this.Y), this.Z);
-    }
-    // Renes-Costello-Batina exception-free doubling formula.
-    // There is 30% faster Jacobian formula, but it is not complete.
-    // https://eprint.iacr.org/2015/1060, algorithm 3
-    // Cost: 8M + 3S + 3*a + 2*b3 + 15add.
-    double() {
-      const { a, b } = CURVE;
-      const b3 = Fp2.mul(b, _3n3);
-      const { X: X1, Y: Y1, Z: Z1 } = this;
-      let X3 = Fp2.ZERO, Y3 = Fp2.ZERO, Z3 = Fp2.ZERO;
-      let t0 = Fp2.mul(X1, X1);
-      let t1 = Fp2.mul(Y1, Y1);
-      let t2 = Fp2.mul(Z1, Z1);
-      let t3 = Fp2.mul(X1, Y1);
-      t3 = Fp2.add(t3, t3);
-      Z3 = Fp2.mul(X1, Z1);
-      Z3 = Fp2.add(Z3, Z3);
-      X3 = Fp2.mul(a, Z3);
-      Y3 = Fp2.mul(b3, t2);
-      Y3 = Fp2.add(X3, Y3);
-      X3 = Fp2.sub(t1, Y3);
-      Y3 = Fp2.add(t1, Y3);
-      Y3 = Fp2.mul(X3, Y3);
-      X3 = Fp2.mul(t3, X3);
-      Z3 = Fp2.mul(b3, Z3);
-      t2 = Fp2.mul(a, t2);
-      t3 = Fp2.sub(t0, t2);
-      t3 = Fp2.mul(a, t3);
-      t3 = Fp2.add(t3, Z3);
-      Z3 = Fp2.add(t0, t0);
-      t0 = Fp2.add(Z3, t0);
-      t0 = Fp2.add(t0, t2);
-      t0 = Fp2.mul(t0, t3);
-      Y3 = Fp2.add(Y3, t0);
-      t2 = Fp2.mul(Y1, Z1);
-      t2 = Fp2.add(t2, t2);
-      t0 = Fp2.mul(t2, t3);
-      X3 = Fp2.sub(X3, t0);
-      Z3 = Fp2.mul(t2, t1);
-      Z3 = Fp2.add(Z3, Z3);
-      Z3 = Fp2.add(Z3, Z3);
-      return new Point(X3, Y3, Z3);
-    }
-    // Renes-Costello-Batina exception-free addition formula.
-    // There is 30% faster Jacobian formula, but it is not complete.
-    // https://eprint.iacr.org/2015/1060, algorithm 1
-    // Cost: 12M + 0S + 3*a + 3*b3 + 23add.
-    add(other) {
-      aprjpoint(other);
-      const { X: X1, Y: Y1, Z: Z1 } = this;
-      const { X: X2, Y: Y2, Z: Z2 } = other;
-      let X3 = Fp2.ZERO, Y3 = Fp2.ZERO, Z3 = Fp2.ZERO;
-      const a = CURVE.a;
-      const b3 = Fp2.mul(CURVE.b, _3n3);
-      let t0 = Fp2.mul(X1, X2);
-      let t1 = Fp2.mul(Y1, Y2);
-      let t2 = Fp2.mul(Z1, Z2);
-      let t3 = Fp2.add(X1, Y1);
-      let t4 = Fp2.add(X2, Y2);
-      t3 = Fp2.mul(t3, t4);
-      t4 = Fp2.add(t0, t1);
-      t3 = Fp2.sub(t3, t4);
-      t4 = Fp2.add(X1, Z1);
-      let t5 = Fp2.add(X2, Z2);
-      t4 = Fp2.mul(t4, t5);
-      t5 = Fp2.add(t0, t2);
-      t4 = Fp2.sub(t4, t5);
-      t5 = Fp2.add(Y1, Z1);
-      X3 = Fp2.add(Y2, Z2);
-      t5 = Fp2.mul(t5, X3);
-      X3 = Fp2.add(t1, t2);
-      t5 = Fp2.sub(t5, X3);
-      Z3 = Fp2.mul(a, t4);
-      X3 = Fp2.mul(b3, t2);
-      Z3 = Fp2.add(X3, Z3);
-      X3 = Fp2.sub(t1, Z3);
-      Z3 = Fp2.add(t1, Z3);
-      Y3 = Fp2.mul(X3, Z3);
-      t1 = Fp2.add(t0, t0);
-      t1 = Fp2.add(t1, t0);
-      t2 = Fp2.mul(a, t2);
-      t4 = Fp2.mul(b3, t4);
-      t1 = Fp2.add(t1, t2);
-      t2 = Fp2.sub(t0, t2);
-      t2 = Fp2.mul(a, t2);
-      t4 = Fp2.add(t4, t2);
-      t0 = Fp2.mul(t1, t4);
-      Y3 = Fp2.add(Y3, t0);
-      t0 = Fp2.mul(t5, t4);
-      X3 = Fp2.mul(t3, X3);
-      X3 = Fp2.sub(X3, t0);
-      t0 = Fp2.mul(t3, t1);
-      Z3 = Fp2.mul(t5, Z3);
-      Z3 = Fp2.add(Z3, t0);
-      return new Point(X3, Y3, Z3);
-    }
-    subtract(other) {
-      return this.add(other.negate());
-    }
-    is0() {
-      return this.equals(Point.ZERO);
-    }
-    /**
-     * Constant time multiplication.
-     * Uses wNAF method. Windowed method may be 10% faster,
-     * but takes 2x longer to generate and consumes 2x memory.
-     * Uses precomputes when available.
-     * Uses endomorphism for Koblitz curves.
-     * @param scalar by which the point would be multiplied
-     * @returns New point
-     */
-    multiply(scalar) {
-      const { endo: endo2 } = extraOpts;
-      if (!Fn2.isValidNot0(scalar))
-        throw new Error("invalid scalar: out of range");
-      let point, fake;
-      const mul = (n) => wnaf.cached(this, n, (p) => normalizeZ(Point, p));
-      if (endo2) {
-        const { k1neg, k1, k2neg, k2 } = splitEndoScalarN(scalar);
-        const { p: k1p, f: k1f } = mul(k1);
-        const { p: k2p, f: k2f } = mul(k2);
-        fake = k1f.add(k2f);
-        point = finishEndo(endo2.beta, k1p, k2p, k1neg, k2neg);
-      } else {
-        const { p, f } = mul(scalar);
-        point = p;
-        fake = f;
-      }
-      return normalizeZ(Point, [point, fake])[0];
-    }
-    /**
-     * Non-constant-time multiplication. Uses double-and-add algorithm.
-     * It's faster, but should only be used when you don't care about
-     * an exposed secret key e.g. sig verification, which works over *public* keys.
-     */
-    multiplyUnsafe(sc) {
-      const { endo: endo2 } = extraOpts;
-      const p = this;
-      if (!Fn2.isValid(sc))
-        throw new Error("invalid scalar: out of range");
-      if (sc === _0n6 || p.is0())
-        return Point.ZERO;
-      if (sc === _1n6)
-        return p;
-      if (wnaf.hasCache(this))
-        return this.multiply(sc);
-      if (endo2) {
-        const { k1neg, k1, k2neg, k2 } = splitEndoScalarN(sc);
-        const { p1, p2 } = mulEndoUnsafe(Point, p, k1, k2);
-        return finishEndo(endo2.beta, p1, p2, k1neg, k2neg);
-      } else {
-        return wnaf.unsafe(p, sc);
-      }
-    }
-    multiplyAndAddUnsafe(Q, a, b) {
-      const sum = this.multiplyUnsafe(a).add(Q.multiplyUnsafe(b));
-      return sum.is0() ? void 0 : sum;
-    }
-    /**
-     * Converts Projective point to affine (x, y) coordinates.
-     * @param invertedZ Z^-1 (inverted zero) - optional, precomputation is useful for invertBatch
-     */
-    toAffine(invertedZ) {
-      return toAffineMemo(this, invertedZ);
-    }
-    /**
-     * Checks whether Point is free of torsion elements (is in prime subgroup).
-     * Always torsion-free for cofactor=1 curves.
-     */
-    isTorsionFree() {
-      const { isTorsionFree } = extraOpts;
-      if (cofactor === _1n6)
-        return true;
-      if (isTorsionFree)
-        return isTorsionFree(Point, this);
-      return wnaf.unsafe(this, CURVE_ORDER).is0();
-    }
-    clearCofactor() {
-      const { clearCofactor } = extraOpts;
-      if (cofactor === _1n6)
-        return this;
-      if (clearCofactor)
-        return clearCofactor(Point, this);
-      return this.multiplyUnsafe(cofactor);
-    }
-    isSmallOrder() {
-      return this.multiplyUnsafe(cofactor).is0();
-    }
-    toBytes(isCompressed = true) {
-      _abool2(isCompressed, "isCompressed");
-      this.assertValidity();
-      return encodePoint(Point, this, isCompressed);
-    }
-    toHex(isCompressed = true) {
-      return bytesToHex(this.toBytes(isCompressed));
-    }
-    toString() {
-      return `<Point ${this.is0() ? "ZERO" : this.toHex()}>`;
-    }
-    // TODO: remove
-    get px() {
-      return this.X;
-    }
-    get py() {
-      return this.X;
-    }
-    get pz() {
-      return this.Z;
-    }
-    toRawBytes(isCompressed = true) {
-      return this.toBytes(isCompressed);
-    }
-    _setWindowSize(windowSize) {
-      this.precompute(windowSize);
-    }
-    static normalizeZ(points) {
-      return normalizeZ(Point, points);
-    }
-    static msm(points, scalars) {
-      return pippenger(Point, Fn2, points, scalars);
-    }
-    static fromPrivateKey(privateKey) {
-      return Point.BASE.multiply(_normFnElement(Fn2, privateKey));
-    }
-  }
-  Point.BASE = new Point(CURVE.Gx, CURVE.Gy, Fp2.ONE);
-  Point.ZERO = new Point(Fp2.ZERO, Fp2.ONE, Fp2.ZERO);
-  Point.Fp = Fp2;
-  Point.Fn = Fn2;
-  const bits = Fn2.BITS;
-  const wnaf = new wNAF(Point, extraOpts.endo ? Math.ceil(bits / 2) : bits);
-  Point.BASE.precompute(8);
-  return Point;
-}
-function pprefix(hasEvenY) {
-  return Uint8Array.of(hasEvenY ? 2 : 3);
-}
-function getWLengths(Fp2, Fn2) {
-  return {
-    secretKey: Fn2.BYTES,
-    publicKey: 1 + Fp2.BYTES,
-    publicKeyUncompressed: 1 + 2 * Fp2.BYTES,
-    publicKeyHasPrefix: true,
-    signature: 2 * Fn2.BYTES
-  };
-}
-function ecdh(Point, ecdhOpts = {}) {
-  const { Fn: Fn2 } = Point;
-  const randomBytes_ = ecdhOpts.randomBytes || randomBytes2;
-  const lengths = Object.assign(getWLengths(Point.Fp, Fn2), { seed: getMinHashLength(Fn2.ORDER) });
-  function isValidSecretKey(secretKey) {
-    try {
-      return !!_normFnElement(Fn2, secretKey);
-    } catch (error) {
-      return false;
-    }
-  }
-  function isValidPublicKey(publicKey, isCompressed) {
-    const { publicKey: comp, publicKeyUncompressed } = lengths;
-    try {
-      const l = publicKey.length;
-      if (isCompressed === true && l !== comp)
-        return false;
-      if (isCompressed === false && l !== publicKeyUncompressed)
-        return false;
-      return !!Point.fromBytes(publicKey);
-    } catch (error) {
-      return false;
-    }
-  }
-  function randomSecretKey(seed = randomBytes_(lengths.seed)) {
-    return mapHashToField(_abytes2(seed, lengths.seed, "seed"), Fn2.ORDER);
-  }
-  function getPublicKey(secretKey, isCompressed = true) {
-    return Point.BASE.multiply(_normFnElement(Fn2, secretKey)).toBytes(isCompressed);
-  }
-  function keygen(seed) {
-    const secretKey = randomSecretKey(seed);
-    return { secretKey, publicKey: getPublicKey(secretKey) };
-  }
-  function isProbPub(item) {
-    if (typeof item === "bigint")
-      return false;
-    if (item instanceof Point)
-      return true;
-    const { secretKey, publicKey, publicKeyUncompressed } = lengths;
-    if (Fn2.allowedLengths || secretKey === publicKey)
-      return void 0;
-    const l = ensureBytes("key", item).length;
-    return l === publicKey || l === publicKeyUncompressed;
-  }
-  function getSharedSecret(secretKeyA, publicKeyB, isCompressed = true) {
-    if (isProbPub(secretKeyA) === true)
-      throw new Error("first arg must be private key");
-    if (isProbPub(publicKeyB) === false)
-      throw new Error("second arg must be public key");
-    const s = _normFnElement(Fn2, secretKeyA);
-    const b = Point.fromHex(publicKeyB);
-    return b.multiply(s).toBytes(isCompressed);
-  }
-  const utils = {
-    isValidSecretKey,
-    isValidPublicKey,
-    randomSecretKey,
-    // TODO: remove
-    isValidPrivateKey: isValidSecretKey,
-    randomPrivateKey: randomSecretKey,
-    normPrivateKeyToScalar: (key) => _normFnElement(Fn2, key),
-    precompute(windowSize = 8, point = Point.BASE) {
-      return point.precompute(windowSize, false);
-    }
-  };
-  return Object.freeze({ getPublicKey, getSharedSecret, keygen, Point, utils, lengths });
-}
-function ecdsa(Point, hash, ecdsaOpts = {}) {
-  ahash(hash);
-  _validateObject(ecdsaOpts, {}, {
-    hmac: "function",
-    lowS: "boolean",
-    randomBytes: "function",
-    bits2int: "function",
-    bits2int_modN: "function"
-  });
-  const randomBytes6 = ecdsaOpts.randomBytes || randomBytes2;
-  const hmac2 = ecdsaOpts.hmac || ((key, ...msgs) => hmac(hash, key, concatBytes(...msgs)));
-  const { Fp: Fp2, Fn: Fn2 } = Point;
-  const { ORDER: CURVE_ORDER, BITS: fnBits } = Fn2;
-  const { keygen, getPublicKey, getSharedSecret, utils, lengths } = ecdh(Point, ecdsaOpts);
-  const defaultSigOpts = {
-    prehash: false,
-    lowS: typeof ecdsaOpts.lowS === "boolean" ? ecdsaOpts.lowS : false,
-    format: void 0,
-    //'compact' as ECDSASigFormat,
-    extraEntropy: false
-  };
-  const defaultSigOpts_format = "compact";
-  function isBiggerThanHalfOrder(number) {
-    const HALF = CURVE_ORDER >> _1n6;
-    return number > HALF;
-  }
-  function validateRS(title, num) {
-    if (!Fn2.isValidNot0(num))
-      throw new Error(`invalid signature ${title}: out of range 1..Point.Fn.ORDER`);
-    return num;
-  }
-  function validateSigLength(bytes, format) {
-    validateSigFormat(format);
-    const size = lengths.signature;
-    const sizer = format === "compact" ? size : format === "recovered" ? size + 1 : void 0;
-    return _abytes2(bytes, sizer, `${format} signature`);
-  }
-  class Signature {
-    constructor(r, s, recovery) {
-      this.r = validateRS("r", r);
-      this.s = validateRS("s", s);
-      if (recovery != null)
-        this.recovery = recovery;
-      Object.freeze(this);
-    }
-    static fromBytes(bytes, format = defaultSigOpts_format) {
-      validateSigLength(bytes, format);
-      let recid;
-      if (format === "der") {
-        const { r: r2, s: s2 } = DER.toSig(_abytes2(bytes));
-        return new Signature(r2, s2);
-      }
-      if (format === "recovered") {
-        recid = bytes[0];
-        format = "compact";
-        bytes = bytes.subarray(1);
-      }
-      const L = Fn2.BYTES;
-      const r = bytes.subarray(0, L);
-      const s = bytes.subarray(L, L * 2);
-      return new Signature(Fn2.fromBytes(r), Fn2.fromBytes(s), recid);
-    }
-    static fromHex(hex, format) {
-      return this.fromBytes(hexToBytes(hex), format);
-    }
-    addRecoveryBit(recovery) {
-      return new Signature(this.r, this.s, recovery);
-    }
-    recoverPublicKey(messageHash) {
-      const FIELD_ORDER = Fp2.ORDER;
-      const { r, s, recovery: rec } = this;
-      if (rec == null || ![0, 1, 2, 3].includes(rec))
-        throw new Error("recovery id invalid");
-      const hasCofactor = CURVE_ORDER * _2n4 < FIELD_ORDER;
-      if (hasCofactor && rec > 1)
-        throw new Error("recovery id is ambiguous for h>1 curve");
-      const radj = rec === 2 || rec === 3 ? r + CURVE_ORDER : r;
-      if (!Fp2.isValid(radj))
-        throw new Error("recovery id 2 or 3 invalid");
-      const x = Fp2.toBytes(radj);
-      const R = Point.fromBytes(concatBytes(pprefix((rec & 1) === 0), x));
-      const ir = Fn2.inv(radj);
-      const h = bits2int_modN(ensureBytes("msgHash", messageHash));
-      const u1 = Fn2.create(-h * ir);
-      const u2 = Fn2.create(s * ir);
-      const Q = Point.BASE.multiplyUnsafe(u1).add(R.multiplyUnsafe(u2));
-      if (Q.is0())
-        throw new Error("point at infinify");
-      Q.assertValidity();
-      return Q;
-    }
-    // Signatures should be low-s, to prevent malleability.
-    hasHighS() {
-      return isBiggerThanHalfOrder(this.s);
-    }
-    toBytes(format = defaultSigOpts_format) {
-      validateSigFormat(format);
-      if (format === "der")
-        return hexToBytes(DER.hexFromSig(this));
-      const r = Fn2.toBytes(this.r);
-      const s = Fn2.toBytes(this.s);
-      if (format === "recovered") {
-        if (this.recovery == null)
-          throw new Error("recovery bit must be present");
-        return concatBytes(Uint8Array.of(this.recovery), r, s);
-      }
-      return concatBytes(r, s);
-    }
-    toHex(format) {
-      return bytesToHex(this.toBytes(format));
-    }
-    // TODO: remove
-    assertValidity() {
-    }
-    static fromCompact(hex) {
-      return Signature.fromBytes(ensureBytes("sig", hex), "compact");
-    }
-    static fromDER(hex) {
-      return Signature.fromBytes(ensureBytes("sig", hex), "der");
-    }
-    normalizeS() {
-      return this.hasHighS() ? new Signature(this.r, Fn2.neg(this.s), this.recovery) : this;
-    }
-    toDERRawBytes() {
-      return this.toBytes("der");
-    }
-    toDERHex() {
-      return bytesToHex(this.toBytes("der"));
-    }
-    toCompactRawBytes() {
-      return this.toBytes("compact");
-    }
-    toCompactHex() {
-      return bytesToHex(this.toBytes("compact"));
-    }
-  }
-  const bits2int = ecdsaOpts.bits2int || function bits2int_def(bytes) {
-    if (bytes.length > 8192)
-      throw new Error("input is too large");
-    const num = bytesToNumberBE(bytes);
-    const delta = bytes.length * 8 - fnBits;
-    return delta > 0 ? num >> BigInt(delta) : num;
-  };
-  const bits2int_modN = ecdsaOpts.bits2int_modN || function bits2int_modN_def(bytes) {
-    return Fn2.create(bits2int(bytes));
-  };
-  const ORDER_MASK = bitMask(fnBits);
-  function int2octets(num) {
-    aInRange("num < 2^" + fnBits, num, _0n6, ORDER_MASK);
-    return Fn2.toBytes(num);
-  }
-  function validateMsgAndHash(message, prehash) {
-    _abytes2(message, void 0, "message");
-    return prehash ? _abytes2(hash(message), void 0, "prehashed message") : message;
-  }
-  function prepSig(message, privateKey, opts) {
-    if (["recovered", "canonical"].some((k) => k in opts))
-      throw new Error("sign() legacy options not supported");
-    const { lowS, prehash, extraEntropy } = validateSigOpts(opts, defaultSigOpts);
-    message = validateMsgAndHash(message, prehash);
-    const h1int = bits2int_modN(message);
-    const d = _normFnElement(Fn2, privateKey);
-    const seedArgs = [int2octets(d), int2octets(h1int)];
-    if (extraEntropy != null && extraEntropy !== false) {
-      const e = extraEntropy === true ? randomBytes6(lengths.secretKey) : extraEntropy;
-      seedArgs.push(ensureBytes("extraEntropy", e));
-    }
-    const seed = concatBytes(...seedArgs);
-    const m = h1int;
-    function k2sig(kBytes) {
-      const k = bits2int(kBytes);
-      if (!Fn2.isValidNot0(k))
-        return;
-      const ik = Fn2.inv(k);
-      const q = Point.BASE.multiply(k).toAffine();
-      const r = Fn2.create(q.x);
-      if (r === _0n6)
-        return;
-      const s = Fn2.create(ik * Fn2.create(m + r * d));
-      if (s === _0n6)
-        return;
-      let recovery = (q.x === r ? 0 : 2) | Number(q.y & _1n6);
-      let normS = s;
-      if (lowS && isBiggerThanHalfOrder(s)) {
-        normS = Fn2.neg(s);
-        recovery ^= 1;
-      }
-      return new Signature(r, normS, recovery);
-    }
-    return { seed, k2sig };
-  }
-  function sign(message, secretKey, opts = {}) {
-    message = ensureBytes("message", message);
-    const { seed, k2sig } = prepSig(message, secretKey, opts);
-    const drbg = createHmacDrbg(hash.outputLen, Fn2.BYTES, hmac2);
-    const sig = drbg(seed, k2sig);
-    return sig;
-  }
-  function tryParsingSig(sg) {
-    let sig = void 0;
-    const isHex = typeof sg === "string" || isBytes(sg);
-    const isObj = !isHex && sg !== null && typeof sg === "object" && typeof sg.r === "bigint" && typeof sg.s === "bigint";
-    if (!isHex && !isObj)
-      throw new Error("invalid signature, expected Uint8Array, hex string or Signature instance");
-    if (isObj) {
-      sig = new Signature(sg.r, sg.s);
-    } else if (isHex) {
-      try {
-        sig = Signature.fromBytes(ensureBytes("sig", sg), "der");
-      } catch (derError) {
-        if (!(derError instanceof DER.Err))
-          throw derError;
-      }
-      if (!sig) {
-        try {
-          sig = Signature.fromBytes(ensureBytes("sig", sg), "compact");
-        } catch (error) {
-          return false;
-        }
-      }
-    }
-    if (!sig)
-      return false;
-    return sig;
-  }
-  function verify(signature, message, publicKey, opts = {}) {
-    const { lowS, prehash, format } = validateSigOpts(opts, defaultSigOpts);
-    publicKey = ensureBytes("publicKey", publicKey);
-    message = validateMsgAndHash(ensureBytes("message", message), prehash);
-    if ("strict" in opts)
-      throw new Error("options.strict was renamed to lowS");
-    const sig = format === void 0 ? tryParsingSig(signature) : Signature.fromBytes(ensureBytes("sig", signature), format);
-    if (sig === false)
-      return false;
-    try {
-      const P = Point.fromBytes(publicKey);
-      if (lowS && sig.hasHighS())
-        return false;
-      const { r, s } = sig;
-      const h = bits2int_modN(message);
-      const is = Fn2.inv(s);
-      const u1 = Fn2.create(h * is);
-      const u2 = Fn2.create(r * is);
-      const R = Point.BASE.multiplyUnsafe(u1).add(P.multiplyUnsafe(u2));
-      if (R.is0())
-        return false;
-      const v = Fn2.create(R.x);
-      return v === r;
-    } catch (e) {
-      return false;
-    }
-  }
-  function recoverPublicKey(signature, message, opts = {}) {
-    const { prehash } = validateSigOpts(opts, defaultSigOpts);
-    message = validateMsgAndHash(message, prehash);
-    return Signature.fromBytes(signature, "recovered").recoverPublicKey(message).toBytes();
-  }
-  return Object.freeze({
-    keygen,
-    getPublicKey,
-    getSharedSecret,
-    utils,
-    lengths,
-    Point,
-    sign,
-    verify,
-    recoverPublicKey,
-    Signature,
-    hash
-  });
-}
-function _weierstrass_legacy_opts_to_new(c) {
-  const CURVE = {
-    a: c.a,
-    b: c.b,
-    p: c.Fp.ORDER,
-    n: c.n,
-    h: c.h,
-    Gx: c.Gx,
-    Gy: c.Gy
-  };
-  const Fp2 = c.Fp;
-  let allowedLengths = c.allowedPrivateKeyLengths ? Array.from(new Set(c.allowedPrivateKeyLengths.map((l) => Math.ceil(l / 2)))) : void 0;
-  const Fn2 = Field(CURVE.n, {
-    BITS: c.nBitLength,
-    allowedLengths,
-    modFromBytes: c.wrapPrivateKey
-  });
-  const curveOpts = {
-    Fp: Fp2,
-    Fn: Fn2,
-    allowInfinityPoint: c.allowInfinityPoint,
-    endo: c.endo,
-    isTorsionFree: c.isTorsionFree,
-    clearCofactor: c.clearCofactor,
-    fromBytes: c.fromBytes,
-    toBytes: c.toBytes
-  };
-  return { CURVE, curveOpts };
-}
-function _ecdsa_legacy_opts_to_new(c) {
-  const { CURVE, curveOpts } = _weierstrass_legacy_opts_to_new(c);
-  const ecdsaOpts = {
-    hmac: c.hmac,
-    randomBytes: c.randomBytes,
-    lowS: c.lowS,
-    bits2int: c.bits2int,
-    bits2int_modN: c.bits2int_modN
-  };
-  return { CURVE, curveOpts, hash: c.hash, ecdsaOpts };
-}
-function _ecdsa_new_output_to_legacy(c, _ecdsa) {
-  const Point = _ecdsa.Point;
-  return Object.assign({}, _ecdsa, {
-    ProjectivePoint: Point,
-    CURVE: Object.assign({}, c, nLength(Point.Fn.ORDER, Point.Fn.BITS))
-  });
-}
-function weierstrass(c) {
-  const { CURVE, curveOpts, hash, ecdsaOpts } = _ecdsa_legacy_opts_to_new(c);
-  const Point = weierstrassN(CURVE, curveOpts);
-  const signs = ecdsa(Point, hash, ecdsaOpts);
-  return _ecdsa_new_output_to_legacy(c, signs);
-}
-
-// node_modules/@noble/curves/esm/_shortw_utils.js
-function createCurve(curveDef, defHash) {
-  const create = (hash) => weierstrass({ ...curveDef, hash });
-  return { ...create(defHash), create };
-}
-
-// node_modules/@noble/curves/esm/nist.js
-var p256_CURVE = {
-  p: BigInt("0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"),
-  n: BigInt("0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"),
-  h: BigInt(1),
-  a: BigInt("0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc"),
-  b: BigInt("0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b"),
-  Gx: BigInt("0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296"),
-  Gy: BigInt("0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5")
-};
-var p384_CURVE = {
-  p: BigInt("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff"),
-  n: BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973"),
-  h: BigInt(1),
-  a: BigInt("0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000fffffffc"),
-  b: BigInt("0xb3312fa7e23ee7e4988e056be3f82d19181d9c6efe8141120314088f5013875ac656398d8a2ed19d2a85c8edd3ec2aef"),
-  Gx: BigInt("0xaa87ca22be8b05378eb1c71ef320ad746e1d3b628ba79b9859f741e082542a385502f25dbf55296c3a545e3872760ab7"),
-  Gy: BigInt("0x3617de4a96262c6f5d9e98bf9292dc29f8f41dbd289a147ce9da3113b5f0b8c00a60b1ce1d7e819d7a431d7c90ea0e5f")
-};
-var p521_CURVE = {
-  p: BigInt("0x1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
-  n: BigInt("0x01fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa51868783bf2f966b7fcc0148f709a5d03bb5c9b8899c47aebb6fb71e91386409"),
-  h: BigInt(1),
-  a: BigInt("0x1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc"),
-  b: BigInt("0x0051953eb9618e1c9a1f929a21a0b68540eea2da725b99b315f3b8b489918ef109e156193951ec7e937b1652c0bd3bb1bf073573df883d2c34f1ef451fd46b503f00"),
-  Gx: BigInt("0x00c6858e06b70404e9cd9e3ecb662395b4429c648139053fb521f828af606b4d3dbaa14b5e77efe75928fe1dc127a2ffa8de3348b3c1856a429bf97e7e31c2e5bd66"),
-  Gy: BigInt("0x011839296a789a3bc0045c8a5fb42c7d1bd998f54449579b446817afbd17273e662c97ee72995ef42640c550b9013fad0761353c7086a272c24088be94769fd16650")
-};
-var Fp256 = Field(p256_CURVE.p);
-var Fp384 = Field(p384_CURVE.p);
-var Fp521 = Field(p521_CURVE.p);
-var p256 = createCurve({ ...p256_CURVE, Fp: Fp256, lowS: false }, sha256);
-var p384 = createCurve({ ...p384_CURVE, Fp: Fp384, lowS: false }, sha384);
-var p521 = createCurve({ ...p521_CURVE, Fp: Fp521, lowS: false, allowedPrivateKeyLengths: [130, 131, 132] }, sha512);
-
-// node_modules/@noble/curves/esm/p256.js
-var p2562 = p256;
-
-// src/webauthn-approval.ts
+var import_node_crypto7 = require("crypto");
+var import_p256 = require("@noble/curves/p256");
+var import_ed255193 = require("@noble/curves/ed25519");
+var import_sha2566 = require("@noble/hashes/sha256");
+var import_utils6 = require("@noble/hashes/utils");
 function createApprovalChallenge(requestId, toolName, agentId, rpId = "scopeblind.com", timeoutSeconds = 300) {
-  const challengeBytes = (0, import_node_crypto8.randomBytes)(32);
-  const contextHash = (0, import_node_crypto8.createHash)("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
+  const challengeBytes = (0, import_node_crypto7.randomBytes)(32);
+  const contextHash = (0, import_node_crypto7.createHash)("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
   return {
     challenge: base64urlEncode(challengeBytes),
     requestId,
@@ -44328,7 +41098,7 @@ function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts
   const authData = base64urlDecode2(assertion.authenticatorData);
   if (authData.length < 37) return fail("authenticator_data_too_short");
   const rpIdHash = authData.slice(0, 32);
-  const expectedRpIdHash = sha2562(new TextEncoder().encode(challenge.rpId));
+  const expectedRpIdHash = (0, import_sha2566.sha256)(new TextEncoder().encode(challenge.rpId));
   if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail("rp_id_hash_mismatch");
   const flags = authData[32];
   const userPresent = !!(flags & 1);
@@ -44339,14 +41109,14 @@ function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts
   if (typeof opts.prevSignCount === "number" && signCount !== 0 && signCount <= opts.prevSignCount) {
     return fail("sign_count_regression", { userVerified, signCount });
   }
-  const signedData = concatBytes2(authData, sha2562(clientDataBytes));
+  const signedData = concatBytes(authData, (0, import_sha2566.sha256)(clientDataBytes));
   const sigBytes = base64urlDecode2(assertion.signature);
   let sigOk = false;
   try {
     if (credentialPublicKey.alg === -7) {
-      sigOk = p2562.verify(sigBytes, sha2562(signedData), hexToBytes(credentialPublicKey.publicKeyHex), { format: "der" });
+      sigOk = import_p256.p256.verify(sigBytes, (0, import_sha2566.sha256)(signedData), (0, import_utils6.hexToBytes)(credentialPublicKey.publicKeyHex), { format: "der" });
     } else if (credentialPublicKey.alg === -8) {
-      sigOk = ed25519.verify(sigBytes, signedData, hexToBytes(credentialPublicKey.publicKeyHex));
+      sigOk = import_ed255193.ed25519.verify(sigBytes, signedData, (0, import_utils6.hexToBytes)(credentialPublicKey.publicKeyHex));
     } else {
       return fail("unsupported_algorithm", { userVerified, signCount });
     }
@@ -44378,7 +41148,7 @@ function createApprovalReceiptPayload(challenge, result) {
     context_hash: result.contextHash,
     approved_at: result.approvedAt,
     // Hash the credential ID for privacy — don't store the raw ID
-    credential_id_hash: (0, import_node_crypto8.createHash)("sha256").update(result.credentialId).digest("hex").slice(0, 16)
+    credential_id_hash: (0, import_node_crypto7.createHash)("sha256").update(result.credentialId).digest("hex").slice(0, 16)
   };
 }
 function base64urlEncode(buffer) {
@@ -44389,7 +41159,7 @@ function base64urlDecode2(str) {
   const padded = base64 + "=".repeat((4 - base64.length % 4) % 4);
   return new Uint8Array(Buffer.from(padded, "base64"));
 }
-function concatBytes2(a, b) {
+function concatBytes(a, b) {
   const out = new Uint8Array(a.length + b.length);
   out.set(a, 0);
   out.set(b, a.length);
@@ -44397,13 +41167,13 @@ function concatBytes2(a, b) {
 }
 function bytesEqual(a, b) {
   if (a.length !== b.length) return false;
-  return (0, import_node_crypto8.timingSafeEqual)(Buffer.from(a), Buffer.from(b));
+  return (0, import_node_crypto7.timingSafeEqual)(Buffer.from(a), Buffer.from(b));
 }
 function constantTimeStrEqual(a, b) {
   const ab = Buffer.from(a, "utf8");
   const bb = Buffer.from(b, "utf8");
   if (ab.length !== bb.length) return false;
-  return (0, import_node_crypto8.timingSafeEqual)(ab, bb);
+  return (0, import_node_crypto7.timingSafeEqual)(ab, bb);
 }
 
 // src/did-vc.ts
@@ -44411,8 +41181,8 @@ function ed25519ToDIDKey(publicKeyHex) {
   const multicodecPrefix = Buffer.from([237, 1]);
   const publicKeyBytes = Buffer.from(publicKeyHex, "hex");
   const multicodecKey = Buffer.concat([multicodecPrefix, publicKeyBytes]);
-  const base58 = base58btcEncode(multicodecKey);
-  return `did:key:z${base58}`;
+  const base582 = base58btcEncode(multicodecKey);
+  return `did:key:z${base582}`;
 }
 function manifestToVC(manifest) {
   const did = ed25519ToDIDKey(manifest.public_key);
@@ -44648,7 +41418,7 @@ function evaluatePolicy(tool, policy) {
 }
 
 // src/evidence-authenticity.ts
-var import_node_crypto9 = require("crypto");
+var import_node_crypto8 = require("crypto");
 async function createEvidenceAttestation(input) {
   const tlsNotaryAvailable = await isTLSNotaryAvailable();
   if (tlsNotaryAvailable) {
@@ -44708,14 +41478,14 @@ async function verifyEvidenceAttestation(attestation) {
   }
 }
 function hashResponseBody(body) {
-  return (0, import_node_crypto9.createHash)("sha256").update(typeof body === "string" ? body : body).digest("hex");
+  return (0, import_node_crypto8.createHash)("sha256").update(typeof body === "string" ? body : body).digest("hex");
 }
 function createAttestationField(attestation) {
   return {
     evidence_authenticity: {
       version: attestation.version,
       method: attestation.method,
-      url_hash: (0, import_node_crypto9.createHash)("sha256").update(attestation.url).digest("hex").slice(0, 16),
+      url_hash: (0, import_node_crypto8.createHash)("sha256").update(attestation.url).digest("hex").slice(0, 16),
       response_hash: attestation.responseHash,
       fetched_at: attestation.fetchedAt,
       verified: attestation.verified,
@@ -44746,7 +41516,7 @@ async function createTLSNotaryAttestation(input) {
 }
 
 // src/c2pa-credentials.ts
-var import_node_crypto10 = require("crypto");
+var import_node_crypto9 = require("crypto");
 function createC2PAManifest(receipts, options) {
   const generator = options.generator || "protect-mcp";
   const version = options.version || "0.3.3";
@@ -44760,7 +41530,7 @@ function createC2PAManifest(receipts, options) {
     (r) => r.payload?.decision === "deny"
   );
   const receiptHashes = receipts.map(
-    (r) => (0, import_node_crypto10.createHash)("sha256").update(JSON.stringify(r)).digest("hex")
+    (r) => (0, import_node_crypto9.createHash)("sha256").update(JSON.stringify(r)).digest("hex")
   );
   const merkleRoot2 = computeMerkleRoot(receiptHashes);
   const assertions = [
@@ -44902,7 +41672,7 @@ function computeMerkleRoot(hashes) {
     const left = hashes[i];
     const right = i + 1 < hashes.length ? hashes[i + 1] : left;
     nextLevel.push(
-      (0, import_node_crypto10.createHash)("sha256").update(left + right).digest("hex")
+      (0, import_node_crypto9.createHash)("sha256").update(left + right).digest("hex")
     );
   }
   return computeMerkleRoot(nextLevel);
@@ -44955,7 +41725,7 @@ function toManifoldFormat(prediction) {
 }
 
 // src/agent-exchange.ts
-var import_node_crypto11 = require("crypto");
+var import_node_crypto10 = require("crypto");
 var ReceiptPropagator = class {
   issuer;
   signer;
@@ -44976,7 +41746,7 @@ var ReceiptPropagator = class {
   delegate(delegateId, options) {
     const now = /* @__PURE__ */ new Date();
     const receipt = {
-      receipt_id: `del_${(0, import_node_crypto11.randomUUID)().slice(0, 12)}`,
+      receipt_id: `del_${(0, import_node_crypto10.randomUUID)().slice(0, 12)}`,
       receipt_type: "delegation",
       issuer_id: this.issuer,
       event_time: now.toISOString(),
@@ -45033,7 +41803,7 @@ var ReceiptPropagator = class {
     const currentCount = this.delegationCallCounts.get(options.delegation_receipt) || 0;
     this.delegationCallCounts.set(options.delegation_receipt, currentCount + 1);
     const receipt = {
-      receipt_id: `act_${(0, import_node_crypto11.randomUUID)().slice(0, 12)}`,
+      receipt_id: `act_${(0, import_node_crypto10.randomUUID)().slice(0, 12)}`,
       receipt_type: "execution",
       issuer_id: this.issuer,
       event_time: (/* @__PURE__ */ new Date()).toISOString(),
@@ -45125,7 +41895,7 @@ function createReceiptChannel(orchestratorId) {
     async withDelegation(delegateId, tools, fn, options) {
       const delegation = propagator.delegate(delegateId, {
         tools,
-        scope: options?.scope || `task-${(0, import_node_crypto11.randomUUID)().slice(0, 8)}`,
+        scope: options?.scope || `task-${(0, import_node_crypto10.randomUUID)().slice(0, 8)}`,
         ttl: options?.ttl || 3600,
         maxCalls: options?.maxCalls
       });
@@ -45393,20 +42163,23 @@ Contents: Hello from protect-mcp demo server!`;
   }
   return "";
 }
-var rl = (0, import_node_readline2.createInterface)({ input: process.stdin, crlfDelay: Infinity });
-rl.on("line", (line) => {
-  const trimmed = line.trim();
-  if (!trimmed) return;
-  try {
-    const request = JSON.parse(trimmed);
-    const response = handleRequest(request);
-    if (response) {
-      process.stdout.write(response + "\n");
+var isMainModule = /demo-server\.(js|cjs|mjs|ts)$/.test(process.argv[1] || "");
+if (isMainModule) {
+  const rl = (0, import_node_readline2.createInterface)({ input: process.stdin, crlfDelay: Infinity });
+  rl.on("line", (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    try {
+      const request = JSON.parse(trimmed);
+      const response = handleRequest(request);
+      if (response) {
+        process.stdout.write(response + "\n");
+      }
+    } catch {
     }
-  } catch {
-  }
-});
-process.stderr.write("[DEMO_SERVER] protect-mcp demo server started \u2014 5 tools registered\n");
+  });
+  process.stderr.write("[DEMO_SERVER] protect-mcp demo server started \u2014 5 tools registered\n");
+}
 function createSandboxServer() {
   const { McpServer } = require_mcp();
   const { z } = require_zod();
@@ -45485,6 +42258,7 @@ function createSandboxServer() {
   checkRateLimit,
   collectSignedReceipts,
   computeCalibration,
+  computeSbIssuerKid,
   confidentialInference,
   connectorDirectory,
   connectorDoctor,
@@ -45498,6 +42272,7 @@ function createSandboxServer() {
   createEvidenceAttestation,
   createLogAnchorField,
   createReceiptChannel,
+  createReceiptEnvelope,
   createSandbox,
   createSandboxServer,
   createSelectiveDisclosurePackage,
@@ -45547,6 +42322,8 @@ function createSandboxServer() {
   policySetFromSource,
   queryExternalPDP,
   readInstalledConnectorPilots,
+  receiptHash,
+  receiptIdentity,
   receiptToVP,
   receiptsToHFRows,
   redactFields,
@@ -45570,6 +42347,7 @@ function createSandboxServer() {
   verifyApprovalAssertion,
   verifyCommitment,
   verifyEvidenceAttestation,
+  verifyReceipt,
   verifyRekorAnchor,
   verifySelectiveDisclosurePackage,
   writeConnectorPilots
@@ -45604,19 +42382,3 @@ function createSandboxServer() {
  *
  * @license MIT
  */
-/*! Bundled license information:
-
-@noble/hashes/esm/utils.js:
-  (*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
-
-@noble/curves/esm/utils.js:
-@noble/curves/esm/abstract/modular.js:
-@noble/curves/esm/abstract/curve.js:
-@noble/curves/esm/abstract/edwards.js:
-@noble/curves/esm/ed25519.js:
-@noble/curves/esm/abstract/weierstrass.js:
-@noble/curves/esm/_shortw_utils.js:
-@noble/curves/esm/nist.js:
-@noble/curves/esm/p256.js:
-  (*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
-*/

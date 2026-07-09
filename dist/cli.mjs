@@ -11,24 +11,31 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-MOXINIMB.mjs";
+} from "./chunk-VMOZJXYM.mjs";
 import {
   ProtectGateway,
   validateCredentials
-} from "./chunk-YM6SOJBR.mjs";
+} from "./chunk-JUI6AZTI.mjs";
 import {
   buildActionReadback,
   initSigning,
   loadPolicy,
   signDecision
-} from "./chunk-G6X763MH.mjs";
+} from "./chunk-5AYAOZ34.mjs";
 import {
+  buildPolicyBundle,
+  digestCedarDir,
   evaluateCedar,
   isCedarAvailable,
   loadCedarPolicies,
   policySetFromSource,
-  runEvaluatorSelfTest
-} from "./chunk-MWXDXYWH.mjs";
+  runEvaluatorSelfTest,
+  shortPolicyLabel,
+  verifyPolicyBundle
+} from "./chunk-FGCNKEEW.mjs";
+import {
+  verifyReceipt
+} from "./chunk-XOP3PEBM.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/cli.ts
@@ -211,8 +218,8 @@ async function handleInit(argv) {
   let keypair;
   {
     const { randomBytes } = await import("crypto");
-    const { ed25519 } = await import("./ed25519-SQA3S2RV.mjs");
-    const { bytesToHex } = await import("./utils-6AYZFE5A.mjs");
+    const { ed25519 } = await import("@noble/curves/ed25519");
+    const { bytesToHex } = await import("@noble/hashes/utils");
     const privateKey = randomBytes(32);
     const publicKey = ed25519.getPublicKey(privateKey);
     keypair = {
@@ -2231,14 +2238,17 @@ function vkey(r){return "row:"+(r.id||"")+"|"+(r.ts||"")}
 function hexb(h){h=String(h||"");var a=new Uint8Array(h.length>>1);for(var i=0;i<a.length;i++)a[i]=parseInt(h.substr(i*2,2),16);return a}
 function canon(v){return JSON.stringify(v,function(k,x){if(x&&typeof x==="object"&&!Array.isArray(x)){var s={},ks=Object.keys(x).sort();for(var i=0;i<ks.length;i++)s[ks[i]]=x[ks[i]];return s}return x})}
 async function edv(sig,msg,pub){var key=await crypto.subtle.importKey("raw",hexb(pub),{name:"Ed25519"},false,["verify"]);return crypto.subtle.verify({name:"Ed25519"},key,hexb(sig),msg)}
-async function verifyRow(r){var raw=r.raw;if(!raw||typeof raw.signature!=="string")return"unsigned";
-var rest={},k;for(k in raw)if(k!=="signature")rest[k]=raw[k];
-var msg=new TextEncoder().encode(canon(rest));
+async function verifyRow(r){var raw=r.raw;if(!raw)return"unsigned";
+var sigHex=null,msgObj=null;
+if(raw.signature&&typeof raw.signature==="object"&&typeof raw.signature.sig==="string"&&raw.payload){if(raw.signature.alg!=="EdDSA")return"bad";sigHex=raw.signature.sig;msgObj=raw.payload}
+else if(typeof raw.signature==="string"){var rest={},k;for(k in raw)if(k!=="signature")rest[k]=raw[k];sigHex=raw.signature;msgObj=rest}
+else return"unsigned";
+var msg=new TextEncoder().encode(canon(msgObj));
 var pin=String(META.pinned_key||"").toLowerCase();
 var emb=String((raw.payload&&raw.payload.public_key)||raw.public_key||"").toLowerCase();
 if(!/^[0-9a-f]{64}$/.test(emb))emb="";
-if(pin){if(await edv(raw.signature,msg,pin))return"ok";if(emb&&emb!==pin&&await edv(raw.signature,msg,emb))return"foreign";return"bad"}
-if(emb)return(await edv(raw.signature,msg,emb))?"ok":"bad";
+if(pin){if(await edv(sigHex,msg,pin))return"ok";if(emb&&emb!==pin&&await edv(sigHex,msg,emb))return"foreign";return"bad"}
+if(emb)return(await edv(sigHex,msg,emb))?"ok":"bad";
 return"nokey"}
 function vsum(){var s={ok:0,bad:0,foreign:0,nokey:0};RECORDS.forEach(function(r){if(!r.signed)return;var v=VSTATE[vkey(r)];if(v&&s[v]!==undefined)s[v]++});return s}
 async function kickVerify(){if(VBUSY||VUNSUP||!(window.crypto&&crypto.subtle))return;VBUSY=true;
@@ -2284,7 +2294,7 @@ if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(functio
 async function handleClaim(argv) {
   const { readFileSync, existsSync, writeFileSync } = await import("fs");
   const { join } = await import("path");
-  const { buildClaim } = await import("./claim-RIXFOQM7.mjs");
+  const { buildClaim } = await import("./claim-MPXJRCFC.mjs");
   let dir = process.cwd();
   const di = argv.indexOf("--dir");
   if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
@@ -2388,7 +2398,7 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
   process.stdout.write(`  Hand it to anyone. They verify offline: ${bold("npx protect-mcp verify-claim " + out)}
 `);
   if (argv.indexOf("--anchor") !== -1) {
-    const { anchorClaim } = await import("./claim-RIXFOQM7.mjs");
+    const { anchorClaim } = await import("./claim-MPXJRCFC.mjs");
     const li = argv.indexOf("--log");
     const logBase = li !== -1 && argv[li + 1] ? argv[li + 1] : void 0;
     process.stdout.write(`
@@ -2408,7 +2418,7 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
 `);
       process.stdout.write(`  ${dim("Anchor record written to " + sidecar + ". Only the digest was sent; your record stayed local.")}
 `);
-      const { lookupPinnedIdentity } = await import("./claim-RIXFOQM7.mjs");
+      const { lookupPinnedIdentity } = await import("./claim-MPXJRCFC.mjs");
       const who = await lookupPinnedIdentity(key.publicKey, { log: logBase });
       if (who && who.found && !who.revoked) {
         process.stdout.write(`  ${green("Identity:")} anchored as ${bold(who.name || who.slug || "enrolled org")} ${dim("(key pinned in the ScopeBlind directory" + (who.enrolled_at ? ", enrolled " + who.enrolled_at.slice(0, 10) : "") + ")")}
@@ -2432,7 +2442,7 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
 async function handleAnchorRecord(argv) {
   const { readFileSync, existsSync, appendFileSync } = await import("fs");
   const { join } = await import("path");
-  const { anchorRecordCheckpoint, buildRecordCheckpoint, lookupPinnedIdentity } = await import("./claim-RIXFOQM7.mjs");
+  const { anchorRecordCheckpoint, buildRecordCheckpoint, lookupPinnedIdentity } = await import("./claim-MPXJRCFC.mjs");
   let dir = process.cwd();
   const di = argv.indexOf("--dir");
   if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
@@ -2557,7 +2567,7 @@ ${bold("\u{1F6E1}\uFE0F  Record checkpoint")}
 }
 async function handleVerifyClaim(argv) {
   const { readFileSync, existsSync } = await import("fs");
-  const { verifyClaim } = await import("./claim-RIXFOQM7.mjs");
+  const { verifyClaim } = await import("./claim-MPXJRCFC.mjs");
   const file = argv.find((a) => !a.startsWith("--"));
   if (!file || !existsSync(file)) {
     process.stderr.write(`
@@ -2609,7 +2619,7 @@ ${bold("protect-mcp verify-claim")}
   const requireAnchor = argv.includes("--check-anchor");
   let anchorOk = true;
   if (existsSync(sidecarPath)) {
-    const { checkClaimAnchor } = await import("./claim-RIXFOQM7.mjs");
+    const { checkClaimAnchor } = await import("./claim-MPXJRCFC.mjs");
     let sidecar = null;
     try {
       sidecar = JSON.parse(readFileSync(sidecarPath, "utf-8"));
@@ -2642,7 +2652,7 @@ ${bold("protect-mcp verify-claim")}
 `);
       }
       if (!argv.includes("--offline") && sidecar.envelope) {
-        const { lookupPinnedIdentity } = await import("./claim-RIXFOQM7.mjs");
+        const { lookupPinnedIdentity } = await import("./claim-MPXJRCFC.mjs");
         const who = await lookupPinnedIdentity(sidecar.envelope.verification_key, {});
         if (who && who.found && !who.revoked) {
           process.stdout.write(`              ${green("\u2713")} issuer key pinned to ${bold(who.name || who.slug || "an enrolled org")} ${dim("(ScopeBlind key directory)")}
@@ -2842,8 +2852,8 @@ ${bold("protect-mcp quickstart")}
   const { randomBytes } = await import("crypto");
   let keypair;
   try {
-    const { ed25519 } = await import("./ed25519-SQA3S2RV.mjs");
-    const { bytesToHex } = await import("./utils-6AYZFE5A.mjs");
+    const { ed25519 } = await import("@noble/curves/ed25519");
+    const { bytesToHex } = await import("@noble/hashes/utils");
     const privateKey = randomBytes(32);
     const publicKey = ed25519.getPublicKey(privateKey);
     keypair = {
@@ -3057,15 +3067,15 @@ ${bold("protect-mcp registry status")}
 async function handleKillerDemo(argv) {
   const { mkdtempSync } = await import("fs");
   const { tmpdir } = await import("os");
-  const { ed25519 } = await import("./ed25519-SQA3S2RV.mjs");
-  const { bytesToHex } = await import("./utils-6AYZFE5A.mjs");
+  const { ed25519 } = await import("@noble/curves/ed25519");
+  const { bytesToHex } = await import("@noble/hashes/utils");
   const { randomBytes } = await import("crypto");
   const artifacts = await import("@veritasacta/artifacts");
   const {
     createSelectiveDisclosurePackage,
     signCommittedDecision,
     verifySelectiveDisclosurePackage
-  } = await import("./signing-committed-TGWXSLAO.mjs");
+  } = await import("./signing-committed-7VEKAJ4A.mjs");
   const registryMod = await import("./receipt-registry-6CAOY6RP.mjs");
   const dir = resolveCli(flagValue(argv, "--dir") || mkdtempSync(joinCli(tmpdir(), "scopeblind-killer-demo-")));
   mkdirSyncCli(dir, { recursive: true });
@@ -3183,12 +3193,12 @@ async function handleKillerDemo(argv) {
   const tamperedArtifact = JSON.parse(signed.signed);
   if (tamperedArtifact.payload && typeof tamperedArtifact.payload === "object") {
     tamperedArtifact.payload.decision = "deny";
-    tamperedArtifact.payload.tool = "send_email";
+    tamperedArtifact.payload.tool_name = "send_email";
   } else {
     tamperedArtifact.tool = "send_email";
   }
-  const validOriginal = artifacts.verifyArtifact(receiptArtifact, keypair.publicKey);
-  const validTampered = artifacts.verifyArtifact(tamperedArtifact, keypair.publicKey);
+  const validOriginal = verifyReceipt(receiptArtifact, keypair.publicKey);
+  const validTampered = verifyReceipt(tamperedArtifact, keypair.publicKey);
   writeFileSyncCli(joinCli(dir, "receipts", "tampered.receipt.json"), JSON.stringify(tamperedArtifact, null, 2) + "\n");
   const committed = signCommittedDecision(
     executedEntry,
@@ -3334,7 +3344,7 @@ async function handleVerifyDisclosure(argv) {
     process.stderr.write("Usage: protect-mcp verify-disclosure --receipt <committed-receipt.json> --disclosure <selective-disclosure.json>\\n");
     process.exit(1);
   }
-  const { verifySelectiveDisclosurePackage } = await import("./signing-committed-TGWXSLAO.mjs");
+  const { verifySelectiveDisclosurePackage } = await import("./signing-committed-7VEKAJ4A.mjs");
   const receipt = JSON.parse(readFileSyncCli(resolveCli(receiptPath), "utf-8"));
   const disclosure = JSON.parse(readFileSyncCli(resolveCli(disclosurePath), "utf-8"));
   const result = verifySelectiveDisclosurePackage(receipt, disclosure);
@@ -3830,8 +3840,8 @@ ${bold("protect-mcp init-hooks")}
     if (!existsSync(keysDir)) mkdirSync(keysDir, { recursive: true });
     const { randomBytes: rb } = await import("crypto");
     try {
-      const { ed25519 } = await import("./ed25519-SQA3S2RV.mjs");
-      const { bytesToHex } = await import("./utils-6AYZFE5A.mjs");
+      const { ed25519 } = await import("@noble/curves/ed25519");
+      const { bytesToHex } = await import("@noble/hashes/utils");
       const privateKey = rb(32);
       const publicKey = ed25519.getPublicKey(privateKey);
       writeFileSync(keyPath, JSON.stringify({
@@ -4130,7 +4140,7 @@ async function handleSign(argv) {
 }
 async function handleSample(argv) {
   const dir = flagValue(argv, "--dir") || process.cwd();
-  const { buildSampleKit } = await import("./sample-6LRP73ZD.mjs");
+  const { buildSampleKit } = await import("./sample-O3KYZWOX.mjs");
   let kit;
   try {
     kit = buildSampleKit(dir, { force: argv.includes("--force") });
@@ -4182,7 +4192,13 @@ async function handlePolicy(argv) {
   const dir = findDir();
   const cedarFiles = dir ? rd(dir).filter((f) => f.endsWith(".cedar")).sort() : [];
   const readAll = () => cedarFiles.map((f) => rf(pj(dir, f), "utf-8")).join("\n\n");
-  const digestOf = (src) => createHash("sha256").update(src).digest("hex").slice(0, 16);
+  const digestOf = (_src) => {
+    try {
+      return shortPolicyLabel(digestCedarDir(dir));
+    } catch {
+      return "unavailable";
+    }
+  };
   const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
   const targetFile = cedarFiles.includes("agent.cedar") ? "agent.cedar" : cedarFiles[0];
   if (sub === "path") {
@@ -4224,6 +4240,7 @@ async function handlePolicy(argv) {
     }
     const effect = sub === "allow" ? "permit" : "forbid";
     const before = readAll();
+    const beforeLabel = digestOf(before);
     const ruleRe = new RegExp(`${effect}\\s*\\([^)]*resource\\s*==\\s*Tool::"${tool.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}"`, "s");
     if (ruleRe.test(stripComments(before))) {
       process.stdout.write(`${dim("No change:")} a ${effect} rule for ${bold(tool)} already exists in ${targetFile}.
@@ -4244,10 +4261,66 @@ ${effect}(
 `);
     process.stdout.write(`  ${dim(`appended to ${pj(dir, targetFile)}`)}
 `);
-    process.stdout.write(`  ${dim(`policy digest ${digestOf(before)} \u2192 ${digestOf(after)}`)}
+    process.stdout.write(`  ${dim(`policy digest ${beforeLabel} \u2192 ${digestOf(after)}`)}
 `);
     process.stdout.write(`
 ${dim("A running gate (protect-mcp serve) hot-reloads on this change; no restart needed. The one-shot hook path re-reads per call.")}
+`);
+    process.exit(0);
+  }
+  if (sub === "digest") {
+    if (!dir) {
+      process.stderr.write("No Cedar policy found. Run: npx protect-mcp init-hooks\n");
+      process.exit(1);
+    }
+    const result = digestCedarDir(dir);
+    const expectIdx = argv.indexOf("--expect");
+    const expected = expectIdx >= 0 ? argv[expectIdx + 1] : null;
+    if (argv.includes("--json")) {
+      process.stdout.write(JSON.stringify({ ...result, ...expected ? { expected, matches: expected === result.policy_digest } : {} }, null, 2) + "\n");
+    } else {
+      process.stdout.write(`${bold("policy_digest")}  ${result.policy_digest}
+`);
+      process.stdout.write(`${dim(`construction   ${result.construction}`)}
+`);
+      process.stdout.write(`${dim(`engine         ${result.engine}   (${result.files.length} file${result.files.length === 1 ? "" : "s"} in ${dir})`)}
+`);
+      for (const f of result.files) process.stdout.write(`${dim(`  ${f.sha256.slice(0, 16)}\u2026  ${f.name}`)}
+`);
+      process.stdout.write(`${dim('recompute: sha256 each file; M = {construction, engine, files:[{name, sha256}] sorted by name}; digest = "sha256:" + hex(SHA-256(JCS(M)))')}
+`);
+      if (expected) process.stdout.write(expected === result.policy_digest ? `${bold("\u2713 matches --expect")}
+` : `${bold("\u2717 does NOT match --expect")} ${dim(expected)}
+`);
+    }
+    process.exit(expected && expected !== result.policy_digest ? 1 : 0);
+  }
+  if (sub === "publish") {
+    if (!dir) {
+      process.stderr.write("No Cedar policy found. Run: npx protect-mcp init-hooks\n");
+      process.exit(1);
+    }
+    const outIdx = argv.indexOf("--out");
+    const outDir = outIdx >= 0 && argv[outIdx + 1] ? argv[outIdx + 1] : pj(".well-known", "acta-policies");
+    const files = cedarFiles.map((f) => ({ name: f, content: rf(pj(dir, f), "utf-8") }));
+    const bundle = buildPolicyBundle("cedar", files);
+    const check = verifyPolicyBundle(bundle);
+    if (!check.valid) {
+      process.stderr.write(`internal error: bundle failed self-verification (${check.error})
+`);
+      process.exit(1);
+    }
+    const { mkdirSync: mk } = await import("fs");
+    mk(outDir, { recursive: true });
+    const outPath = pj(outDir, `${bundle.policy_digest.replace(/^sha256:/, "")}.json`);
+    wf(outPath, JSON.stringify(bundle, null, 2) + "\n");
+    process.stdout.write(`${bold("\u2713 published")} ${outPath}
+`);
+    process.stdout.write(`  ${dim(`policy_digest ${bundle.policy_digest}`)}
+`);
+    process.stdout.write(`  ${dim("self-verified: per-file hashes and manifest digest recompute from the bundle bytes alone")}
+`);
+    process.stdout.write(`  ${dim("serve this directory at https://<your-domain>/.well-known/acta-policies/")}
 `);
     process.exit(0);
   }
@@ -4575,7 +4648,7 @@ async function main() {
   if (useHttp) {
     const portIdx = args.indexOf("--port");
     const httpPort = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 3e3;
-    const { startHttpTransport } = await import("./http-transport-VHD3YBT5.mjs");
+    const { startHttpTransport } = await import("./http-transport-QRLBLBLV.mjs");
     startHttpTransport({ port: httpPort, config, serverCommand: childCommand });
     return;
   }
@@ -4783,7 +4856,7 @@ async function handleReport(args) {
       dir = args[++i];
     }
   }
-  const { generateReport, formatReportMarkdown } = await import("./report-5XCNW6FB.mjs");
+  const { generateReport, formatReportMarkdown } = await import("./report-5B7EO3QB.mjs");
   const { join } = await import("path");
   const logPath = join(dir, ".protect-mcp-log.jsonl");
   const receiptPath = join(dir, ".protect-mcp-receipts.jsonl");

@@ -2,7 +2,13 @@
 import {
   evaluateCedar,
   policySetFromSource
-} from "./chunk-MWXDXYWH.mjs";
+} from "./chunk-FGCNKEEW.mjs";
+import {
+  computeSbIssuerKid,
+  createReceiptEnvelope,
+  receiptIdentity,
+  verifyReceipt
+} from "./chunk-XOP3PEBM.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/mcp-server.ts
@@ -73,14 +79,17 @@ var TOOLS = [
 ];
 function buildReceiptPayload(args) {
   return {
-    tool: args.tool,
+    // draft-02 s3.1 access-decision fields
+    type: "protectmcp:decision",
+    tool_name: args.tool,
     decision: args.decision,
-    reason_code: args.reason_code ?? (args.decision === "deny" ? "policy_denied" : "post_execution_receipt"),
+    reason: args.reason_code ?? (args.decision === "deny" ? "policy_denied" : "post_execution_receipt"),
     policy_digest: args.policy_digest ?? "none",
+    // Extension fields (signed alongside the s3.1 core)
     scope: args.request_id,
     mode: "enforce",
     request_id: args.request_id,
-    spec: "draft-farley-acta-signed-receipts-01",
+    spec: "draft-farley-acta-signed-receipts-02",
     issuer_certification: "self-signed",
     public_key: args.public_key
   };
@@ -135,25 +144,26 @@ async function callSign(args) {
     public_key: publicKey
   });
   const artifactType = decision === "deny" ? "gateway_restraint" : "decision_receipt";
-  const { artifact } = a.createSignedArtifact(artifactType, payload, privateKey, { kid: "mcp", issuer: "protect-mcp" });
-  return { receipt: artifact, artifact_type: artifactType, public_key: publicKey, ephemeral };
+  const { envelope } = createReceiptEnvelope(payload, privateKey, computeSbIssuerKid(publicKey));
+  return { receipt: envelope, artifact_type: artifactType, public_key: publicKey, ephemeral };
 }
 async function callVerify(args) {
   const receipt = args.receipt;
   if (!receipt || typeof receipt !== "object") return { valid: false, error: "missing_receipt" };
-  const a = await loadArtifacts();
+  const identity = receiptIdentity(receipt);
   const embedded = receipt.payload?.public_key;
   const key = typeof args.public_key_hex === "string" && args.public_key_hex ? args.public_key_hex : typeof embedded === "string" ? embedded : null;
   if (!key) {
-    return { valid: false, error: "no_public_key", type: receipt.type ?? "unknown", kid: null, issuer: null };
+    return { valid: false, error: "no_public_key", type: identity.type ?? "unknown", kid: identity.kid, issuer: identity.issuer };
   }
-  const result = a.verifyArtifact(receipt, key);
+  const result = verifyReceipt(receipt, key);
   return {
-    valid: !!result.valid,
+    valid: result.valid,
     error: result.valid ? null : result.error || "invalid_signature",
-    type: receipt.type ?? "unknown",
-    kid: receipt.kid ?? null,
-    issuer: receipt.issuer ?? null
+    shape: result.shape,
+    type: identity.type ?? "unknown",
+    kid: identity.kid,
+    issuer: identity.issuer
   };
 }
 var SELF_TEST_POLICY = `
@@ -177,7 +187,7 @@ async function callSelfTest() {
     if (signed.receipt && signed.public_key) {
       const ok = await callVerify({ receipt: signed.receipt, public_key_hex: signed.public_key });
       const tampered = JSON.parse(JSON.stringify(signed.receipt));
-      if (tampered.payload) tampered.payload.tool = "tampered";
+      if (tampered.payload) tampered.payload.tool_name = "tampered";
       const bad = await callVerify({ receipt: tampered, public_key_hex: signed.public_key });
       signVerifyRoundtrip = ok.valid === true && bad.valid === false;
       details.sign_verify = { valid_verifies: ok.valid, tampered_rejected: bad.valid === false };

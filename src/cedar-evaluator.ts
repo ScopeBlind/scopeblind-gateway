@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import type { ExternalDecision, TrustTier } from './types.js';
+import { digestPolicyFiles, digestCedarSource } from './policy-digest.js';
 
 // ============================================================
 // Types
@@ -21,7 +22,7 @@ import type { ExternalDecision, TrustTier } from './types.js';
 export interface CedarPolicySet {
   /** Raw concatenated Cedar source */
   source: string;
-  /** SHA-256 digest of the sorted, concatenated policy source */
+  /** "sha256:<64 hex>" under acta-policy-digest-v1 (see policy-digest.ts) */
   digest: string;
   /** Number of individual .cedar files loaded */
   fileCount: number;
@@ -98,14 +99,16 @@ export function loadCedarPolicies(dirPath: string): CedarPolicySet {
     throw new Error(`No .cedar files found in: ${dirPath}`);
   }
 
-  const sources: string[] = [];
+  const files: Array<{ name: string; content: string }> = [];
   for (const file of entries) {
-    const content = readFileSync(join(dirPath, file), 'utf-8');
-    sources.push(content);
+    files.push({ name: file, content: readFileSync(join(dirPath, file), 'utf-8') });
   }
 
-  const concatenated = sources.join('\n\n');
-  const digest = createHash('sha256').update(concatenated).digest('hex').slice(0, 16);
+  // Concatenation is for EVALUATION only. The digest is the normative
+  // acta-policy-digest-v1 construction (per-file hashes, no concatenation),
+  // so the commitment a receipt carries is recomputable from published bytes.
+  const concatenated = files.map((f) => f.content).join('\n\n');
+  const digest = digestPolicyFiles('cedar', files).policy_digest;
 
   return {
     source: concatenated,
@@ -363,7 +366,7 @@ export async function isCedarAvailable(): Promise<boolean> {
 
 /** Build a CedarPolicySet from inline source (for the self-test). */
 export function policySetFromSource(source: string, name = 'inline'): CedarPolicySet {
-  const digest = createHash('sha256').update(source).digest('hex').slice(0, 16);
+  const digest = digestCedarSource(source).policy_digest;
   return { source, digest, fileCount: 1, files: [name] };
 }
 

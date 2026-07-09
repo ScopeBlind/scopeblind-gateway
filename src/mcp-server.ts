@@ -23,6 +23,7 @@
 
 import { createInterface } from 'node:readline';
 import { evaluateCedar, policySetFromSource } from './cedar-evaluator.js';
+import { createReceiptEnvelope, verifyReceipt, receiptIdentity, computeSbIssuerKid } from './acta-envelope.js';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -124,16 +125,19 @@ function buildReceiptPayload(args: {
   policy_digest?: string;
   request_id: string;
   public_key: string;
-}): Record<string, unknown> {
+}): Record<string, unknown> & { type: string } {
   return {
-    tool: args.tool,
+    // draft-02 s3.1 access-decision fields
+    type: 'protectmcp:decision',
+    tool_name: args.tool,
     decision: args.decision,
-    reason_code: args.reason_code ?? (args.decision === 'deny' ? 'policy_denied' : 'post_execution_receipt'),
+    reason: args.reason_code ?? (args.decision === 'deny' ? 'policy_denied' : 'post_execution_receipt'),
     policy_digest: args.policy_digest ?? 'none',
+    // Extension fields (signed alongside the s3.1 core)
     scope: args.request_id,
     mode: 'enforce',
     request_id: args.request_id,
-    spec: 'draft-farley-acta-signed-receipts-01',
+    spec: 'draft-farley-acta-signed-receipts-02',
     issuer_certification: 'self-signed',
     public_key: args.public_key,
   };
@@ -194,28 +198,30 @@ async function callSign(args: Record<string, unknown>): Promise<unknown> {
     public_key: publicKey,
   });
   const artifactType = decision === 'deny' ? 'gateway_restraint' : 'decision_receipt';
-  const { artifact } = a.createSignedArtifact(artifactType, payload, privateKey, { kid: 'mcp', issuer: 'protect-mcp' });
-  return { receipt: artifact, artifact_type: artifactType, public_key: publicKey, ephemeral };
+  const { envelope } = createReceiptEnvelope(payload, privateKey, computeSbIssuerKid(publicKey));
+  return { receipt: envelope, artifact_type: artifactType, public_key: publicKey, ephemeral };
 }
 
 async function callVerify(args: Record<string, unknown>): Promise<unknown> {
   const receipt = args.receipt;
   if (!receipt || typeof receipt !== 'object') return { valid: false, error: 'missing_receipt' };
-  const a = await loadArtifacts();
+  const identity = receiptIdentity(receipt);
   const embedded = (receipt as { payload?: { public_key?: unknown } }).payload?.public_key;
   const key = (typeof args.public_key_hex === 'string' && args.public_key_hex)
     ? args.public_key_hex
     : (typeof embedded === 'string' ? embedded : null);
   if (!key) {
-    return { valid: false, error: 'no_public_key', type: (receipt as { type?: string }).type ?? 'unknown', kid: null, issuer: null };
+    return { valid: false, error: 'no_public_key', type: identity.type ?? 'unknown', kid: identity.kid, issuer: identity.issuer };
   }
-  const result = a.verifyArtifact(receipt as Record<string, unknown> & { signature: string }, key);
+  // Dual-shape: draft-02 envelopes and every legacy shape this stack has emitted.
+  const result = verifyReceipt(receipt, key);
   return {
-    valid: !!result.valid,
+    valid: result.valid,
     error: result.valid ? null : (result.error || 'invalid_signature'),
-    type: (receipt as { type?: string }).type ?? 'unknown',
-    kid: (receipt as { kid?: string }).kid ?? null,
-    issuer: (receipt as { issuer?: string }).issuer ?? null,
+    shape: result.shape,
+    type: identity.type ?? 'unknown',
+    kid: identity.kid,
+    issuer: identity.issuer,
   };
 }
 
@@ -248,7 +254,7 @@ async function callSelfTest(): Promise<unknown> {
     if (signed.receipt && signed.public_key) {
       const ok = await callVerify({ receipt: signed.receipt, public_key_hex: signed.public_key }) as { valid?: boolean };
       const tampered = JSON.parse(JSON.stringify(signed.receipt));
-      if (tampered.payload) tampered.payload.tool = 'tampered';
+      if (tampered.payload) tampered.payload.tool_name = 'tampered';
       const bad = await callVerify({ receipt: tampered, public_key_hex: signed.public_key }) as { valid?: boolean };
       signVerifyRoundtrip = ok.valid === true && bad.valid === false;
       details.sign_verify = { valid_verifies: ok.valid, tampered_rejected: bad.valid === false };

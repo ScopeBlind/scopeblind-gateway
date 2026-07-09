@@ -1,5 +1,73 @@
 # Changelog
 
+## 0.10.0: receipts migrate to the draft-02 Acta envelope
+
+Also in this release, the policy digest becomes a recomputable commitment
+(prompted by public review of opaque policy identifiers):
+
+- One normative construction for every engine, `acta-policy-digest-v1`:
+  per-file SHA-256s into a sorted `{construction, engine, files}` manifest,
+  JCS, SHA-256, emitted as `"sha256:<64 hex>"`. Replaces two divergent
+  code-defined preimages that concatenated sources (ambiguous file
+  boundaries) and truncated to 16 hex characters with no prefix. Receipts
+  now carry the full-strength digest; pre-0.10 digests should be treated
+  as opaque labels.
+- `protect-mcp policy digest` prints the digest, the per-file hashes, and
+  the recompute rule (`--expect` for CI, `--json` for tooling).
+- `protect-mcp policy publish` writes the `acta.policy-bundle.v1` bundle
+  (policy bytes plus preimage spec, addressed by the digest) ready to host
+  at `.well-known/acta-policies/<hex>.json`; a verifier confirms which
+  policy governed a receipt from the bundle bytes alone, with no
+  communication with the issuer.
+- The construction is specified normatively in
+  draft-farley-acta-signed-receipts-03 (section 5.8), alongside
+  `require_approval` as a decision value.
+
+Receipts are now emitted in the envelope the IETF draft actually specifies
+(draft-farley-acta-signed-receipts-02): a two-field
+`{ payload, signature: { alg: "EdDSA", kid, sig } }` envelope, with the
+access-decision fields from section 3.1 (`type: "protectmcp:decision"`,
+`tool_name`, `decision`, `reason`, `policy_digest`), `issuer_id` equal to
+`signature.kid` (section 2.2), the signature computed as PureEdDSA directly
+over the JCS bytes of the payload with no pre-hash (section 5.6), and new
+keys defaulting to the section 2.1.1 recommended
+`sb:issuer:<base58-fingerprint>` kid format (existing key files keep their
+explicit kid). Previously the package emitted an internal envelope shape
+that predated the published draft.
+
+Receipt logs are now hash-chained per section 5.7: each receipt's
+`previousReceiptHash` is the bare-hex SHA-256 of the JCS bytes of the
+previous log line exactly as written, signature included. The hook server
+resumes the chain across restarts from the tail of the existing log, and
+signing-failure tombstones participate in the chain so an unsigned gap
+cannot be silently dropped.
+
+Verification is dual-shape everywhere (the `verify_receipt` MCP tool, the
+`serve --enforce` self-test, the embedded record viewer, and the exported
+`verifyReceipt` API): receipts written by protect-mcp 0.9.x and earlier
+(flat v1 artifacts and structured v2 envelopes with a top-level signature
+string) continue to verify, and a mixed pre/post-migration log replays
+cleanly, including the chain link that spans the boundary. Verified against
+3,352 real receipts from a production gate log: all verify. The published
+`@veritasacta/verify` CLI (0.9.2) verifies the new envelopes as-is via its
+passport path; no verifier upgrade is required.
+
+New module `acta-envelope` (exported from the package root):
+`createReceiptEnvelope`, `verifyReceipt`, `receiptHash`, `receiptIdentity`,
+`computeSbIssuerKid`. `signDecision` accepts an optional previous-chain-hash
+argument and returns the emitted receipt's chain hash. `@noble/curves` and
+`@noble/hashes` moved from optional to regular dependencies.
+
+Fixed: importing the package as a library no longer attaches the demo
+server's stdin JSON-RPC listener (it now only starts when demo-server is
+the process entry point). Previously any `require("protect-mcp")` kept the
+host process's event loop alive and answered JSON-RPC on stdout.
+
+Note for strict draft conformance: `decision` may be "require_approval" for
+held-for-co-sign flows, an extension value beyond the section 3.1 set
+(allow, deny, rate_limit), pending a revision of the draft.
+
+
 ## 0.9.7: the gate as an MCP server
 
 `protect-mcp mcp` boots a stdio MCP server exposing the gate itself as four

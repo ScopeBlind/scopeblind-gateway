@@ -32,6 +32,8 @@
 import { ProtectGateway } from './gateway.js';
 import { loadPolicy } from './policy.js';
 import { initSigning, signDecision } from './signing.js';
+import { digestCedarDir, buildPolicyBundle, verifyPolicyBundle, shortPolicyLabel } from './policy-digest.js';
+import { verifyReceipt as verifyReceiptEnvelope } from './acta-envelope.js';
 import { validateCredentials } from './credentials.js';
 import { parseLogFile, simulate, formatSimulation } from './simulate.js';
 import { buildActionReadback } from './action-readback.js';
@@ -2374,14 +2376,17 @@ function vkey(r){return "row:"+(r.id||"")+"|"+(r.ts||"")}
 function hexb(h){h=String(h||"");var a=new Uint8Array(h.length>>1);for(var i=0;i<a.length;i++)a[i]=parseInt(h.substr(i*2,2),16);return a}
 function canon(v){return JSON.stringify(v,function(k,x){if(x&&typeof x==="object"&&!Array.isArray(x)){var s={},ks=Object.keys(x).sort();for(var i=0;i<ks.length;i++)s[ks[i]]=x[ks[i]];return s}return x})}
 async function edv(sig,msg,pub){var key=await crypto.subtle.importKey("raw",hexb(pub),{name:"Ed25519"},false,["verify"]);return crypto.subtle.verify({name:"Ed25519"},key,hexb(sig),msg)}
-async function verifyRow(r){var raw=r.raw;if(!raw||typeof raw.signature!=="string")return"unsigned";
-var rest={},k;for(k in raw)if(k!=="signature")rest[k]=raw[k];
-var msg=new TextEncoder().encode(canon(rest));
+async function verifyRow(r){var raw=r.raw;if(!raw)return"unsigned";
+var sigHex=null,msgObj=null;
+if(raw.signature&&typeof raw.signature==="object"&&typeof raw.signature.sig==="string"&&raw.payload){if(raw.signature.alg!=="EdDSA")return"bad";sigHex=raw.signature.sig;msgObj=raw.payload}
+else if(typeof raw.signature==="string"){var rest={},k;for(k in raw)if(k!=="signature")rest[k]=raw[k];sigHex=raw.signature;msgObj=rest}
+else return"unsigned";
+var msg=new TextEncoder().encode(canon(msgObj));
 var pin=String(META.pinned_key||"").toLowerCase();
 var emb=String((raw.payload&&raw.payload.public_key)||raw.public_key||"").toLowerCase();
 if(!/^[0-9a-f]{64}$/.test(emb))emb="";
-if(pin){if(await edv(raw.signature,msg,pin))return"ok";if(emb&&emb!==pin&&await edv(raw.signature,msg,emb))return"foreign";return"bad"}
-if(emb)return(await edv(raw.signature,msg,emb))?"ok":"bad";
+if(pin){if(await edv(sigHex,msg,pin))return"ok";if(emb&&emb!==pin&&await edv(sigHex,msg,emb))return"foreign";return"bad"}
+if(emb)return(await edv(sigHex,msg,emb))?"ok":"bad";
 return"nokey"}
 function vsum(){var s={ok:0,bad:0,foreign:0,nokey:0};RECORDS.forEach(function(r){if(!r.signed)return;var v=VSTATE[vkey(r)];if(v&&s[v]!==undefined)s[v]++});return s}
 async function kickVerify(){if(VBUSY||VUNSUP||!(window.crypto&&crypto.subtle))return;VBUSY=true;
@@ -3135,12 +3140,12 @@ async function handleKillerDemo(argv: string[]): Promise<void> {
   const tamperedArtifact = JSON.parse(signed.signed);
   if (tamperedArtifact.payload && typeof tamperedArtifact.payload === 'object') {
     tamperedArtifact.payload.decision = 'deny';
-    tamperedArtifact.payload.tool = 'send_email';
+    tamperedArtifact.payload.tool_name = 'send_email';
   } else {
     tamperedArtifact.tool = 'send_email';
   }
-  const validOriginal = artifacts.verifyArtifact(receiptArtifact, keypair.publicKey);
-  const validTampered = artifacts.verifyArtifact(tamperedArtifact, keypair.publicKey);
+  const validOriginal = verifyReceiptEnvelope(receiptArtifact, keypair.publicKey);
+  const validTampered = verifyReceiptEnvelope(tamperedArtifact, keypair.publicKey);
   writeFileSyncCli(joinCli(dir, 'receipts', 'tampered.receipt.json'), JSON.stringify(tamperedArtifact, null, 2) + '\n');
 
   const committed = signCommittedDecision(
@@ -4085,7 +4090,13 @@ async function handlePolicy(argv: string[]): Promise<void> {
   const dir = findDir();
   const cedarFiles = dir ? rd(dir).filter((f) => f.endsWith('.cedar')).sort() : [];
   const readAll = (): string => cedarFiles.map((f) => rf(pj(dir!, f), 'utf-8')).join('\n\n');
-  const digestOf = (src: string): string => createHash('sha256').update(src).digest('hex').slice(0, 16);
+  // Short label of the normative acta-policy-digest-v1 digest over the
+  // CURRENT directory contents, so what the CLI displays matches the
+  // policy_digest receipts carry (the argument is ignored; the digest is a
+  // property of the files on disk, not of a concatenated string).
+  const digestOf = (_src: string): string => {
+    try { return shortPolicyLabel(digestCedarDir(dir!)); } catch { return 'unavailable'; }
+  };
   // Strip // line comments and /* */ block comments so a commented-out rule is
   // not read as active (Cedar uses // for comments; it has no # comments).
   const stripComments = (src: string): string => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
@@ -4113,6 +4124,7 @@ async function handlePolicy(argv: string[]): Promise<void> {
     if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
     const effect = sub === 'allow' ? 'permit' : 'forbid';
     const before = readAll();
+    const beforeLabel = digestOf(before);
     // Idempotent: skip if an identical-effect rule for this tool already exists
     // (ignoring commented-out rules).
     const ruleRe = new RegExp(`${effect}\\s*\\([^)]*resource\\s*==\\s*Tool::"${tool.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}"`, 's');
@@ -4125,8 +4137,52 @@ async function handlePolicy(argv: string[]): Promise<void> {
     const after = readAll();
     process.stdout.write(`${bold(sub === 'allow' ? '✓ Allowed' : '✓ Denied')} ${tool}\n`);
     process.stdout.write(`  ${dim(`appended to ${pj(dir, targetFile)}`)}\n`);
-    process.stdout.write(`  ${dim(`policy digest ${digestOf(before)} → ${digestOf(after)}`)}\n`);
+    process.stdout.write(`  ${dim(`policy digest ${beforeLabel} → ${digestOf(after)}`)}\n`);
     process.stdout.write(`\n${dim('A running gate (protect-mcp serve) hot-reloads on this change; no restart needed. The one-shot hook path re-reads per call.')}\n`);
+    process.exit(0);
+  }
+
+  if (sub === 'digest') {
+    // Print the normative policy digest and everything needed to recompute
+    // it with no protect-mcp code: per-file SHA-256s, the manifest rule, and
+    // the construction id. --expect compares (for CI); --json for tooling.
+    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    const result = digestCedarDir(dir);
+    const expectIdx = argv.indexOf('--expect');
+    const expected = expectIdx >= 0 ? argv[expectIdx + 1] : null;
+    if (argv.includes('--json')) {
+      process.stdout.write(JSON.stringify({ ...result, ...(expected ? { expected, matches: expected === result.policy_digest } : {}) }, null, 2) + '\n');
+    } else {
+      process.stdout.write(`${bold('policy_digest')}  ${result.policy_digest}\n`);
+      process.stdout.write(`${dim(`construction   ${result.construction}`)}\n`);
+      process.stdout.write(`${dim(`engine         ${result.engine}   (${result.files.length} file${result.files.length === 1 ? '' : 's'} in ${dir})`)}\n`);
+      for (const f of result.files) process.stdout.write(`${dim(`  ${f.sha256.slice(0, 16)}…  ${f.name}`)}\n`);
+      process.stdout.write(`${dim('recompute: sha256 each file; M = {construction, engine, files:[{name, sha256}] sorted by name}; digest = "sha256:" + hex(SHA-256(JCS(M)))')}\n`);
+      if (expected) process.stdout.write(expected === result.policy_digest ? `${bold('✓ matches --expect')}\n` : `${bold('✗ does NOT match --expect')} ${dim(expected)}\n`);
+    }
+    process.exit(expected && expected !== result.policy_digest ? 1 : 0);
+  }
+
+  if (sub === 'publish') {
+    // Write the publishable policy bundle: the exact policy bytes plus the
+    // preimage spec, addressed by the digest itself. Host the output at
+    // .well-known/acta-policies/<hex>.json and any verifier can confirm which
+    // policy governed a receipt from public bytes alone.
+    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    const outIdx = argv.indexOf('--out');
+    const outDir = outIdx >= 0 && argv[outIdx + 1] ? argv[outIdx + 1] : pj('.well-known', 'acta-policies');
+    const files = cedarFiles.map((f) => ({ name: f, content: rf(pj(dir, f), 'utf-8') }));
+    const bundle = buildPolicyBundle('cedar', files);
+    const check = verifyPolicyBundle(bundle);
+    if (!check.valid) { process.stderr.write(`internal error: bundle failed self-verification (${check.error})\n`); process.exit(1); }
+    const { mkdirSync: mk } = await import('node:fs');
+    mk(outDir, { recursive: true });
+    const outPath = pj(outDir, `${bundle.policy_digest.replace(/^sha256:/, '')}.json`);
+    wf(outPath, JSON.stringify(bundle, null, 2) + '\n');
+    process.stdout.write(`${bold('✓ published')} ${outPath}\n`);
+    process.stdout.write(`  ${dim(`policy_digest ${bundle.policy_digest}`)}\n`);
+    process.stdout.write(`  ${dim('self-verified: per-file hashes and manifest digest recompute from the bundle bytes alone')}\n`);
+    process.stdout.write(`  ${dim('serve this directory at https://<your-domain>/.well-known/acta-policies/')}\n`);
     process.exit(0);
   }
 

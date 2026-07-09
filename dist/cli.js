@@ -21,18 +21,207 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod2, isNodeMode, target) => (target = mod2 != null ? __create(__getProtoOf(mod2)) : {}, __copyProps(
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
   // If the importer is in node compatibility mode or this is not an ESM
   // file that has been converted to a CommonJS file using a Babel-
   // compatible transform (i.e. "__esModule" has not been set), then set
   // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod2 || !mod2.__esModule ? __defProp(target, "default", { value: mod2, enumerable: true }) : target,
-  mod2
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
 ));
+
+// src/acta-envelope.ts
+function canonicalize(obj) {
+  return JSON.stringify(obj, (_key, value) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const sorted = {};
+      for (const k of Object.keys(value).sort()) {
+        if (!/^[\x20-\x7E]*$/.test(k)) {
+          throw new Error(`Non-ASCII key "${k}" in receipt payload. Only ASCII keys are permitted.`);
+        }
+        sorted[k] = value[k];
+      }
+      return sorted;
+    }
+    return value;
+  });
+}
+function receiptHash(obj) {
+  return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
+}
+function base58(bytes) {
+  let n = BigInt("0x" + (0, import_utils.bytesToHex)(bytes));
+  let out = "";
+  while (n > 0n) {
+    out = B58_ALPHABET[Number(n % 58n)] + out;
+    n /= 58n;
+  }
+  for (const b of bytes) {
+    if (b === 0) out = "1" + out;
+    else break;
+  }
+  return out;
+}
+function computeSbIssuerKid(publicKeyHex) {
+  return `sb:issuer:${base58((0, import_utils.hexToBytes)(publicKeyHex)).slice(0, 12)}`;
+}
+function createReceiptEnvelope(fields, privateKeyHex, kid, issuedAt) {
+  if (!fields.type) throw new Error("receipt payload requires a type");
+  if (!kid) throw new Error("kid is required");
+  const payload = {
+    ...fields,
+    issued_at: fields.issued_at || issuedAt || (/* @__PURE__ */ new Date()).toISOString(),
+    issuer_id: kid
+  };
+  const sig = (0, import_utils.bytesToHex)(import_ed25519.ed25519.sign((0, import_utils.utf8ToBytes)(canonicalize(payload)), (0, import_utils.hexToBytes)(privateKeyHex)));
+  const envelope = { payload, signature: { alg: "EdDSA", kid, sig } };
+  return { envelope, hash: receiptHash(envelope) };
+}
+function verifyReceipt(envelope, publicKeyHex) {
+  try {
+    if (!envelope || typeof envelope !== "object") {
+      return { valid: false, shape: null, error: "not_an_object" };
+    }
+    const env = envelope;
+    const signature = env.signature;
+    if (signature && typeof signature === "object" && !Array.isArray(signature)) {
+      const sigObj = signature;
+      if (sigObj.alg !== "EdDSA") {
+        return { valid: false, shape: "acta-02", error: `unsupported_alg:${String(sigObj.alg)}` };
+      }
+      if (typeof sigObj.sig !== "string" || !env.payload || typeof env.payload !== "object") {
+        return { valid: false, shape: "acta-02", error: "malformed_envelope" };
+      }
+      const message = (0, import_utils.utf8ToBytes)(canonicalize(env.payload));
+      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(sigObj.sig), message, (0, import_utils.hexToBytes)(publicKeyHex));
+      return valid ? { valid: true, shape: "acta-02", hash: receiptHash(env) } : { valid: false, shape: "acta-02", error: "invalid_signature" };
+    }
+    if (typeof signature === "string") {
+      const rest = {};
+      for (const k of Object.keys(env)) if (k !== "signature") rest[k] = env[k];
+      const message = (0, import_utils.utf8ToBytes)(canonicalize(rest));
+      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), message, (0, import_utils.hexToBytes)(publicKeyHex));
+      const shape = env.v === 2 ? "legacy-v2" : "legacy-v1";
+      return valid ? { valid: true, shape, hash: receiptHash(env) } : { valid: false, shape, error: "invalid_signature" };
+    }
+    return { valid: false, shape: null, error: "missing_signature" };
+  } catch (err) {
+    return {
+      valid: false,
+      shape: null,
+      error: `verification_error:${err instanceof Error ? err.message : "unknown"}`
+    };
+  }
+}
+function receiptIdentity(envelope) {
+  if (!envelope || typeof envelope !== "object") return { kid: null, issuer: null, type: null };
+  const env = envelope;
+  if (env.signature && typeof env.signature === "object") {
+    const payload = env.payload || {};
+    const sig = env.signature;
+    return {
+      kid: typeof sig.kid === "string" ? sig.kid : null,
+      issuer: typeof payload.issuer_id === "string" ? payload.issuer_id : typeof payload.issuer_name === "string" ? payload.issuer_name : null,
+      type: typeof payload.type === "string" ? payload.type : null
+    };
+  }
+  return {
+    kid: typeof env.kid === "string" ? env.kid : null,
+    issuer: typeof env.issuer === "string" ? env.issuer : null,
+    type: typeof env.type === "string" ? env.type : null
+  };
+}
+var import_ed25519, import_sha256, import_utils, B58_ALPHABET;
+var init_acta_envelope = __esm({
+  "src/acta-envelope.ts"() {
+    "use strict";
+    import_ed25519 = require("@noble/curves/ed25519");
+    import_sha256 = require("@noble/hashes/sha256");
+    import_utils = require("@noble/hashes/utils");
+    B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  }
+});
+
+// src/policy-digest.ts
+function digestPolicyFiles(engine, files) {
+  if (files.length === 0) throw new Error("policy digest requires at least one file");
+  const names = /* @__PURE__ */ new Set();
+  for (const f of files) {
+    if (!f.name) throw new Error("policy file entries require a name");
+    if (names.has(f.name)) throw new Error(`duplicate policy file name: ${f.name}`);
+    names.add(f.name);
+  }
+  const entries = files.map((f) => ({ name: f.name, sha256: sha256hex(Buffer.from(f.content, "utf-8")) })).sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+  const manifest = { construction: POLICY_DIGEST_CONSTRUCTION, engine, files: entries };
+  return {
+    policy_digest: `sha256:${sha256hex(Buffer.from(canonicalize(manifest), "utf-8"))}`,
+    construction: POLICY_DIGEST_CONSTRUCTION,
+    engine,
+    files: entries
+  };
+}
+function digestCedarDir(dirPath) {
+  if (!(0, import_node_fs.existsSync)(dirPath)) throw new Error(`Cedar policy directory not found: ${dirPath}`);
+  const names = (0, import_node_fs.readdirSync)(dirPath).filter((f) => (0, import_node_path.extname)(f) === ".cedar").sort();
+  if (names.length === 0) throw new Error(`No .cedar files found in: ${dirPath}`);
+  const files = names.map((name) => ({ name, content: (0, import_node_fs.readFileSync)((0, import_node_path.join)(dirPath, name), "utf-8") }));
+  return { ...digestPolicyFiles("cedar", files), dir: dirPath };
+}
+function digestCedarSource(source) {
+  return digestPolicyFiles("cedar", [{ name: "policy.cedar", content: source }]);
+}
+function digestBuiltinPolicy(policy) {
+  return digestPolicyFiles("builtin", [{ name: "policy.json", content: canonicalize(policy) }]);
+}
+function shortPolicyLabel(result) {
+  return `${result.engine}:${result.policy_digest.replace(/^sha256:/, "").slice(0, 16)}`;
+}
+function buildPolicyBundle(engine, files, generatedAt) {
+  const d = digestPolicyFiles(engine, files);
+  const byName = new Map(files.map((f) => [f.name, f.content]));
+  return {
+    schema: POLICY_BUNDLE_SCHEMA,
+    construction: POLICY_DIGEST_CONSTRUCTION,
+    engine,
+    policy_digest: d.policy_digest,
+    files: d.files.map((e) => ({ ...e, content: byName.get(e.name) })),
+    generated_at: generatedAt || (/* @__PURE__ */ new Date()).toISOString()
+  };
+}
+function verifyPolicyBundle(bundle) {
+  try {
+    const b = bundle;
+    if (!b || b.schema !== POLICY_BUNDLE_SCHEMA) return { valid: false, error: "unknown_schema" };
+    if (b.construction !== POLICY_DIGEST_CONSTRUCTION) return { valid: false, error: "unknown_construction" };
+    if (!Array.isArray(b.files) || b.files.length === 0) return { valid: false, error: "missing_files" };
+    for (const f of b.files) {
+      if (sha256hex(Buffer.from(f.content, "utf-8")) !== f.sha256) {
+        return { valid: false, error: `file_hash_mismatch:${f.name}` };
+      }
+    }
+    const recomputed = digestPolicyFiles(b.engine, b.files.map((f) => ({ name: f.name, content: f.content }))).policy_digest;
+    return recomputed === b.policy_digest ? { valid: true, recomputed } : { valid: false, recomputed, error: "digest_mismatch" };
+  } catch (err) {
+    return { valid: false, error: `verify_error:${err instanceof Error ? err.message : "unknown"}` };
+  }
+}
+var import_node_crypto, import_node_fs, import_node_path, POLICY_DIGEST_CONSTRUCTION, POLICY_BUNDLE_SCHEMA, sha256hex;
+var init_policy_digest = __esm({
+  "src/policy-digest.ts"() {
+    "use strict";
+    import_node_crypto = require("crypto");
+    import_node_fs = require("fs");
+    import_node_path = require("path");
+    init_acta_envelope();
+    POLICY_DIGEST_CONSTRUCTION = "acta-policy-digest-v1";
+    POLICY_BUNDLE_SCHEMA = "acta.policy-bundle.v1";
+    sha256hex = (data) => (0, import_node_crypto.createHash)("sha256").update(data).digest("hex");
+  }
+});
 
 // src/policy.ts
 function loadPolicy(path) {
-  const raw = (0, import_node_fs.readFileSync)(path, "utf-8");
+  const raw = (0, import_node_fs2.readFileSync)(path, "utf-8");
   const parsed = JSON.parse(raw);
   if (!parsed.tools || typeof parsed.tools !== "object") {
     throw new Error(`Invalid policy file: missing "tools" object in ${path}`);
@@ -52,17 +241,7 @@ function loadPolicy(path) {
   };
 }
 function computePolicyDigest(policy) {
-  const canonical = JSON.stringify(sortKeysDeep(policy));
-  return (0, import_node_crypto.createHash)("sha256").update(canonical).digest("hex").slice(0, 16);
-}
-function sortKeysDeep(obj) {
-  if (obj === null || typeof obj !== "object") return obj;
-  if (Array.isArray(obj)) return obj.map(sortKeysDeep);
-  const sorted = {};
-  for (const key of Object.keys(obj).sort()) {
-    sorted[key] = sortKeysDeep(obj[key]);
-  }
-  return sorted;
+  return digestBuiltinPolicy(policy).policy_digest;
 }
 function getToolPolicy(toolName, policy) {
   if (!policy) {
@@ -103,22 +282,22 @@ function checkRateLimit(key, limit, store) {
   store.set(key, timestamps);
   return { allowed: true, remaining: limit.count - timestamps.length };
 }
-var import_node_crypto, import_node_fs;
+var import_node_fs2;
 var init_policy = __esm({
   "src/policy.ts"() {
     "use strict";
-    import_node_crypto = require("crypto");
-    import_node_fs = require("fs");
+    import_node_fs2 = require("fs");
+    init_policy_digest();
   }
 });
 
 // src/evidence-store.ts
-var import_node_fs2, import_node_path, DEFAULT_THRESHOLDS, EvidenceStore;
+var import_node_fs3, import_node_path2, DEFAULT_THRESHOLDS, EvidenceStore;
 var init_evidence_store = __esm({
   "src/evidence-store.ts"() {
     "use strict";
-    import_node_fs2 = require("fs");
-    import_node_path = require("path");
+    import_node_fs3 = require("fs");
+    import_node_path2 = require("path");
     DEFAULT_THRESHOLDS = {
       min_receipts: 10,
       min_epoch_span: 3,
@@ -129,7 +308,7 @@ var init_evidence_store = __esm({
       filePath;
       dirty = false;
       constructor(dir) {
-        this.filePath = (0, import_node_path.join)(dir || process.cwd(), ".protect-mcp-evidence.json");
+        this.filePath = (0, import_node_path2.join)(dir || process.cwd(), ".protect-mcp-evidence.json");
         this.load();
       }
       /**
@@ -193,7 +372,7 @@ var init_evidence_store = __esm({
           data[id] = record;
         }
         try {
-          (0, import_node_fs2.writeFileSync)(this.filePath, JSON.stringify({ v: 1, agents: data }, null, 2) + "\n");
+          (0, import_node_fs3.writeFileSync)(this.filePath, JSON.stringify({ v: 1, agents: data }, null, 2) + "\n");
           this.dirty = false;
         } catch {
         }
@@ -202,9 +381,9 @@ var init_evidence_store = __esm({
        * Load from disk.
        */
       load() {
-        if (!(0, import_node_fs2.existsSync)(this.filePath)) return;
+        if (!(0, import_node_fs3.existsSync)(this.filePath)) return;
         try {
-          const raw = (0, import_node_fs2.readFileSync)(this.filePath, "utf-8");
+          const raw = (0, import_node_fs3.readFileSync)(this.filePath, "utf-8");
           const parsed = JSON.parse(raw);
           if (parsed.agents && typeof parsed.agents === "object") {
             for (const [id, record] of Object.entries(parsed.agents)) {
@@ -362,7 +541,6 @@ var init_credentials = __esm({
 async function initSigning(config) {
   const warnings = [];
   signerState = null;
-  artifactsModule = null;
   signingConfigured = Boolean(config && config.enabled !== false);
   signingInitError = null;
   if (!config || config.enabled === false) {
@@ -373,14 +551,14 @@ async function initSigning(config) {
     warnings.push(`signing: ${signingInitError}`);
     return warnings;
   }
-  if (!(0, import_node_fs3.existsSync)(config.key_path)) {
+  if (!(0, import_node_fs4.existsSync)(config.key_path)) {
     signingInitError = `key file not found at ${config.key_path}`;
     warnings.push(`signing: ${signingInitError} \u2014 run "protect-mcp init" to generate`);
     return warnings;
   }
   let keyData;
   try {
-    keyData = JSON.parse((0, import_node_fs3.readFileSync)(config.key_path, "utf-8"));
+    keyData = JSON.parse((0, import_node_fs4.readFileSync)(config.key_path, "utf-8"));
     if (!keyData.privateKey || !keyData.publicKey) {
       signingInitError = "key file missing privateKey or publicKey fields";
       warnings.push(`signing: ${signingInitError}`);
@@ -392,31 +570,21 @@ async function initSigning(config) {
     return warnings;
   }
   try {
-    const moduleName = "@veritasacta/artifacts";
-    artifactsModule = await import(
-      /* @vite-ignore */
-      moduleName
-    );
-  } catch {
-    signingInitError = "@veritasacta/artifacts not available";
-    warnings.push(`signing: ${signingInitError} \u2014 enforce mode will fail closed`);
-    return warnings;
-  }
-  try {
     signerState = {
       privateKey: keyData.privateKey,
       publicKey: keyData.publicKey,
-      kid: keyData.kid || artifactsModule.computeKid(keyData.publicKey),
+      // kid is opaque per draft-02; existing key files keep their explicit kid,
+      // and keys without one get the s2.1.1 RECOMMENDED sb:issuer format.
+      kid: keyData.kid || computeSbIssuerKid(keyData.publicKey),
       issuer: config.issuer || keyData.issuer || "protect-mcp"
     };
   } catch (err) {
     signingInitError = `failed to initialize signer: ${err instanceof Error ? err.message : err}`;
-    artifactsModule = null;
     warnings.push(`signing: ${signingInitError} \u2014 enforce mode will fail closed`);
   }
   return warnings;
 }
-function signDecision(entry) {
+function signDecision(entry, prevReceiptHash) {
   const artifactType = entry.decision === "deny" ? "gateway_restraint" : "decision_receipt";
   if (signingConfigured && signingInitError) {
     return {
@@ -427,7 +595,7 @@ function signDecision(entry) {
       error: signingInitError
     };
   }
-  if (signingConfigured && (!signerState || !artifactsModule)) {
+  if (signingConfigured && !signerState) {
     const error = "signing was configured but no signer is ready";
     return {
       ok: false,
@@ -437,21 +605,24 @@ function signDecision(entry) {
       error
     };
   }
-  if (!signerState || !artifactsModule) {
+  if (!signerState) {
     return { ok: false, signed: null, artifact_type: "none" };
   }
   try {
     const payload = {
-      tool: entry.tool,
+      // draft-02 s3.1 access-decision fields
+      type: "protectmcp:decision",
+      tool_name: entry.tool,
       decision: entry.decision,
-      reason_code: entry.reason_code,
+      reason: entry.reason_code,
       policy_digest: entry.policy_digest,
+      // Extension fields (signed alongside the s3.1 core)
       scope: entry.request_id,
       // request scope
       mode: entry.mode,
       request_id: entry.request_id,
       // Spec version: ties every receipt to the IETF standard
-      spec: "draft-farley-acta-signed-receipts-01",
+      spec: "draft-farley-acta-signed-receipts-02",
       // Issuer certification: distinguishes VOPRF-backed receipts from self-signed ones
       // - scopeblind:verified  = issued via ScopeBlind VOPRF backend (paid tier)
       // - self-signed          = signed with local Ed25519 key (free tier, protect-mcp default)
@@ -464,6 +635,10 @@ function signDecision(entry) {
       // authenticity (that the key is YOUR gate's) still comes from pinning it.
       public_key: signerState.publicKey
     };
+    if (signerState.issuer && signerState.issuer !== signerState.kid) {
+      payload.issuer_name = signerState.issuer;
+    }
+    if (prevReceiptHash) payload.previousReceiptHash = prevReceiptHash;
     if (entry.tier) payload.tier = entry.tier;
     if (entry.credential_ref) payload.credential_ref = entry.credential_ref;
     if (entry.rate_limit_remaining !== void 0) {
@@ -478,19 +653,17 @@ function signDecision(entry) {
     if (entry.enrichment) payload.enrichment = entry.enrichment;
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
-    const result = artifactsModule.createSignedArtifact(
-      artifactType,
+    const result = createReceiptEnvelope(
       payload,
       signerState.privateKey,
-      {
-        kid: signerState.kid,
-        issuer: signerState.issuer
-      }
+      signerState.kid,
+      Number.isFinite(entry.timestamp) ? new Date(entry.timestamp).toISOString() : void 0
     );
     return {
       ok: true,
-      signed: JSON.stringify(result.artifact),
-      artifact_type: artifactType
+      signed: JSON.stringify(result.envelope),
+      artifact_type: artifactType,
+      receipt_hash: result.hash
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
@@ -512,15 +685,15 @@ function getSignerInfo() {
   };
 }
 function isSigningEnabled() {
-  return signingConfigured && signingInitError === null && signerState !== null && artifactsModule !== null;
+  return signingConfigured && signingInitError === null && signerState !== null;
 }
-var import_node_fs3, signerState, artifactsModule, signingConfigured, signingInitError;
+var import_node_fs4, signerState, signingConfigured, signingInitError;
 var init_signing = __esm({
   "src/signing.ts"() {
     "use strict";
-    import_node_fs3 = require("fs");
+    import_node_fs4 = require("fs");
+    init_acta_envelope();
     signerState = null;
-    artifactsModule = null;
     signingConfigured = false;
     signingInitError = null;
   }
@@ -708,20 +881,19 @@ async function ensureCedarWasm() {
   }
 }
 function loadCedarPolicies(dirPath) {
-  if (!(0, import_node_fs4.existsSync)(dirPath)) {
+  if (!(0, import_node_fs5.existsSync)(dirPath)) {
     throw new Error(`Cedar policy directory not found: ${dirPath}`);
   }
-  const entries = (0, import_node_fs4.readdirSync)(dirPath).filter((f) => (0, import_node_path2.extname)(f) === ".cedar").sort();
+  const entries = (0, import_node_fs5.readdirSync)(dirPath).filter((f) => (0, import_node_path3.extname)(f) === ".cedar").sort();
   if (entries.length === 0) {
     throw new Error(`No .cedar files found in: ${dirPath}`);
   }
-  const sources = [];
+  const files = [];
   for (const file of entries) {
-    const content = (0, import_node_fs4.readFileSync)((0, import_node_path2.join)(dirPath, file), "utf-8");
-    sources.push(content);
+    files.push({ name: file, content: (0, import_node_fs5.readFileSync)((0, import_node_path3.join)(dirPath, file), "utf-8") });
   }
-  const concatenated = sources.join("\n\n");
-  const digest = (0, import_node_crypto2.createHash)("sha256").update(concatenated).digest("hex").slice(0, 16);
+  const concatenated = files.map((f) => f.content).join("\n\n");
+  const digest = digestPolicyFiles("cedar", files).policy_digest;
   return {
     source: concatenated,
     digest,
@@ -862,7 +1034,7 @@ async function isCedarAvailable() {
   return ensureCedarWasm();
 }
 function policySetFromSource(source, name = "inline") {
-  const digest = (0, import_node_crypto2.createHash)("sha256").update(source).digest("hex").slice(0, 16);
+  const digest = digestCedarSource(source).policy_digest;
   return { source, digest, fileCount: 1, files: [name] };
 }
 async function runEvaluatorSelfTest() {
@@ -888,13 +1060,13 @@ async function runEvaluatorSelfTest() {
   await run("in-on-String forbid does not permit-all", "DENY", broken, { command: "rm" });
   return { wasmAvailable, passed: cases.every((c) => c.pass), cases };
 }
-var import_node_crypto2, import_node_fs4, import_node_path2, cedarWasm, loadAttempted;
+var import_node_fs5, import_node_path3, cedarWasm, loadAttempted;
 var init_cedar_evaluator = __esm({
   "src/cedar-evaluator.ts"() {
     "use strict";
-    import_node_crypto2 = require("crypto");
-    import_node_fs4 = require("fs");
-    import_node_path2 = require("path");
+    import_node_fs5 = require("fs");
+    import_node_path3 = require("path");
+    init_policy_digest();
     cedarWasm = null;
     loadAttempted = false;
   }
@@ -1151,13 +1323,13 @@ function handleHealth(res, startTime, config) {
   }));
 }
 function handleStatus(res, logDir) {
-  const logPath = (0, import_node_path3.join)(logDir, LOG_FILE);
-  if (!(0, import_node_fs5.existsSync)(logPath)) {
+  const logPath = (0, import_node_path4.join)(logDir, LOG_FILE);
+  if (!(0, import_node_fs6.existsSync)(logPath)) {
     res.writeHead(200);
     res.end(JSON.stringify({ entries: 0, message: "no log file yet" }));
     return;
   }
-  const raw = (0, import_node_fs5.readFileSync)(logPath, "utf-8");
+  const raw = (0, import_node_fs6.readFileSync)(logPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   const entries = [];
   for (const line of lines) {
@@ -1279,13 +1451,13 @@ function handleListApprovals(res, approvalStore) {
   res.writeHead(200);
   res.end(JSON.stringify({ grants }));
 }
-var import_node_http, import_node_fs5, import_node_path3, LOG_FILE, MAX_RECEIPTS, ReceiptBuffer;
+var import_node_http, import_node_fs6, import_node_path4, LOG_FILE, MAX_RECEIPTS, ReceiptBuffer;
 var init_http_server = __esm({
   "src/http-server.ts"() {
     "use strict";
     import_node_http = require("http");
-    import_node_fs5 = require("fs");
-    import_node_path3 = require("path");
+    import_node_fs6 = require("fs");
+    import_node_path4 = require("path");
     LOG_FILE = ".protect-mcp-log.jsonl";
     MAX_RECEIPTS = 100;
     ReceiptBuffer = class {
@@ -1373,18 +1545,18 @@ function buildActionReadback(tool, input) {
     action,
     destination,
     payload_preview: payloadPreview,
-    payload_hash: (0, import_node_crypto3.createHash)("sha256").update(canonical).digest("hex"),
+    payload_hash: (0, import_node_crypto2.createHash)("sha256").update(canonical).digest("hex"),
     payload_bytes: Buffer.byteLength(canonical, "utf-8"),
     disclosed_fields: [...new Set(disclosedFields)].slice(0, 80),
     redacted_fields: [...new Set(redactedFields)].slice(0, 80),
     summary
   };
 }
-var import_node_crypto3, SECRET_KEY_RE, DESTINATION_KEYS;
+var import_node_crypto2, SECRET_KEY_RE, DESTINATION_KEYS;
 var init_action_readback = __esm({
   "src/action-readback.ts"() {
     "use strict";
-    import_node_crypto3 = require("crypto");
+    import_node_crypto2 = require("crypto");
     SECRET_KEY_RE = /(api[_-]?key|authorization|bearer|credential|password|secret|session|token|private[_-]?key)/i;
     DESTINATION_KEYS = [
       "path",
@@ -1412,15 +1584,15 @@ var init_action_readback = __esm({
 });
 
 // src/gateway.ts
-var import_node_child_process, import_node_crypto4, import_node_readline, import_node_fs6, import_node_path4, LOG_FILE2, RECEIPTS_FILE, ProtectGateway;
+var import_node_child_process, import_node_crypto3, import_node_readline, import_node_fs7, import_node_path5, LOG_FILE2, RECEIPTS_FILE, ProtectGateway;
 var init_gateway = __esm({
   "src/gateway.ts"() {
     "use strict";
     import_node_child_process = require("child_process");
-    import_node_crypto4 = require("crypto");
+    import_node_crypto3 = require("crypto");
     import_node_readline = require("readline");
-    import_node_fs6 = require("fs");
-    import_node_path4 = require("path");
+    import_node_fs7 = require("fs");
+    import_node_path5 = require("path");
     init_policy();
     init_admission();
     init_credentials();
@@ -1445,7 +1617,7 @@ var init_gateway = __esm({
       /** Approval grants keyed by request_id (scoped to the specific action that was requested) */
       approvalStore = /* @__PURE__ */ new Map();
       /** Random nonce generated at startup — required for approval endpoint authentication */
-      approvalNonce = (0, import_node_crypto4.randomBytes)(16).toString("hex");
+      approvalNonce = (0, import_node_crypto3.randomBytes)(16).toString("hex");
       currentTier = "unknown";
       admissionResult = null;
       /** Notification config for approval gates (SMS, webhook, email) */
@@ -1457,8 +1629,8 @@ var init_gateway = __esm({
       cedarPolicySet = null;
       constructor(config) {
         this.config = config;
-        this.logFilePath = (0, import_node_path4.join)(process.cwd(), LOG_FILE2);
-        this.receiptFilePath = (0, import_node_path4.join)(process.cwd(), RECEIPTS_FILE);
+        this.logFilePath = (0, import_node_path5.join)(process.cwd(), LOG_FILE2);
+        this.receiptFilePath = (0, import_node_path5.join)(process.cwd(), RECEIPTS_FILE);
         this.evidenceStore = new EvidenceStore();
         this.receiptBuffer = new ReceiptBuffer();
         this.notificationConfig = parseNotificationConfigFromEnv();
@@ -1599,7 +1771,7 @@ var init_gateway = __esm({
       }
       async interceptToolCall(request) {
         const toolName = request.params?.name || "unknown";
-        const requestId = (0, import_node_crypto4.randomUUID)().slice(0, 12);
+        const requestId = (0, import_node_crypto3.randomUUID)().slice(0, 12);
         const mode = this.config.enforce ? "enforce" : "shadow";
         const toolInput = request.params?.arguments && typeof request.params.arguments === "object" ? request.params.arguments : request.params || {};
         const actionReadback = buildActionReadback(toolName, toolInput);
@@ -1779,8 +1951,8 @@ var init_gateway = __esm({
        */
       emitDecisionLog(entry) {
         const mode = this.config.enforce ? "enforce" : "shadow";
-        const otelTraceId = entry.otel_trace_id || (0, import_node_crypto4.randomBytes)(16).toString("hex");
-        const otelSpanId = entry.otel_span_id || (0, import_node_crypto4.randomBytes)(8).toString("hex");
+        const otelTraceId = entry.otel_trace_id || (0, import_node_crypto3.randomBytes)(16).toString("hex");
+        const otelSpanId = entry.otel_span_id || (0, import_node_crypto3.randomBytes)(8).toString("hex");
         const log = {
           v: 2,
           tool: entry.tool || "unknown",
@@ -1788,7 +1960,7 @@ var init_gateway = __esm({
           reason_code: entry.reason_code || "default_allow",
           policy_digest: this.config.policyDigest,
           policy_engine: this.config.policy?.policy_engine || "built-in",
-          request_id: entry.request_id || (0, import_node_crypto4.randomUUID)().slice(0, 12),
+          request_id: entry.request_id || (0, import_node_crypto3.randomUUID)().slice(0, 12),
           timestamp: Date.now(),
           mode,
           ...entry.rate_limit_remaining !== void 0 && { rate_limit_remaining: entry.rate_limit_remaining },
@@ -1801,7 +1973,7 @@ var init_gateway = __esm({
         process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
         try {
-          (0, import_node_fs6.appendFileSync)(this.logFilePath, JSON.stringify(log) + "\n");
+          (0, import_node_fs7.appendFileSync)(this.logFilePath, JSON.stringify(log) + "\n");
         } catch {
         }
         if (isSigningEnabled()) {
@@ -1810,7 +1982,7 @@ var init_gateway = __esm({
             process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}
 `);
             try {
-              (0, import_node_fs6.appendFileSync)(this.receiptFilePath, signed.signed + "\n");
+              (0, import_node_fs7.appendFileSync)(this.receiptFilePath, signed.signed + "\n");
             } catch {
             }
             this.receiptBuffer.add(log.request_id, signed.signed);
@@ -1830,7 +2002,7 @@ var init_gateway = __esm({
               at: new Date(log.timestamp).toISOString()
             });
             try {
-              (0, import_node_fs6.appendFileSync)(this.receiptFilePath, tombstone + "\n");
+              (0, import_node_fs7.appendFileSync)(this.receiptFilePath, tombstone + "\n");
             } catch {
             }
             process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
@@ -1964,2768 +2136,6 @@ var init_gateway = __esm({
   }
 });
 
-// node_modules/@noble/hashes/esm/cryptoNode.js
-var nc, crypto;
-var init_cryptoNode = __esm({
-  "node_modules/@noble/hashes/esm/cryptoNode.js"() {
-    "use strict";
-    nc = __toESM(require("crypto"), 1);
-    crypto = nc && typeof nc === "object" && "webcrypto" in nc ? nc.webcrypto : nc && typeof nc === "object" && "randomBytes" in nc ? nc : void 0;
-  }
-});
-
-// node_modules/@noble/hashes/esm/utils.js
-var utils_exports = {};
-__export(utils_exports, {
-  Hash: () => Hash,
-  abytes: () => abytes,
-  aexists: () => aexists,
-  ahash: () => ahash,
-  anumber: () => anumber,
-  aoutput: () => aoutput,
-  asyncLoop: () => asyncLoop,
-  byteSwap: () => byteSwap,
-  byteSwap32: () => byteSwap32,
-  byteSwapIfBE: () => byteSwapIfBE,
-  bytesToHex: () => bytesToHex,
-  bytesToUtf8: () => bytesToUtf8,
-  checkOpts: () => checkOpts,
-  clean: () => clean,
-  concatBytes: () => concatBytes,
-  createHasher: () => createHasher,
-  createOptHasher: () => createOptHasher,
-  createView: () => createView,
-  createXOFer: () => createXOFer,
-  hexToBytes: () => hexToBytes,
-  isBytes: () => isBytes,
-  isLE: () => isLE,
-  kdfInputToBytes: () => kdfInputToBytes,
-  nextTick: () => nextTick,
-  randomBytes: () => randomBytes2,
-  rotl: () => rotl,
-  rotr: () => rotr,
-  swap32IfBE: () => swap32IfBE,
-  swap8IfBE: () => swap8IfBE,
-  toBytes: () => toBytes,
-  u32: () => u32,
-  u8: () => u8,
-  utf8ToBytes: () => utf8ToBytes,
-  wrapConstructor: () => wrapConstructor,
-  wrapConstructorWithOpts: () => wrapConstructorWithOpts,
-  wrapXOFConstructorWithOpts: () => wrapXOFConstructorWithOpts
-});
-function isBytes(a) {
-  return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array";
-}
-function anumber(n) {
-  if (!Number.isSafeInteger(n) || n < 0)
-    throw new Error("positive integer expected, got " + n);
-}
-function abytes(b, ...lengths) {
-  if (!isBytes(b))
-    throw new Error("Uint8Array expected");
-  if (lengths.length > 0 && !lengths.includes(b.length))
-    throw new Error("Uint8Array expected of length " + lengths + ", got length=" + b.length);
-}
-function ahash(h) {
-  if (typeof h !== "function" || typeof h.create !== "function")
-    throw new Error("Hash should be wrapped by utils.createHasher");
-  anumber(h.outputLen);
-  anumber(h.blockLen);
-}
-function aexists(instance, checkFinished = true) {
-  if (instance.destroyed)
-    throw new Error("Hash instance has been destroyed");
-  if (checkFinished && instance.finished)
-    throw new Error("Hash#digest() has already been called");
-}
-function aoutput(out, instance) {
-  abytes(out);
-  const min = instance.outputLen;
-  if (out.length < min) {
-    throw new Error("digestInto() expects output buffer of length at least " + min);
-  }
-}
-function u8(arr) {
-  return new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
-}
-function u32(arr) {
-  return new Uint32Array(arr.buffer, arr.byteOffset, Math.floor(arr.byteLength / 4));
-}
-function clean(...arrays) {
-  for (let i = 0; i < arrays.length; i++) {
-    arrays[i].fill(0);
-  }
-}
-function createView(arr) {
-  return new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-}
-function rotr(word, shift) {
-  return word << 32 - shift | word >>> shift;
-}
-function rotl(word, shift) {
-  return word << shift | word >>> 32 - shift >>> 0;
-}
-function byteSwap(word) {
-  return word << 24 & 4278190080 | word << 8 & 16711680 | word >>> 8 & 65280 | word >>> 24 & 255;
-}
-function byteSwap32(arr) {
-  for (let i = 0; i < arr.length; i++) {
-    arr[i] = byteSwap(arr[i]);
-  }
-  return arr;
-}
-function bytesToHex(bytes) {
-  abytes(bytes);
-  if (hasHexBuiltin)
-    return bytes.toHex();
-  let hex = "";
-  for (let i = 0; i < bytes.length; i++) {
-    hex += hexes[bytes[i]];
-  }
-  return hex;
-}
-function asciiToBase16(ch) {
-  if (ch >= asciis._0 && ch <= asciis._9)
-    return ch - asciis._0;
-  if (ch >= asciis.A && ch <= asciis.F)
-    return ch - (asciis.A - 10);
-  if (ch >= asciis.a && ch <= asciis.f)
-    return ch - (asciis.a - 10);
-  return;
-}
-function hexToBytes(hex) {
-  if (typeof hex !== "string")
-    throw new Error("hex string expected, got " + typeof hex);
-  if (hasHexBuiltin)
-    return Uint8Array.fromHex(hex);
-  const hl = hex.length;
-  const al = hl / 2;
-  if (hl % 2)
-    throw new Error("hex string expected, got unpadded hex of length " + hl);
-  const array = new Uint8Array(al);
-  for (let ai = 0, hi = 0; ai < al; ai++, hi += 2) {
-    const n1 = asciiToBase16(hex.charCodeAt(hi));
-    const n2 = asciiToBase16(hex.charCodeAt(hi + 1));
-    if (n1 === void 0 || n2 === void 0) {
-      const char = hex[hi] + hex[hi + 1];
-      throw new Error('hex string expected, got non-hex character "' + char + '" at index ' + hi);
-    }
-    array[ai] = n1 * 16 + n2;
-  }
-  return array;
-}
-async function asyncLoop(iters, tick, cb) {
-  let ts = Date.now();
-  for (let i = 0; i < iters; i++) {
-    cb(i);
-    const diff = Date.now() - ts;
-    if (diff >= 0 && diff < tick)
-      continue;
-    await nextTick();
-    ts += diff;
-  }
-}
-function utf8ToBytes(str) {
-  if (typeof str !== "string")
-    throw new Error("string expected");
-  return new Uint8Array(new TextEncoder().encode(str));
-}
-function bytesToUtf8(bytes) {
-  return new TextDecoder().decode(bytes);
-}
-function toBytes(data) {
-  if (typeof data === "string")
-    data = utf8ToBytes(data);
-  abytes(data);
-  return data;
-}
-function kdfInputToBytes(data) {
-  if (typeof data === "string")
-    data = utf8ToBytes(data);
-  abytes(data);
-  return data;
-}
-function concatBytes(...arrays) {
-  let sum = 0;
-  for (let i = 0; i < arrays.length; i++) {
-    const a = arrays[i];
-    abytes(a);
-    sum += a.length;
-  }
-  const res = new Uint8Array(sum);
-  for (let i = 0, pad = 0; i < arrays.length; i++) {
-    const a = arrays[i];
-    res.set(a, pad);
-    pad += a.length;
-  }
-  return res;
-}
-function checkOpts(defaults, opts) {
-  if (opts !== void 0 && {}.toString.call(opts) !== "[object Object]")
-    throw new Error("options should be object or undefined");
-  const merged = Object.assign(defaults, opts);
-  return merged;
-}
-function createHasher(hashCons) {
-  const hashC = (msg) => hashCons().update(toBytes(msg)).digest();
-  const tmp = hashCons();
-  hashC.outputLen = tmp.outputLen;
-  hashC.blockLen = tmp.blockLen;
-  hashC.create = () => hashCons();
-  return hashC;
-}
-function createOptHasher(hashCons) {
-  const hashC = (msg, opts) => hashCons(opts).update(toBytes(msg)).digest();
-  const tmp = hashCons({});
-  hashC.outputLen = tmp.outputLen;
-  hashC.blockLen = tmp.blockLen;
-  hashC.create = (opts) => hashCons(opts);
-  return hashC;
-}
-function createXOFer(hashCons) {
-  const hashC = (msg, opts) => hashCons(opts).update(toBytes(msg)).digest();
-  const tmp = hashCons({});
-  hashC.outputLen = tmp.outputLen;
-  hashC.blockLen = tmp.blockLen;
-  hashC.create = (opts) => hashCons(opts);
-  return hashC;
-}
-function randomBytes2(bytesLength = 32) {
-  if (crypto && typeof crypto.getRandomValues === "function") {
-    return crypto.getRandomValues(new Uint8Array(bytesLength));
-  }
-  if (crypto && typeof crypto.randomBytes === "function") {
-    return Uint8Array.from(crypto.randomBytes(bytesLength));
-  }
-  throw new Error("crypto.getRandomValues must be defined");
-}
-var isLE, swap8IfBE, byteSwapIfBE, swap32IfBE, hasHexBuiltin, hexes, asciis, nextTick, Hash, wrapConstructor, wrapConstructorWithOpts, wrapXOFConstructorWithOpts;
-var init_utils = __esm({
-  "node_modules/@noble/hashes/esm/utils.js"() {
-    "use strict";
-    init_cryptoNode();
-    isLE = /* @__PURE__ */ (() => new Uint8Array(new Uint32Array([287454020]).buffer)[0] === 68)();
-    swap8IfBE = isLE ? (n) => n : (n) => byteSwap(n);
-    byteSwapIfBE = swap8IfBE;
-    swap32IfBE = isLE ? (u) => u : byteSwap32;
-    hasHexBuiltin = /* @__PURE__ */ (() => (
-      // @ts-ignore
-      typeof Uint8Array.from([]).toHex === "function" && typeof Uint8Array.fromHex === "function"
-    ))();
-    hexes = /* @__PURE__ */ Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
-    asciis = { _0: 48, _9: 57, A: 65, F: 70, a: 97, f: 102 };
-    nextTick = async () => {
-    };
-    Hash = class {
-    };
-    wrapConstructor = createHasher;
-    wrapConstructorWithOpts = createOptHasher;
-    wrapXOFConstructorWithOpts = createXOFer;
-  }
-});
-
-// node_modules/@noble/hashes/esm/_md.js
-function setBigUint64(view, byteOffset, value, isLE2) {
-  if (typeof view.setBigUint64 === "function")
-    return view.setBigUint64(byteOffset, value, isLE2);
-  const _32n2 = BigInt(32);
-  const _u32_max = BigInt(4294967295);
-  const wh = Number(value >> _32n2 & _u32_max);
-  const wl = Number(value & _u32_max);
-  const h = isLE2 ? 4 : 0;
-  const l = isLE2 ? 0 : 4;
-  view.setUint32(byteOffset + h, wh, isLE2);
-  view.setUint32(byteOffset + l, wl, isLE2);
-}
-function Chi(a, b, c) {
-  return a & b ^ ~a & c;
-}
-function Maj(a, b, c) {
-  return a & b ^ a & c ^ b & c;
-}
-var HashMD, SHA256_IV, SHA512_IV;
-var init_md = __esm({
-  "node_modules/@noble/hashes/esm/_md.js"() {
-    "use strict";
-    init_utils();
-    HashMD = class extends Hash {
-      constructor(blockLen, outputLen, padOffset, isLE2) {
-        super();
-        this.finished = false;
-        this.length = 0;
-        this.pos = 0;
-        this.destroyed = false;
-        this.blockLen = blockLen;
-        this.outputLen = outputLen;
-        this.padOffset = padOffset;
-        this.isLE = isLE2;
-        this.buffer = new Uint8Array(blockLen);
-        this.view = createView(this.buffer);
-      }
-      update(data) {
-        aexists(this);
-        data = toBytes(data);
-        abytes(data);
-        const { view, buffer, blockLen } = this;
-        const len = data.length;
-        for (let pos = 0; pos < len; ) {
-          const take = Math.min(blockLen - this.pos, len - pos);
-          if (take === blockLen) {
-            const dataView = createView(data);
-            for (; blockLen <= len - pos; pos += blockLen)
-              this.process(dataView, pos);
-            continue;
-          }
-          buffer.set(data.subarray(pos, pos + take), this.pos);
-          this.pos += take;
-          pos += take;
-          if (this.pos === blockLen) {
-            this.process(view, 0);
-            this.pos = 0;
-          }
-        }
-        this.length += data.length;
-        this.roundClean();
-        return this;
-      }
-      digestInto(out) {
-        aexists(this);
-        aoutput(out, this);
-        this.finished = true;
-        const { buffer, view, blockLen, isLE: isLE2 } = this;
-        let { pos } = this;
-        buffer[pos++] = 128;
-        clean(this.buffer.subarray(pos));
-        if (this.padOffset > blockLen - pos) {
-          this.process(view, 0);
-          pos = 0;
-        }
-        for (let i = pos; i < blockLen; i++)
-          buffer[i] = 0;
-        setBigUint64(view, blockLen - 8, BigInt(this.length * 8), isLE2);
-        this.process(view, 0);
-        const oview = createView(out);
-        const len = this.outputLen;
-        if (len % 4)
-          throw new Error("_sha2: outputLen should be aligned to 32bit");
-        const outLen = len / 4;
-        const state = this.get();
-        if (outLen > state.length)
-          throw new Error("_sha2: outputLen bigger than state");
-        for (let i = 0; i < outLen; i++)
-          oview.setUint32(4 * i, state[i], isLE2);
-      }
-      digest() {
-        const { buffer, outputLen } = this;
-        this.digestInto(buffer);
-        const res = buffer.slice(0, outputLen);
-        this.destroy();
-        return res;
-      }
-      _cloneInto(to) {
-        to || (to = new this.constructor());
-        to.set(...this.get());
-        const { blockLen, buffer, length, finished, destroyed, pos } = this;
-        to.destroyed = destroyed;
-        to.finished = finished;
-        to.length = length;
-        to.pos = pos;
-        if (length % blockLen)
-          to.buffer.set(buffer);
-        return to;
-      }
-      clone() {
-        return this._cloneInto();
-      }
-    };
-    SHA256_IV = /* @__PURE__ */ Uint32Array.from([
-      1779033703,
-      3144134277,
-      1013904242,
-      2773480762,
-      1359893119,
-      2600822924,
-      528734635,
-      1541459225
-    ]);
-    SHA512_IV = /* @__PURE__ */ Uint32Array.from([
-      1779033703,
-      4089235720,
-      3144134277,
-      2227873595,
-      1013904242,
-      4271175723,
-      2773480762,
-      1595750129,
-      1359893119,
-      2917565137,
-      2600822924,
-      725511199,
-      528734635,
-      4215389547,
-      1541459225,
-      327033209
-    ]);
-  }
-});
-
-// node_modules/@noble/hashes/esm/_u64.js
-function fromBig(n, le = false) {
-  if (le)
-    return { h: Number(n & U32_MASK64), l: Number(n >> _32n & U32_MASK64) };
-  return { h: Number(n >> _32n & U32_MASK64) | 0, l: Number(n & U32_MASK64) | 0 };
-}
-function split(lst, le = false) {
-  const len = lst.length;
-  let Ah = new Uint32Array(len);
-  let Al = new Uint32Array(len);
-  for (let i = 0; i < len; i++) {
-    const { h, l } = fromBig(lst[i], le);
-    [Ah[i], Al[i]] = [h, l];
-  }
-  return [Ah, Al];
-}
-function add(Ah, Al, Bh, Bl) {
-  const l = (Al >>> 0) + (Bl >>> 0);
-  return { h: Ah + Bh + (l / 2 ** 32 | 0) | 0, l: l | 0 };
-}
-var U32_MASK64, _32n, shrSH, shrSL, rotrSH, rotrSL, rotrBH, rotrBL, add3L, add3H, add4L, add4H, add5L, add5H;
-var init_u64 = __esm({
-  "node_modules/@noble/hashes/esm/_u64.js"() {
-    "use strict";
-    U32_MASK64 = /* @__PURE__ */ BigInt(2 ** 32 - 1);
-    _32n = /* @__PURE__ */ BigInt(32);
-    shrSH = (h, _l, s) => h >>> s;
-    shrSL = (h, l, s) => h << 32 - s | l >>> s;
-    rotrSH = (h, l, s) => h >>> s | l << 32 - s;
-    rotrSL = (h, l, s) => h << 32 - s | l >>> s;
-    rotrBH = (h, l, s) => h << 64 - s | l >>> s - 32;
-    rotrBL = (h, l, s) => h >>> s - 32 | l << 64 - s;
-    add3L = (Al, Bl, Cl) => (Al >>> 0) + (Bl >>> 0) + (Cl >>> 0);
-    add3H = (low, Ah, Bh, Ch) => Ah + Bh + Ch + (low / 2 ** 32 | 0) | 0;
-    add4L = (Al, Bl, Cl, Dl) => (Al >>> 0) + (Bl >>> 0) + (Cl >>> 0) + (Dl >>> 0);
-    add4H = (low, Ah, Bh, Ch, Dh) => Ah + Bh + Ch + Dh + (low / 2 ** 32 | 0) | 0;
-    add5L = (Al, Bl, Cl, Dl, El) => (Al >>> 0) + (Bl >>> 0) + (Cl >>> 0) + (Dl >>> 0) + (El >>> 0);
-    add5H = (low, Ah, Bh, Ch, Dh, Eh) => Ah + Bh + Ch + Dh + Eh + (low / 2 ** 32 | 0) | 0;
-  }
-});
-
-// node_modules/@noble/hashes/esm/sha2.js
-var SHA256_K, SHA256_W, SHA256, K512, SHA512_Kh, SHA512_Kl, SHA512_W_H, SHA512_W_L, SHA512, sha256, sha512;
-var init_sha2 = __esm({
-  "node_modules/@noble/hashes/esm/sha2.js"() {
-    "use strict";
-    init_md();
-    init_u64();
-    init_utils();
-    SHA256_K = /* @__PURE__ */ Uint32Array.from([
-      1116352408,
-      1899447441,
-      3049323471,
-      3921009573,
-      961987163,
-      1508970993,
-      2453635748,
-      2870763221,
-      3624381080,
-      310598401,
-      607225278,
-      1426881987,
-      1925078388,
-      2162078206,
-      2614888103,
-      3248222580,
-      3835390401,
-      4022224774,
-      264347078,
-      604807628,
-      770255983,
-      1249150122,
-      1555081692,
-      1996064986,
-      2554220882,
-      2821834349,
-      2952996808,
-      3210313671,
-      3336571891,
-      3584528711,
-      113926993,
-      338241895,
-      666307205,
-      773529912,
-      1294757372,
-      1396182291,
-      1695183700,
-      1986661051,
-      2177026350,
-      2456956037,
-      2730485921,
-      2820302411,
-      3259730800,
-      3345764771,
-      3516065817,
-      3600352804,
-      4094571909,
-      275423344,
-      430227734,
-      506948616,
-      659060556,
-      883997877,
-      958139571,
-      1322822218,
-      1537002063,
-      1747873779,
-      1955562222,
-      2024104815,
-      2227730452,
-      2361852424,
-      2428436474,
-      2756734187,
-      3204031479,
-      3329325298
-    ]);
-    SHA256_W = /* @__PURE__ */ new Uint32Array(64);
-    SHA256 = class extends HashMD {
-      constructor(outputLen = 32) {
-        super(64, outputLen, 8, false);
-        this.A = SHA256_IV[0] | 0;
-        this.B = SHA256_IV[1] | 0;
-        this.C = SHA256_IV[2] | 0;
-        this.D = SHA256_IV[3] | 0;
-        this.E = SHA256_IV[4] | 0;
-        this.F = SHA256_IV[5] | 0;
-        this.G = SHA256_IV[6] | 0;
-        this.H = SHA256_IV[7] | 0;
-      }
-      get() {
-        const { A, B, C, D, E, F, G, H } = this;
-        return [A, B, C, D, E, F, G, H];
-      }
-      // prettier-ignore
-      set(A, B, C, D, E, F, G, H) {
-        this.A = A | 0;
-        this.B = B | 0;
-        this.C = C | 0;
-        this.D = D | 0;
-        this.E = E | 0;
-        this.F = F | 0;
-        this.G = G | 0;
-        this.H = H | 0;
-      }
-      process(view, offset) {
-        for (let i = 0; i < 16; i++, offset += 4)
-          SHA256_W[i] = view.getUint32(offset, false);
-        for (let i = 16; i < 64; i++) {
-          const W15 = SHA256_W[i - 15];
-          const W2 = SHA256_W[i - 2];
-          const s0 = rotr(W15, 7) ^ rotr(W15, 18) ^ W15 >>> 3;
-          const s1 = rotr(W2, 17) ^ rotr(W2, 19) ^ W2 >>> 10;
-          SHA256_W[i] = s1 + SHA256_W[i - 7] + s0 + SHA256_W[i - 16] | 0;
-        }
-        let { A, B, C, D, E, F, G, H } = this;
-        for (let i = 0; i < 64; i++) {
-          const sigma1 = rotr(E, 6) ^ rotr(E, 11) ^ rotr(E, 25);
-          const T1 = H + sigma1 + Chi(E, F, G) + SHA256_K[i] + SHA256_W[i] | 0;
-          const sigma0 = rotr(A, 2) ^ rotr(A, 13) ^ rotr(A, 22);
-          const T2 = sigma0 + Maj(A, B, C) | 0;
-          H = G;
-          G = F;
-          F = E;
-          E = D + T1 | 0;
-          D = C;
-          C = B;
-          B = A;
-          A = T1 + T2 | 0;
-        }
-        A = A + this.A | 0;
-        B = B + this.B | 0;
-        C = C + this.C | 0;
-        D = D + this.D | 0;
-        E = E + this.E | 0;
-        F = F + this.F | 0;
-        G = G + this.G | 0;
-        H = H + this.H | 0;
-        this.set(A, B, C, D, E, F, G, H);
-      }
-      roundClean() {
-        clean(SHA256_W);
-      }
-      destroy() {
-        this.set(0, 0, 0, 0, 0, 0, 0, 0);
-        clean(this.buffer);
-      }
-    };
-    K512 = /* @__PURE__ */ (() => split([
-      "0x428a2f98d728ae22",
-      "0x7137449123ef65cd",
-      "0xb5c0fbcfec4d3b2f",
-      "0xe9b5dba58189dbbc",
-      "0x3956c25bf348b538",
-      "0x59f111f1b605d019",
-      "0x923f82a4af194f9b",
-      "0xab1c5ed5da6d8118",
-      "0xd807aa98a3030242",
-      "0x12835b0145706fbe",
-      "0x243185be4ee4b28c",
-      "0x550c7dc3d5ffb4e2",
-      "0x72be5d74f27b896f",
-      "0x80deb1fe3b1696b1",
-      "0x9bdc06a725c71235",
-      "0xc19bf174cf692694",
-      "0xe49b69c19ef14ad2",
-      "0xefbe4786384f25e3",
-      "0x0fc19dc68b8cd5b5",
-      "0x240ca1cc77ac9c65",
-      "0x2de92c6f592b0275",
-      "0x4a7484aa6ea6e483",
-      "0x5cb0a9dcbd41fbd4",
-      "0x76f988da831153b5",
-      "0x983e5152ee66dfab",
-      "0xa831c66d2db43210",
-      "0xb00327c898fb213f",
-      "0xbf597fc7beef0ee4",
-      "0xc6e00bf33da88fc2",
-      "0xd5a79147930aa725",
-      "0x06ca6351e003826f",
-      "0x142929670a0e6e70",
-      "0x27b70a8546d22ffc",
-      "0x2e1b21385c26c926",
-      "0x4d2c6dfc5ac42aed",
-      "0x53380d139d95b3df",
-      "0x650a73548baf63de",
-      "0x766a0abb3c77b2a8",
-      "0x81c2c92e47edaee6",
-      "0x92722c851482353b",
-      "0xa2bfe8a14cf10364",
-      "0xa81a664bbc423001",
-      "0xc24b8b70d0f89791",
-      "0xc76c51a30654be30",
-      "0xd192e819d6ef5218",
-      "0xd69906245565a910",
-      "0xf40e35855771202a",
-      "0x106aa07032bbd1b8",
-      "0x19a4c116b8d2d0c8",
-      "0x1e376c085141ab53",
-      "0x2748774cdf8eeb99",
-      "0x34b0bcb5e19b48a8",
-      "0x391c0cb3c5c95a63",
-      "0x4ed8aa4ae3418acb",
-      "0x5b9cca4f7763e373",
-      "0x682e6ff3d6b2b8a3",
-      "0x748f82ee5defb2fc",
-      "0x78a5636f43172f60",
-      "0x84c87814a1f0ab72",
-      "0x8cc702081a6439ec",
-      "0x90befffa23631e28",
-      "0xa4506cebde82bde9",
-      "0xbef9a3f7b2c67915",
-      "0xc67178f2e372532b",
-      "0xca273eceea26619c",
-      "0xd186b8c721c0c207",
-      "0xeada7dd6cde0eb1e",
-      "0xf57d4f7fee6ed178",
-      "0x06f067aa72176fba",
-      "0x0a637dc5a2c898a6",
-      "0x113f9804bef90dae",
-      "0x1b710b35131c471b",
-      "0x28db77f523047d84",
-      "0x32caab7b40c72493",
-      "0x3c9ebe0a15c9bebc",
-      "0x431d67c49c100d4c",
-      "0x4cc5d4becb3e42b6",
-      "0x597f299cfc657e2a",
-      "0x5fcb6fab3ad6faec",
-      "0x6c44198c4a475817"
-    ].map((n) => BigInt(n))))();
-    SHA512_Kh = /* @__PURE__ */ (() => K512[0])();
-    SHA512_Kl = /* @__PURE__ */ (() => K512[1])();
-    SHA512_W_H = /* @__PURE__ */ new Uint32Array(80);
-    SHA512_W_L = /* @__PURE__ */ new Uint32Array(80);
-    SHA512 = class extends HashMD {
-      constructor(outputLen = 64) {
-        super(128, outputLen, 16, false);
-        this.Ah = SHA512_IV[0] | 0;
-        this.Al = SHA512_IV[1] | 0;
-        this.Bh = SHA512_IV[2] | 0;
-        this.Bl = SHA512_IV[3] | 0;
-        this.Ch = SHA512_IV[4] | 0;
-        this.Cl = SHA512_IV[5] | 0;
-        this.Dh = SHA512_IV[6] | 0;
-        this.Dl = SHA512_IV[7] | 0;
-        this.Eh = SHA512_IV[8] | 0;
-        this.El = SHA512_IV[9] | 0;
-        this.Fh = SHA512_IV[10] | 0;
-        this.Fl = SHA512_IV[11] | 0;
-        this.Gh = SHA512_IV[12] | 0;
-        this.Gl = SHA512_IV[13] | 0;
-        this.Hh = SHA512_IV[14] | 0;
-        this.Hl = SHA512_IV[15] | 0;
-      }
-      // prettier-ignore
-      get() {
-        const { Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl } = this;
-        return [Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl];
-      }
-      // prettier-ignore
-      set(Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl) {
-        this.Ah = Ah | 0;
-        this.Al = Al | 0;
-        this.Bh = Bh | 0;
-        this.Bl = Bl | 0;
-        this.Ch = Ch | 0;
-        this.Cl = Cl | 0;
-        this.Dh = Dh | 0;
-        this.Dl = Dl | 0;
-        this.Eh = Eh | 0;
-        this.El = El | 0;
-        this.Fh = Fh | 0;
-        this.Fl = Fl | 0;
-        this.Gh = Gh | 0;
-        this.Gl = Gl | 0;
-        this.Hh = Hh | 0;
-        this.Hl = Hl | 0;
-      }
-      process(view, offset) {
-        for (let i = 0; i < 16; i++, offset += 4) {
-          SHA512_W_H[i] = view.getUint32(offset);
-          SHA512_W_L[i] = view.getUint32(offset += 4);
-        }
-        for (let i = 16; i < 80; i++) {
-          const W15h = SHA512_W_H[i - 15] | 0;
-          const W15l = SHA512_W_L[i - 15] | 0;
-          const s0h = rotrSH(W15h, W15l, 1) ^ rotrSH(W15h, W15l, 8) ^ shrSH(W15h, W15l, 7);
-          const s0l = rotrSL(W15h, W15l, 1) ^ rotrSL(W15h, W15l, 8) ^ shrSL(W15h, W15l, 7);
-          const W2h = SHA512_W_H[i - 2] | 0;
-          const W2l = SHA512_W_L[i - 2] | 0;
-          const s1h = rotrSH(W2h, W2l, 19) ^ rotrBH(W2h, W2l, 61) ^ shrSH(W2h, W2l, 6);
-          const s1l = rotrSL(W2h, W2l, 19) ^ rotrBL(W2h, W2l, 61) ^ shrSL(W2h, W2l, 6);
-          const SUMl = add4L(s0l, s1l, SHA512_W_L[i - 7], SHA512_W_L[i - 16]);
-          const SUMh = add4H(SUMl, s0h, s1h, SHA512_W_H[i - 7], SHA512_W_H[i - 16]);
-          SHA512_W_H[i] = SUMh | 0;
-          SHA512_W_L[i] = SUMl | 0;
-        }
-        let { Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl } = this;
-        for (let i = 0; i < 80; i++) {
-          const sigma1h = rotrSH(Eh, El, 14) ^ rotrSH(Eh, El, 18) ^ rotrBH(Eh, El, 41);
-          const sigma1l = rotrSL(Eh, El, 14) ^ rotrSL(Eh, El, 18) ^ rotrBL(Eh, El, 41);
-          const CHIh = Eh & Fh ^ ~Eh & Gh;
-          const CHIl = El & Fl ^ ~El & Gl;
-          const T1ll = add5L(Hl, sigma1l, CHIl, SHA512_Kl[i], SHA512_W_L[i]);
-          const T1h = add5H(T1ll, Hh, sigma1h, CHIh, SHA512_Kh[i], SHA512_W_H[i]);
-          const T1l = T1ll | 0;
-          const sigma0h = rotrSH(Ah, Al, 28) ^ rotrBH(Ah, Al, 34) ^ rotrBH(Ah, Al, 39);
-          const sigma0l = rotrSL(Ah, Al, 28) ^ rotrBL(Ah, Al, 34) ^ rotrBL(Ah, Al, 39);
-          const MAJh = Ah & Bh ^ Ah & Ch ^ Bh & Ch;
-          const MAJl = Al & Bl ^ Al & Cl ^ Bl & Cl;
-          Hh = Gh | 0;
-          Hl = Gl | 0;
-          Gh = Fh | 0;
-          Gl = Fl | 0;
-          Fh = Eh | 0;
-          Fl = El | 0;
-          ({ h: Eh, l: El } = add(Dh | 0, Dl | 0, T1h | 0, T1l | 0));
-          Dh = Ch | 0;
-          Dl = Cl | 0;
-          Ch = Bh | 0;
-          Cl = Bl | 0;
-          Bh = Ah | 0;
-          Bl = Al | 0;
-          const All = add3L(T1l, sigma0l, MAJl);
-          Ah = add3H(All, T1h, sigma0h, MAJh);
-          Al = All | 0;
-        }
-        ({ h: Ah, l: Al } = add(this.Ah | 0, this.Al | 0, Ah | 0, Al | 0));
-        ({ h: Bh, l: Bl } = add(this.Bh | 0, this.Bl | 0, Bh | 0, Bl | 0));
-        ({ h: Ch, l: Cl } = add(this.Ch | 0, this.Cl | 0, Ch | 0, Cl | 0));
-        ({ h: Dh, l: Dl } = add(this.Dh | 0, this.Dl | 0, Dh | 0, Dl | 0));
-        ({ h: Eh, l: El } = add(this.Eh | 0, this.El | 0, Eh | 0, El | 0));
-        ({ h: Fh, l: Fl } = add(this.Fh | 0, this.Fl | 0, Fh | 0, Fl | 0));
-        ({ h: Gh, l: Gl } = add(this.Gh | 0, this.Gl | 0, Gh | 0, Gl | 0));
-        ({ h: Hh, l: Hl } = add(this.Hh | 0, this.Hl | 0, Hh | 0, Hl | 0));
-        this.set(Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl, Eh, El, Fh, Fl, Gh, Gl, Hh, Hl);
-      }
-      roundClean() {
-        clean(SHA512_W_H, SHA512_W_L);
-      }
-      destroy() {
-        clean(this.buffer);
-        this.set(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-      }
-    };
-    sha256 = /* @__PURE__ */ createHasher(() => new SHA256());
-    sha512 = /* @__PURE__ */ createHasher(() => new SHA512());
-  }
-});
-
-// node_modules/@noble/curves/esm/utils.js
-function _abool2(value, title = "") {
-  if (typeof value !== "boolean") {
-    const prefix = title && `"${title}"`;
-    throw new Error(prefix + "expected boolean, got type=" + typeof value);
-  }
-  return value;
-}
-function _abytes2(value, length, title = "") {
-  const bytes = isBytes(value);
-  const len = value?.length;
-  const needsLen = length !== void 0;
-  if (!bytes || needsLen && len !== length) {
-    const prefix = title && `"${title}" `;
-    const ofLen = needsLen ? ` of length ${length}` : "";
-    const got = bytes ? `length=${len}` : `type=${typeof value}`;
-    throw new Error(prefix + "expected Uint8Array" + ofLen + ", got " + got);
-  }
-  return value;
-}
-function hexToNumber(hex) {
-  if (typeof hex !== "string")
-    throw new Error("hex string expected, got " + typeof hex);
-  return hex === "" ? _0n : BigInt("0x" + hex);
-}
-function bytesToNumberBE(bytes) {
-  return hexToNumber(bytesToHex(bytes));
-}
-function bytesToNumberLE(bytes) {
-  abytes(bytes);
-  return hexToNumber(bytesToHex(Uint8Array.from(bytes).reverse()));
-}
-function numberToBytesBE(n, len) {
-  return hexToBytes(n.toString(16).padStart(len * 2, "0"));
-}
-function numberToBytesLE(n, len) {
-  return numberToBytesBE(n, len).reverse();
-}
-function ensureBytes(title, hex, expectedLength) {
-  let res;
-  if (typeof hex === "string") {
-    try {
-      res = hexToBytes(hex);
-    } catch (e) {
-      throw new Error(title + " must be hex string or Uint8Array, cause: " + e);
-    }
-  } else if (isBytes(hex)) {
-    res = Uint8Array.from(hex);
-  } else {
-    throw new Error(title + " must be hex string or Uint8Array");
-  }
-  const len = res.length;
-  if (typeof expectedLength === "number" && len !== expectedLength)
-    throw new Error(title + " of length " + expectedLength + " expected, got " + len);
-  return res;
-}
-function equalBytes(a, b) {
-  if (a.length !== b.length)
-    return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++)
-    diff |= a[i] ^ b[i];
-  return diff === 0;
-}
-function copyBytes(bytes) {
-  return Uint8Array.from(bytes);
-}
-function inRange(n, min, max) {
-  return isPosBig(n) && isPosBig(min) && isPosBig(max) && min <= n && n < max;
-}
-function aInRange(title, n, min, max) {
-  if (!inRange(n, min, max))
-    throw new Error("expected valid " + title + ": " + min + " <= n < " + max + ", got " + n);
-}
-function bitLen(n) {
-  let len;
-  for (len = 0; n > _0n; n >>= _1n, len += 1)
-    ;
-  return len;
-}
-function isHash(val) {
-  return typeof val === "function" && Number.isSafeInteger(val.outputLen);
-}
-function _validateObject(object, fields, optFields = {}) {
-  if (!object || typeof object !== "object")
-    throw new Error("expected valid options object");
-  function checkField(fieldName, expectedType, isOpt) {
-    const val = object[fieldName];
-    if (isOpt && val === void 0)
-      return;
-    const current = typeof val;
-    if (current !== expectedType || val === null)
-      throw new Error(`param "${fieldName}" is invalid: expected ${expectedType}, got ${current}`);
-  }
-  Object.entries(fields).forEach(([k, v]) => checkField(k, v, false));
-  Object.entries(optFields).forEach(([k, v]) => checkField(k, v, true));
-}
-function memoized(fn) {
-  const map = /* @__PURE__ */ new WeakMap();
-  return (arg, ...args) => {
-    const val = map.get(arg);
-    if (val !== void 0)
-      return val;
-    const computed = fn(arg, ...args);
-    map.set(arg, computed);
-    return computed;
-  };
-}
-var _0n, _1n, isPosBig, bitMask, notImplemented;
-var init_utils2 = __esm({
-  "node_modules/@noble/curves/esm/utils.js"() {
-    "use strict";
-    init_utils();
-    init_utils();
-    _0n = /* @__PURE__ */ BigInt(0);
-    _1n = /* @__PURE__ */ BigInt(1);
-    isPosBig = (n) => typeof n === "bigint" && _0n <= n;
-    bitMask = (n) => (_1n << BigInt(n)) - _1n;
-    notImplemented = () => {
-      throw new Error("not implemented");
-    };
-  }
-});
-
-// node_modules/@noble/curves/esm/abstract/modular.js
-function mod(a, b) {
-  const result = a % b;
-  return result >= _0n2 ? result : b + result;
-}
-function pow2(x, power, modulo) {
-  let res = x;
-  while (power-- > _0n2) {
-    res *= res;
-    res %= modulo;
-  }
-  return res;
-}
-function invert(number, modulo) {
-  if (number === _0n2)
-    throw new Error("invert: expected non-zero number");
-  if (modulo <= _0n2)
-    throw new Error("invert: expected positive modulus, got " + modulo);
-  let a = mod(number, modulo);
-  let b = modulo;
-  let x = _0n2, y = _1n2, u = _1n2, v = _0n2;
-  while (a !== _0n2) {
-    const q = b / a;
-    const r = b % a;
-    const m = x - u * q;
-    const n = y - v * q;
-    b = a, a = r, x = u, y = v, u = m, v = n;
-  }
-  const gcd = b;
-  if (gcd !== _1n2)
-    throw new Error("invert: does not exist");
-  return mod(x, modulo);
-}
-function assertIsSquare(Fp2, root, n) {
-  if (!Fp2.eql(Fp2.sqr(root), n))
-    throw new Error("Cannot find square root");
-}
-function sqrt3mod4(Fp2, n) {
-  const p1div4 = (Fp2.ORDER + _1n2) / _4n;
-  const root = Fp2.pow(n, p1div4);
-  assertIsSquare(Fp2, root, n);
-  return root;
-}
-function sqrt5mod8(Fp2, n) {
-  const p5div8 = (Fp2.ORDER - _5n) / _8n;
-  const n2 = Fp2.mul(n, _2n);
-  const v = Fp2.pow(n2, p5div8);
-  const nv = Fp2.mul(n, v);
-  const i = Fp2.mul(Fp2.mul(nv, _2n), v);
-  const root = Fp2.mul(nv, Fp2.sub(i, Fp2.ONE));
-  assertIsSquare(Fp2, root, n);
-  return root;
-}
-function sqrt9mod16(P) {
-  const Fp_ = Field(P);
-  const tn = tonelliShanks(P);
-  const c1 = tn(Fp_, Fp_.neg(Fp_.ONE));
-  const c2 = tn(Fp_, c1);
-  const c3 = tn(Fp_, Fp_.neg(c1));
-  const c4 = (P + _7n) / _16n;
-  return (Fp2, n) => {
-    let tv1 = Fp2.pow(n, c4);
-    let tv2 = Fp2.mul(tv1, c1);
-    const tv3 = Fp2.mul(tv1, c2);
-    const tv4 = Fp2.mul(tv1, c3);
-    const e1 = Fp2.eql(Fp2.sqr(tv2), n);
-    const e2 = Fp2.eql(Fp2.sqr(tv3), n);
-    tv1 = Fp2.cmov(tv1, tv2, e1);
-    tv2 = Fp2.cmov(tv4, tv3, e2);
-    const e3 = Fp2.eql(Fp2.sqr(tv2), n);
-    const root = Fp2.cmov(tv1, tv2, e3);
-    assertIsSquare(Fp2, root, n);
-    return root;
-  };
-}
-function tonelliShanks(P) {
-  if (P < _3n)
-    throw new Error("sqrt is not defined for small field");
-  let Q = P - _1n2;
-  let S = 0;
-  while (Q % _2n === _0n2) {
-    Q /= _2n;
-    S++;
-  }
-  let Z = _2n;
-  const _Fp = Field(P);
-  while (FpLegendre(_Fp, Z) === 1) {
-    if (Z++ > 1e3)
-      throw new Error("Cannot find square root: probably non-prime P");
-  }
-  if (S === 1)
-    return sqrt3mod4;
-  let cc = _Fp.pow(Z, Q);
-  const Q1div2 = (Q + _1n2) / _2n;
-  return function tonelliSlow(Fp2, n) {
-    if (Fp2.is0(n))
-      return n;
-    if (FpLegendre(Fp2, n) !== 1)
-      throw new Error("Cannot find square root");
-    let M = S;
-    let c = Fp2.mul(Fp2.ONE, cc);
-    let t = Fp2.pow(n, Q);
-    let R = Fp2.pow(n, Q1div2);
-    while (!Fp2.eql(t, Fp2.ONE)) {
-      if (Fp2.is0(t))
-        return Fp2.ZERO;
-      let i = 1;
-      let t_tmp = Fp2.sqr(t);
-      while (!Fp2.eql(t_tmp, Fp2.ONE)) {
-        i++;
-        t_tmp = Fp2.sqr(t_tmp);
-        if (i === M)
-          throw new Error("Cannot find square root");
-      }
-      const exponent = _1n2 << BigInt(M - i - 1);
-      const b = Fp2.pow(c, exponent);
-      M = i;
-      c = Fp2.sqr(b);
-      t = Fp2.mul(t, c);
-      R = Fp2.mul(R, b);
-    }
-    return R;
-  };
-}
-function FpSqrt(P) {
-  if (P % _4n === _3n)
-    return sqrt3mod4;
-  if (P % _8n === _5n)
-    return sqrt5mod8;
-  if (P % _16n === _9n)
-    return sqrt9mod16(P);
-  return tonelliShanks(P);
-}
-function validateField(field) {
-  const initial = {
-    ORDER: "bigint",
-    MASK: "bigint",
-    BYTES: "number",
-    BITS: "number"
-  };
-  const opts = FIELD_FIELDS.reduce((map, val) => {
-    map[val] = "function";
-    return map;
-  }, initial);
-  _validateObject(field, opts);
-  return field;
-}
-function FpPow(Fp2, num, power) {
-  if (power < _0n2)
-    throw new Error("invalid exponent, negatives unsupported");
-  if (power === _0n2)
-    return Fp2.ONE;
-  if (power === _1n2)
-    return num;
-  let p = Fp2.ONE;
-  let d = num;
-  while (power > _0n2) {
-    if (power & _1n2)
-      p = Fp2.mul(p, d);
-    d = Fp2.sqr(d);
-    power >>= _1n2;
-  }
-  return p;
-}
-function FpInvertBatch(Fp2, nums, passZero = false) {
-  const inverted = new Array(nums.length).fill(passZero ? Fp2.ZERO : void 0);
-  const multipliedAcc = nums.reduce((acc, num, i) => {
-    if (Fp2.is0(num))
-      return acc;
-    inverted[i] = acc;
-    return Fp2.mul(acc, num);
-  }, Fp2.ONE);
-  const invertedAcc = Fp2.inv(multipliedAcc);
-  nums.reduceRight((acc, num, i) => {
-    if (Fp2.is0(num))
-      return acc;
-    inverted[i] = Fp2.mul(acc, inverted[i]);
-    return Fp2.mul(acc, num);
-  }, invertedAcc);
-  return inverted;
-}
-function FpLegendre(Fp2, n) {
-  const p1mod2 = (Fp2.ORDER - _1n2) / _2n;
-  const powered = Fp2.pow(n, p1mod2);
-  const yes = Fp2.eql(powered, Fp2.ONE);
-  const zero = Fp2.eql(powered, Fp2.ZERO);
-  const no = Fp2.eql(powered, Fp2.neg(Fp2.ONE));
-  if (!yes && !zero && !no)
-    throw new Error("invalid Legendre symbol result");
-  return yes ? 1 : zero ? 0 : -1;
-}
-function nLength(n, nBitLength) {
-  if (nBitLength !== void 0)
-    anumber(nBitLength);
-  const _nBitLength = nBitLength !== void 0 ? nBitLength : n.toString(2).length;
-  const nByteLength = Math.ceil(_nBitLength / 8);
-  return { nBitLength: _nBitLength, nByteLength };
-}
-function Field(ORDER, bitLenOrOpts, isLE2 = false, opts = {}) {
-  if (ORDER <= _0n2)
-    throw new Error("invalid field: expected ORDER > 0, got " + ORDER);
-  let _nbitLength = void 0;
-  let _sqrt = void 0;
-  let modFromBytes = false;
-  let allowedLengths = void 0;
-  if (typeof bitLenOrOpts === "object" && bitLenOrOpts != null) {
-    if (opts.sqrt || isLE2)
-      throw new Error("cannot specify opts in two arguments");
-    const _opts = bitLenOrOpts;
-    if (_opts.BITS)
-      _nbitLength = _opts.BITS;
-    if (_opts.sqrt)
-      _sqrt = _opts.sqrt;
-    if (typeof _opts.isLE === "boolean")
-      isLE2 = _opts.isLE;
-    if (typeof _opts.modFromBytes === "boolean")
-      modFromBytes = _opts.modFromBytes;
-    allowedLengths = _opts.allowedLengths;
-  } else {
-    if (typeof bitLenOrOpts === "number")
-      _nbitLength = bitLenOrOpts;
-    if (opts.sqrt)
-      _sqrt = opts.sqrt;
-  }
-  const { nBitLength: BITS, nByteLength: BYTES } = nLength(ORDER, _nbitLength);
-  if (BYTES > 2048)
-    throw new Error("invalid field: expected ORDER of <= 2048 bytes");
-  let sqrtP;
-  const f = Object.freeze({
-    ORDER,
-    isLE: isLE2,
-    BITS,
-    BYTES,
-    MASK: bitMask(BITS),
-    ZERO: _0n2,
-    ONE: _1n2,
-    allowedLengths,
-    create: (num) => mod(num, ORDER),
-    isValid: (num) => {
-      if (typeof num !== "bigint")
-        throw new Error("invalid field element: expected bigint, got " + typeof num);
-      return _0n2 <= num && num < ORDER;
-    },
-    is0: (num) => num === _0n2,
-    // is valid and invertible
-    isValidNot0: (num) => !f.is0(num) && f.isValid(num),
-    isOdd: (num) => (num & _1n2) === _1n2,
-    neg: (num) => mod(-num, ORDER),
-    eql: (lhs, rhs) => lhs === rhs,
-    sqr: (num) => mod(num * num, ORDER),
-    add: (lhs, rhs) => mod(lhs + rhs, ORDER),
-    sub: (lhs, rhs) => mod(lhs - rhs, ORDER),
-    mul: (lhs, rhs) => mod(lhs * rhs, ORDER),
-    pow: (num, power) => FpPow(f, num, power),
-    div: (lhs, rhs) => mod(lhs * invert(rhs, ORDER), ORDER),
-    // Same as above, but doesn't normalize
-    sqrN: (num) => num * num,
-    addN: (lhs, rhs) => lhs + rhs,
-    subN: (lhs, rhs) => lhs - rhs,
-    mulN: (lhs, rhs) => lhs * rhs,
-    inv: (num) => invert(num, ORDER),
-    sqrt: _sqrt || ((n) => {
-      if (!sqrtP)
-        sqrtP = FpSqrt(ORDER);
-      return sqrtP(f, n);
-    }),
-    toBytes: (num) => isLE2 ? numberToBytesLE(num, BYTES) : numberToBytesBE(num, BYTES),
-    fromBytes: (bytes, skipValidation = true) => {
-      if (allowedLengths) {
-        if (!allowedLengths.includes(bytes.length) || bytes.length > BYTES) {
-          throw new Error("Field.fromBytes: expected " + allowedLengths + " bytes, got " + bytes.length);
-        }
-        const padded = new Uint8Array(BYTES);
-        padded.set(bytes, isLE2 ? 0 : padded.length - bytes.length);
-        bytes = padded;
-      }
-      if (bytes.length !== BYTES)
-        throw new Error("Field.fromBytes: expected " + BYTES + " bytes, got " + bytes.length);
-      let scalar = isLE2 ? bytesToNumberLE(bytes) : bytesToNumberBE(bytes);
-      if (modFromBytes)
-        scalar = mod(scalar, ORDER);
-      if (!skipValidation) {
-        if (!f.isValid(scalar))
-          throw new Error("invalid field element: outside of range 0..ORDER");
-      }
-      return scalar;
-    },
-    // TODO: we don't need it here, move out to separate fn
-    invertBatch: (lst) => FpInvertBatch(f, lst),
-    // We can't move this out because Fp6, Fp12 implement it
-    // and it's unclear what to return in there.
-    cmov: (a, b, c) => c ? b : a
-  });
-  return Object.freeze(f);
-}
-function FpSqrtEven(Fp2, elm) {
-  if (!Fp2.isOdd)
-    throw new Error("Field doesn't have isOdd");
-  const root = Fp2.sqrt(elm);
-  return Fp2.isOdd(root) ? Fp2.neg(root) : root;
-}
-var _0n2, _1n2, _2n, _3n, _4n, _5n, _7n, _8n, _9n, _16n, isNegativeLE, FIELD_FIELDS;
-var init_modular = __esm({
-  "node_modules/@noble/curves/esm/abstract/modular.js"() {
-    "use strict";
-    init_utils2();
-    _0n2 = BigInt(0);
-    _1n2 = BigInt(1);
-    _2n = /* @__PURE__ */ BigInt(2);
-    _3n = /* @__PURE__ */ BigInt(3);
-    _4n = /* @__PURE__ */ BigInt(4);
-    _5n = /* @__PURE__ */ BigInt(5);
-    _7n = /* @__PURE__ */ BigInt(7);
-    _8n = /* @__PURE__ */ BigInt(8);
-    _9n = /* @__PURE__ */ BigInt(9);
-    _16n = /* @__PURE__ */ BigInt(16);
-    isNegativeLE = (num, modulo) => (mod(num, modulo) & _1n2) === _1n2;
-    FIELD_FIELDS = [
-      "create",
-      "isValid",
-      "is0",
-      "neg",
-      "inv",
-      "sqrt",
-      "sqr",
-      "eql",
-      "add",
-      "sub",
-      "mul",
-      "pow",
-      "div",
-      "addN",
-      "subN",
-      "mulN",
-      "sqrN"
-    ];
-  }
-});
-
-// node_modules/@noble/curves/esm/abstract/curve.js
-function negateCt(condition, item) {
-  const neg = item.negate();
-  return condition ? neg : item;
-}
-function normalizeZ(c, points) {
-  const invertedZs = FpInvertBatch(c.Fp, points.map((p) => p.Z));
-  return points.map((p, i) => c.fromAffine(p.toAffine(invertedZs[i])));
-}
-function validateW(W, bits) {
-  if (!Number.isSafeInteger(W) || W <= 0 || W > bits)
-    throw new Error("invalid window size, expected [1.." + bits + "], got W=" + W);
-}
-function calcWOpts(W, scalarBits) {
-  validateW(W, scalarBits);
-  const windows = Math.ceil(scalarBits / W) + 1;
-  const windowSize = 2 ** (W - 1);
-  const maxNumber = 2 ** W;
-  const mask = bitMask(W);
-  const shiftBy = BigInt(W);
-  return { windows, windowSize, mask, maxNumber, shiftBy };
-}
-function calcOffsets(n, window, wOpts) {
-  const { windowSize, mask, maxNumber, shiftBy } = wOpts;
-  let wbits = Number(n & mask);
-  let nextN = n >> shiftBy;
-  if (wbits > windowSize) {
-    wbits -= maxNumber;
-    nextN += _1n3;
-  }
-  const offsetStart = window * windowSize;
-  const offset = offsetStart + Math.abs(wbits) - 1;
-  const isZero = wbits === 0;
-  const isNeg = wbits < 0;
-  const isNegF = window % 2 !== 0;
-  const offsetF = offsetStart;
-  return { nextN, offset, isZero, isNeg, isNegF, offsetF };
-}
-function validateMSMPoints(points, c) {
-  if (!Array.isArray(points))
-    throw new Error("array expected");
-  points.forEach((p, i) => {
-    if (!(p instanceof c))
-      throw new Error("invalid point at index " + i);
-  });
-}
-function validateMSMScalars(scalars, field) {
-  if (!Array.isArray(scalars))
-    throw new Error("array of scalars expected");
-  scalars.forEach((s, i) => {
-    if (!field.isValid(s))
-      throw new Error("invalid scalar at index " + i);
-  });
-}
-function getW(P) {
-  return pointWindowSizes.get(P) || 1;
-}
-function assert0(n) {
-  if (n !== _0n3)
-    throw new Error("invalid wNAF");
-}
-function pippenger(c, fieldN, points, scalars) {
-  validateMSMPoints(points, c);
-  validateMSMScalars(scalars, fieldN);
-  const plength = points.length;
-  const slength = scalars.length;
-  if (plength !== slength)
-    throw new Error("arrays of points and scalars must have equal length");
-  const zero = c.ZERO;
-  const wbits = bitLen(BigInt(plength));
-  let windowSize = 1;
-  if (wbits > 12)
-    windowSize = wbits - 3;
-  else if (wbits > 4)
-    windowSize = wbits - 2;
-  else if (wbits > 0)
-    windowSize = 2;
-  const MASK = bitMask(windowSize);
-  const buckets = new Array(Number(MASK) + 1).fill(zero);
-  const lastBits = Math.floor((fieldN.BITS - 1) / windowSize) * windowSize;
-  let sum = zero;
-  for (let i = lastBits; i >= 0; i -= windowSize) {
-    buckets.fill(zero);
-    for (let j = 0; j < slength; j++) {
-      const scalar = scalars[j];
-      const wbits2 = Number(scalar >> BigInt(i) & MASK);
-      buckets[wbits2] = buckets[wbits2].add(points[j]);
-    }
-    let resI = zero;
-    for (let j = buckets.length - 1, sumI = zero; j > 0; j--) {
-      sumI = sumI.add(buckets[j]);
-      resI = resI.add(sumI);
-    }
-    sum = sum.add(resI);
-    if (i !== 0)
-      for (let j = 0; j < windowSize; j++)
-        sum = sum.double();
-  }
-  return sum;
-}
-function createField(order, field, isLE2) {
-  if (field) {
-    if (field.ORDER !== order)
-      throw new Error("Field.ORDER must match order: Fp == p, Fn == n");
-    validateField(field);
-    return field;
-  } else {
-    return Field(order, { isLE: isLE2 });
-  }
-}
-function _createCurveFields(type, CURVE, curveOpts = {}, FpFnLE) {
-  if (FpFnLE === void 0)
-    FpFnLE = type === "edwards";
-  if (!CURVE || typeof CURVE !== "object")
-    throw new Error(`expected valid ${type} CURVE object`);
-  for (const p of ["p", "n", "h"]) {
-    const val = CURVE[p];
-    if (!(typeof val === "bigint" && val > _0n3))
-      throw new Error(`CURVE.${p} must be positive bigint`);
-  }
-  const Fp2 = createField(CURVE.p, curveOpts.Fp, FpFnLE);
-  const Fn2 = createField(CURVE.n, curveOpts.Fn, FpFnLE);
-  const _b = type === "weierstrass" ? "b" : "d";
-  const params = ["Gx", "Gy", "a", _b];
-  for (const p of params) {
-    if (!Fp2.isValid(CURVE[p]))
-      throw new Error(`CURVE.${p} must be valid field element of CURVE.Fp`);
-  }
-  CURVE = Object.freeze(Object.assign({}, CURVE));
-  return { CURVE, Fp: Fp2, Fn: Fn2 };
-}
-var _0n3, _1n3, pointPrecomputes, pointWindowSizes, wNAF;
-var init_curve = __esm({
-  "node_modules/@noble/curves/esm/abstract/curve.js"() {
-    "use strict";
-    init_utils2();
-    init_modular();
-    _0n3 = BigInt(0);
-    _1n3 = BigInt(1);
-    pointPrecomputes = /* @__PURE__ */ new WeakMap();
-    pointWindowSizes = /* @__PURE__ */ new WeakMap();
-    wNAF = class {
-      // Parametrized with a given Point class (not individual point)
-      constructor(Point, bits) {
-        this.BASE = Point.BASE;
-        this.ZERO = Point.ZERO;
-        this.Fn = Point.Fn;
-        this.bits = bits;
-      }
-      // non-const time multiplication ladder
-      _unsafeLadder(elm, n, p = this.ZERO) {
-        let d = elm;
-        while (n > _0n3) {
-          if (n & _1n3)
-            p = p.add(d);
-          d = d.double();
-          n >>= _1n3;
-        }
-        return p;
-      }
-      /**
-       * Creates a wNAF precomputation window. Used for caching.
-       * Default window size is set by `utils.precompute()` and is equal to 8.
-       * Number of precomputed points depends on the curve size:
-       * 2^(𝑊−1) * (Math.ceil(𝑛 / 𝑊) + 1), where:
-       * - 𝑊 is the window size
-       * - 𝑛 is the bitlength of the curve order.
-       * For a 256-bit curve and window size 8, the number of precomputed points is 128 * 33 = 4224.
-       * @param point Point instance
-       * @param W window size
-       * @returns precomputed point tables flattened to a single array
-       */
-      precomputeWindow(point, W) {
-        const { windows, windowSize } = calcWOpts(W, this.bits);
-        const points = [];
-        let p = point;
-        let base = p;
-        for (let window = 0; window < windows; window++) {
-          base = p;
-          points.push(base);
-          for (let i = 1; i < windowSize; i++) {
-            base = base.add(p);
-            points.push(base);
-          }
-          p = base.double();
-        }
-        return points;
-      }
-      /**
-       * Implements ec multiplication using precomputed tables and w-ary non-adjacent form.
-       * More compact implementation:
-       * https://github.com/paulmillr/noble-secp256k1/blob/47cb1669b6e506ad66b35fe7d76132ae97465da2/index.ts#L502-L541
-       * @returns real and fake (for const-time) points
-       */
-      wNAF(W, precomputes, n) {
-        if (!this.Fn.isValid(n))
-          throw new Error("invalid scalar");
-        let p = this.ZERO;
-        let f = this.BASE;
-        const wo = calcWOpts(W, this.bits);
-        for (let window = 0; window < wo.windows; window++) {
-          const { nextN, offset, isZero, isNeg, isNegF, offsetF } = calcOffsets(n, window, wo);
-          n = nextN;
-          if (isZero) {
-            f = f.add(negateCt(isNegF, precomputes[offsetF]));
-          } else {
-            p = p.add(negateCt(isNeg, precomputes[offset]));
-          }
-        }
-        assert0(n);
-        return { p, f };
-      }
-      /**
-       * Implements ec unsafe (non const-time) multiplication using precomputed tables and w-ary non-adjacent form.
-       * @param acc accumulator point to add result of multiplication
-       * @returns point
-       */
-      wNAFUnsafe(W, precomputes, n, acc = this.ZERO) {
-        const wo = calcWOpts(W, this.bits);
-        for (let window = 0; window < wo.windows; window++) {
-          if (n === _0n3)
-            break;
-          const { nextN, offset, isZero, isNeg } = calcOffsets(n, window, wo);
-          n = nextN;
-          if (isZero) {
-            continue;
-          } else {
-            const item = precomputes[offset];
-            acc = acc.add(isNeg ? item.negate() : item);
-          }
-        }
-        assert0(n);
-        return acc;
-      }
-      getPrecomputes(W, point, transform) {
-        let comp = pointPrecomputes.get(point);
-        if (!comp) {
-          comp = this.precomputeWindow(point, W);
-          if (W !== 1) {
-            if (typeof transform === "function")
-              comp = transform(comp);
-            pointPrecomputes.set(point, comp);
-          }
-        }
-        return comp;
-      }
-      cached(point, scalar, transform) {
-        const W = getW(point);
-        return this.wNAF(W, this.getPrecomputes(W, point, transform), scalar);
-      }
-      unsafe(point, scalar, transform, prev) {
-        const W = getW(point);
-        if (W === 1)
-          return this._unsafeLadder(point, scalar, prev);
-        return this.wNAFUnsafe(W, this.getPrecomputes(W, point, transform), scalar, prev);
-      }
-      // We calculate precomputes for elliptic curve point multiplication
-      // using windowed method. This specifies window size and
-      // stores precomputed values. Usually only base point would be precomputed.
-      createCache(P, W) {
-        validateW(W, this.bits);
-        pointWindowSizes.set(P, W);
-        pointPrecomputes.delete(P);
-      }
-      hasCache(elm) {
-        return getW(elm) !== 1;
-      }
-    };
-  }
-});
-
-// node_modules/@noble/curves/esm/abstract/edwards.js
-function isEdValidXY(Fp2, CURVE, x, y) {
-  const x2 = Fp2.sqr(x);
-  const y2 = Fp2.sqr(y);
-  const left = Fp2.add(Fp2.mul(CURVE.a, x2), y2);
-  const right = Fp2.add(Fp2.ONE, Fp2.mul(CURVE.d, Fp2.mul(x2, y2)));
-  return Fp2.eql(left, right);
-}
-function edwards(params, extraOpts = {}) {
-  const validated = _createCurveFields("edwards", params, extraOpts, extraOpts.FpFnLE);
-  const { Fp: Fp2, Fn: Fn2 } = validated;
-  let CURVE = validated.CURVE;
-  const { h: cofactor } = CURVE;
-  _validateObject(extraOpts, {}, { uvRatio: "function" });
-  const MASK = _2n2 << BigInt(Fn2.BYTES * 8) - _1n4;
-  const modP = (n) => Fp2.create(n);
-  const uvRatio2 = extraOpts.uvRatio || ((u, v) => {
-    try {
-      return { isValid: true, value: Fp2.sqrt(Fp2.div(u, v)) };
-    } catch (e) {
-      return { isValid: false, value: _0n4 };
-    }
-  });
-  if (!isEdValidXY(Fp2, CURVE, CURVE.Gx, CURVE.Gy))
-    throw new Error("bad curve params: generator point");
-  function acoord(title, n, banZero = false) {
-    const min = banZero ? _1n4 : _0n4;
-    aInRange("coordinate " + title, n, min, MASK);
-    return n;
-  }
-  function aextpoint(other) {
-    if (!(other instanceof Point))
-      throw new Error("ExtendedPoint expected");
-  }
-  const toAffineMemo = memoized((p, iz) => {
-    const { X, Y, Z } = p;
-    const is0 = p.is0();
-    if (iz == null)
-      iz = is0 ? _8n2 : Fp2.inv(Z);
-    const x = modP(X * iz);
-    const y = modP(Y * iz);
-    const zz = Fp2.mul(Z, iz);
-    if (is0)
-      return { x: _0n4, y: _1n4 };
-    if (zz !== _1n4)
-      throw new Error("invZ was invalid");
-    return { x, y };
-  });
-  const assertValidMemo = memoized((p) => {
-    const { a, d } = CURVE;
-    if (p.is0())
-      throw new Error("bad point: ZERO");
-    const { X, Y, Z, T } = p;
-    const X2 = modP(X * X);
-    const Y2 = modP(Y * Y);
-    const Z2 = modP(Z * Z);
-    const Z4 = modP(Z2 * Z2);
-    const aX2 = modP(X2 * a);
-    const left = modP(Z2 * modP(aX2 + Y2));
-    const right = modP(Z4 + modP(d * modP(X2 * Y2)));
-    if (left !== right)
-      throw new Error("bad point: equation left != right (1)");
-    const XY = modP(X * Y);
-    const ZT = modP(Z * T);
-    if (XY !== ZT)
-      throw new Error("bad point: equation left != right (2)");
-    return true;
-  });
-  class Point {
-    constructor(X, Y, Z, T) {
-      this.X = acoord("x", X);
-      this.Y = acoord("y", Y);
-      this.Z = acoord("z", Z, true);
-      this.T = acoord("t", T);
-      Object.freeze(this);
-    }
-    static CURVE() {
-      return CURVE;
-    }
-    static fromAffine(p) {
-      if (p instanceof Point)
-        throw new Error("extended point not allowed");
-      const { x, y } = p || {};
-      acoord("x", x);
-      acoord("y", y);
-      return new Point(x, y, _1n4, modP(x * y));
-    }
-    // Uses algo from RFC8032 5.1.3.
-    static fromBytes(bytes, zip215 = false) {
-      const len = Fp2.BYTES;
-      const { a, d } = CURVE;
-      bytes = copyBytes(_abytes2(bytes, len, "point"));
-      _abool2(zip215, "zip215");
-      const normed = copyBytes(bytes);
-      const lastByte = bytes[len - 1];
-      normed[len - 1] = lastByte & ~128;
-      const y = bytesToNumberLE(normed);
-      const max = zip215 ? MASK : Fp2.ORDER;
-      aInRange("point.y", y, _0n4, max);
-      const y2 = modP(y * y);
-      const u = modP(y2 - _1n4);
-      const v = modP(d * y2 - a);
-      let { isValid, value: x } = uvRatio2(u, v);
-      if (!isValid)
-        throw new Error("bad point: invalid y coordinate");
-      const isXOdd = (x & _1n4) === _1n4;
-      const isLastByteOdd = (lastByte & 128) !== 0;
-      if (!zip215 && x === _0n4 && isLastByteOdd)
-        throw new Error("bad point: x=0 and x_0=1");
-      if (isLastByteOdd !== isXOdd)
-        x = modP(-x);
-      return Point.fromAffine({ x, y });
-    }
-    static fromHex(bytes, zip215 = false) {
-      return Point.fromBytes(ensureBytes("point", bytes), zip215);
-    }
-    get x() {
-      return this.toAffine().x;
-    }
-    get y() {
-      return this.toAffine().y;
-    }
-    precompute(windowSize = 8, isLazy = true) {
-      wnaf.createCache(this, windowSize);
-      if (!isLazy)
-        this.multiply(_2n2);
-      return this;
-    }
-    // Useful in fromAffine() - not for fromBytes(), which always created valid points.
-    assertValidity() {
-      assertValidMemo(this);
-    }
-    // Compare one point to another.
-    equals(other) {
-      aextpoint(other);
-      const { X: X1, Y: Y1, Z: Z1 } = this;
-      const { X: X2, Y: Y2, Z: Z2 } = other;
-      const X1Z2 = modP(X1 * Z2);
-      const X2Z1 = modP(X2 * Z1);
-      const Y1Z2 = modP(Y1 * Z2);
-      const Y2Z1 = modP(Y2 * Z1);
-      return X1Z2 === X2Z1 && Y1Z2 === Y2Z1;
-    }
-    is0() {
-      return this.equals(Point.ZERO);
-    }
-    negate() {
-      return new Point(modP(-this.X), this.Y, this.Z, modP(-this.T));
-    }
-    // Fast algo for doubling Extended Point.
-    // https://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#doubling-dbl-2008-hwcd
-    // Cost: 4M + 4S + 1*a + 6add + 1*2.
-    double() {
-      const { a } = CURVE;
-      const { X: X1, Y: Y1, Z: Z1 } = this;
-      const A = modP(X1 * X1);
-      const B = modP(Y1 * Y1);
-      const C = modP(_2n2 * modP(Z1 * Z1));
-      const D = modP(a * A);
-      const x1y1 = X1 + Y1;
-      const E = modP(modP(x1y1 * x1y1) - A - B);
-      const G = D + B;
-      const F = G - C;
-      const H = D - B;
-      const X3 = modP(E * F);
-      const Y3 = modP(G * H);
-      const T3 = modP(E * H);
-      const Z3 = modP(F * G);
-      return new Point(X3, Y3, Z3, T3);
-    }
-    // Fast algo for adding 2 Extended Points.
-    // https://hyperelliptic.org/EFD/g1p/auto-twisted-extended.html#addition-add-2008-hwcd
-    // Cost: 9M + 1*a + 1*d + 7add.
-    add(other) {
-      aextpoint(other);
-      const { a, d } = CURVE;
-      const { X: X1, Y: Y1, Z: Z1, T: T1 } = this;
-      const { X: X2, Y: Y2, Z: Z2, T: T2 } = other;
-      const A = modP(X1 * X2);
-      const B = modP(Y1 * Y2);
-      const C = modP(T1 * d * T2);
-      const D = modP(Z1 * Z2);
-      const E = modP((X1 + Y1) * (X2 + Y2) - A - B);
-      const F = D - C;
-      const G = D + C;
-      const H = modP(B - a * A);
-      const X3 = modP(E * F);
-      const Y3 = modP(G * H);
-      const T3 = modP(E * H);
-      const Z3 = modP(F * G);
-      return new Point(X3, Y3, Z3, T3);
-    }
-    subtract(other) {
-      return this.add(other.negate());
-    }
-    // Constant-time multiplication.
-    multiply(scalar) {
-      if (!Fn2.isValidNot0(scalar))
-        throw new Error("invalid scalar: expected 1 <= sc < curve.n");
-      const { p, f } = wnaf.cached(this, scalar, (p2) => normalizeZ(Point, p2));
-      return normalizeZ(Point, [p, f])[0];
-    }
-    // Non-constant-time multiplication. Uses double-and-add algorithm.
-    // It's faster, but should only be used when you don't care about
-    // an exposed private key e.g. sig verification.
-    // Does NOT allow scalars higher than CURVE.n.
-    // Accepts optional accumulator to merge with multiply (important for sparse scalars)
-    multiplyUnsafe(scalar, acc = Point.ZERO) {
-      if (!Fn2.isValid(scalar))
-        throw new Error("invalid scalar: expected 0 <= sc < curve.n");
-      if (scalar === _0n4)
-        return Point.ZERO;
-      if (this.is0() || scalar === _1n4)
-        return this;
-      return wnaf.unsafe(this, scalar, (p) => normalizeZ(Point, p), acc);
-    }
-    // Checks if point is of small order.
-    // If you add something to small order point, you will have "dirty"
-    // point with torsion component.
-    // Multiplies point by cofactor and checks if the result is 0.
-    isSmallOrder() {
-      return this.multiplyUnsafe(cofactor).is0();
-    }
-    // Multiplies point by curve order and checks if the result is 0.
-    // Returns `false` is the point is dirty.
-    isTorsionFree() {
-      return wnaf.unsafe(this, CURVE.n).is0();
-    }
-    // Converts Extended point to default (x, y) coordinates.
-    // Can accept precomputed Z^-1 - for example, from invertBatch.
-    toAffine(invertedZ) {
-      return toAffineMemo(this, invertedZ);
-    }
-    clearCofactor() {
-      if (cofactor === _1n4)
-        return this;
-      return this.multiplyUnsafe(cofactor);
-    }
-    toBytes() {
-      const { x, y } = this.toAffine();
-      const bytes = Fp2.toBytes(y);
-      bytes[bytes.length - 1] |= x & _1n4 ? 128 : 0;
-      return bytes;
-    }
-    toHex() {
-      return bytesToHex(this.toBytes());
-    }
-    toString() {
-      return `<Point ${this.is0() ? "ZERO" : this.toHex()}>`;
-    }
-    // TODO: remove
-    get ex() {
-      return this.X;
-    }
-    get ey() {
-      return this.Y;
-    }
-    get ez() {
-      return this.Z;
-    }
-    get et() {
-      return this.T;
-    }
-    static normalizeZ(points) {
-      return normalizeZ(Point, points);
-    }
-    static msm(points, scalars) {
-      return pippenger(Point, Fn2, points, scalars);
-    }
-    _setWindowSize(windowSize) {
-      this.precompute(windowSize);
-    }
-    toRawBytes() {
-      return this.toBytes();
-    }
-  }
-  Point.BASE = new Point(CURVE.Gx, CURVE.Gy, _1n4, modP(CURVE.Gx * CURVE.Gy));
-  Point.ZERO = new Point(_0n4, _1n4, _1n4, _0n4);
-  Point.Fp = Fp2;
-  Point.Fn = Fn2;
-  const wnaf = new wNAF(Point, Fn2.BITS);
-  Point.BASE.precompute(8);
-  return Point;
-}
-function eddsa(Point, cHash, eddsaOpts = {}) {
-  if (typeof cHash !== "function")
-    throw new Error('"hash" function param is required');
-  _validateObject(eddsaOpts, {}, {
-    adjustScalarBytes: "function",
-    randomBytes: "function",
-    domain: "function",
-    prehash: "function",
-    mapToCurve: "function"
-  });
-  const { prehash } = eddsaOpts;
-  const { BASE, Fp: Fp2, Fn: Fn2 } = Point;
-  const randomBytes4 = eddsaOpts.randomBytes || randomBytes2;
-  const adjustScalarBytes2 = eddsaOpts.adjustScalarBytes || ((bytes) => bytes);
-  const domain = eddsaOpts.domain || ((data, ctx, phflag) => {
-    _abool2(phflag, "phflag");
-    if (ctx.length || phflag)
-      throw new Error("Contexts/pre-hash are not supported");
-    return data;
-  });
-  function modN_LE(hash) {
-    return Fn2.create(bytesToNumberLE(hash));
-  }
-  function getPrivateScalar(key) {
-    const len = lengths.secretKey;
-    key = ensureBytes("private key", key, len);
-    const hashed = ensureBytes("hashed private key", cHash(key), 2 * len);
-    const head = adjustScalarBytes2(hashed.slice(0, len));
-    const prefix = hashed.slice(len, 2 * len);
-    const scalar = modN_LE(head);
-    return { head, prefix, scalar };
-  }
-  function getExtendedPublicKey(secretKey) {
-    const { head, prefix, scalar } = getPrivateScalar(secretKey);
-    const point = BASE.multiply(scalar);
-    const pointBytes = point.toBytes();
-    return { head, prefix, scalar, point, pointBytes };
-  }
-  function getPublicKey(secretKey) {
-    return getExtendedPublicKey(secretKey).pointBytes;
-  }
-  function hashDomainToScalar(context = Uint8Array.of(), ...msgs) {
-    const msg = concatBytes(...msgs);
-    return modN_LE(cHash(domain(msg, ensureBytes("context", context), !!prehash)));
-  }
-  function sign(msg, secretKey, options = {}) {
-    msg = ensureBytes("message", msg);
-    if (prehash)
-      msg = prehash(msg);
-    const { prefix, scalar, pointBytes } = getExtendedPublicKey(secretKey);
-    const r = hashDomainToScalar(options.context, prefix, msg);
-    const R = BASE.multiply(r).toBytes();
-    const k = hashDomainToScalar(options.context, R, pointBytes, msg);
-    const s = Fn2.create(r + k * scalar);
-    if (!Fn2.isValid(s))
-      throw new Error("sign failed: invalid s");
-    const rs = concatBytes(R, Fn2.toBytes(s));
-    return _abytes2(rs, lengths.signature, "result");
-  }
-  const verifyOpts = { zip215: true };
-  function verify(sig, msg, publicKey, options = verifyOpts) {
-    const { context, zip215 } = options;
-    const len = lengths.signature;
-    sig = ensureBytes("signature", sig, len);
-    msg = ensureBytes("message", msg);
-    publicKey = ensureBytes("publicKey", publicKey, lengths.publicKey);
-    if (zip215 !== void 0)
-      _abool2(zip215, "zip215");
-    if (prehash)
-      msg = prehash(msg);
-    const mid = len / 2;
-    const r = sig.subarray(0, mid);
-    const s = bytesToNumberLE(sig.subarray(mid, len));
-    let A, R, SB;
-    try {
-      A = Point.fromBytes(publicKey, zip215);
-      R = Point.fromBytes(r, zip215);
-      SB = BASE.multiplyUnsafe(s);
-    } catch (error) {
-      return false;
-    }
-    if (!zip215 && A.isSmallOrder())
-      return false;
-    const k = hashDomainToScalar(context, R.toBytes(), A.toBytes(), msg);
-    const RkA = R.add(A.multiplyUnsafe(k));
-    return RkA.subtract(SB).clearCofactor().is0();
-  }
-  const _size = Fp2.BYTES;
-  const lengths = {
-    secretKey: _size,
-    publicKey: _size,
-    signature: 2 * _size,
-    seed: _size
-  };
-  function randomSecretKey(seed = randomBytes4(lengths.seed)) {
-    return _abytes2(seed, lengths.seed, "seed");
-  }
-  function keygen(seed) {
-    const secretKey = utils.randomSecretKey(seed);
-    return { secretKey, publicKey: getPublicKey(secretKey) };
-  }
-  function isValidSecretKey(key) {
-    return isBytes(key) && key.length === Fn2.BYTES;
-  }
-  function isValidPublicKey(key, zip215) {
-    try {
-      return !!Point.fromBytes(key, zip215);
-    } catch (error) {
-      return false;
-    }
-  }
-  const utils = {
-    getExtendedPublicKey,
-    randomSecretKey,
-    isValidSecretKey,
-    isValidPublicKey,
-    /**
-     * Converts ed public key to x public key. Uses formula:
-     * - ed25519:
-     *   - `(u, v) = ((1+y)/(1-y), sqrt(-486664)*u/x)`
-     *   - `(x, y) = (sqrt(-486664)*u/v, (u-1)/(u+1))`
-     * - ed448:
-     *   - `(u, v) = ((y-1)/(y+1), sqrt(156324)*u/x)`
-     *   - `(x, y) = (sqrt(156324)*u/v, (1+u)/(1-u))`
-     */
-    toMontgomery(publicKey) {
-      const { y } = Point.fromBytes(publicKey);
-      const size = lengths.publicKey;
-      const is25519 = size === 32;
-      if (!is25519 && size !== 57)
-        throw new Error("only defined for 25519 and 448");
-      const u = is25519 ? Fp2.div(_1n4 + y, _1n4 - y) : Fp2.div(y - _1n4, y + _1n4);
-      return Fp2.toBytes(u);
-    },
-    toMontgomerySecret(secretKey) {
-      const size = lengths.secretKey;
-      _abytes2(secretKey, size);
-      const hashed = cHash(secretKey.subarray(0, size));
-      return adjustScalarBytes2(hashed).subarray(0, size);
-    },
-    /** @deprecated */
-    randomPrivateKey: randomSecretKey,
-    /** @deprecated */
-    precompute(windowSize = 8, point = Point.BASE) {
-      return point.precompute(windowSize, false);
-    }
-  };
-  return Object.freeze({
-    keygen,
-    getPublicKey,
-    sign,
-    verify,
-    utils,
-    Point,
-    lengths
-  });
-}
-function _eddsa_legacy_opts_to_new(c) {
-  const CURVE = {
-    a: c.a,
-    d: c.d,
-    p: c.Fp.ORDER,
-    n: c.n,
-    h: c.h,
-    Gx: c.Gx,
-    Gy: c.Gy
-  };
-  const Fp2 = c.Fp;
-  const Fn2 = Field(CURVE.n, c.nBitLength, true);
-  const curveOpts = { Fp: Fp2, Fn: Fn2, uvRatio: c.uvRatio };
-  const eddsaOpts = {
-    randomBytes: c.randomBytes,
-    adjustScalarBytes: c.adjustScalarBytes,
-    domain: c.domain,
-    prehash: c.prehash,
-    mapToCurve: c.mapToCurve
-  };
-  return { CURVE, curveOpts, hash: c.hash, eddsaOpts };
-}
-function _eddsa_new_output_to_legacy(c, eddsa2) {
-  const Point = eddsa2.Point;
-  const legacy = Object.assign({}, eddsa2, {
-    ExtendedPoint: Point,
-    CURVE: c,
-    nBitLength: Point.Fn.BITS,
-    nByteLength: Point.Fn.BYTES
-  });
-  return legacy;
-}
-function twistedEdwards(c) {
-  const { CURVE, curveOpts, hash, eddsaOpts } = _eddsa_legacy_opts_to_new(c);
-  const Point = edwards(CURVE, curveOpts);
-  const EDDSA = eddsa(Point, hash, eddsaOpts);
-  return _eddsa_new_output_to_legacy(c, EDDSA);
-}
-var _0n4, _1n4, _2n2, _8n2, PrimeEdwardsPoint;
-var init_edwards = __esm({
-  "node_modules/@noble/curves/esm/abstract/edwards.js"() {
-    "use strict";
-    init_utils2();
-    init_curve();
-    init_modular();
-    _0n4 = BigInt(0);
-    _1n4 = BigInt(1);
-    _2n2 = BigInt(2);
-    _8n2 = BigInt(8);
-    PrimeEdwardsPoint = class {
-      constructor(ep) {
-        this.ep = ep;
-      }
-      // Static methods that must be implemented by subclasses
-      static fromBytes(_bytes) {
-        notImplemented();
-      }
-      static fromHex(_hex) {
-        notImplemented();
-      }
-      get x() {
-        return this.toAffine().x;
-      }
-      get y() {
-        return this.toAffine().y;
-      }
-      // Common implementations
-      clearCofactor() {
-        return this;
-      }
-      assertValidity() {
-        this.ep.assertValidity();
-      }
-      toAffine(invertedZ) {
-        return this.ep.toAffine(invertedZ);
-      }
-      toHex() {
-        return bytesToHex(this.toBytes());
-      }
-      toString() {
-        return this.toHex();
-      }
-      isTorsionFree() {
-        return true;
-      }
-      isSmallOrder() {
-        return false;
-      }
-      add(other) {
-        this.assertSame(other);
-        return this.init(this.ep.add(other.ep));
-      }
-      subtract(other) {
-        this.assertSame(other);
-        return this.init(this.ep.subtract(other.ep));
-      }
-      multiply(scalar) {
-        return this.init(this.ep.multiply(scalar));
-      }
-      multiplyUnsafe(scalar) {
-        return this.init(this.ep.multiplyUnsafe(scalar));
-      }
-      double() {
-        return this.init(this.ep.double());
-      }
-      negate() {
-        return this.init(this.ep.negate());
-      }
-      precompute(windowSize, isLazy) {
-        return this.init(this.ep.precompute(windowSize, isLazy));
-      }
-      /** @deprecated use `toBytes` */
-      toRawBytes() {
-        return this.toBytes();
-      }
-    };
-  }
-});
-
-// node_modules/@noble/curves/esm/abstract/hash-to-curve.js
-function i2osp(value, length) {
-  anum(value);
-  anum(length);
-  if (value < 0 || value >= 1 << 8 * length)
-    throw new Error("invalid I2OSP input: " + value);
-  const res = Array.from({ length }).fill(0);
-  for (let i = length - 1; i >= 0; i--) {
-    res[i] = value & 255;
-    value >>>= 8;
-  }
-  return new Uint8Array(res);
-}
-function strxor(a, b) {
-  const arr = new Uint8Array(a.length);
-  for (let i = 0; i < a.length; i++) {
-    arr[i] = a[i] ^ b[i];
-  }
-  return arr;
-}
-function anum(item) {
-  if (!Number.isSafeInteger(item))
-    throw new Error("number expected");
-}
-function normDST(DST) {
-  if (!isBytes(DST) && typeof DST !== "string")
-    throw new Error("DST must be Uint8Array or string");
-  return typeof DST === "string" ? utf8ToBytes(DST) : DST;
-}
-function expand_message_xmd(msg, DST, lenInBytes, H) {
-  abytes(msg);
-  anum(lenInBytes);
-  DST = normDST(DST);
-  if (DST.length > 255)
-    DST = H(concatBytes(utf8ToBytes("H2C-OVERSIZE-DST-"), DST));
-  const { outputLen: b_in_bytes, blockLen: r_in_bytes } = H;
-  const ell = Math.ceil(lenInBytes / b_in_bytes);
-  if (lenInBytes > 65535 || ell > 255)
-    throw new Error("expand_message_xmd: invalid lenInBytes");
-  const DST_prime = concatBytes(DST, i2osp(DST.length, 1));
-  const Z_pad = i2osp(0, r_in_bytes);
-  const l_i_b_str = i2osp(lenInBytes, 2);
-  const b = new Array(ell);
-  const b_0 = H(concatBytes(Z_pad, msg, l_i_b_str, i2osp(0, 1), DST_prime));
-  b[0] = H(concatBytes(b_0, i2osp(1, 1), DST_prime));
-  for (let i = 1; i <= ell; i++) {
-    const args = [strxor(b_0, b[i - 1]), i2osp(i + 1, 1), DST_prime];
-    b[i] = H(concatBytes(...args));
-  }
-  const pseudo_random_bytes = concatBytes(...b);
-  return pseudo_random_bytes.slice(0, lenInBytes);
-}
-function expand_message_xof(msg, DST, lenInBytes, k, H) {
-  abytes(msg);
-  anum(lenInBytes);
-  DST = normDST(DST);
-  if (DST.length > 255) {
-    const dkLen = Math.ceil(2 * k / 8);
-    DST = H.create({ dkLen }).update(utf8ToBytes("H2C-OVERSIZE-DST-")).update(DST).digest();
-  }
-  if (lenInBytes > 65535 || DST.length > 255)
-    throw new Error("expand_message_xof: invalid lenInBytes");
-  return H.create({ dkLen: lenInBytes }).update(msg).update(i2osp(lenInBytes, 2)).update(DST).update(i2osp(DST.length, 1)).digest();
-}
-function hash_to_field(msg, count, options) {
-  _validateObject(options, {
-    p: "bigint",
-    m: "number",
-    k: "number",
-    hash: "function"
-  });
-  const { p, k, m, hash, expand, DST } = options;
-  if (!isHash(options.hash))
-    throw new Error("expected valid hash");
-  abytes(msg);
-  anum(count);
-  const log2p = p.toString(2).length;
-  const L = Math.ceil((log2p + k) / 8);
-  const len_in_bytes = count * m * L;
-  let prb;
-  if (expand === "xmd") {
-    prb = expand_message_xmd(msg, DST, len_in_bytes, hash);
-  } else if (expand === "xof") {
-    prb = expand_message_xof(msg, DST, len_in_bytes, k, hash);
-  } else if (expand === "_internal_pass") {
-    prb = msg;
-  } else {
-    throw new Error('expand must be "xmd" or "xof"');
-  }
-  const u = new Array(count);
-  for (let i = 0; i < count; i++) {
-    const e = new Array(m);
-    for (let j = 0; j < m; j++) {
-      const elm_offset = L * (j + i * m);
-      const tv = prb.subarray(elm_offset, elm_offset + L);
-      e[j] = mod(os2ip(tv), p);
-    }
-    u[i] = e;
-  }
-  return u;
-}
-function createHasher2(Point, mapToCurve, defaults) {
-  if (typeof mapToCurve !== "function")
-    throw new Error("mapToCurve() must be defined");
-  function map(num) {
-    return Point.fromAffine(mapToCurve(num));
-  }
-  function clear(initial) {
-    const P = initial.clearCofactor();
-    if (P.equals(Point.ZERO))
-      return Point.ZERO;
-    P.assertValidity();
-    return P;
-  }
-  return {
-    defaults,
-    hashToCurve(msg, options) {
-      const opts = Object.assign({}, defaults, options);
-      const u = hash_to_field(msg, 2, opts);
-      const u0 = map(u[0]);
-      const u1 = map(u[1]);
-      return clear(u0.add(u1));
-    },
-    encodeToCurve(msg, options) {
-      const optsDst = defaults.encodeDST ? { DST: defaults.encodeDST } : {};
-      const opts = Object.assign({}, defaults, optsDst, options);
-      const u = hash_to_field(msg, 1, opts);
-      const u0 = map(u[0]);
-      return clear(u0);
-    },
-    /** See {@link H2CHasher} */
-    mapToCurve(scalars) {
-      if (!Array.isArray(scalars))
-        throw new Error("expected array of bigints");
-      for (const i of scalars)
-        if (typeof i !== "bigint")
-          throw new Error("expected array of bigints");
-      return clear(map(scalars));
-    },
-    // hash_to_scalar can produce 0: https://www.rfc-editor.org/errata/eid8393
-    // RFC 9380, draft-irtf-cfrg-bbs-signatures-08
-    hashToScalar(msg, options) {
-      const N = Point.Fn.ORDER;
-      const opts = Object.assign({}, defaults, { p: N, m: 1, DST: _DST_scalar }, options);
-      return hash_to_field(msg, 1, opts)[0][0];
-    }
-  };
-}
-var os2ip, _DST_scalar;
-var init_hash_to_curve = __esm({
-  "node_modules/@noble/curves/esm/abstract/hash-to-curve.js"() {
-    "use strict";
-    init_utils2();
-    init_modular();
-    os2ip = bytesToNumberBE;
-    _DST_scalar = utf8ToBytes("HashToScalar-");
-  }
-});
-
-// node_modules/@noble/curves/esm/abstract/montgomery.js
-function validateOpts(curve) {
-  _validateObject(curve, {
-    adjustScalarBytes: "function",
-    powPminus2: "function"
-  });
-  return Object.freeze({ ...curve });
-}
-function montgomery(curveDef) {
-  const CURVE = validateOpts(curveDef);
-  const { P, type, adjustScalarBytes: adjustScalarBytes2, powPminus2, randomBytes: rand } = CURVE;
-  const is25519 = type === "x25519";
-  if (!is25519 && type !== "x448")
-    throw new Error("invalid type");
-  const randomBytes_ = rand || randomBytes2;
-  const montgomeryBits = is25519 ? 255 : 448;
-  const fieldLen = is25519 ? 32 : 56;
-  const Gu = is25519 ? BigInt(9) : BigInt(5);
-  const a24 = is25519 ? BigInt(121665) : BigInt(39081);
-  const minScalar = is25519 ? _2n3 ** BigInt(254) : _2n3 ** BigInt(447);
-  const maxAdded = is25519 ? BigInt(8) * _2n3 ** BigInt(251) - _1n5 : BigInt(4) * _2n3 ** BigInt(445) - _1n5;
-  const maxScalar = minScalar + maxAdded + _1n5;
-  const modP = (n) => mod(n, P);
-  const GuBytes = encodeU(Gu);
-  function encodeU(u) {
-    return numberToBytesLE(modP(u), fieldLen);
-  }
-  function decodeU(u) {
-    const _u = ensureBytes("u coordinate", u, fieldLen);
-    if (is25519)
-      _u[31] &= 127;
-    return modP(bytesToNumberLE(_u));
-  }
-  function decodeScalar(scalar) {
-    return bytesToNumberLE(adjustScalarBytes2(ensureBytes("scalar", scalar, fieldLen)));
-  }
-  function scalarMult(scalar, u) {
-    const pu = montgomeryLadder(decodeU(u), decodeScalar(scalar));
-    if (pu === _0n5)
-      throw new Error("invalid private or public key received");
-    return encodeU(pu);
-  }
-  function scalarMultBase(scalar) {
-    return scalarMult(scalar, GuBytes);
-  }
-  function cswap(swap, x_2, x_3) {
-    const dummy = modP(swap * (x_2 - x_3));
-    x_2 = modP(x_2 - dummy);
-    x_3 = modP(x_3 + dummy);
-    return { x_2, x_3 };
-  }
-  function montgomeryLadder(u, scalar) {
-    aInRange("u", u, _0n5, P);
-    aInRange("scalar", scalar, minScalar, maxScalar);
-    const k = scalar;
-    const x_1 = u;
-    let x_2 = _1n5;
-    let z_2 = _0n5;
-    let x_3 = u;
-    let z_3 = _1n5;
-    let swap = _0n5;
-    for (let t = BigInt(montgomeryBits - 1); t >= _0n5; t--) {
-      const k_t = k >> t & _1n5;
-      swap ^= k_t;
-      ({ x_2, x_3 } = cswap(swap, x_2, x_3));
-      ({ x_2: z_2, x_3: z_3 } = cswap(swap, z_2, z_3));
-      swap = k_t;
-      const A = x_2 + z_2;
-      const AA = modP(A * A);
-      const B = x_2 - z_2;
-      const BB = modP(B * B);
-      const E = AA - BB;
-      const C = x_3 + z_3;
-      const D = x_3 - z_3;
-      const DA = modP(D * A);
-      const CB = modP(C * B);
-      const dacb = DA + CB;
-      const da_cb = DA - CB;
-      x_3 = modP(dacb * dacb);
-      z_3 = modP(x_1 * modP(da_cb * da_cb));
-      x_2 = modP(AA * BB);
-      z_2 = modP(E * (AA + modP(a24 * E)));
-    }
-    ({ x_2, x_3 } = cswap(swap, x_2, x_3));
-    ({ x_2: z_2, x_3: z_3 } = cswap(swap, z_2, z_3));
-    const z2 = powPminus2(z_2);
-    return modP(x_2 * z2);
-  }
-  const lengths = {
-    secretKey: fieldLen,
-    publicKey: fieldLen,
-    seed: fieldLen
-  };
-  const randomSecretKey = (seed = randomBytes_(fieldLen)) => {
-    abytes(seed, lengths.seed);
-    return seed;
-  };
-  function keygen(seed) {
-    const secretKey = randomSecretKey(seed);
-    return { secretKey, publicKey: scalarMultBase(secretKey) };
-  }
-  const utils = {
-    randomSecretKey,
-    randomPrivateKey: randomSecretKey
-  };
-  return {
-    keygen,
-    getSharedSecret: (secretKey, publicKey) => scalarMult(secretKey, publicKey),
-    getPublicKey: (secretKey) => scalarMultBase(secretKey),
-    scalarMult,
-    scalarMultBase,
-    utils,
-    GuBytes: GuBytes.slice(),
-    lengths
-  };
-}
-var _0n5, _1n5, _2n3;
-var init_montgomery = __esm({
-  "node_modules/@noble/curves/esm/abstract/montgomery.js"() {
-    "use strict";
-    init_utils2();
-    init_modular();
-    _0n5 = BigInt(0);
-    _1n5 = BigInt(1);
-    _2n3 = BigInt(2);
-  }
-});
-
-// node_modules/@noble/curves/esm/ed25519.js
-var ed25519_exports = {};
-__export(ed25519_exports, {
-  ED25519_TORSION_SUBGROUP: () => ED25519_TORSION_SUBGROUP,
-  RistrettoPoint: () => RistrettoPoint,
-  ed25519: () => ed25519,
-  ed25519_hasher: () => ed25519_hasher,
-  ed25519ctx: () => ed25519ctx,
-  ed25519ph: () => ed25519ph,
-  edwardsToMontgomery: () => edwardsToMontgomery,
-  edwardsToMontgomeryPriv: () => edwardsToMontgomeryPriv,
-  edwardsToMontgomeryPub: () => edwardsToMontgomeryPub,
-  encodeToCurve: () => encodeToCurve,
-  hashToCurve: () => hashToCurve,
-  hashToRistretto255: () => hashToRistretto255,
-  hash_to_ristretto255: () => hash_to_ristretto255,
-  ristretto255: () => ristretto255,
-  ristretto255_hasher: () => ristretto255_hasher,
-  x25519: () => x25519
-});
-function ed25519_pow_2_252_3(x) {
-  const _10n = BigInt(10), _20n = BigInt(20), _40n = BigInt(40), _80n = BigInt(80);
-  const P = ed25519_CURVE_p;
-  const x2 = x * x % P;
-  const b2 = x2 * x % P;
-  const b4 = pow2(b2, _2n4, P) * b2 % P;
-  const b5 = pow2(b4, _1n6, P) * x % P;
-  const b10 = pow2(b5, _5n2, P) * b5 % P;
-  const b20 = pow2(b10, _10n, P) * b10 % P;
-  const b40 = pow2(b20, _20n, P) * b20 % P;
-  const b80 = pow2(b40, _40n, P) * b40 % P;
-  const b160 = pow2(b80, _80n, P) * b80 % P;
-  const b240 = pow2(b160, _80n, P) * b80 % P;
-  const b250 = pow2(b240, _10n, P) * b10 % P;
-  const pow_p_5_8 = pow2(b250, _2n4, P) * x % P;
-  return { pow_p_5_8, b2 };
-}
-function adjustScalarBytes(bytes) {
-  bytes[0] &= 248;
-  bytes[31] &= 127;
-  bytes[31] |= 64;
-  return bytes;
-}
-function uvRatio(u, v) {
-  const P = ed25519_CURVE_p;
-  const v3 = mod(v * v * v, P);
-  const v7 = mod(v3 * v3 * v, P);
-  const pow = ed25519_pow_2_252_3(u * v7).pow_p_5_8;
-  let x = mod(u * v3 * pow, P);
-  const vx2 = mod(v * x * x, P);
-  const root1 = x;
-  const root2 = mod(x * ED25519_SQRT_M1, P);
-  const useRoot1 = vx2 === u;
-  const useRoot2 = vx2 === mod(-u, P);
-  const noRoot = vx2 === mod(-u * ED25519_SQRT_M1, P);
-  if (useRoot1)
-    x = root1;
-  if (useRoot2 || noRoot)
-    x = root2;
-  if (isNegativeLE(x, P))
-    x = mod(-x, P);
-  return { isValid: useRoot1 || useRoot2, value: x };
-}
-function ed25519_domain(data, ctx, phflag) {
-  if (ctx.length > 255)
-    throw new Error("Context is too big");
-  return concatBytes(utf8ToBytes("SigEd25519 no Ed25519 collisions"), new Uint8Array([phflag ? 1 : 0, ctx.length]), ctx, data);
-}
-function map_to_curve_elligator2_curve25519(u) {
-  const ELL2_C4 = (ed25519_CURVE_p - _5n2) / _8n3;
-  const ELL2_J = BigInt(486662);
-  let tv1 = Fp.sqr(u);
-  tv1 = Fp.mul(tv1, _2n4);
-  let xd = Fp.add(tv1, Fp.ONE);
-  let x1n = Fp.neg(ELL2_J);
-  let tv2 = Fp.sqr(xd);
-  let gxd = Fp.mul(tv2, xd);
-  let gx1 = Fp.mul(tv1, ELL2_J);
-  gx1 = Fp.mul(gx1, x1n);
-  gx1 = Fp.add(gx1, tv2);
-  gx1 = Fp.mul(gx1, x1n);
-  let tv3 = Fp.sqr(gxd);
-  tv2 = Fp.sqr(tv3);
-  tv3 = Fp.mul(tv3, gxd);
-  tv3 = Fp.mul(tv3, gx1);
-  tv2 = Fp.mul(tv2, tv3);
-  let y11 = Fp.pow(tv2, ELL2_C4);
-  y11 = Fp.mul(y11, tv3);
-  let y12 = Fp.mul(y11, ELL2_C3);
-  tv2 = Fp.sqr(y11);
-  tv2 = Fp.mul(tv2, gxd);
-  let e1 = Fp.eql(tv2, gx1);
-  let y1 = Fp.cmov(y12, y11, e1);
-  let x2n = Fp.mul(x1n, tv1);
-  let y21 = Fp.mul(y11, u);
-  y21 = Fp.mul(y21, ELL2_C2);
-  let y22 = Fp.mul(y21, ELL2_C3);
-  let gx2 = Fp.mul(gx1, tv1);
-  tv2 = Fp.sqr(y21);
-  tv2 = Fp.mul(tv2, gxd);
-  let e2 = Fp.eql(tv2, gx2);
-  let y2 = Fp.cmov(y22, y21, e2);
-  tv2 = Fp.sqr(y1);
-  tv2 = Fp.mul(tv2, gxd);
-  let e3 = Fp.eql(tv2, gx1);
-  let xn = Fp.cmov(x2n, x1n, e3);
-  let y = Fp.cmov(y2, y1, e3);
-  let e4 = Fp.isOdd(y);
-  y = Fp.cmov(y, Fp.neg(y), e3 !== e4);
-  return { xMn: xn, xMd: xd, yMn: y, yMd: _1n6 };
-}
-function map_to_curve_elligator2_edwards25519(u) {
-  const { xMn, xMd, yMn, yMd } = map_to_curve_elligator2_curve25519(u);
-  let xn = Fp.mul(xMn, yMd);
-  xn = Fp.mul(xn, ELL2_C1_EDWARDS);
-  let xd = Fp.mul(xMd, yMn);
-  let yn = Fp.sub(xMn, xMd);
-  let yd = Fp.add(xMn, xMd);
-  let tv1 = Fp.mul(xd, yd);
-  let e = Fp.eql(tv1, Fp.ZERO);
-  xn = Fp.cmov(xn, Fp.ZERO, e);
-  xd = Fp.cmov(xd, Fp.ONE, e);
-  yn = Fp.cmov(yn, Fp.ONE, e);
-  yd = Fp.cmov(yd, Fp.ONE, e);
-  const [xd_inv, yd_inv] = FpInvertBatch(Fp, [xd, yd], true);
-  return { x: Fp.mul(xn, xd_inv), y: Fp.mul(yn, yd_inv) };
-}
-function calcElligatorRistrettoMap(r0) {
-  const { d } = ed25519_CURVE;
-  const P = ed25519_CURVE_p;
-  const mod2 = (n) => Fp.create(n);
-  const r = mod2(SQRT_M1 * r0 * r0);
-  const Ns = mod2((r + _1n6) * ONE_MINUS_D_SQ);
-  let c = BigInt(-1);
-  const D = mod2((c - d * r) * mod2(r + d));
-  let { isValid: Ns_D_is_sq, value: s } = uvRatio(Ns, D);
-  let s_ = mod2(s * r0);
-  if (!isNegativeLE(s_, P))
-    s_ = mod2(-s_);
-  if (!Ns_D_is_sq)
-    s = s_;
-  if (!Ns_D_is_sq)
-    c = r;
-  const Nt = mod2(c * (r - _1n6) * D_MINUS_ONE_SQ - D);
-  const s2 = s * s;
-  const W0 = mod2((s + s) * D);
-  const W1 = mod2(Nt * SQRT_AD_MINUS_ONE);
-  const W2 = mod2(_1n6 - s2);
-  const W3 = mod2(_1n6 + s2);
-  return new ed25519.Point(mod2(W0 * W3), mod2(W2 * W1), mod2(W1 * W3), mod2(W0 * W2));
-}
-function ristretto255_map(bytes) {
-  abytes(bytes, 64);
-  const r1 = bytes255ToNumberLE(bytes.subarray(0, 32));
-  const R1 = calcElligatorRistrettoMap(r1);
-  const r2 = bytes255ToNumberLE(bytes.subarray(32, 64));
-  const R2 = calcElligatorRistrettoMap(r2);
-  return new _RistrettoPoint(R1.add(R2));
-}
-function edwardsToMontgomeryPub(edwardsPub) {
-  return ed25519.utils.toMontgomery(ensureBytes("pub", edwardsPub));
-}
-function edwardsToMontgomeryPriv(edwardsPriv) {
-  return ed25519.utils.toMontgomerySecret(ensureBytes("pub", edwardsPriv));
-}
-var _0n6, _1n6, _2n4, _3n2, _5n2, _8n3, ed25519_CURVE_p, ed25519_CURVE, ED25519_SQRT_M1, Fp, Fn, ed25519Defaults, ed25519, ed25519ctx, ed25519ph, x25519, ELL2_C1, ELL2_C2, ELL2_C3, ELL2_C1_EDWARDS, ed25519_hasher, SQRT_M1, SQRT_AD_MINUS_ONE, INVSQRT_A_MINUS_D, ONE_MINUS_D_SQ, D_MINUS_ONE_SQ, invertSqrt, MAX_255B, bytes255ToNumberLE, _RistrettoPoint, ristretto255, ristretto255_hasher, ED25519_TORSION_SUBGROUP, edwardsToMontgomery, RistrettoPoint, hashToCurve, encodeToCurve, hashToRistretto255, hash_to_ristretto255;
-var init_ed25519 = __esm({
-  "node_modules/@noble/curves/esm/ed25519.js"() {
-    "use strict";
-    init_sha2();
-    init_utils();
-    init_curve();
-    init_edwards();
-    init_hash_to_curve();
-    init_modular();
-    init_montgomery();
-    init_utils2();
-    _0n6 = /* @__PURE__ */ BigInt(0);
-    _1n6 = BigInt(1);
-    _2n4 = BigInt(2);
-    _3n2 = BigInt(3);
-    _5n2 = BigInt(5);
-    _8n3 = BigInt(8);
-    ed25519_CURVE_p = BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed");
-    ed25519_CURVE = /* @__PURE__ */ (() => ({
-      p: ed25519_CURVE_p,
-      n: BigInt("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"),
-      h: _8n3,
-      a: BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"),
-      d: BigInt("0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"),
-      Gx: BigInt("0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a"),
-      Gy: BigInt("0x6666666666666666666666666666666666666666666666666666666666666658")
-    }))();
-    ED25519_SQRT_M1 = /* @__PURE__ */ BigInt("19681161376707505956807079304988542015446066515923890162744021073123829784752");
-    Fp = /* @__PURE__ */ (() => Field(ed25519_CURVE.p, { isLE: true }))();
-    Fn = /* @__PURE__ */ (() => Field(ed25519_CURVE.n, { isLE: true }))();
-    ed25519Defaults = /* @__PURE__ */ (() => ({
-      ...ed25519_CURVE,
-      Fp,
-      hash: sha512,
-      adjustScalarBytes,
-      // dom2
-      // Ratio of u to v. Allows us to combine inversion and square root. Uses algo from RFC8032 5.1.3.
-      // Constant-time, u/√v
-      uvRatio
-    }))();
-    ed25519 = /* @__PURE__ */ (() => twistedEdwards(ed25519Defaults))();
-    ed25519ctx = /* @__PURE__ */ (() => twistedEdwards({
-      ...ed25519Defaults,
-      domain: ed25519_domain
-    }))();
-    ed25519ph = /* @__PURE__ */ (() => twistedEdwards(Object.assign({}, ed25519Defaults, {
-      domain: ed25519_domain,
-      prehash: sha512
-    })))();
-    x25519 = /* @__PURE__ */ (() => {
-      const P = Fp.ORDER;
-      return montgomery({
-        P,
-        type: "x25519",
-        powPminus2: (x) => {
-          const { pow_p_5_8, b2 } = ed25519_pow_2_252_3(x);
-          return mod(pow2(pow_p_5_8, _3n2, P) * b2, P);
-        },
-        adjustScalarBytes
-      });
-    })();
-    ELL2_C1 = /* @__PURE__ */ (() => (ed25519_CURVE_p + _3n2) / _8n3)();
-    ELL2_C2 = /* @__PURE__ */ (() => Fp.pow(_2n4, ELL2_C1))();
-    ELL2_C3 = /* @__PURE__ */ (() => Fp.sqrt(Fp.neg(Fp.ONE)))();
-    ELL2_C1_EDWARDS = /* @__PURE__ */ (() => FpSqrtEven(Fp, Fp.neg(BigInt(486664))))();
-    ed25519_hasher = /* @__PURE__ */ (() => createHasher2(ed25519.Point, (scalars) => map_to_curve_elligator2_edwards25519(scalars[0]), {
-      DST: "edwards25519_XMD:SHA-512_ELL2_RO_",
-      encodeDST: "edwards25519_XMD:SHA-512_ELL2_NU_",
-      p: ed25519_CURVE_p,
-      m: 1,
-      k: 128,
-      expand: "xmd",
-      hash: sha512
-    }))();
-    SQRT_M1 = ED25519_SQRT_M1;
-    SQRT_AD_MINUS_ONE = /* @__PURE__ */ BigInt("25063068953384623474111414158702152701244531502492656460079210482610430750235");
-    INVSQRT_A_MINUS_D = /* @__PURE__ */ BigInt("54469307008909316920995813868745141605393597292927456921205312896311721017578");
-    ONE_MINUS_D_SQ = /* @__PURE__ */ BigInt("1159843021668779879193775521855586647937357759715417654439879720876111806838");
-    D_MINUS_ONE_SQ = /* @__PURE__ */ BigInt("40440834346308536858101042469323190826248399146238708352240133220865137265952");
-    invertSqrt = (number) => uvRatio(_1n6, number);
-    MAX_255B = /* @__PURE__ */ BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-    bytes255ToNumberLE = (bytes) => ed25519.Point.Fp.create(bytesToNumberLE(bytes) & MAX_255B);
-    _RistrettoPoint = class __RistrettoPoint extends PrimeEdwardsPoint {
-      constructor(ep) {
-        super(ep);
-      }
-      static fromAffine(ap) {
-        return new __RistrettoPoint(ed25519.Point.fromAffine(ap));
-      }
-      assertSame(other) {
-        if (!(other instanceof __RistrettoPoint))
-          throw new Error("RistrettoPoint expected");
-      }
-      init(ep) {
-        return new __RistrettoPoint(ep);
-      }
-      /** @deprecated use `import { ristretto255_hasher } from '@noble/curves/ed25519.js';` */
-      static hashToCurve(hex) {
-        return ristretto255_map(ensureBytes("ristrettoHash", hex, 64));
-      }
-      static fromBytes(bytes) {
-        abytes(bytes, 32);
-        const { a, d } = ed25519_CURVE;
-        const P = ed25519_CURVE_p;
-        const mod2 = (n) => Fp.create(n);
-        const s = bytes255ToNumberLE(bytes);
-        if (!equalBytes(Fp.toBytes(s), bytes) || isNegativeLE(s, P))
-          throw new Error("invalid ristretto255 encoding 1");
-        const s2 = mod2(s * s);
-        const u1 = mod2(_1n6 + a * s2);
-        const u2 = mod2(_1n6 - a * s2);
-        const u1_2 = mod2(u1 * u1);
-        const u2_2 = mod2(u2 * u2);
-        const v = mod2(a * d * u1_2 - u2_2);
-        const { isValid, value: I } = invertSqrt(mod2(v * u2_2));
-        const Dx = mod2(I * u2);
-        const Dy = mod2(I * Dx * v);
-        let x = mod2((s + s) * Dx);
-        if (isNegativeLE(x, P))
-          x = mod2(-x);
-        const y = mod2(u1 * Dy);
-        const t = mod2(x * y);
-        if (!isValid || isNegativeLE(t, P) || y === _0n6)
-          throw new Error("invalid ristretto255 encoding 2");
-        return new __RistrettoPoint(new ed25519.Point(x, y, _1n6, t));
-      }
-      /**
-       * Converts ristretto-encoded string to ristretto point.
-       * Described in [RFC9496](https://www.rfc-editor.org/rfc/rfc9496#name-decode).
-       * @param hex Ristretto-encoded 32 bytes. Not every 32-byte string is valid ristretto encoding
-       */
-      static fromHex(hex) {
-        return __RistrettoPoint.fromBytes(ensureBytes("ristrettoHex", hex, 32));
-      }
-      static msm(points, scalars) {
-        return pippenger(__RistrettoPoint, ed25519.Point.Fn, points, scalars);
-      }
-      /**
-       * Encodes ristretto point to Uint8Array.
-       * Described in [RFC9496](https://www.rfc-editor.org/rfc/rfc9496#name-encode).
-       */
-      toBytes() {
-        let { X, Y, Z, T } = this.ep;
-        const P = ed25519_CURVE_p;
-        const mod2 = (n) => Fp.create(n);
-        const u1 = mod2(mod2(Z + Y) * mod2(Z - Y));
-        const u2 = mod2(X * Y);
-        const u2sq = mod2(u2 * u2);
-        const { value: invsqrt } = invertSqrt(mod2(u1 * u2sq));
-        const D1 = mod2(invsqrt * u1);
-        const D2 = mod2(invsqrt * u2);
-        const zInv = mod2(D1 * D2 * T);
-        let D;
-        if (isNegativeLE(T * zInv, P)) {
-          let _x = mod2(Y * SQRT_M1);
-          let _y = mod2(X * SQRT_M1);
-          X = _x;
-          Y = _y;
-          D = mod2(D1 * INVSQRT_A_MINUS_D);
-        } else {
-          D = D2;
-        }
-        if (isNegativeLE(X * zInv, P))
-          Y = mod2(-Y);
-        let s = mod2((Z - Y) * D);
-        if (isNegativeLE(s, P))
-          s = mod2(-s);
-        return Fp.toBytes(s);
-      }
-      /**
-       * Compares two Ristretto points.
-       * Described in [RFC9496](https://www.rfc-editor.org/rfc/rfc9496#name-equals).
-       */
-      equals(other) {
-        this.assertSame(other);
-        const { X: X1, Y: Y1 } = this.ep;
-        const { X: X2, Y: Y2 } = other.ep;
-        const mod2 = (n) => Fp.create(n);
-        const one = mod2(X1 * Y2) === mod2(Y1 * X2);
-        const two = mod2(Y1 * Y2) === mod2(X1 * X2);
-        return one || two;
-      }
-      is0() {
-        return this.equals(__RistrettoPoint.ZERO);
-      }
-    };
-    _RistrettoPoint.BASE = /* @__PURE__ */ (() => new _RistrettoPoint(ed25519.Point.BASE))();
-    _RistrettoPoint.ZERO = /* @__PURE__ */ (() => new _RistrettoPoint(ed25519.Point.ZERO))();
-    _RistrettoPoint.Fp = /* @__PURE__ */ (() => Fp)();
-    _RistrettoPoint.Fn = /* @__PURE__ */ (() => Fn)();
-    ristretto255 = { Point: _RistrettoPoint };
-    ristretto255_hasher = {
-      hashToCurve(msg, options) {
-        const DST = options?.DST || "ristretto255_XMD:SHA-512_R255MAP_RO_";
-        const xmd = expand_message_xmd(msg, DST, 64, sha512);
-        return ristretto255_map(xmd);
-      },
-      hashToScalar(msg, options = { DST: _DST_scalar }) {
-        const xmd = expand_message_xmd(msg, options.DST, 64, sha512);
-        return Fn.create(bytesToNumberLE(xmd));
-      }
-    };
-    ED25519_TORSION_SUBGROUP = [
-      "0100000000000000000000000000000000000000000000000000000000000000",
-      "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a",
-      "0000000000000000000000000000000000000000000000000000000000000080",
-      "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
-      "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
-      "26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85",
-      "0000000000000000000000000000000000000000000000000000000000000000",
-      "c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa"
-    ];
-    edwardsToMontgomery = edwardsToMontgomeryPub;
-    RistrettoPoint = _RistrettoPoint;
-    hashToCurve = /* @__PURE__ */ (() => ed25519_hasher.hashToCurve)();
-    encodeToCurve = /* @__PURE__ */ (() => ed25519_hasher.encodeToCurve)();
-    hashToRistretto255 = /* @__PURE__ */ (() => ristretto255_hasher.hashToCurve)();
-    hash_to_ristretto255 = /* @__PURE__ */ (() => ristretto255_hasher.hashToCurve)();
-  }
-});
-
 // src/receipt-registry.ts
 var receipt_registry_exports = {};
 __export(receipt_registry_exports, {
@@ -4739,7 +2149,7 @@ __export(receipt_registry_exports, {
   writeOrgIdentity: () => writeOrgIdentity
 });
 function sha256Hex(input) {
-  return (0, import_node_crypto5.createHash)("sha256").update(input).digest("hex");
+  return (0, import_node_crypto4.createHash)("sha256").update(input).digest("hex");
 }
 function stableStringify2(value) {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -4749,8 +2159,8 @@ function stableStringify2(value) {
 }
 function safeReadJson(path) {
   try {
-    if (!(0, import_node_fs9.existsSync)(path)) return null;
-    return JSON.parse((0, import_node_fs9.readFileSync)(path, "utf-8"));
+    if (!(0, import_node_fs10.existsSync)(path)) return null;
+    return JSON.parse((0, import_node_fs10.readFileSync)(path, "utf-8"));
   } catch {
     return null;
   }
@@ -4789,9 +2199,9 @@ function receiptType(receipt) {
   return String(receipt.type || receipt.artifact_type || receipt.v || "receipt");
 }
 function readReceiptDigestRecords(dir) {
-  const receiptPath = (0, import_node_path6.join)(dir, ".protect-mcp-receipts.jsonl");
-  if (!(0, import_node_fs9.existsSync)(receiptPath)) return [];
-  const raw = (0, import_node_fs9.readFileSync)(receiptPath, "utf-8");
+  const receiptPath = (0, import_node_path7.join)(dir, ".protect-mcp-receipts.jsonl");
+  if (!(0, import_node_fs10.existsSync)(receiptPath)) return [];
+  const raw = (0, import_node_fs10.readFileSync)(receiptPath, "utf-8");
   return raw.split("\n").map((line) => line.trim()).filter(Boolean).flatMap((line) => {
     try {
       const receipt = JSON.parse(line);
@@ -4821,9 +2231,9 @@ function readReceiptDigestRecords(dir) {
 }
 function createOrgIdentity(opts) {
   const now = (opts.now || /* @__PURE__ */ new Date()).toISOString();
-  const existing = safeReadJson((0, import_node_path6.join)(opts.dir, ORG_IDENTITY_FILE));
-  const keyData = safeReadJson((0, import_node_path6.join)(opts.dir, "keys", "gateway.json")) || {};
-  const orgId = opts.orgId || String(existing?.org_id || `org_${(0, import_node_crypto5.randomUUID)().slice(0, 12)}`);
+  const existing = safeReadJson((0, import_node_path7.join)(opts.dir, ORG_IDENTITY_FILE));
+  const keyData = safeReadJson((0, import_node_path7.join)(opts.dir, "keys", "gateway.json")) || {};
+  const orgId = opts.orgId || String(existing?.org_id || `org_${(0, import_node_crypto4.randomUUID)().slice(0, 12)}`);
   const orgName = opts.orgName || String(existing?.org_name || "Local ScopeBlind Org");
   const billingAccountId = opts.billingAccountId || String(existing?.billing_account_id || `billing_${orgId}`);
   const publicKey = typeof keyData.publicKey === "string" ? keyData.publicKey : "";
@@ -4854,8 +2264,8 @@ function createOrgIdentity(opts) {
   };
 }
 function writeOrgIdentity(dir, identity) {
-  const path = (0, import_node_path6.join)(dir, ORG_IDENTITY_FILE);
-  (0, import_node_fs9.writeFileSync)(path, JSON.stringify(identity, null, 2) + "\n");
+  const path = (0, import_node_path7.join)(dir, ORG_IDENTITY_FILE);
+  (0, import_node_fs10.writeFileSync)(path, JSON.stringify(identity, null, 2) + "\n");
   return path;
 }
 function localAnchors(records, org, now, verifierBaseUrl) {
@@ -4964,16 +2374,16 @@ async function createReceiptRegistry(opts) {
     records,
     anchors,
     verifier: {
-      local_page: (0, import_node_path6.join)(opts.dir, VERIFIER_PAGE_FILE),
+      local_page: (0, import_node_path7.join)(opts.dir, VERIFIER_PAGE_FILE),
       shareable_url_template: opts.verifierBaseUrl ? `${opts.verifierBaseUrl.replace(/\/$/, "")}/verify?digest={receipt_hash}` : "file://scopeblind-verifier.html#digest={receipt_hash}"
     }
   };
   writeOrgIdentity(opts.dir, org);
-  const registryPath = opts.outPath || (0, import_node_path6.join)(opts.dir, REGISTRY_FILE);
-  (0, import_node_fs9.mkdirSync)((0, import_node_path6.dirname)(registryPath), { recursive: true });
-  (0, import_node_fs9.writeFileSync)(registryPath, JSON.stringify(registry, null, 2) + "\n");
-  const verifierPath = (0, import_node_path6.join)(opts.dir, VERIFIER_PAGE_FILE);
-  (0, import_node_fs9.writeFileSync)(verifierPath, renderVerifierPage(registry));
+  const registryPath = opts.outPath || (0, import_node_path7.join)(opts.dir, REGISTRY_FILE);
+  (0, import_node_fs10.mkdirSync)((0, import_node_path7.dirname)(registryPath), { recursive: true });
+  (0, import_node_fs10.writeFileSync)(registryPath, JSON.stringify(registry, null, 2) + "\n");
+  const verifierPath = (0, import_node_path7.join)(opts.dir, VERIFIER_PAGE_FILE);
+  (0, import_node_fs10.writeFileSync)(verifierPath, renderVerifierPage(registry));
   return { registry, registryPath, verifierPath, uploaded };
 }
 function renderVerifierPage(registry) {
@@ -4998,13 +2408,13 @@ function render(){const q=document.getElementById('digest').value.trim()||new UR
 document.getElementById('keys').textContent=JSON.stringify(registry.org.public_key_directory,null,2);render();
 </script></body></html>`;
 }
-var import_node_crypto5, import_node_fs9, import_node_path6, ORG_IDENTITY_FILE, REGISTRY_FILE, VERIFIER_PAGE_FILE;
+var import_node_crypto4, import_node_fs10, import_node_path7, ORG_IDENTITY_FILE, REGISTRY_FILE, VERIFIER_PAGE_FILE;
 var init_receipt_registry = __esm({
   "src/receipt-registry.ts"() {
     "use strict";
-    import_node_crypto5 = require("crypto");
-    import_node_fs9 = require("fs");
-    import_node_path6 = require("path");
+    import_node_crypto4 = require("crypto");
+    import_node_fs10 = require("fs");
+    import_node_path7 = require("path");
     ORG_IDENTITY_FILE = ".protect-mcp-org.json";
     REGISTRY_FILE = ".protect-mcp-registry.json";
     VERIFIER_PAGE_FILE = "scopeblind-verifier.html";
@@ -5078,16 +2488,6 @@ var init_bundle = __esm({
   }
 });
 
-// node_modules/@noble/hashes/esm/sha256.js
-var sha2562;
-var init_sha256 = __esm({
-  "node_modules/@noble/hashes/esm/sha256.js"() {
-    "use strict";
-    init_sha2();
-    sha2562 = sha256;
-  }
-});
-
 // src/receipt-enrichment.ts
 function canonicalJson(value) {
   const seen = /* @__PURE__ */ new WeakSet();
@@ -5112,7 +2512,7 @@ function canonicalJson(value) {
   return enc(value);
 }
 function sha256Hex2(s) {
-  return bytesToHex(sha2562(new TextEncoder().encode(s)));
+  return (0, import_utils2.bytesToHex)((0, import_sha2562.sha256)(new TextEncoder().encode(s)));
 }
 function deriveCapabilities(tool, input) {
   const t = String(tool || "").toLowerCase();
@@ -5185,12 +2585,12 @@ function buildEnrichment(tool, input) {
   if (payment) e.payment = payment;
   return e;
 }
-var ENRICHMENT_VERSION, RULES;
+var import_sha2562, import_utils2, ENRICHMENT_VERSION, RULES;
 var init_receipt_enrichment = __esm({
   "src/receipt-enrichment.ts"() {
     "use strict";
-    init_sha256();
-    init_utils();
+    import_sha2562 = require("@noble/hashes/sha256");
+    import_utils2 = require("@noble/hashes/utils");
     ENRICHMENT_VERSION = 2;
     RULES = [
       { cap: "exec.shell", tool: /bash|shell|exec|terminal|run_command|command/ },
@@ -5236,7 +2636,7 @@ __export(claim_exports, {
 });
 function sha256Hex3(input) {
   const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;
-  return bytesToHex(sha2562(bytes));
+  return (0, import_utils3.bytesToHex)((0, import_sha2563.sha256)(bytes));
 }
 function receiptToLeaf(e) {
   const p = e && typeof e.payload === "object" && e.payload || e;
@@ -5295,7 +2695,7 @@ function evaluate(pred, leaves) {
   return { statement: `${matched} action${matched === 1 ? " was" : "s were"} ${pred.verdict}`, holds: true, matched };
 }
 function messageHash(unsigned) {
-  return sha2562(new TextEncoder().encode(canonicalJson(unsigned)));
+  return (0, import_sha2563.sha256)(new TextEncoder().encode(canonicalJson(unsigned)));
 }
 function buildClaim(receipts, predicate, key, issuedAt) {
   const leaves = receipts.map(receiptToLeaf);
@@ -5312,7 +2712,7 @@ function buildClaim(receipts, predicate, key, issuedAt) {
     issuer: { kid: key.kid, publicKey: key.publicKey, issuer: key.issuer || "protect-mcp" },
     issued_at: issuedAt
   };
-  const signature = bytesToHex(ed25519.sign(messageHash(unsigned), hexToBytes(key.privateKey)));
+  const signature = (0, import_utils3.bytesToHex)(import_ed255192.ed25519.sign(messageHash(unsigned), (0, import_utils3.hexToBytes)(key.privateKey)));
   return { ...unsigned, signature };
 }
 function verifyClaim(pack, overridePublicKey) {
@@ -5329,7 +2729,7 @@ function verifyClaim(pack, overridePublicKey) {
     const { signature, ...unsigned } = pack;
     const pub = overridePublicKey || pack.issuer && pack.issuer.publicKey;
     if (pub && signature) {
-      authentic = ed25519.verify(hexToBytes(signature), messageHash(unsigned), hexToBytes(pub));
+      authentic = import_ed255192.ed25519.verify((0, import_utils3.hexToBytes)(signature), messageHash(unsigned), (0, import_utils3.hexToBytes)(pub));
     }
   } catch {
   }
@@ -5377,9 +2777,9 @@ function buildAnchorEnvelope(pack, key, issuedAt) {
     verification_key: key.publicKey,
     disclosure: "internal"
   };
-  const hash = sha2562(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
-  const digest = bytesToHex(hash);
-  const signature = bytesToHex(ed25519.sign(hash, hexToBytes(key.privateKey)));
+  const hash = (0, import_sha2563.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  const digest = (0, import_utils3.bytesToHex)(hash);
+  const signature = (0, import_utils3.bytesToHex)(import_ed255192.ed25519.sign(hash, (0, import_utils3.hexToBytes)(key.privateKey)));
   return { ...signed, signature, digest };
 }
 function verifyAnchorEnvelope(pack, envelope) {
@@ -5399,10 +2799,10 @@ function verifyAnchorEnvelope(pack, envelope) {
   }
   try {
     const { signature, digest, ...signed } = envelope;
-    const hash = sha2562(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
-    if (bytesToHex(hash) !== String(digest).toLowerCase()) {
+    const hash = (0, import_sha2563.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+    if ((0, import_utils3.bytesToHex)(hash) !== String(digest).toLowerCase()) {
       reasons.push("envelope digest does not match its contents");
-    } else if (!ed25519.verify(hexToBytes(String(signature)), hash, hexToBytes(envelope.verification_key))) {
+    } else if (!import_ed255192.ed25519.verify((0, import_utils3.hexToBytes)(String(signature)), hash, (0, import_utils3.hexToBytes)(envelope.verification_key))) {
       reasons.push("envelope signature does not verify");
     }
   } catch {
@@ -5504,9 +2904,9 @@ function buildRecordCheckpoint(receipts, key, issuedAt) {
     verification_key: key.publicKey,
     disclosure: "internal"
   };
-  const hash = sha2562(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
-  const digest = bytesToHex(hash);
-  const signature = bytesToHex(ed25519.sign(hash, hexToBytes(key.privateKey)));
+  const hash = (0, import_sha2563.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  const digest = (0, import_utils3.bytesToHex)(hash);
+  const signature = (0, import_utils3.bytesToHex)(import_ed255192.ed25519.sign(hash, (0, import_utils3.hexToBytes)(key.privateKey)));
   return { ...signed, signature, digest };
 }
 async function anchorRecordCheckpoint(receipts, key, opts) {
@@ -5546,13 +2946,13 @@ async function lookupPinnedIdentity(publicKey, opts) {
     return null;
   }
 }
-var CLAIM_TYPE, ANCHOR_SCHEMA, DEFAULT_LOG, CHECKPOINT_SCHEMA;
+var import_sha2563, import_utils3, import_ed255192, CLAIM_TYPE, ANCHOR_SCHEMA, DEFAULT_LOG, CHECKPOINT_SCHEMA;
 var init_claim = __esm({
   "src/claim.ts"() {
     "use strict";
-    init_sha256();
-    init_utils();
-    init_ed25519();
+    import_sha2563 = require("@noble/hashes/sha256");
+    import_utils3 = require("@noble/hashes/utils");
+    import_ed255192 = require("@noble/curves/ed25519");
     init_receipt_enrichment();
     CLAIM_TYPE = "scopeblind.claim.v1";
     ANCHOR_SCHEMA = "scopeblind.protect-mcp.anchor.v1";
@@ -5566,14 +2966,14 @@ function hashLeaf(leafBytes) {
   const buf = new Uint8Array(leafBytes.length + 1);
   buf[0] = DOMAIN_LEAF;
   buf.set(leafBytes, 1);
-  return sha2562(buf);
+  return (0, import_sha2564.sha256)(buf);
 }
 function hashInternal(left, right) {
   const buf = new Uint8Array(left.length + right.length + 1);
   buf[0] = DOMAIN_INTERNAL;
   buf.set(left, 1);
   buf.set(right, 1 + left.length);
-  return sha2562(buf);
+  return (0, import_sha2564.sha256)(buf);
 }
 function merkleRoot2(leafHashes) {
   if (leafHashes.length === 0) {
@@ -5602,7 +3002,7 @@ function generateProof(leafHashes, index) {
   return {
     index,
     treeSize: leafHashes.length,
-    siblings: siblings.map((s) => bytesToHex(s))
+    siblings: siblings.map((s) => (0, import_utils4.bytesToHex)(s))
   };
 }
 function collectPath(leaves, index, out) {
@@ -5620,7 +3020,7 @@ function collectPath(leaves, index, out) {
 function verifyProof(expectedRootHex, leafHash2, proof) {
   if (proof.index < 0 || proof.index >= proof.treeSize) return false;
   if (proof.treeSize === 1) {
-    return proof.siblings.length === 0 && bytesToHex(leafHash2).toLowerCase() === expectedRootHex.toLowerCase();
+    return proof.siblings.length === 0 && (0, import_utils4.bytesToHex)(leafHash2).toLowerCase() === expectedRootHex.toLowerCase();
   }
   let result;
   try {
@@ -5633,7 +3033,7 @@ function verifyProof(expectedRootHex, leafHash2, proof) {
   } catch {
     return false;
   }
-  return bytesToHex(result).toLowerCase() === expectedRootHex.toLowerCase();
+  return (0, import_utils4.bytesToHex)(result).toLowerCase() === expectedRootHex.toLowerCase();
 }
 function reconstructRoot(leafHash2, index, treeSize, siblings) {
   if (treeSize === 1) {
@@ -5646,7 +3046,7 @@ function reconstructRoot(leafHash2, index, treeSize, siblings) {
     throw new Error("reconstructRoot: ran out of siblings before single-leaf");
   }
   const k = largestPowerOfTwoLessThan(treeSize);
-  const outermostSibling = hexToBytes(siblings[siblings.length - 1]);
+  const outermostSibling = (0, import_utils4.hexToBytes)(siblings[siblings.length - 1]);
   const innerSiblings = siblings.slice(0, -1);
   if (index < k) {
     const leftHash = reconstructRoot(leafHash2, index, k, innerSiblings);
@@ -5669,12 +3069,12 @@ function largestPowerOfTwoLessThan(n) {
   while (k * 2 < n) k *= 2;
   return k;
 }
-var DOMAIN_LEAF, DOMAIN_INTERNAL;
+var import_sha2564, import_utils4, DOMAIN_LEAF, DOMAIN_INTERNAL;
 var init_merkle = __esm({
   "src/commitments/merkle.ts"() {
     "use strict";
-    init_sha256();
-    init_utils();
+    import_sha2564 = require("@noble/hashes/sha256");
+    import_utils4 = require("@noble/hashes/utils");
     DOMAIN_LEAF = 0;
     DOMAIN_INTERNAL = 1;
   }
@@ -5692,9 +3092,13 @@ function jcs(value) {
   const keys = Object.keys(obj).sort();
   return "{" + keys.map((k) => JSON.stringify(k) + ":" + jcs(obj[k])).join(",") + "}";
 }
+var import_sha2565, import_hmac, import_utils5;
 var init_primitives = __esm({
   "src/commitments/primitives.ts"() {
     "use strict";
+    import_sha2565 = require("@noble/hashes/sha256");
+    import_hmac = require("@noble/hashes/hmac");
+    import_utils5 = require("@noble/hashes/utils");
   }
 });
 
@@ -5760,7 +3164,7 @@ __export(signing_committed_exports, {
   verifySelectiveDisclosurePackage: () => verifySelectiveDisclosurePackage
 });
 function freshSalt() {
-  return randomBytes2(32);
+  return (0, import_utils6.randomBytes)(32);
 }
 function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey, kid, issuer) {
   const allFields = {
@@ -5800,7 +3204,7 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     const { sorted, leafBytes } = leavesFromFields(committedFields);
     const leafHashes = leafBytes.map(hashLeaf);
     const root = merkleRoot2(leafHashes);
-    committedFieldsRoot = bytesToHex(root);
+    committedFieldsRoot = (0, import_utils6.bytesToHex)(root);
     sorted.forEach((f, i) => {
       openings[f.name] = { name: f.name, value: f.value, salt: f.salt, index: i };
     });
@@ -5817,8 +3221,8 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
   const canonical = jcs(payload);
-  const messageHash2 = sha2562(new TextEncoder().encode(canonical));
-  const signatureBytes = ed25519.sign(messageHash2, hexToBytes(signingKey));
+  const messageHash2 = (0, import_sha2566.sha256)(new TextEncoder().encode(canonical));
+  const signatureBytes = import_ed255193.ed25519.sign(messageHash2, (0, import_utils6.hexToBytes)(signingKey));
   const signedReceipt = {
     ...payload,
     signature: {
@@ -5831,15 +3235,15 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     }
   };
   const signedJson = JSON.stringify(signedReceipt);
-  const receiptHash = bytesToHex(sha2562(new TextEncoder().encode(jcs(signedReceipt))));
+  const receiptHash2 = (0, import_utils6.bytesToHex)((0, import_sha2566.sha256)(new TextEncoder().encode(jcs(signedReceipt))));
   return {
     signed: signedJson,
     artifact_type: "decision_receipt_committed_v1",
     openings,
-    receipt_hash: receiptHash
+    receipt_hash: receiptHash2
   };
 }
-function discloseField(receiptHash, fieldName, openings) {
+function discloseField(receiptHash2, fieldName, openings) {
   const o = openings[fieldName];
   if (!o) {
     throw new Error(`disclose: no opening recorded for field "${fieldName}"`);
@@ -5853,7 +3257,7 @@ function discloseField(receiptHash, fieldName, openings) {
   const leafHashes = leafBytes.map(hashLeaf);
   const proof = generateProof(leafHashes, o.index);
   return {
-    parent_receipt_hash: receiptHash,
+    parent_receipt_hash: receiptHash2,
     name: fieldName,
     value: o.value,
     salt: base64urlNoPad(o.salt),
@@ -5861,7 +3265,7 @@ function discloseField(receiptHash, fieldName, openings) {
   };
 }
 function createSelectiveDisclosurePackage(receipt, fieldNames, openings) {
-  const receiptHash = receiptHashHex(receipt);
+  const receiptHash2 = receiptHashHex(receipt);
   const committedFieldsRoot = typeof receipt.committed_fields_root === "string" ? receipt.committed_fields_root : "";
   if (!committedFieldsRoot) {
     throw new Error("selective disclosure requires a committed receipt with committed_fields_root");
@@ -5873,12 +3277,12 @@ function createSelectiveDisclosurePackage(receipt, fieldNames, openings) {
       throw new Error(`selective disclosure: field "${fieldName}" is not committed by this receipt`);
     }
   }
-  const disclosures = uniqueFields.map((fieldName) => discloseField(receiptHash, fieldName, openings));
+  const disclosures = uniqueFields.map((fieldName) => discloseField(receiptHash2, fieldName, openings));
   const hiddenFields = committedFieldNames.filter((fieldName) => !uniqueFields.includes(fieldName));
   return {
     type: "scopeblind.selective_disclosure.v0",
     version: 0,
-    parent_receipt_hash: receiptHash,
+    parent_receipt_hash: receiptHash2,
     committed_fields_root: committedFieldsRoot,
     disclosed_fields: uniqueFields,
     hidden_fields: hiddenFields,
@@ -5960,7 +3364,7 @@ function committedFieldNamesFromReceipt(receipt, openings) {
   return Array.from(new Set(names)).sort();
 }
 function receiptHashHex(receipt) {
-  return bytesToHex(sha2562(new TextEncoder().encode(jcs(receipt))));
+  return (0, import_utils6.bytesToHex)((0, import_sha2566.sha256)(new TextEncoder().encode(jcs(receipt))));
 }
 function verifyCommittedReceiptSignature(receipt) {
   const signature = receipt.signature;
@@ -5970,19 +3374,20 @@ function verifyCommittedReceiptSignature(receipt) {
     return null;
   }
   const { signature: _signature, ...payloadWithoutSig } = receipt;
-  const messageHash2 = sha2562(new TextEncoder().encode(jcs(payloadWithoutSig)));
+  const messageHash2 = (0, import_sha2566.sha256)(new TextEncoder().encode(jcs(payloadWithoutSig)));
   try {
-    return ed25519.verify(base64urlDecode(sig.sig), messageHash2, hexToBytes(sig.public_key));
+    return import_ed255193.ed25519.verify(base64urlDecode(sig.sig), messageHash2, (0, import_utils6.hexToBytes)(sig.public_key));
   } catch {
     return false;
   }
 }
+var import_ed255193, import_sha2566, import_utils6;
 var init_signing_committed = __esm({
   "src/signing-committed.ts"() {
     "use strict";
-    init_ed25519();
-    init_sha256();
-    init_utils();
+    import_ed255193 = require("@noble/curves/ed25519");
+    import_sha2566 = require("@noble/hashes/sha256");
+    import_utils6 = require("@noble/hashes/utils");
     init_merkle();
     init_leaf();
     init_primitives();
@@ -6327,24 +3732,24 @@ __export(sample_exports, {
 });
 function signEnvelope(unsigned, privHex) {
   const msg = new TextEncoder().encode(canonicalJson(unsigned));
-  const signature = bytesToHex(ed25519.sign(msg, hexToBytes(privHex)));
+  const signature = (0, import_utils7.bytesToHex)(import_ed255194.ed25519.sign(msg, (0, import_utils7.hexToBytes)(privHex)));
   return { ...unsigned, signature };
 }
 function buildSampleKit(dir, opts) {
-  const receiptsPath = (0, import_node_path7.join)(dir, ".protect-mcp-receipts.jsonl");
-  const keyPath = (0, import_node_path7.join)(dir, "keys", "gateway.json");
-  if (!opts?.force && ((0, import_node_fs10.existsSync)(receiptsPath) || (0, import_node_fs10.existsSync)(keyPath))) {
+  const receiptsPath = (0, import_node_path8.join)(dir, ".protect-mcp-receipts.jsonl");
+  const keyPath = (0, import_node_path8.join)(dir, "keys", "gateway.json");
+  if (!opts?.force && ((0, import_node_fs11.existsSync)(receiptsPath) || (0, import_node_fs11.existsSync)(keyPath))) {
     throw Object.assign(
       new Error(`refusing to overwrite an existing record or signing key in ${dir}`),
       { code: "SAMPLE_EXISTS" }
     );
   }
-  (0, import_node_fs10.mkdirSync)((0, import_node_path7.join)(dir, "keys"), { recursive: true });
-  const priv = ed25519.utils.randomPrivateKey();
-  const privHex = bytesToHex(priv);
-  const pub = bytesToHex(ed25519.getPublicKey(priv));
-  (0, import_node_fs10.writeFileSync)(keyPath, JSON.stringify({ privateKey: privHex, publicKey: pub, kid: SAMPLE_KID }, null, 2));
-  (0, import_node_fs10.writeFileSync)((0, import_node_path7.join)(dir, "keys", ".gitignore"), "# Never commit signing keys\n*.json\n");
+  (0, import_node_fs11.mkdirSync)((0, import_node_path8.join)(dir, "keys"), { recursive: true });
+  const priv = import_ed255194.ed25519.utils.randomPrivateKey();
+  const privHex = (0, import_utils7.bytesToHex)(priv);
+  const pub = (0, import_utils7.bytesToHex)(import_ed255194.ed25519.getPublicKey(priv));
+  (0, import_node_fs11.writeFileSync)(keyPath, JSON.stringify({ privateKey: privHex, publicKey: pub, kid: SAMPLE_KID }, null, 2));
+  (0, import_node_fs11.writeFileSync)((0, import_node_path8.join)(dir, "keys", ".gitignore"), "# Never commit signing keys\n*.json\n");
   const now = opts?.now ?? /* @__PURE__ */ new Date();
   const stamp = (i) => new Date(now.getTime() - (7 - i) * 5 * 6e4).toISOString();
   const receipt = (i, tool, decision, caps, extra) => {
@@ -6386,10 +3791,10 @@ function buildSampleKit(dir, opts) {
     receipt(6, "wallet_send_payment", "allow", ["financial", "payment"], pay(12.5)),
     receipt(7, "Bash", "allow", ["exec.shell", "vcs"])
   ];
-  (0, import_node_fs10.writeFileSync)(receiptsPath, rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  (0, import_node_fs11.writeFileSync)(receiptsPath, rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
   const tampered = rows.map((r) => JSON.parse(JSON.stringify(r)));
   tampered[3].payload.decision = "allow";
-  (0, import_node_fs10.writeFileSync)((0, import_node_path7.join)(dir, "demo-tampered.jsonl"), tampered.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  (0, import_node_fs11.writeFileSync)((0, import_node_path8.join)(dir, "demo-tampered.jsonl"), tampered.map((r) => JSON.stringify(r)).join("\n") + "\n");
   return {
     dir,
     publicKey: pub,
@@ -6399,18 +3804,18 @@ function buildSampleKit(dir, opts) {
     files: [".protect-mcp-receipts.jsonl", "demo-tampered.jsonl", "keys/gateway.json"]
   };
 }
-var import_node_fs10, import_node_path7, SAMPLE_KID, sha256Hex4;
+var import_node_fs11, import_node_path8, import_sha2567, import_utils7, import_ed255194, SAMPLE_KID, sha256Hex4;
 var init_sample = __esm({
   "src/sample.ts"() {
     "use strict";
-    import_node_fs10 = require("fs");
-    import_node_path7 = require("path");
-    init_sha256();
-    init_utils();
-    init_ed25519();
+    import_node_fs11 = require("fs");
+    import_node_path8 = require("path");
+    import_sha2567 = require("@noble/hashes/sha256");
+    import_utils7 = require("@noble/hashes/utils");
+    import_ed255194 = require("@noble/curves/ed25519");
     init_receipt_enrichment();
     SAMPLE_KID = "sample-demo";
-    sha256Hex4 = (s) => bytesToHex(sha2562(new TextEncoder().encode(s)));
+    sha256Hex4 = (s) => (0, import_utils7.bytesToHex)((0, import_sha2567.sha256)(new TextEncoder().encode(s)));
   }
 });
 
@@ -6422,23 +3827,26 @@ __export(mcp_server_exports, {
 async function loadArtifacts() {
   if (artifacts) return artifacts;
   const moduleName = "@veritasacta/artifacts";
-  const mod2 = await import(
+  const mod = await import(
     /* @vite-ignore */
     moduleName
   );
-  artifacts = mod2;
-  return mod2;
+  artifacts = mod;
+  return mod;
 }
 function buildReceiptPayload(args) {
   return {
-    tool: args.tool,
+    // draft-02 s3.1 access-decision fields
+    type: "protectmcp:decision",
+    tool_name: args.tool,
     decision: args.decision,
-    reason_code: args.reason_code ?? (args.decision === "deny" ? "policy_denied" : "post_execution_receipt"),
+    reason: args.reason_code ?? (args.decision === "deny" ? "policy_denied" : "post_execution_receipt"),
     policy_digest: args.policy_digest ?? "none",
+    // Extension fields (signed alongside the s3.1 core)
     scope: args.request_id,
     mode: "enforce",
     request_id: args.request_id,
-    spec: "draft-farley-acta-signed-receipts-01",
+    spec: "draft-farley-acta-signed-receipts-02",
     issuer_certification: "self-signed",
     public_key: args.public_key
   };
@@ -6493,25 +3901,26 @@ async function callSign(args) {
     public_key: publicKey
   });
   const artifactType = decision === "deny" ? "gateway_restraint" : "decision_receipt";
-  const { artifact } = a.createSignedArtifact(artifactType, payload, privateKey, { kid: "mcp", issuer: "protect-mcp" });
-  return { receipt: artifact, artifact_type: artifactType, public_key: publicKey, ephemeral };
+  const { envelope } = createReceiptEnvelope(payload, privateKey, computeSbIssuerKid(publicKey));
+  return { receipt: envelope, artifact_type: artifactType, public_key: publicKey, ephemeral };
 }
 async function callVerify(args) {
   const receipt = args.receipt;
   if (!receipt || typeof receipt !== "object") return { valid: false, error: "missing_receipt" };
-  const a = await loadArtifacts();
+  const identity = receiptIdentity(receipt);
   const embedded = receipt.payload?.public_key;
   const key = typeof args.public_key_hex === "string" && args.public_key_hex ? args.public_key_hex : typeof embedded === "string" ? embedded : null;
   if (!key) {
-    return { valid: false, error: "no_public_key", type: receipt.type ?? "unknown", kid: null, issuer: null };
+    return { valid: false, error: "no_public_key", type: identity.type ?? "unknown", kid: identity.kid, issuer: identity.issuer };
   }
-  const result = a.verifyArtifact(receipt, key);
+  const result = verifyReceipt(receipt, key);
   return {
-    valid: !!result.valid,
+    valid: result.valid,
     error: result.valid ? null : result.error || "invalid_signature",
-    type: receipt.type ?? "unknown",
-    kid: receipt.kid ?? null,
-    issuer: receipt.issuer ?? null
+    shape: result.shape,
+    type: identity.type ?? "unknown",
+    kid: identity.kid,
+    issuer: identity.issuer
   };
 }
 async function callSelfTest() {
@@ -6527,7 +3936,7 @@ async function callSelfTest() {
     if (signed.receipt && signed.public_key) {
       const ok = await callVerify({ receipt: signed.receipt, public_key_hex: signed.public_key });
       const tampered = JSON.parse(JSON.stringify(signed.receipt));
-      if (tampered.payload) tampered.payload.tool = "tampered";
+      if (tampered.payload) tampered.payload.tool_name = "tampered";
       const bad = await callVerify({ receipt: tampered, public_key_hex: signed.public_key });
       signVerifyRoundtrip = ok.valid === true && bad.valid === false;
       details.sign_verify = { valid_verifies: ok.valid, tampered_rejected: bad.valid === false };
@@ -6617,6 +4026,7 @@ var init_mcp_server = __esm({
     "use strict";
     import_node_readline2 = require("readline");
     init_cedar_evaluator();
+    init_acta_envelope();
     artifacts = null;
     RO = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
     TOOLS = [
@@ -6844,6 +4254,16 @@ var hook_server_exports = {};
 __export(hook_server_exports, {
   startHookServer: () => startHookServer
 });
+function resumeReceiptChain(receiptFilePath) {
+  try {
+    if (!(0, import_node_fs12.existsSync)(receiptFilePath)) return null;
+    const lines = (0, import_node_fs12.readFileSync)(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+    if (lines.length === 0) return null;
+    return receiptHash(JSON.parse(lines[lines.length - 1]));
+  } catch {
+    return null;
+  }
+}
 function detectSwarmContext() {
   const teamName = process.env.CLAUDE_CODE_TEAM_NAME;
   const agentId = process.env.CLAUDE_CODE_AGENT_ID;
@@ -6867,7 +4287,7 @@ function computePayloadDigest(input) {
     return void 0;
   }
   return {
-    input_hash: (0, import_node_crypto6.createHash)("sha256").update(content).digest("hex"),
+    input_hash: (0, import_node_crypto5.createHash)("sha256").update(content).digest("hex"),
     input_size: size,
     truncated: true,
     preview: content.slice(0, 256)
@@ -6880,7 +4300,7 @@ function computeOutputDigest(output) {
     return void 0;
   }
   return {
-    output_hash: (0, import_node_crypto6.createHash)("sha256").update(content).digest("hex"),
+    output_hash: (0, import_node_crypto5.createHash)("sha256").update(content).digest("hex"),
     output_size: size
   };
 }
@@ -6893,7 +4313,7 @@ function detectSandboxState() {
   }
   if (process.platform === "linux") {
     try {
-      const procStatus = (0, import_node_fs11.readFileSync)("/proc/self/status", "utf-8");
+      const procStatus = (0, import_node_fs12.readFileSync)("/proc/self/status", "utf-8");
       if (procStatus.includes("Seccomp:	2")) return "enabled";
     } catch {
     }
@@ -6903,7 +4323,7 @@ function detectSandboxState() {
 async function handlePreToolUse(input, state) {
   const hookStart = Date.now();
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto6.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto5.randomUUID)().slice(0, 12);
   state.inflightTools.set(requestId, {
     tool: toolName,
     startedAt: hookStart,
@@ -7108,7 +4528,7 @@ async function handlePreToolUse(input, state) {
 }
 async function handlePostToolUse(input, state) {
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto6.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto5.randomUUID)().slice(0, 12);
   const now = Date.now();
   const inflight = state.inflightTools.get(requestId);
   const timing = {
@@ -7120,7 +4540,7 @@ async function handlePostToolUse(input, state) {
     state.inflightTools.delete(requestId);
   }
   const outputDigest = computeOutputDigest(input.toolResult);
-  const receiptId = (0, import_node_crypto6.randomUUID)().slice(0, 8);
+  const receiptId = (0, import_node_crypto5.randomUUID)().slice(0, 8);
   const policyName = state.cedarPolicies ? `cedar:${state.policyDigest}` : state.policyDigest;
   const additionalContext = `[ScopeBlind] Tool call receipted. Policy: ${policyName}. Decision: allow. Receipt: #${receiptId}.` + (timing.tool_duration_ms !== void 0 ? ` Duration: ${timing.tool_duration_ms}ms.` : "") + (timing.hook_latency_ms !== void 0 ? ` Overhead: ${timing.hook_latency_ms}ms.` : "");
   emitDecisionLog(state, {
@@ -7152,7 +4572,7 @@ function handleSubagentStart(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_started",
-    request_id: (0, import_node_crypto6.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
     hook_event: "SubagentStart",
     swarm: {
       ...state.swarmContext,
@@ -7173,7 +4593,7 @@ function handleSubagentStop(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_stopped",
-    request_id: (0, import_node_crypto6.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
     hook_event: "SubagentStop",
     swarm: {
       ...state.swarmContext,
@@ -7188,7 +4608,7 @@ function handleTaskCreated(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_created",
-    request_id: (0, import_node_crypto6.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
     hook_event: "TaskCreated",
     swarm: {
       ...state.swarmContext,
@@ -7202,7 +4622,7 @@ function handleTaskCompleted(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_completed",
-    request_id: (0, import_node_crypto6.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
     hook_event: "TaskCompleted",
     swarm: state.swarmContext
   });
@@ -7213,7 +4633,7 @@ function handleSessionStart(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_started",
-    request_id: input.sessionId || (0, import_node_crypto6.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto5.randomUUID)().slice(0, 12),
     hook_event: "SessionStart",
     swarm: state.swarmContext,
     sandbox_state: detectSandboxState()
@@ -7236,7 +4656,7 @@ function handleSessionEnd(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_ended",
-    request_id: input.sessionId || (0, import_node_crypto6.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto5.randomUUID)().slice(0, 12),
     hook_event: "SessionEnd",
     swarm: state.swarmContext
   });
@@ -7247,7 +4667,7 @@ function handleTeammateIdle(input, state) {
     tool: `teammate:${input.agentId || "unknown"}`,
     decision: "allow",
     reason_code: "teammate_idle",
-    request_id: (0, import_node_crypto6.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
     hook_event: "TeammateIdle",
     swarm: {
       ...state.swarmContext,
@@ -7275,7 +4695,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "deny",
       reason_code: "config_tamper_detected",
-      request_id: (0, import_node_crypto6.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange",
       swarm: state.swarmContext
     });
@@ -7284,7 +4704,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "allow",
       reason_code: "config_changed",
-      request_id: (0, import_node_crypto6.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange"
     });
   }
@@ -7306,7 +4726,7 @@ function handleStop(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "agent_stopped",
-    request_id: (0, import_node_crypto6.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto5.randomUUID)().slice(0, 12),
     hook_event: "Stop",
     swarm: state.swarmContext
   });
@@ -7314,8 +4734,8 @@ function handleStop(input, state) {
 }
 function emitDecisionLog(state, entry) {
   const mode = state.enforce ? "enforce" : "shadow";
-  const otelTraceId = (0, import_node_crypto6.randomBytes)(16).toString("hex");
-  const otelSpanId = (0, import_node_crypto6.randomBytes)(8).toString("hex");
+  const otelTraceId = (0, import_node_crypto5.randomBytes)(16).toString("hex");
+  const otelSpanId = (0, import_node_crypto5.randomBytes)(8).toString("hex");
   const log = {
     v: 2,
     tool: entry.tool || "unknown",
@@ -7323,7 +4743,7 @@ function emitDecisionLog(state, entry) {
     reason_code: entry.reason_code || "default_allow",
     policy_digest: state.policyDigest,
     policy_engine: state.cedarPolicies ? "cedar" : "built-in",
-    request_id: entry.request_id || (0, import_node_crypto6.randomUUID)().slice(0, 12),
+    request_id: entry.request_id || (0, import_node_crypto5.randomUUID)().slice(0, 12),
     timestamp: Date.now(),
     mode,
     otel_trace_id: otelTraceId,
@@ -7342,14 +4762,15 @@ function emitDecisionLog(state, entry) {
   process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
   try {
-    (0, import_node_fs11.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
+    (0, import_node_fs12.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
   } catch {
   }
   if (isSigningEnabled()) {
-    const signed = signDecision(log);
+    const signed = signDecision(log, state.lastReceiptHash || void 0);
     if (signed.signed) {
       try {
-        (0, import_node_fs11.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
+        (0, import_node_fs12.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
+        if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
       } catch {
       }
       state.receiptBuffer.add(log.request_id, signed.signed);
@@ -7364,16 +4785,19 @@ function emitDecisionLog(state, entry) {
 `);
       }
     } else if (signed.error) {
-      const tombstone = JSON.stringify({
+      const tombstoneObj = {
         type: "scopeblind.signing_failure.v1",
         request_id: log.request_id,
         tool: log.tool,
         decision: log.decision,
         error: signed.error,
-        at: new Date(log.timestamp).toISOString()
-      });
+        at: new Date(log.timestamp).toISOString(),
+        ...state.lastReceiptHash ? { previousReceiptHash: state.lastReceiptHash } : {}
+      };
+      const tombstone = JSON.stringify(tombstoneObj);
       try {
-        (0, import_node_fs11.appendFileSync)(state.receiptFilePath, tombstone + "\n");
+        (0, import_node_fs12.appendFileSync)(state.receiptFilePath, tombstone + "\n");
+        state.lastReceiptHash = receiptHash(tombstoneObj);
       } catch {
       }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
@@ -7461,8 +4885,8 @@ async function startHookServer(options = {}) {
     }
   }
   if (!jsonPolicy?.signing) {
-    const keyPath = (0, import_node_path8.join)(process.cwd(), "keys", "gateway.json");
-    if ((0, import_node_fs11.existsSync)(keyPath)) {
+    const keyPath = (0, import_node_path9.join)(process.cwd(), "keys", "gateway.json");
+    if ((0, import_node_fs12.existsSync)(keyPath)) {
       const warnings = await initSigning({ key_path: keyPath, issuer: "protect-mcp", enabled: true });
       for (const w of warnings) {
         process.stderr.write(`[PROTECT_MCP] Warning: ${w}
@@ -7487,8 +4911,9 @@ async function startHookServer(options = {}) {
     verbose,
     enforce,
     policyDigest,
-    logFilePath: (0, import_node_path8.join)(process.cwd(), LOG_FILE3),
-    receiptFilePath: (0, import_node_path8.join)(process.cwd(), RECEIPTS_FILE2),
+    logFilePath: (0, import_node_path9.join)(process.cwd(), LOG_FILE3),
+    receiptFilePath: (0, import_node_path9.join)(process.cwd(), RECEIPTS_FILE2),
+    lastReceiptHash: resumeReceiptChain((0, import_node_path9.join)(process.cwd(), RECEIPTS_FILE2)),
     permissionSuggestions: /* @__PURE__ */ new Map(),
     configAlerts: []
   };
@@ -7637,7 +5062,7 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs11.existsSync)((0, import_node_path8.join)(process.cwd(), ".scopeblind"));
+    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs12.existsSync)((0, import_node_path9.join)(process.cwd(), ".scopeblind"));
     if (!hasSlug) {
       w(`  Dashboard  npx protect-mcp connect
 `);
@@ -7668,9 +5093,9 @@ async function startHookServer(options = {}) {
 function newestCedarMtime(dir) {
   try {
     let newest = 0;
-    for (const f of (0, import_node_fs11.readdirSync)(dir)) {
+    for (const f of (0, import_node_fs12.readdirSync)(dir)) {
       if (!f.endsWith(".cedar")) continue;
-      const m = (0, import_node_fs11.statSync)((0, import_node_path8.join)(dir, f)).mtimeMs;
+      const m = (0, import_node_fs12.statSync)((0, import_node_path9.join)(dir, f)).mtimeMs;
       if (m > newest) newest = m;
     }
     return newest;
@@ -7701,8 +5126,8 @@ function maybeReloadCedar(state) {
 function findCedarDir() {
   for (const candidate of ["cedar", "policies", "."]) {
     try {
-      if ((0, import_node_fs11.existsSync)(candidate)) {
-        const files = (0, import_node_fs11.readdirSync)(candidate, { encoding: "utf-8" });
+      if ((0, import_node_fs12.existsSync)(candidate)) {
+        const files = (0, import_node_fs12.readdirSync)(candidate, { encoding: "utf-8" });
         if (files.some((f) => f.endsWith(".cedar"))) {
           return candidate;
         }
@@ -7723,16 +5148,17 @@ function normalizeHookInput(raw) {
   }
   return result;
 }
-var import_node_http2, import_node_crypto6, import_node_fs11, import_node_path8, DEFAULT_PORT, LOG_FILE3, RECEIPTS_FILE2, PAYLOAD_HASH_THRESHOLD, CEDAR_CHECK_THROTTLE_MS, SNAKE_TO_CAMEL_MAP;
+var import_node_http2, import_node_crypto5, import_node_fs12, import_node_path9, DEFAULT_PORT, LOG_FILE3, RECEIPTS_FILE2, PAYLOAD_HASH_THRESHOLD, CEDAR_CHECK_THROTTLE_MS, SNAKE_TO_CAMEL_MAP;
 var init_hook_server = __esm({
   "src/hook-server.ts"() {
     "use strict";
     import_node_http2 = require("http");
-    import_node_crypto6 = require("crypto");
-    import_node_fs11 = require("fs");
-    import_node_path8 = require("path");
+    import_node_crypto5 = require("crypto");
+    import_node_fs12 = require("fs");
+    import_node_path9 = require("path");
     init_cedar_evaluator();
     init_signing();
+    init_acta_envelope();
     init_policy();
     init_http_server();
     init_scopeblind_bridge();
@@ -7957,8 +5383,8 @@ function generateReport(logPath, receiptPath, periodDays) {
   const now = /* @__PURE__ */ new Date();
   const from = new Date(now.getTime() - periodDays * 864e5);
   const entries = [];
-  if ((0, import_node_fs12.existsSync)(logPath)) {
-    const raw = (0, import_node_fs12.readFileSync)(logPath, "utf-8");
+  if ((0, import_node_fs13.existsSync)(logPath)) {
+    const raw = (0, import_node_fs13.readFileSync)(logPath, "utf-8");
     for (const line of raw.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed) continue;
@@ -7978,8 +5404,8 @@ function generateReport(logPath, receiptPath, periodDays) {
   let receiptsSigned = 0;
   let signerKid = "";
   let signerIssuer = "";
-  if ((0, import_node_fs12.existsSync)(receiptPath)) {
-    const raw = (0, import_node_fs12.readFileSync)(receiptPath, "utf-8");
+  if ((0, import_node_fs13.existsSync)(receiptPath)) {
+    const raw = (0, import_node_fs13.readFileSync)(receiptPath, "utf-8");
     for (const line of raw.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed) continue;
@@ -7987,8 +5413,9 @@ function generateReport(logPath, receiptPath, periodDays) {
         const parsed = JSON.parse(trimmed);
         if (parsed.signature) {
           receiptsSigned++;
-          if (parsed.kid && !signerKid) signerKid = parsed.kid;
-          if (parsed.issuer && !signerIssuer) signerIssuer = parsed.issuer;
+          const identity = receiptIdentity(parsed);
+          if (identity.kid && !signerKid) signerKid = identity.kid;
+          if (identity.issuer && !signerIssuer) signerIssuer = identity.issuer;
         }
       } catch {
       }
@@ -8111,11 +5538,12 @@ function formatReportMarkdown(report) {
   lines.push("*Generated by protect-mcp \xB7 scopeblind.com*");
   return lines.join("\n");
 }
-var import_node_fs12;
+var import_node_fs13;
 var init_report = __esm({
   "src/report.ts"() {
     "use strict";
-    import_node_fs12 = require("fs");
+    import_node_fs13 = require("fs");
+    init_acta_envelope();
   }
 });
 
@@ -8123,14 +5551,16 @@ var init_report = __esm({
 init_gateway();
 init_policy();
 init_signing();
+init_policy_digest();
+init_acta_envelope();
 init_credentials();
 
 // src/simulate.ts
-var import_node_fs7 = require("fs");
+var import_node_fs8 = require("fs");
 init_policy();
 init_admission();
 function parseLogFile(path) {
-  const raw = (0, import_node_fs7.readFileSync)(path, "utf-8");
+  const raw = (0, import_node_fs8.readFileSync)(path, "utf-8");
   const entries = [];
   for (const line of raw.split("\n")) {
     const trimmed = line.trim();
@@ -8455,8 +5885,8 @@ function policyPackIds() {
 }
 
 // src/connector-pilots.ts
-var import_node_fs8 = require("fs");
-var import_node_path5 = require("path");
+var import_node_fs9 = require("fs");
+var import_node_path6 = require("path");
 var defaultPermit2 = `
 // Default posture: observe all non-matching tools so the connector can be piloted in shadow mode.
 permit(principal, action == Action::"MCP::Tool::call", resource);
@@ -9044,11 +6474,11 @@ function getConnectorPilot(id) {
   return CONNECTOR_PILOTS.find((pilot) => pilot.id === id);
 }
 function connectorDirectory(dir) {
-  return (0, import_node_path5.join)(dir, ".protect-mcp", "connectors");
+  return (0, import_node_path6.join)(dir, ".protect-mcp", "connectors");
 }
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
-  (0, import_node_fs8.mkdirSync)(directory, { recursive: true });
+  (0, import_node_fs9.mkdirSync)(directory, { recursive: true });
   const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id) => {
     const pilot = getConnectorPilot(id);
     if (!pilot) throw new Error(`Unknown connector pilot: ${id}`);
@@ -9056,42 +6486,42 @@ function writeConnectorPilots(opts) {
   }) : CONNECTOR_PILOTS;
   const written = [];
   for (const pilot of selected) {
-    const configPath = (0, import_node_path5.join)(directory, `${pilot.id}.json`);
-    const policyPath = (0, import_node_path5.join)(directory, `${pilot.id}.cedar`);
-    if (!opts.force && ((0, import_node_fs8.existsSync)(configPath) || (0, import_node_fs8.existsSync)(policyPath))) {
+    const configPath = (0, import_node_path6.join)(directory, `${pilot.id}.json`);
+    const policyPath = (0, import_node_path6.join)(directory, `${pilot.id}.cedar`);
+    if (!opts.force && ((0, import_node_fs9.existsSync)(configPath) || (0, import_node_fs9.existsSync)(policyPath))) {
       throw new Error(`Refusing to overwrite ${pilot.id}. Re-run with --force if intentional.`);
     }
-    (0, import_node_fs8.writeFileSync)(configPath, JSON.stringify({ ...pilot.config, id: pilot.id, name: pilot.name, category: pilot.category, tools: pilot.tools, actions: pilot.actions, setup: pilot.setup }, null, 2) + "\n");
-    (0, import_node_fs8.writeFileSync)(policyPath, pilot.cedar.endsWith("\n") ? pilot.cedar : `${pilot.cedar}
+    (0, import_node_fs9.writeFileSync)(configPath, JSON.stringify({ ...pilot.config, id: pilot.id, name: pilot.name, category: pilot.category, tools: pilot.tools, actions: pilot.actions, setup: pilot.setup }, null, 2) + "\n");
+    (0, import_node_fs9.writeFileSync)(policyPath, pilot.cedar.endsWith("\n") ? pilot.cedar : `${pilot.cedar}
 `);
     written.push(configPath, policyPath);
     for (const artifact of pilot.artifacts || []) {
       const artifactPath = connectorArtifactPath(directory, artifact.path);
-      (0, import_node_fs8.mkdirSync)((0, import_node_path5.dirname)(artifactPath), { recursive: true });
-      (0, import_node_fs8.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
+      (0, import_node_fs9.mkdirSync)((0, import_node_path6.dirname)(artifactPath), { recursive: true });
+      (0, import_node_fs9.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
 `);
-      if (artifact.executable) (0, import_node_fs8.chmodSync)(artifactPath, 493);
+      if (artifact.executable) (0, import_node_fs9.chmodSync)(artifactPath, 493);
       written.push(artifactPath);
     }
   }
-  (0, import_node_fs8.writeFileSync)((0, import_node_path5.join)(directory, "README.md"), renderConnectorReadme(selected));
-  written.push((0, import_node_path5.join)(directory, "README.md"));
+  (0, import_node_fs9.writeFileSync)((0, import_node_path6.join)(directory, "README.md"), renderConnectorReadme(selected));
+  written.push((0, import_node_path6.join)(directory, "README.md"));
   return { written, pilots: selected, directory };
 }
 function connectorArtifactPath(directory, relativePath) {
-  const clean2 = (0, import_node_path5.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
-  if (clean2.startsWith("/") || clean2.includes("..")) {
+  const clean = (0, import_node_path6.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
+  if (clean.startsWith("/") || clean.includes("..")) {
     throw new Error(`Unsafe connector artifact path: ${relativePath}`);
   }
-  return (0, import_node_path5.join)(directory, clean2);
+  return (0, import_node_path6.join)(directory, clean);
 }
 function readInstalledConnectorPilots(dir) {
   const directory = connectorDirectory(dir);
-  if (!(0, import_node_fs8.existsSync)(directory)) return [];
-  return (0, import_node_fs8.readdirSync)(directory).filter((name) => name.endsWith(".json")).map((name) => {
-    const configPath = (0, import_node_path5.join)(directory, name);
+  if (!(0, import_node_fs9.existsSync)(directory)) return [];
+  return (0, import_node_fs9.readdirSync)(directory).filter((name) => name.endsWith(".json")).map((name) => {
+    const configPath = (0, import_node_path6.join)(directory, name);
     try {
-      const parsed = JSON.parse((0, import_node_fs8.readFileSync)(configPath, "utf-8"));
+      const parsed = JSON.parse((0, import_node_fs9.readFileSync)(configPath, "utf-8"));
       const id = String(parsed.id || name.replace(/\.json$/, ""));
       const pilot = getConnectorPilot(id);
       return {
@@ -9100,7 +6530,7 @@ function readInstalledConnectorPilots(dir) {
         category: String(parsed.category || pilot?.category || "unknown"),
         status: String(parsed.status || parsed.type || "installed"),
         config_path: configPath,
-        policy_path: (0, import_node_path5.join)(directory, `${id}.cedar`)
+        policy_path: (0, import_node_path6.join)(directory, `${id}.cedar`)
       };
     } catch {
       return null;
@@ -9158,9 +6588,9 @@ Next: run \`npx protect-mcp dashboard --open\` and review tool inventory, policy
 }
 
 // src/cli.ts
-var import_node_crypto7 = require("crypto");
-var import_node_fs13 = require("fs");
-var import_node_path9 = require("path");
+var import_node_crypto6 = require("crypto");
+var import_node_fs14 = require("fs");
+var import_node_path10 = require("path");
 var import_node_os = require("os");
 function printHelp() {
   process.stderr.write(`
@@ -9318,17 +6748,17 @@ function parseArgs(argv) {
   return { policyPath, cedarDir, slug, enforce, verbose, childCommand };
 }
 async function handleInit(argv) {
-  const { writeFileSync: writeFileSync5, existsSync: existsSync10, mkdirSync: mkdirSync4 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { writeFileSync: writeFileSync5, existsSync: existsSync11, mkdirSync: mkdirSync4 } = await import("fs");
+  const { join: join10 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
   if (dirIdx !== -1 && argv[dirIdx + 1]) {
     dir = argv[dirIdx + 1];
   }
-  const configPath = join9(dir, "protect-mcp.json");
-  const keysDir = join9(dir, "keys");
-  const keyPath = join9(keysDir, "gateway.json");
-  if (existsSync10(configPath)) {
+  const configPath = join10(dir, "protect-mcp.json");
+  const keysDir = join10(dir, "keys");
+  const keyPath = join10(keysDir, "gateway.json");
+  if (existsSync11(configPath)) {
     process.stderr.write(`[PROTECT_MCP] Config already exists at ${configPath}
 `);
     process.stderr.write("[PROTECT_MCP] Delete it first if you want to regenerate.\n");
@@ -9336,18 +6766,18 @@ async function handleInit(argv) {
   }
   let keypair;
   {
-    const { randomBytes: randomBytes4 } = await import("crypto");
-    const { ed25519: ed255192 } = await Promise.resolve().then(() => (init_ed25519(), ed25519_exports));
-    const { bytesToHex: bytesToHex2 } = await Promise.resolve().then(() => (init_utils(), utils_exports));
-    const privateKey = randomBytes4(32);
-    const publicKey = ed255192.getPublicKey(privateKey);
+    const { randomBytes: randomBytes5 } = await import("crypto");
+    const { ed25519: ed255195 } = await import("@noble/curves/ed25519");
+    const { bytesToHex: bytesToHex8 } = await import("@noble/hashes/utils");
+    const privateKey = randomBytes5(32);
+    const publicKey = ed255195.getPublicKey(privateKey);
     keypair = {
-      privateKey: bytesToHex2(privateKey),
-      publicKey: bytesToHex2(publicKey),
+      privateKey: bytesToHex8(privateKey),
+      publicKey: bytesToHex8(publicKey),
       kid: "generated"
     };
   }
-  if (!existsSync10(keysDir)) {
+  if (!existsSync11(keysDir)) {
     mkdirSync4(keysDir, { recursive: true });
   }
   writeFileSync5(keyPath, JSON.stringify({
@@ -9357,8 +6787,8 @@ async function handleInit(argv) {
     generated_at: (/* @__PURE__ */ new Date()).toISOString(),
     warning: "KEEP THIS FILE SECRET. Never commit to version control."
   }, null, 2) + "\n");
-  const gitignorePath = join9(keysDir, ".gitignore");
-  if (!existsSync10(gitignorePath)) {
+  const gitignorePath = join10(keysDir, ".gitignore");
+  if (!existsSync11(gitignorePath)) {
     writeFileSync5(gitignorePath, "# Never commit signing keys\n*.json\n");
   }
   const config = {
@@ -9431,8 +6861,8 @@ Add --enforce when ready to block policy violations.
 `);
 }
 async function handleDemo() {
-  const { existsSync: existsSync10 } = await import("fs");
-  const { join: join9, dirname: dirname3, resolve } = await import("path");
+  const { existsSync: existsSync11 } = await import("fs");
+  const { join: join10, dirname: dirname3, resolve } = await import("path");
   const { realpathSync } = await import("fs");
   const cliPath = resolve(process.argv[1] || "dist/cli.js");
   let cliDir;
@@ -9441,9 +6871,9 @@ async function handleDemo() {
   } catch {
     cliDir = dirname3(cliPath);
   }
-  const demoServerPath = join9(cliDir, "demo-server.js");
-  const configPath = join9(process.cwd(), "protect-mcp.json");
-  const hasConfig = existsSync10(configPath);
+  const demoServerPath = join10(cliDir, "demo-server.js");
+  const configPath = join10(process.cwd(), "protect-mcp.json");
+  const hasConfig = existsSync11(configPath);
   if (!hasConfig) {
     process.stderr.write(`
 ${bold("protect-mcp demo")}
@@ -9517,15 +6947,15 @@ Starting demo server with 5 tools...
   await gateway.start();
 }
 async function handleStatus2(argv) {
-  const { readFileSync: readFileSync11, existsSync: existsSync10 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { readFileSync: readFileSync12, existsSync: existsSync11 } = await import("fs");
+  const { join: join10 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
   if (dirIdx !== -1 && argv[dirIdx + 1]) {
     dir = argv[dirIdx + 1];
   }
-  const logPath = join9(dir, ".protect-mcp-log.jsonl");
-  if (!existsSync10(logPath)) {
+  const logPath = join10(dir, ".protect-mcp-log.jsonl");
+  if (!existsSync11(logPath)) {
     process.stderr.write(`${bold("protect-mcp status")}
 
 `);
@@ -9535,7 +6965,7 @@ async function handleStatus2(argv) {
 `);
     process.exit(0);
   }
-  const raw = readFileSync11(logPath, "utf-8");
+  const raw = readFileSync12(logPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   if (lines.length === 0) {
     process.stderr.write(`${bold("protect-mcp status")}
@@ -9614,10 +7044,10 @@ ${bold("protect-mcp status")}
     process.stdout.write(`    ${reason.padEnd(25)} ${count}
 `);
   }
-  const evidencePath = join9(dir, ".protect-mcp-evidence.json");
-  if (existsSync10(evidencePath)) {
+  const evidencePath = join10(dir, ".protect-mcp-evidence.json");
+  if (existsSync11(evidencePath)) {
     try {
-      const evidenceRaw = readFileSync11(evidencePath, "utf-8");
+      const evidenceRaw = readFileSync12(evidencePath, "utf-8");
       const evidence = JSON.parse(evidenceRaw);
       const agentCount = Object.keys(evidence.agents || {}).length;
       process.stdout.write(`
@@ -9626,10 +7056,10 @@ ${bold("protect-mcp status")}
     } catch {
     }
   }
-  const keyPath = join9(dir, "keys", "gateway.json");
-  if (existsSync10(keyPath)) {
+  const keyPath = join10(dir, "keys", "gateway.json");
+  if (existsSync11(keyPath)) {
     try {
-      const keyData = JSON.parse(readFileSync11(keyPath, "utf-8"));
+      const keyData = JSON.parse(readFileSync12(keyPath, "utf-8"));
       if (keyData.publicKey) {
         const fingerprint = keyData.publicKey.slice(0, 16) + "...";
         process.stdout.write(`
@@ -9657,7 +7087,7 @@ function commandNeedsValue(argv, flag) {
   return Boolean(value && !value.startsWith("--"));
 }
 function absoluteOrCwd(pathValue) {
-  return (0, import_node_path9.resolve)(process.cwd(), pathValue);
+  return (0, import_node_path10.resolve)(process.cwd(), pathValue);
 }
 function shellQuoteArg(arg) {
   if (/^[A-Za-z0-9_./:@%+=,-]+$/.test(arg)) return arg;
@@ -9676,18 +7106,18 @@ function wrapperArgsFor(command, opts) {
 }
 function claudeDesktopConfigPath() {
   if (process.platform === "darwin") {
-    return (0, import_node_path9.join)((0, import_node_os.homedir)(), "Library", "Application Support", "Claude", "claude_desktop_config.json");
+    return (0, import_node_path10.join)((0, import_node_os.homedir)(), "Library", "Application Support", "Claude", "claude_desktop_config.json");
   }
   if (process.platform === "win32") {
-    return (0, import_node_path9.join)(process.env.APPDATA || (0, import_node_path9.join)((0, import_node_os.homedir)(), "AppData", "Roaming"), "Claude", "claude_desktop_config.json");
+    return (0, import_node_path10.join)(process.env.APPDATA || (0, import_node_path10.join)((0, import_node_os.homedir)(), "AppData", "Roaming"), "Claude", "claude_desktop_config.json");
   }
-  return (0, import_node_path9.join)((0, import_node_os.homedir)(), ".config", "Claude", "claude_desktop_config.json");
+  return (0, import_node_path10.join)((0, import_node_os.homedir)(), ".config", "Claude", "claude_desktop_config.json");
 }
 async function ensureLocalConfig(dir = process.cwd()) {
-  const { existsSync: existsSync10 } = await import("fs");
-  const { join: join9, resolve } = await import("path");
-  const configPath = join9(dir, "protect-mcp.json");
-  if (!existsSync10(configPath)) {
+  const { existsSync: existsSync11 } = await import("fs");
+  const { join: join10, resolve } = await import("path");
+  const configPath = join10(dir, "protect-mcp.json");
+  if (!existsSync11(configPath)) {
     process.stderr.write(`${bold("protect-mcp wrap")}
 
 No protect-mcp.json found; creating local shadow-mode config first.
@@ -9699,7 +7129,7 @@ No protect-mcp.json found; creating local shadow-mode config first.
 }
 function parseJsonlFile(pathValue) {
   try {
-    const raw = (0, import_node_fs13.readFileSync)(pathValue, "utf-8");
+    const raw = (0, import_node_fs14.readFileSync)(pathValue, "utf-8");
     return raw.split("\n").map((line) => line.trim()).filter(Boolean).flatMap((line) => {
       try {
         return [JSON.parse(line)];
@@ -9713,13 +7143,13 @@ function parseJsonlFile(pathValue) {
 }
 function parseJsonlRecords(pathValue) {
   try {
-    const raw = (0, import_node_fs13.readFileSync)(pathValue, "utf-8");
+    const raw = (0, import_node_fs14.readFileSync)(pathValue, "utf-8");
     return raw.split("\n").map((line) => line.trim()).filter(Boolean).flatMap((line) => {
       try {
         return [{
           value: JSON.parse(line),
           raw: line,
-          hash: (0, import_node_crypto7.createHash)("sha256").update(line).digest("hex")
+          hash: (0, import_node_crypto6.createHash)("sha256").update(line).digest("hex")
         }];
       } catch {
         return [];
@@ -9731,8 +7161,8 @@ function parseJsonlRecords(pathValue) {
 }
 function loadPolicyJson(policyPath) {
   try {
-    if (!(0, import_node_fs13.existsSync)(policyPath)) return null;
-    return JSON.parse((0, import_node_fs13.readFileSync)(policyPath, "utf-8"));
+    if (!(0, import_node_fs14.existsSync)(policyPath)) return null;
+    return JSON.parse((0, import_node_fs14.readFileSync)(policyPath, "utf-8"));
   } catch {
     return null;
   }
@@ -9877,10 +7307,10 @@ function suggestedGuardrailFor(_tool, risk, reasons) {
     policy: { rate_limit: "100/hour" }
   };
 }
-function buildDashboardSummary(dir, policyPath = (0, import_node_path9.join)(dir, "protect-mcp.json")) {
-  const logPath = (0, import_node_path9.join)(dir, ".protect-mcp-log.jsonl");
-  const receiptPath = (0, import_node_path9.join)(dir, ".protect-mcp-receipts.jsonl");
-  const keyPath = (0, import_node_path9.join)(dir, "keys", "gateway.json");
+function buildDashboardSummary(dir, policyPath = (0, import_node_path10.join)(dir, "protect-mcp.json")) {
+  const logPath = (0, import_node_path10.join)(dir, ".protect-mcp-log.jsonl");
+  const receiptPath = (0, import_node_path10.join)(dir, ".protect-mcp-receipts.jsonl");
+  const keyPath = (0, import_node_path10.join)(dir, "keys", "gateway.json");
   const entries = parseJsonlFile(logPath);
   const receiptRecords = parseJsonlRecords(receiptPath);
   const receipts = receiptRecords.map((record) => record.value);
@@ -9925,9 +7355,9 @@ function buildDashboardSummary(dir, policyPath = (0, import_node_path9.join)(dir
   const pendingApprovals = entries.filter((e) => e.decision === "require_approval").slice(-25).reverse();
   const chains = buildReceiptChains(entries, receiptRecords);
   let key = null;
-  if ((0, import_node_fs13.existsSync)(keyPath)) {
+  if ((0, import_node_fs14.existsSync)(keyPath)) {
     try {
-      const parsed = JSON.parse((0, import_node_fs13.readFileSync)(keyPath, "utf-8"));
+      const parsed = JSON.parse((0, import_node_fs14.readFileSync)(keyPath, "utf-8"));
       key = {
         kid: parsed.kid || null,
         issuer: parsed.issuer || "protect-mcp",
@@ -9944,10 +7374,10 @@ function buildDashboardSummary(dir, policyPath = (0, import_node_path9.join)(dir
       receipts: receiptPath,
       key: keyPath,
       policy: policyPath,
-      log_exists: (0, import_node_fs13.existsSync)(logPath),
-      receipts_exist: (0, import_node_fs13.existsSync)(receiptPath),
-      key_exists: (0, import_node_fs13.existsSync)(keyPath),
-      policy_exists: (0, import_node_fs13.existsSync)(policyPath)
+      log_exists: (0, import_node_fs14.existsSync)(logPath),
+      receipts_exist: (0, import_node_fs14.existsSync)(receiptPath),
+      key_exists: (0, import_node_fs14.existsSync)(keyPath),
+      policy_exists: (0, import_node_fs14.existsSync)(policyPath)
     },
     totals: {
       decisions: entries.length,
@@ -9964,7 +7394,7 @@ function buildDashboardSummary(dir, policyPath = (0, import_node_path9.join)(dir
     key,
     policy: activePolicy ? {
       path: policyPath,
-      digest: (0, import_node_crypto7.createHash)("sha256").update(JSON.stringify(activePolicy)).digest("hex").slice(0, 16),
+      digest: (0, import_node_crypto6.createHash)("sha256").update(JSON.stringify(activePolicy)).digest("hex").slice(0, 16),
       default_tier: activePolicy.default_tier || "unknown",
       tools: activePolicy.tools || {}
     } : null,
@@ -9984,7 +7414,7 @@ function buildDashboardSummary(dir, policyPath = (0, import_node_path9.join)(dir
       }))
     },
     connector_pilots: {
-      directory: (0, import_node_path9.join)(dir, ".protect-mcp", "connectors"),
+      directory: (0, import_node_path10.join)(dir, ".protect-mcp", "connectors"),
       installed: readInstalledConnectorPilots(dir),
       doctor: connectorDoctor(dir),
       available: CONNECTOR_PILOTS.map((pilot) => ({
@@ -10362,7 +7792,7 @@ async function handleDashboard(argv) {
   const { resolve } = await import("path");
   const port = commandNeedsValue(argv, "--port") ? parseInt(flagValue(argv, "--port") || "9877", 10) : 9877;
   const dir = resolve(commandNeedsValue(argv, "--dir") ? flagValue(argv, "--dir") || process.cwd() : process.cwd());
-  const policyPath = resolve(flagValue(argv, "--policy") || (0, import_node_path9.join)(dir, "protect-mcp.json"));
+  const policyPath = resolve(flagValue(argv, "--policy") || (0, import_node_path10.join)(dir, "protect-mcp.json"));
   const approvalEndpoint = flagValue(argv, "--approval-endpoint");
   const approvalNonce = flagValue(argv, "--approval-nonce");
   const open = argv.includes("--open");
@@ -10567,32 +7997,32 @@ function writeToolPolicy(policyPath, tool, action) {
     tools,
     default_tier: existing.default_tier || "unknown"
   };
-  (0, import_node_fs13.writeFileSync)(policyPath, JSON.stringify(next, null, 2) + "\n");
+  (0, import_node_fs14.writeFileSync)(policyPath, JSON.stringify(next, null, 2) + "\n");
   return next;
 }
 function policyPackDirectory(dir) {
-  return (0, import_node_path9.join)(dir, "cedar");
+  return (0, import_node_path10.join)(dir, "cedar");
 }
 function installedPolicyPackIds(dir) {
   const cedarDir = policyPackDirectory(dir);
   return POLICY_PACKS.filter(
-    (pack) => pack.files.every((file) => (0, import_node_fs13.existsSync)((0, import_node_path9.join)(cedarDir, file.path)))
+    (pack) => pack.files.every((file) => (0, import_node_fs14.existsSync)((0, import_node_path10.join)(cedarDir, file.path)))
   ).map((pack) => pack.id);
 }
 function installPolicyPackToDir(dir, packId, force = false) {
   const packs = packId === "all" ? POLICY_PACKS : [getPolicyPack(packId)].filter(Boolean);
   if (packs.length === 0) throw new Error(`Unknown policy pack: ${packId}`);
   const outDir = policyPackDirectory(dir);
-  (0, import_node_fs13.mkdirSync)(outDir, { recursive: true });
+  (0, import_node_fs14.mkdirSync)(outDir, { recursive: true });
   const written = [];
   for (const pack of packs) {
     for (const file of pack.files) {
-      const outPath = (0, import_node_path9.join)(outDir, file.path);
-      if ((0, import_node_fs13.existsSync)(outPath) && !force) {
+      const outPath = (0, import_node_path10.join)(outDir, file.path);
+      if ((0, import_node_fs14.existsSync)(outPath) && !force) {
         throw new Error(`Refusing to overwrite ${outPath}. Pass force=true if intentional.`);
       }
-      (0, import_node_fs13.mkdirSync)((0, import_node_path9.dirname)(outPath), { recursive: true });
-      (0, import_node_fs13.writeFileSync)(outPath, file.contents.endsWith("\n") ? file.contents : `${file.contents}
+      (0, import_node_fs14.mkdirSync)((0, import_node_path10.dirname)(outPath), { recursive: true });
+      (0, import_node_fs14.writeFileSync)(outPath, file.contents.endsWith("\n") ? file.contents : `${file.contents}
 `);
       written.push(outPath);
     }
@@ -10600,19 +8030,19 @@ function installPolicyPackToDir(dir, packId, force = false) {
   return { dir: outDir, written, packs: packs.map((pack) => pack.id) };
 }
 function dashboardRegistryStatus(dir) {
-  const identityPath = (0, import_node_path9.join)(dir, ".protect-mcp-org.json");
-  const registryPath = (0, import_node_path9.join)(dir, ".protect-mcp-registry.json");
-  const verifierPath = (0, import_node_path9.join)(dir, "scopeblind-verifier.html");
-  const identity = (0, import_node_fs13.existsSync)(identityPath) ? (() => {
+  const identityPath = (0, import_node_path10.join)(dir, ".protect-mcp-org.json");
+  const registryPath = (0, import_node_path10.join)(dir, ".protect-mcp-registry.json");
+  const verifierPath = (0, import_node_path10.join)(dir, "scopeblind-verifier.html");
+  const identity = (0, import_node_fs14.existsSync)(identityPath) ? (() => {
     try {
-      return JSON.parse((0, import_node_fs13.readFileSync)(identityPath, "utf-8"));
+      return JSON.parse((0, import_node_fs14.readFileSync)(identityPath, "utf-8"));
     } catch {
       return null;
     }
   })() : null;
-  const registry = (0, import_node_fs13.existsSync)(registryPath) ? (() => {
+  const registry = (0, import_node_fs14.existsSync)(registryPath) ? (() => {
     try {
-      return JSON.parse((0, import_node_fs13.readFileSync)(registryPath, "utf-8"));
+      return JSON.parse((0, import_node_fs14.readFileSync)(registryPath, "utf-8"));
     } catch {
       return null;
     }
@@ -10620,9 +8050,9 @@ function dashboardRegistryStatus(dir) {
   const anchors = Array.isArray(registry?.anchors) ? registry.anchors : [];
   const hosted = anchors.some((anchor) => anchor.timestamp_source === "scopeblind-hosted");
   return {
-    identity_exists: (0, import_node_fs13.existsSync)(identityPath),
-    registry_exists: (0, import_node_fs13.existsSync)(registryPath),
-    verifier_exists: (0, import_node_fs13.existsSync)(verifierPath),
+    identity_exists: (0, import_node_fs14.existsSync)(identityPath),
+    registry_exists: (0, import_node_fs14.existsSync)(registryPath),
+    verifier_exists: (0, import_node_fs14.existsSync)(verifierPath),
     identity_path: identityPath,
     registry_path: registryPath,
     verifier_path: verifierPath,
@@ -10643,13 +8073,13 @@ async function readJsonBody(req) {
 }
 async function buildAuditBundleForDir(dir) {
   const { createAuditBundle: createAuditBundle2 } = await Promise.resolve().then(() => (init_bundle(), bundle_exports));
-  const receiptPath = (0, import_node_path9.join)(dir, ".protect-mcp-receipts.jsonl");
-  const keyPath = (0, import_node_path9.join)(dir, "keys", "gateway.json");
-  if (!(0, import_node_fs13.existsSync)(receiptPath)) throw new Error("No receipt file found.");
-  if (!(0, import_node_fs13.existsSync)(keyPath)) throw new Error("No signing key found.");
+  const receiptPath = (0, import_node_path10.join)(dir, ".protect-mcp-receipts.jsonl");
+  const keyPath = (0, import_node_path10.join)(dir, "keys", "gateway.json");
+  if (!(0, import_node_fs14.existsSync)(receiptPath)) throw new Error("No receipt file found.");
+  if (!(0, import_node_fs14.existsSync)(keyPath)) throw new Error("No signing key found.");
   const receipts = parseJsonlFile(receiptPath);
   if (receipts.length === 0) throw new Error("No signed receipts found.");
-  const keyData = JSON.parse((0, import_node_fs13.readFileSync)(keyPath, "utf-8"));
+  const keyData = JSON.parse((0, import_node_fs14.readFileSync)(keyPath, "utf-8"));
   return createAuditBundle2({
     tenant: keyData.issuer || "protect-mcp",
     receipts,
@@ -10667,17 +8097,17 @@ function collectSelectiveDisclosurePackages(dir) {
   const out = [];
   const seen = /* @__PURE__ */ new Set();
   const candidates = [];
-  const receiptsDir = (0, import_node_path9.join)(dir, "receipts");
-  if ((0, import_node_fs13.existsSync)(receiptsDir)) {
-    for (const name of (0, import_node_fs13.readdirSync)(receiptsDir)) {
+  const receiptsDir = (0, import_node_path10.join)(dir, "receipts");
+  if ((0, import_node_fs14.existsSync)(receiptsDir)) {
+    for (const name of (0, import_node_fs14.readdirSync)(receiptsDir)) {
       if (name.includes("selective-disclosure") && name.endsWith(".json")) {
-        candidates.push((0, import_node_path9.join)(receiptsDir, name));
+        candidates.push((0, import_node_path10.join)(receiptsDir, name));
       }
     }
   }
-  const jsonlPath = (0, import_node_path9.join)(dir, ".protect-mcp-selective-disclosures.jsonl");
-  if ((0, import_node_fs13.existsSync)(jsonlPath)) {
-    for (const line of (0, import_node_fs13.readFileSync)(jsonlPath, "utf-8").split("\n").map((s) => s.trim()).filter(Boolean)) {
+  const jsonlPath = (0, import_node_path10.join)(dir, ".protect-mcp-selective-disclosures.jsonl");
+  if ((0, import_node_fs14.existsSync)(jsonlPath)) {
+    for (const line of (0, import_node_fs14.readFileSync)(jsonlPath, "utf-8").split("\n").map((s) => s.trim()).filter(Boolean)) {
       try {
         const parsed = JSON.parse(line);
         addSelectiveDisclosure(out, seen, parsed);
@@ -10687,7 +8117,7 @@ function collectSelectiveDisclosurePackages(dir) {
   }
   for (const path of candidates) {
     try {
-      const parsed = JSON.parse((0, import_node_fs13.readFileSync)(path, "utf-8"));
+      const parsed = JSON.parse((0, import_node_fs14.readFileSync)(path, "utf-8"));
       addSelectiveDisclosure(out, seen, parsed);
     } catch {
     }
@@ -10720,7 +8150,7 @@ async function recordApprovalResolution(opts) {
     takeover_note: opts.body.takeover_note || void 0,
     payload_hash: opts.body.payload_hash || void 0
   };
-  (0, import_node_fs13.appendFileSync)((0, import_node_path9.join)(opts.dir, ".protect-mcp-approval-resolutions.jsonl"), JSON.stringify(record) + "\n");
+  (0, import_node_fs14.appendFileSync)((0, import_node_path10.join)(opts.dir, ".protect-mcp-approval-resolutions.jsonl"), JSON.stringify(record) + "\n");
   let forwarded = null;
   if (resolution === "approve" && opts.approvalEndpoint && opts.approvalNonce) {
     const endpoint = opts.approvalEndpoint.replace(/\/$/, "") + "/approve";
@@ -10805,7 +8235,7 @@ ${green("\u2713 Wrote recommended policy")}
 `);
 }
 async function handleWrap(argv) {
-  const { existsSync: existsSync10, readFileSync: readFileSync11, writeFileSync: writeFileSync5 } = await import("fs");
+  const { existsSync: existsSync11, readFileSync: readFileSync12, writeFileSync: writeFileSync5 } = await import("fs");
   const { resolve } = await import("path");
   const configFlag = flagValue(argv, "--config");
   const cedarFlag = flagValue(argv, "--cedar");
@@ -10842,7 +8272,7 @@ ${bold("protect-mcp wrap")}
     return;
   }
   const claudePath = resolve(flagValue(argv, "--path") || claudeDesktopConfigPath());
-  if (!claudeDesktop && !existsSync10(claudePath)) {
+  if (!claudeDesktop && !existsSync11(claudePath)) {
     process.stdout.write(`
 ${bold("protect-mcp wrap")}
 
@@ -10859,14 +8289,14 @@ ${bold("protect-mcp wrap")}
 `);
     return;
   }
-  if (!existsSync10(claudePath)) {
+  if (!existsSync11(claudePath)) {
     process.stderr.write(`protect-mcp wrap: Claude Desktop config not found at ${claudePath}
 `);
     process.exit(1);
   }
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync11(claudePath, "utf-8"));
+    parsed = JSON.parse(readFileSync12(claudePath, "utf-8"));
   } catch (err) {
     process.stderr.write(`protect-mcp wrap: could not parse ${claudePath}: ${err instanceof Error ? err.message : err}
 `);
@@ -10930,7 +8360,7 @@ Dry run only. Apply with:
     return;
   }
   const backupPath = `${claudePath}.bak.${Date.now()}`;
-  writeFileSync5(backupPath, readFileSync11(claudePath, "utf-8"));
+  writeFileSync5(backupPath, readFileSync12(claudePath, "utf-8"));
   writeFileSync5(claudePath, JSON.stringify(next, null, 2) + "\n");
   process.stdout.write(`
 ${green("\u2713 Claude Desktop config updated")}
@@ -10957,21 +8387,21 @@ function yellow(s) {
   return process.env.NO_COLOR ? s : `\x1B[33m${s}\x1B[0m`;
 }
 async function handleDigest(argv) {
-  const { readFileSync: readFileSync11, existsSync: existsSync10 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { readFileSync: readFileSync12, existsSync: existsSync11 } = await import("fs");
+  const { join: join10 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
   if (dirIdx !== -1 && argv[dirIdx + 1]) dir = argv[dirIdx + 1];
   const today = argv.includes("--today");
-  const logPath = join9(dir, ".protect-mcp-log.jsonl");
-  if (!existsSync10(logPath)) {
+  const logPath = join10(dir, ".protect-mcp-log.jsonl");
+  if (!existsSync11(logPath)) {
     process.stderr.write(`${bold("protect-mcp digest")}
 
 No log file found. Run protect-mcp first.
 `);
     process.exit(0);
   }
-  const raw = readFileSync11(logPath, "utf-8");
+  const raw = readFileSync12(logPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   let entries = [];
   for (const line of lines) {
@@ -11048,22 +8478,22 @@ ${bold("\u{1F6E1}\uFE0F Agent Daily Digest")}
 `);
 }
 async function handleReceipts2(argv) {
-  const { readFileSync: readFileSync11, existsSync: existsSync10 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { readFileSync: readFileSync12, existsSync: existsSync11 } = await import("fs");
+  const { join: join10 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
   if (dirIdx !== -1 && argv[dirIdx + 1]) dir = argv[dirIdx + 1];
   const lastIdx = argv.indexOf("--last");
   const count = lastIdx !== -1 && argv[lastIdx + 1] ? parseInt(argv[lastIdx + 1], 10) : 20;
-  const receiptsPath = join9(dir, ".protect-mcp-receipts.jsonl");
-  if (!existsSync10(receiptsPath)) {
+  const receiptsPath = join10(dir, ".protect-mcp-receipts.jsonl");
+  if (!existsSync11(receiptsPath)) {
     process.stderr.write(`${bold("protect-mcp receipts")}
 
 No signed receipt file found. Run protect-mcp with signing enabled first.
 `);
     process.exit(0);
   }
-  const raw = readFileSync11(receiptsPath, "utf-8");
+  const raw = readFileSync12(receiptsPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   const recent = lines.slice(-count);
   process.stdout.write(`
@@ -11090,20 +8520,20 @@ async function pkgVersion() {
   if (_pkgV) return _pkgV;
   let v = "0.0.0";
   try {
-    const { readFileSync: readFileSync11, existsSync: existsSync10, realpathSync } = await import("fs");
-    const { dirname: dirname3, join: join9, resolve } = await import("path");
+    const { readFileSync: readFileSync12, existsSync: existsSync11, realpathSync } = await import("fs");
+    const { dirname: dirname3, join: join10, resolve } = await import("path");
     let base = "";
     try {
       base = dirname3(realpathSync(resolve(process.argv[1] || "")));
     } catch {
     }
     const candidates = [
-      base ? join9(base, "..", "package.json") : "",
-      base ? join9(base, "package.json") : ""
+      base ? join10(base, "..", "package.json") : "",
+      base ? join10(base, "package.json") : ""
     ].filter(Boolean);
     for (const p of candidates) {
-      if (existsSync10(p)) {
-        const parsed = JSON.parse(readFileSync11(p, "utf-8"));
+      if (existsSync11(p)) {
+        const parsed = JSON.parse(readFileSync12(p, "utf-8"));
         if (parsed && parsed.name === "protect-mcp" && parsed.version) {
           v = parsed.version;
           break;
@@ -11139,16 +8569,16 @@ function mapRecordEntry(e) {
   return { ts, tool, verdict, reason, hook, signed, caps, agent, dur, id: String(e.request_id || p.request_id || ""), digest, raw: e };
 }
 async function handleRecord(argv) {
-  const { readFileSync: readFileSync11, existsSync: existsSync10, writeFileSync: writeFileSync5 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { readFileSync: readFileSync12, existsSync: existsSync11, writeFileSync: writeFileSync5 } = await import("fs");
+  const { join: join10 } = await import("path");
   const osMod = await import("os");
   const cp = await import("child_process");
   let dir = process.cwd();
   const di = argv.indexOf("--dir");
   if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
-  const recPath = join9(dir, ".protect-mcp-receipts.jsonl");
-  const logPath = join9(dir, ".protect-mcp-log.jsonl");
-  const pick = () => existsSync10(recPath) ? recPath : existsSync10(logPath) ? logPath : null;
+  const recPath = join10(dir, ".protect-mcp-receipts.jsonl");
+  const logPath = join10(dir, ".protect-mcp-log.jsonl");
+  const pick = () => existsSync11(recPath) ? recPath : existsSync11(logPath) ? logPath : null;
   const chosen = pick();
   if (!chosen) {
     process.stderr.write(`
@@ -11163,7 +8593,7 @@ Start the gate with ${bold("npx protect-mcp serve")}, use your agent, then run t
     process.exit(0);
     return;
   }
-  const readRecs = (file) => readFileSync11(file, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const readRecs = (file) => readFileSync12(file, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
@@ -11173,7 +8603,7 @@ Start the gate with ${bold("npx protect-mcp serve")}, use your agent, then run t
   let pinnedKey = "";
   let pinnedKid = "";
   try {
-    const kd = JSON.parse(readFileSync11(join9(dir, "keys", "gateway.json"), "utf-8"));
+    const kd = JSON.parse(readFileSync12(join10(dir, "keys", "gateway.json"), "utf-8"));
     if (kd && typeof kd.publicKey === "string" && /^[0-9a-f]{64}$/i.test(kd.publicKey)) {
       pinnedKey = kd.publicKey;
       pinnedKid = typeof kd.kid === "string" ? kd.kid : "";
@@ -11234,7 +8664,7 @@ ${bold("\u{1F6E1}\uFE0F  Your record")} ${dim("\xB7")} live at ${url}
   const recs = readRecs(chosen);
   const meta = { file: chosen, signed: chosen === recPath, count: recs.length, live: false, pinned_key: pinnedKey, pinned_kid: pinnedKid };
   const html = RECORD_HTML.replace("__DATA__", () => JSON.stringify(recs)).replace("__META__", () => JSON.stringify(meta));
-  const out = join9(osMod.tmpdir(), "protect-mcp-record-" + Date.now() + ".html");
+  const out = join10(osMod.tmpdir(), "protect-mcp-record-" + Date.now() + ".html");
   writeFileSync5(out, html);
   openTarget(out);
   process.stdout.write(`
@@ -11357,14 +8787,17 @@ function vkey(r){return "row:"+(r.id||"")+"|"+(r.ts||"")}
 function hexb(h){h=String(h||"");var a=new Uint8Array(h.length>>1);for(var i=0;i<a.length;i++)a[i]=parseInt(h.substr(i*2,2),16);return a}
 function canon(v){return JSON.stringify(v,function(k,x){if(x&&typeof x==="object"&&!Array.isArray(x)){var s={},ks=Object.keys(x).sort();for(var i=0;i<ks.length;i++)s[ks[i]]=x[ks[i]];return s}return x})}
 async function edv(sig,msg,pub){var key=await crypto.subtle.importKey("raw",hexb(pub),{name:"Ed25519"},false,["verify"]);return crypto.subtle.verify({name:"Ed25519"},key,hexb(sig),msg)}
-async function verifyRow(r){var raw=r.raw;if(!raw||typeof raw.signature!=="string")return"unsigned";
-var rest={},k;for(k in raw)if(k!=="signature")rest[k]=raw[k];
-var msg=new TextEncoder().encode(canon(rest));
+async function verifyRow(r){var raw=r.raw;if(!raw)return"unsigned";
+var sigHex=null,msgObj=null;
+if(raw.signature&&typeof raw.signature==="object"&&typeof raw.signature.sig==="string"&&raw.payload){if(raw.signature.alg!=="EdDSA")return"bad";sigHex=raw.signature.sig;msgObj=raw.payload}
+else if(typeof raw.signature==="string"){var rest={},k;for(k in raw)if(k!=="signature")rest[k]=raw[k];sigHex=raw.signature;msgObj=rest}
+else return"unsigned";
+var msg=new TextEncoder().encode(canon(msgObj));
 var pin=String(META.pinned_key||"").toLowerCase();
 var emb=String((raw.payload&&raw.payload.public_key)||raw.public_key||"").toLowerCase();
 if(!/^[0-9a-f]{64}$/.test(emb))emb="";
-if(pin){if(await edv(raw.signature,msg,pin))return"ok";if(emb&&emb!==pin&&await edv(raw.signature,msg,emb))return"foreign";return"bad"}
-if(emb)return(await edv(raw.signature,msg,emb))?"ok":"bad";
+if(pin){if(await edv(sigHex,msg,pin))return"ok";if(emb&&emb!==pin&&await edv(sigHex,msg,emb))return"foreign";return"bad"}
+if(emb)return(await edv(sigHex,msg,emb))?"ok":"bad";
 return"nokey"}
 function vsum(){var s={ok:0,bad:0,foreign:0,nokey:0};RECORDS.forEach(function(r){if(!r.signed)return;var v=VSTATE[vkey(r)];if(v&&s[v]!==undefined)s[v]++});return s}
 async function kickVerify(){if(VBUSY||VUNSUP||!(window.crypto&&crypto.subtle))return;VBUSY=true;
@@ -11408,8 +8841,8 @@ render();kickVerify();
 if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){var nr=d.recs||[];var changed=nr.length!==RECORDS.length;RECORDS=nr;META.count=RECORDS.length;if(typeof d.signed==='boolean')META.signed=d.signed;if(changed){render();kickVerify()}}).catch(function(){})};poll();setInterval(poll,2000);}
 </script></body></html>`;
 async function handleClaim(argv) {
-  const { readFileSync: readFileSync11, existsSync: existsSync10, writeFileSync: writeFileSync5 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { readFileSync: readFileSync12, existsSync: existsSync11, writeFileSync: writeFileSync5 } = await import("fs");
+  const { join: join10 } = await import("path");
   const { buildClaim: buildClaim2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
   let dir = process.cwd();
   const di = argv.indexOf("--dir");
@@ -11442,8 +8875,8 @@ Example: ${bold("npx protect-mcp claim --no net.egress --anchor")}
     process.exit(0);
     return;
   }
-  const keyPath = join9(dir, "keys", "gateway.json");
-  if (!existsSync10(keyPath)) {
+  const keyPath = join10(dir, "keys", "gateway.json");
+  if (!existsSync11(keyPath)) {
     process.stderr.write(`
 ${bold("protect-mcp claim")}
 
@@ -11455,7 +8888,7 @@ No signing key at ${keyPath}. A claim must be signed. Run ${bold("npx protect-mc
   }
   let key;
   try {
-    key = JSON.parse(readFileSync11(keyPath, "utf-8"));
+    key = JSON.parse(readFileSync12(keyPath, "utf-8"));
   } catch {
     process.stderr.write(`
 protect-mcp claim: ${keyPath} is not valid JSON.
@@ -11472,8 +8905,8 @@ protect-mcp claim: ${keyPath} is missing privateKey/publicKey.
     process.exit(1);
     return;
   }
-  const recPath = join9(dir, ".protect-mcp-receipts.jsonl");
-  if (!existsSync10(recPath)) {
+  const recPath = join10(dir, ".protect-mcp-receipts.jsonl");
+  if (!existsSync11(recPath)) {
     process.stderr.write(`
 ${bold("protect-mcp claim")}
 
@@ -11483,7 +8916,7 @@ No signed receipts in ${dir}. Run the gate with signing on, then try again.
     process.exit(0);
     return;
   }
-  const receipts = readFileSync11(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const receipts = readFileSync12(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
@@ -11500,7 +8933,7 @@ protect-mcp claim: no readable receipts in ${recPath}.
   }
   const pack = buildClaim2(receipts, predicate, { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || "gateway", issuer: "protect-mcp" }, (/* @__PURE__ */ new Date()).toISOString());
   const oi = argv.indexOf("--output");
-  const out = oi !== -1 && argv[oi + 1] ? argv[oi + 1] : join9(dir, "claim-" + Date.now() + ".json");
+  const out = oi !== -1 && argv[oi + 1] ? argv[oi + 1] : join10(dir, "claim-" + Date.now() + ".json");
   writeFileSync5(out, JSON.stringify(pack, null, 2) + "\n");
   process.stdout.write(`
 ${bold("\u{1F6E1}\uFE0F  Signed claim")}
@@ -11556,16 +8989,16 @@ ${bold("\u{1F6E1}\uFE0F  Signed claim")}
   process.exit(0);
 }
 async function handleAnchorRecord(argv) {
-  const { readFileSync: readFileSync11, existsSync: existsSync10, appendFileSync: appendFileSync3 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { readFileSync: readFileSync12, existsSync: existsSync11, appendFileSync: appendFileSync3 } = await import("fs");
+  const { join: join10 } = await import("path");
   const { anchorRecordCheckpoint: anchorRecordCheckpoint2, buildRecordCheckpoint: buildRecordCheckpoint2, lookupPinnedIdentity: lookupPinnedIdentity2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
   let dir = process.cwd();
   const di = argv.indexOf("--dir");
   if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
   const li = argv.indexOf("--log");
   const logBase = li !== -1 && argv[li + 1] ? argv[li + 1] : void 0;
-  const keyPath = join9(dir, "keys", "gateway.json");
-  if (!existsSync10(keyPath)) {
+  const keyPath = join10(dir, "keys", "gateway.json");
+  if (!existsSync11(keyPath)) {
     process.stderr.write(`
 ${bold("protect-mcp anchor-record")}
 
@@ -11577,7 +9010,7 @@ No signing key at ${keyPath}. A checkpoint must be signed. Run ${bold("npx prote
   }
   let key;
   try {
-    key = JSON.parse(readFileSync11(keyPath, "utf-8"));
+    key = JSON.parse(readFileSync12(keyPath, "utf-8"));
   } catch {
     process.stderr.write(`
 protect-mcp anchor-record: ${keyPath} is not valid JSON.
@@ -11594,8 +9027,8 @@ protect-mcp anchor-record: ${keyPath} is missing privateKey/publicKey.
     process.exit(1);
     return;
   }
-  const recPath = join9(dir, ".protect-mcp-receipts.jsonl");
-  if (!existsSync10(recPath)) {
+  const recPath = join10(dir, ".protect-mcp-receipts.jsonl");
+  if (!existsSync11(recPath)) {
     process.stderr.write(`
 ${bold("protect-mcp anchor-record")}
 
@@ -11605,7 +9038,7 @@ No signed receipts in ${dir}. Run the gate with signing on, then try again.
     process.exit(0);
     return;
   }
-  const receipts = readFileSync11(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const receipts = readFileSync12(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
@@ -11621,10 +9054,10 @@ protect-mcp anchor-record: no readable receipts in ${recPath}.
     return;
   }
   const claimKey = { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || "gateway", issuer: "protect-mcp" };
-  const historyPath = join9(dir, ".protect-mcp-anchors.jsonl");
+  const historyPath = join10(dir, ".protect-mcp-anchors.jsonl");
   const preview = buildRecordCheckpoint2(receipts, claimKey, "preview");
-  if (!argv.includes("--force") && existsSync10(historyPath)) {
-    const lines = readFileSync11(historyPath, "utf-8").split(/\r?\n/).filter(Boolean);
+  if (!argv.includes("--force") && existsSync11(historyPath)) {
+    const lines = readFileSync12(historyPath, "utf-8").split(/\r?\n/).filter(Boolean);
     const last = lines.length ? (() => {
       try {
         return JSON.parse(lines[lines.length - 1]);
@@ -11682,10 +9115,10 @@ ${bold("\u{1F6E1}\uFE0F  Record checkpoint")}
   process.exit(0);
 }
 async function handleVerifyClaim(argv) {
-  const { readFileSync: readFileSync11, existsSync: existsSync10 } = await import("fs");
+  const { readFileSync: readFileSync12, existsSync: existsSync11 } = await import("fs");
   const { verifyClaim: verifyClaim2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
   const file = argv.find((a) => !a.startsWith("--"));
-  if (!file || !existsSync10(file)) {
+  if (!file || !existsSync11(file)) {
     process.stderr.write(`
 ${bold("protect-mcp verify-claim")} <claim.json> [--key <public-hex>]
 
@@ -11697,7 +9130,7 @@ Provide a claim pack file.
   }
   let pack;
   try {
-    pack = JSON.parse(readFileSync11(file, "utf-8"));
+    pack = JSON.parse(readFileSync12(file, "utf-8"));
   } catch {
     process.stderr.write(`
 protect-mcp verify-claim: ${file} is not valid JSON.
@@ -11734,11 +9167,11 @@ ${bold("protect-mcp verify-claim")}
   const sidecarPath = ai !== -1 && argv[ai + 1] ? argv[ai + 1] : file.replace(/\.json$/, "") + ".anchor.json";
   const requireAnchor = argv.includes("--check-anchor");
   let anchorOk = true;
-  if (existsSync10(sidecarPath)) {
+  if (existsSync11(sidecarPath)) {
     const { checkClaimAnchor: checkClaimAnchor2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
     let sidecar = null;
     try {
-      sidecar = JSON.parse(readFileSync11(sidecarPath, "utf-8"));
+      sidecar = JSON.parse(readFileSync12(sidecarPath, "utf-8"));
     } catch {
     }
     if (!sidecar) {
@@ -11805,32 +9238,32 @@ ${bold("protect-mcp verify-claim")}
   process.exit(finalValid ? 0 : 1);
 }
 async function handleBundle(argv) {
-  const { readFileSync: readFileSync11, writeFileSync: writeFileSync5, existsSync: existsSync10 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { readFileSync: readFileSync12, writeFileSync: writeFileSync5, existsSync: existsSync11 } = await import("fs");
+  const { join: join10 } = await import("path");
   const { createAuditBundle: createAuditBundle2 } = await Promise.resolve().then(() => (init_bundle(), bundle_exports));
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
   if (dirIdx !== -1 && argv[dirIdx + 1]) dir = argv[dirIdx + 1];
   const outputIdx = argv.indexOf("--output");
-  const outputPath = outputIdx !== -1 && argv[outputIdx + 1] ? argv[outputIdx + 1] : join9(dir, "audit-bundle.json");
-  const receiptsPath = join9(dir, ".protect-mcp-receipts.jsonl");
-  const keyPath = join9(dir, "keys", "gateway.json");
-  if (!existsSync10(receiptsPath)) {
+  const outputPath = outputIdx !== -1 && argv[outputIdx + 1] ? argv[outputIdx + 1] : join10(dir, "audit-bundle.json");
+  const receiptsPath = join10(dir, ".protect-mcp-receipts.jsonl");
+  const keyPath = join10(dir, "keys", "gateway.json");
+  if (!existsSync11(receiptsPath)) {
     process.stderr.write(`${bold("protect-mcp bundle")}
 
 No signed receipt file found. Run protect-mcp with signing enabled first.
 `);
     process.exit(0);
   }
-  if (!existsSync10(keyPath)) {
+  if (!existsSync11(keyPath)) {
     process.stderr.write(`${bold("protect-mcp bundle")}
 
 No key file found at ${keyPath}
 `);
     process.exit(1);
   }
-  const receipts = readFileSync11(receiptsPath, "utf-8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
-  const keyData = JSON.parse(readFileSync11(keyPath, "utf-8"));
+  const receipts = readFileSync12(receiptsPath, "utf-8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  const keyData = JSON.parse(readFileSync12(keyPath, "utf-8"));
   const bundle = createAuditBundle2({
     tenant: keyData.issuer || "protect-mcp",
     receipts,
@@ -11859,8 +9292,8 @@ ${bold("protect-mcp bundle")}
 `);
 }
 async function createSandbox() {
-  const { mkdirSync: mkdirSync4, writeFileSync: writeFileSync5, existsSync: existsSync10, readFileSync: readFileSync11 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { mkdirSync: mkdirSync4, writeFileSync: writeFileSync5, existsSync: existsSync11, readFileSync: readFileSync12 } = await import("fs");
+  const { join: join10 } = await import("path");
   const { homedir } = await import("os");
   let response;
   try {
@@ -11890,15 +9323,15 @@ async function createSandbox() {
     return null;
   }
   const dashboardUrl = `https://scopeblind.com/t/${data.slug}`;
-  const configDir = join9(homedir(), ".protect-mcp");
-  if (!existsSync10(configDir)) {
+  const configDir = join10(homedir(), ".protect-mcp");
+  if (!existsSync11(configDir)) {
     mkdirSync4(configDir, { recursive: true });
   }
-  const configPath = join9(configDir, "config.json");
+  const configPath = join10(configDir, "config.json");
   let existing = {};
-  if (existsSync10(configPath)) {
+  if (existsSync11(configPath)) {
     try {
-      existing = JSON.parse(readFileSync11(configPath, "utf-8"));
+      existing = JSON.parse(readFileSync12(configPath, "utf-8"));
     } catch {
     }
   }
@@ -11935,10 +9368,10 @@ ${"\u2500".repeat(50)}
 }
 async function handleQuickstart(argv) {
   const connectFlag = argv.includes("--connect");
-  const { mkdtempSync, writeFileSync: writeFileSync5, existsSync: existsSync10, mkdirSync: mkdirSync4, readFileSync: readFileSync11 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { mkdtempSync, writeFileSync: writeFileSync5, existsSync: existsSync11, mkdirSync: mkdirSync4, readFileSync: readFileSync12 } = await import("fs");
+  const { join: join10 } = await import("path");
   const { tmpdir } = await import("os");
-  const dir = mkdtempSync(join9(tmpdir(), "protect-mcp-quickstart-"));
+  const dir = mkdtempSync(join10(tmpdir(), "protect-mcp-quickstart-"));
   process.stdout.write(`
 ${bold("protect-mcp quickstart")}
 `);
@@ -11963,34 +9396,34 @@ ${bold("protect-mcp quickstart")}
   Working dir: ${dir}
 
 `);
-  const keysDir = join9(dir, "keys");
+  const keysDir = join10(dir, "keys");
   mkdirSync4(keysDir, { recursive: true });
-  const { randomBytes: randomBytes4 } = await import("crypto");
+  const { randomBytes: randomBytes5 } = await import("crypto");
   let keypair;
   try {
-    const { ed25519: ed255192 } = await Promise.resolve().then(() => (init_ed25519(), ed25519_exports));
-    const { bytesToHex: bytesToHex2 } = await Promise.resolve().then(() => (init_utils(), utils_exports));
-    const privateKey = randomBytes4(32);
-    const publicKey = ed255192.getPublicKey(privateKey);
+    const { ed25519: ed255195 } = await import("@noble/curves/ed25519");
+    const { bytesToHex: bytesToHex8 } = await import("@noble/hashes/utils");
+    const privateKey = randomBytes5(32);
+    const publicKey = ed255195.getPublicKey(privateKey);
     keypair = {
-      privateKey: bytesToHex2(privateKey),
-      publicKey: bytesToHex2(publicKey),
+      privateKey: bytesToHex8(privateKey),
+      publicKey: bytesToHex8(publicKey),
       kid: `quickstart-${Date.now()}`
     };
   } catch {
     keypair = {
-      privateKey: randomBytes4(32).toString("hex"),
-      publicKey: randomBytes4(32).toString("hex"),
+      privateKey: randomBytes5(32).toString("hex"),
+      publicKey: randomBytes5(32).toString("hex"),
       kid: `quickstart-${Date.now()}`
     };
   }
-  writeFileSync5(join9(keysDir, "gateway.json"), JSON.stringify({
+  writeFileSync5(join10(keysDir, "gateway.json"), JSON.stringify({
     privateKey: keypair.privateKey,
     publicKey: keypair.publicKey,
     kid: keypair.kid,
     generated_at: (/* @__PURE__ */ new Date()).toISOString()
   }, null, 2) + "\n");
-  const configPath = join9(dir, "protect-mcp.json");
+  const configPath = join10(dir, "protect-mcp.json");
   const config = {
     tools: {
       "*": { rate_limit: "100/hour" },
@@ -11998,7 +9431,7 @@ ${bold("protect-mcp quickstart")}
     },
     default_tier: "unknown",
     signing: {
-      key_path: join9(keysDir, "gateway.json"),
+      key_path: join10(keysDir, "gateway.json"),
       issuer: "protect-mcp-quickstart",
       enabled: true
     }
@@ -12054,7 +9487,7 @@ ${bold("protect-mcp quickstart")}
 }
 async function handleRegistry(argv) {
   const subcommand = argv[0] || "status";
-  const dir = (0, import_node_path9.resolve)(flagValue(argv, "--dir") || process.cwd());
+  const dir = (0, import_node_path10.resolve)(flagValue(argv, "--dir") || process.cwd());
   const orgName = flagValue(argv, "--org") || process.env.SCOPEBLIND_ORG;
   const orgId = flagValue(argv, "--org-id") || process.env.SCOPEBLIND_ORG_ID;
   const billingAccountId = flagValue(argv, "--billing-account") || process.env.SCOPEBLIND_BILLING_ACCOUNT;
@@ -12136,14 +9569,14 @@ ${bold("protect-mcp registry anchor")}
     return;
   }
   if (subcommand === "status") {
-    const registryPath = (0, import_node_path9.join)(dir, registryMod.REGISTRY_FILE);
-    const identityPath = (0, import_node_path9.join)(dir, registryMod.ORG_IDENTITY_FILE);
+    const registryPath = (0, import_node_path10.join)(dir, registryMod.REGISTRY_FILE);
+    const identityPath = (0, import_node_path10.join)(dir, registryMod.ORG_IDENTITY_FILE);
     process.stdout.write(`
 ${bold("protect-mcp registry status")}
 
 `);
-    if ((0, import_node_fs13.existsSync)(identityPath)) {
-      const identity = JSON.parse((0, import_node_fs13.readFileSync)(identityPath, "utf-8"));
+    if ((0, import_node_fs14.existsSync)(identityPath)) {
+      const identity = JSON.parse((0, import_node_fs14.readFileSync)(identityPath, "utf-8"));
       process.stdout.write(`  Org:              ${identity.org_name || "unknown"}
 `);
       process.stdout.write(`  Org ID:           ${identity.org_id || "unknown"}
@@ -12154,8 +9587,8 @@ ${bold("protect-mcp registry status")}
       process.stdout.write(`  Org identity:     ${yellow("missing")} (${identityPath})
 `);
     }
-    if ((0, import_node_fs13.existsSync)(registryPath)) {
-      const registry = JSON.parse((0, import_node_fs13.readFileSync)(registryPath, "utf-8"));
+    if ((0, import_node_fs14.existsSync)(registryPath)) {
+      const registry = JSON.parse((0, import_node_fs14.readFileSync)(registryPath, "utf-8"));
       const hosted = Array.isArray(registry.anchors) && registry.anchors.some((a) => a.timestamp_source === "scopeblind-hosted");
       process.stdout.write(`  Registry:         ${registryPath}
 `);
@@ -12165,7 +9598,7 @@ ${bold("protect-mcp registry status")}
 `);
       process.stdout.write(`  Boundary:         ${hosted ? green("hosted digest anchor") : yellow("local preview only")}
 `);
-      process.stdout.write(`  Verifier page:    ${(0, import_node_path9.join)(dir, registryMod.VERIFIER_PAGE_FILE)}
+      process.stdout.write(`  Verifier page:    ${(0, import_node_path10.join)(dir, registryMod.VERIFIER_PAGE_FILE)}
 `);
     } else {
       process.stdout.write(`  Registry:         ${yellow("missing")} (${registryPath})
@@ -12183,9 +9616,9 @@ ${bold("protect-mcp registry status")}
 async function handleKillerDemo(argv) {
   const { mkdtempSync } = await import("fs");
   const { tmpdir } = await import("os");
-  const { ed25519: ed255192 } = await Promise.resolve().then(() => (init_ed25519(), ed25519_exports));
-  const { bytesToHex: bytesToHex2 } = await Promise.resolve().then(() => (init_utils(), utils_exports));
-  const { randomBytes: randomBytes4 } = await import("crypto");
+  const { ed25519: ed255195 } = await import("@noble/curves/ed25519");
+  const { bytesToHex: bytesToHex8 } = await import("@noble/hashes/utils");
+  const { randomBytes: randomBytes5 } = await import("crypto");
   const artifacts2 = await import("@veritasacta/artifacts");
   const {
     createSelectiveDisclosurePackage: createSelectiveDisclosurePackage2,
@@ -12193,26 +9626,26 @@ async function handleKillerDemo(argv) {
     verifySelectiveDisclosurePackage: verifySelectiveDisclosurePackage2
   } = await Promise.resolve().then(() => (init_signing_committed(), signing_committed_exports));
   const registryMod = await Promise.resolve().then(() => (init_receipt_registry(), receipt_registry_exports));
-  const dir = (0, import_node_path9.resolve)(flagValue(argv, "--dir") || mkdtempSync((0, import_node_path9.join)(tmpdir(), "scopeblind-killer-demo-")));
-  (0, import_node_fs13.mkdirSync)(dir, { recursive: true });
-  (0, import_node_fs13.mkdirSync)((0, import_node_path9.join)(dir, "keys"), { recursive: true });
-  (0, import_node_fs13.mkdirSync)((0, import_node_path9.join)(dir, "receipts"), { recursive: true });
-  const privateKeyBytes = randomBytes4(32);
-  const publicKeyBytes = ed255192.getPublicKey(privateKeyBytes);
+  const dir = (0, import_node_path10.resolve)(flagValue(argv, "--dir") || mkdtempSync((0, import_node_path10.join)(tmpdir(), "scopeblind-killer-demo-")));
+  (0, import_node_fs14.mkdirSync)(dir, { recursive: true });
+  (0, import_node_fs14.mkdirSync)((0, import_node_path10.join)(dir, "keys"), { recursive: true });
+  (0, import_node_fs14.mkdirSync)((0, import_node_path10.join)(dir, "receipts"), { recursive: true });
+  const privateKeyBytes = randomBytes5(32);
+  const publicKeyBytes = ed255195.getPublicKey(privateKeyBytes);
   const keypair = {
-    privateKey: bytesToHex2(privateKeyBytes),
-    publicKey: bytesToHex2(publicKeyBytes),
+    privateKey: bytesToHex8(privateKeyBytes),
+    publicKey: bytesToHex8(publicKeyBytes),
     kid: `killer-demo-${Date.now()}`,
     issuer: "scopeblind-killer-demo"
   };
-  const keyPath = (0, import_node_path9.join)(dir, "keys", "gateway.json");
-  (0, import_node_fs13.writeFileSync)(keyPath, JSON.stringify({
+  const keyPath = (0, import_node_path10.join)(dir, "keys", "gateway.json");
+  (0, import_node_fs14.writeFileSync)(keyPath, JSON.stringify({
     ...keypair,
     generated_at: (/* @__PURE__ */ new Date()).toISOString(),
     warning: "Demo key only. Do not use for production."
   }, null, 2) + "\n");
-  const shadowConfigPath = (0, import_node_path9.join)(dir, "protect-mcp.shadow.json");
-  const policyPackPath = (0, import_node_path9.join)(dir, "protect-mcp.policy-pack.json");
+  const shadowConfigPath = (0, import_node_path10.join)(dir, "protect-mcp.shadow.json");
+  const policyPackPath = (0, import_node_path10.join)(dir, "protect-mcp.policy-pack.json");
   const config = {
     tools: { "*": { rate_limit: "100/hour" } },
     default_tier: "signed-known",
@@ -12231,11 +9664,11 @@ async function handleKillerDemo(argv) {
     signing: { key_path: keyPath, issuer: keypair.issuer, enabled: true },
     notes: ["Demo policy pack: approvals for GitHub, email, and PMS booking; destructive tools blocked."]
   };
-  (0, import_node_fs13.writeFileSync)(shadowConfigPath, JSON.stringify(config, null, 2) + "\n");
-  (0, import_node_fs13.writeFileSync)(policyPackPath, JSON.stringify(policyPack, null, 2) + "\n");
+  (0, import_node_fs14.writeFileSync)(shadowConfigPath, JSON.stringify(config, null, 2) + "\n");
+  (0, import_node_fs14.writeFileSync)(policyPackPath, JSON.stringify(policyPack, null, 2) + "\n");
   await initSigning({ enabled: true, key_path: keyPath, issuer: keypair.issuer });
-  const logPath = (0, import_node_path9.join)(dir, ".protect-mcp-log.jsonl");
-  const receiptPath = (0, import_node_path9.join)(dir, ".protect-mcp-receipts.jsonl");
+  const logPath = (0, import_node_path10.join)(dir, ".protect-mcp-log.jsonl");
+  const receiptPath = (0, import_node_path10.join)(dir, ".protect-mcp-receipts.jsonl");
   const shadowCalls = [
     { tool: "read_file", input: { path: "/research/macro-notes.md" }, reason: "observe_mode" },
     { tool: "github_create_pr", input: { repo: "scopeblind/legate", branch: "agent/pms-adapter", title: "Wire mock PMS adapter" }, reason: "observe_mode" },
@@ -12244,7 +9677,7 @@ async function handleKillerDemo(argv) {
   ];
   for (const [idx, call] of shadowCalls.entries()) {
     const requestId2 = `demo-shadow-${idx + 1}`;
-    (0, import_node_fs13.appendFileSync)(logPath, JSON.stringify({
+    (0, import_node_fs14.appendFileSync)(logPath, JSON.stringify({
       v: 2,
       tool: call.tool,
       decision: "allow",
@@ -12276,11 +9709,11 @@ async function handleKillerDemo(argv) {
     request_id: requestId,
     timestamp: Date.now() + 10,
     mode: "enforce",
-    policy_digest: (0, import_node_crypto7.createHash)("sha256").update(JSON.stringify(policyPack)).digest("hex").slice(0, 16),
+    policy_digest: (0, import_node_crypto6.createHash)("sha256").update(JSON.stringify(policyPack)).digest("hex").slice(0, 16),
     action_readback: readback
   };
-  (0, import_node_fs13.appendFileSync)(logPath, JSON.stringify(requireApprovalEntry) + "\n");
-  (0, import_node_fs13.appendFileSync)((0, import_node_path9.join)(dir, ".protect-mcp-approval-resolutions.jsonl"), JSON.stringify({
+  (0, import_node_fs14.appendFileSync)(logPath, JSON.stringify(requireApprovalEntry) + "\n");
+  (0, import_node_fs14.appendFileSync)((0, import_node_path10.join)(dir, ".protect-mcp-approval-resolutions.jsonl"), JSON.stringify({
     type: "scopeblind.approval_resolution.v1",
     at: (/* @__PURE__ */ new Date()).toISOString(),
     request_id: requestId,
@@ -12295,27 +9728,27 @@ async function handleKillerDemo(argv) {
     reason_code: "approval_granted",
     timestamp: Date.now() + 20,
     payload_digest: {
-      output_hash: (0, import_node_crypto7.createHash)("sha256").update("mock-pms-booking-confirmed").digest("hex"),
+      output_hash: (0, import_node_crypto6.createHash)("sha256").update("mock-pms-booking-confirmed").digest("hex"),
       output_size: 26,
       truncated: false
     }
   };
-  (0, import_node_fs13.appendFileSync)(logPath, JSON.stringify(executedEntry) + "\n");
+  (0, import_node_fs14.appendFileSync)(logPath, JSON.stringify(executedEntry) + "\n");
   const signed = signDecision(executedEntry);
   if (!signed.signed) throw new Error(`demo signing failed: ${signed.warning || signed.error || "unknown"}`);
-  (0, import_node_fs13.appendFileSync)(receiptPath, signed.signed + "\n");
-  (0, import_node_fs13.writeFileSync)((0, import_node_path9.join)(dir, "receipts", "approved-pms-booking.receipt.json"), JSON.stringify(JSON.parse(signed.signed), null, 2) + "\n");
+  (0, import_node_fs14.appendFileSync)(receiptPath, signed.signed + "\n");
+  (0, import_node_fs14.writeFileSync)((0, import_node_path10.join)(dir, "receipts", "approved-pms-booking.receipt.json"), JSON.stringify(JSON.parse(signed.signed), null, 2) + "\n");
   const receiptArtifact = JSON.parse(signed.signed);
   const tamperedArtifact = JSON.parse(signed.signed);
   if (tamperedArtifact.payload && typeof tamperedArtifact.payload === "object") {
     tamperedArtifact.payload.decision = "deny";
-    tamperedArtifact.payload.tool = "send_email";
+    tamperedArtifact.payload.tool_name = "send_email";
   } else {
     tamperedArtifact.tool = "send_email";
   }
-  const validOriginal = artifacts2.verifyArtifact(receiptArtifact, keypair.publicKey);
-  const validTampered = artifacts2.verifyArtifact(tamperedArtifact, keypair.publicKey);
-  (0, import_node_fs13.writeFileSync)((0, import_node_path9.join)(dir, "receipts", "tampered.receipt.json"), JSON.stringify(tamperedArtifact, null, 2) + "\n");
+  const validOriginal = verifyReceipt(receiptArtifact, keypair.publicKey);
+  const validTampered = verifyReceipt(tamperedArtifact, keypair.publicKey);
+  (0, import_node_fs14.writeFileSync)((0, import_node_path10.join)(dir, "receipts", "tampered.receipt.json"), JSON.stringify(tamperedArtifact, null, 2) + "\n");
   const committed = signCommittedDecision2(
     executedEntry,
     ["tool", "payload_digest", "swarm"],
@@ -12327,11 +9760,11 @@ async function handleKillerDemo(argv) {
   const committedReceipt = JSON.parse(committed.signed);
   const disclosurePackage = createSelectiveDisclosurePackage2(committedReceipt, ["tool"], committed.openings);
   const disclosureVerification = verifySelectiveDisclosurePackage2(committedReceipt, disclosurePackage);
-  (0, import_node_fs13.appendFileSync)(receiptPath, committed.signed + "\n");
-  (0, import_node_fs13.writeFileSync)((0, import_node_path9.join)(dir, "receipts", "selective-disclosure.receipt.json"), JSON.stringify(committedReceipt, null, 2) + "\n");
-  (0, import_node_fs13.writeFileSync)((0, import_node_path9.join)(dir, "receipts", "selective-disclosure.package.json"), JSON.stringify(disclosurePackage, null, 2) + "\n");
-  (0, import_node_fs13.writeFileSync)((0, import_node_path9.join)(dir, "receipts", "selective-disclosure.tool-only.json"), JSON.stringify(disclosurePackage, null, 2) + "\n");
-  (0, import_node_fs13.writeFileSync)((0, import_node_path9.join)(dir, "verification-results.json"), JSON.stringify({
+  (0, import_node_fs14.appendFileSync)(receiptPath, committed.signed + "\n");
+  (0, import_node_fs14.writeFileSync)((0, import_node_path10.join)(dir, "receipts", "selective-disclosure.receipt.json"), JSON.stringify(committedReceipt, null, 2) + "\n");
+  (0, import_node_fs14.writeFileSync)((0, import_node_path10.join)(dir, "receipts", "selective-disclosure.package.json"), JSON.stringify(disclosurePackage, null, 2) + "\n");
+  (0, import_node_fs14.writeFileSync)((0, import_node_path10.join)(dir, "receipts", "selective-disclosure.tool-only.json"), JSON.stringify(disclosurePackage, null, 2) + "\n");
+  (0, import_node_fs14.writeFileSync)((0, import_node_path10.join)(dir, "verification-results.json"), JSON.stringify({
     original_receipt_valid: validOriginal,
     tampered_receipt_valid: validTampered,
     selective_disclosure_valid: disclosureVerification.valid,
@@ -12414,19 +9847,19 @@ async function handleKillerDemo(argv) {
     "No raw prompt, payload, output, private key, or raw receipt is uploaded by the registry flow. Hosted mode submits receipt digests, request ids, org public keys, and billing account metadata only.",
     ""
   ].join("\n");
-  (0, import_node_fs13.writeFileSync)((0, import_node_path9.join)(dir, "DEMO-RUNBOOK.md"), runbook);
-  (0, import_node_fs13.writeFileSync)((0, import_node_path9.join)(dir, "demo-summary.json"), JSON.stringify({
+  (0, import_node_fs14.writeFileSync)((0, import_node_path10.join)(dir, "DEMO-RUNBOOK.md"), runbook);
+  (0, import_node_fs14.writeFileSync)((0, import_node_path10.join)(dir, "demo-summary.json"), JSON.stringify({
     dir,
     dashboard_command: `npx protect-mcp dashboard --dir ${dir} --policy ${policyPackPath} --open`,
     policy_pack: policyPackPath,
-    receipt: (0, import_node_path9.join)(dir, "receipts", "approved-pms-booking.receipt.json"),
-    tampered_receipt: (0, import_node_path9.join)(dir, "receipts", "tampered.receipt.json"),
-    selective_disclosure_receipt: (0, import_node_path9.join)(dir, "receipts", "selective-disclosure.receipt.json"),
-    selective_disclosure_package: (0, import_node_path9.join)(dir, "receipts", "selective-disclosure.tool-only.json"),
-    verification_results: (0, import_node_path9.join)(dir, "verification-results.json"),
+    receipt: (0, import_node_path10.join)(dir, "receipts", "approved-pms-booking.receipt.json"),
+    tampered_receipt: (0, import_node_path10.join)(dir, "receipts", "tampered.receipt.json"),
+    selective_disclosure_receipt: (0, import_node_path10.join)(dir, "receipts", "selective-disclosure.receipt.json"),
+    selective_disclosure_package: (0, import_node_path10.join)(dir, "receipts", "selective-disclosure.tool-only.json"),
+    verification_results: (0, import_node_path10.join)(dir, "verification-results.json"),
     registry: registry.registryPath,
     verifier_page: registry.verifierPath,
-    runbook: (0, import_node_path9.join)(dir, "DEMO-RUNBOOK.md"),
+    runbook: (0, import_node_path10.join)(dir, "DEMO-RUNBOOK.md"),
     original_valid: validOriginal.valid,
     tampered_valid: validTampered.valid,
     selective_disclosure_valid: disclosureVerification.valid
@@ -12439,9 +9872,9 @@ ${bold("protect-mcp killer-demo")}
 `);
   process.stdout.write(`  Dashboard:         ${dim(`npx protect-mcp dashboard --dir ${dir} --policy ${policyPackPath} --open`)}
 `);
-  process.stdout.write(`  Runbook:           ${(0, import_node_path9.join)(dir, "DEMO-RUNBOOK.md")}
+  process.stdout.write(`  Runbook:           ${(0, import_node_path10.join)(dir, "DEMO-RUNBOOK.md")}
 `);
-  process.stdout.write(`  Signed receipt:    ${(0, import_node_path9.join)(dir, "receipts", "approved-pms-booking.receipt.json")}
+  process.stdout.write(`  Signed receipt:    ${(0, import_node_path10.join)(dir, "receipts", "approved-pms-booking.receipt.json")}
 `);
   process.stdout.write(`  Tamper check:      original=${validOriginal.valid ? green("valid") : red("invalid")} tampered=${validTampered.valid ? red("valid") : green("invalid")}
 `);
@@ -12461,8 +9894,8 @@ async function handleVerifyDisclosure(argv) {
     process.exit(1);
   }
   const { verifySelectiveDisclosurePackage: verifySelectiveDisclosurePackage2 } = await Promise.resolve().then(() => (init_signing_committed(), signing_committed_exports));
-  const receipt = JSON.parse((0, import_node_fs13.readFileSync)((0, import_node_path9.resolve)(receiptPath), "utf-8"));
-  const disclosure = JSON.parse((0, import_node_fs13.readFileSync)((0, import_node_path9.resolve)(disclosurePath), "utf-8"));
+  const receipt = JSON.parse((0, import_node_fs14.readFileSync)((0, import_node_path10.resolve)(receiptPath), "utf-8"));
+  const disclosure = JSON.parse((0, import_node_fs14.readFileSync)((0, import_node_path10.resolve)(disclosurePath), "utf-8"));
   const result = verifySelectiveDisclosurePackage2(receipt, disclosure);
   process.stdout.write(`
 ${bold("protect-mcp verify-disclosure")}
@@ -12498,7 +9931,7 @@ ${red("Errors:")}
 async function handlePolicyPacks(argv) {
   const subcommand = argv[0] || "list";
   const packArg = argv[1];
-  const dir = (0, import_node_path9.resolve)(flagValue(argv, "--dir") || "./cedar");
+  const dir = (0, import_node_path10.resolve)(flagValue(argv, "--dir") || "./cedar");
   const force = argv.includes("--force");
   if (subcommand === "list") {
     process.stdout.write(`
@@ -12553,17 +9986,17 @@ ${bold(pack.name)} (${pack.id})
 `);
       process.exit(1);
     }
-    (0, import_node_fs13.mkdirSync)(dir, { recursive: true });
+    (0, import_node_fs14.mkdirSync)(dir, { recursive: true });
     const written = [];
     for (const pack of packs) {
       for (const file of pack.files) {
-        const outPath = (0, import_node_path9.join)(dir, file.path);
-        if ((0, import_node_fs13.existsSync)(outPath) && !force) {
+        const outPath = (0, import_node_path10.join)(dir, file.path);
+        if ((0, import_node_fs14.existsSync)(outPath) && !force) {
           process.stderr.write(`Refusing to overwrite ${outPath}. Re-run with --force if intentional.
 `);
           process.exit(1);
         }
-        (0, import_node_fs13.writeFileSync)(outPath, file.contents.endsWith("\n") ? file.contents : `${file.contents}
+        (0, import_node_fs14.writeFileSync)(outPath, file.contents.endsWith("\n") ? file.contents : `${file.contents}
 `);
         written.push(outPath);
       }
@@ -12588,7 +10021,7 @@ Next: ${dim(`protect-mcp serve --cedar ${dir}`)} for shadow mode, then add ${dim
 async function handleConnectors(argv) {
   const subcommand = argv[0] || "list";
   const pilotArg = argv[1];
-  const dir = (0, import_node_path9.resolve)(flagValue(argv, "--dir") || process.cwd());
+  const dir = (0, import_node_path10.resolve)(flagValue(argv, "--dir") || process.cwd());
   const force = argv.includes("--force");
   if (subcommand === "list") {
     process.stdout.write(`
@@ -12830,25 +10263,25 @@ ${"\u2500".repeat(60)}
 `);
 }
 async function traceLocal(receiptId) {
-  const { readFileSync: readFileSync11, existsSync: existsSync10 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { readFileSync: readFileSync12, existsSync: existsSync11 } = await import("fs");
+  const { join: join10 } = await import("path");
   const dir = process.cwd();
-  const receiptsDir = join9(dir, ".protect-mcp", "receipts");
-  if (!existsSync10(receiptsDir)) {
+  const receiptsDir = join10(dir, ".protect-mcp", "receipts");
+  if (!existsSync11(receiptsDir)) {
     process.stdout.write(`  No local receipts found in ${receiptsDir}
 
 `);
     return;
   }
-  const { readdirSync: readdirSync4 } = await import("fs");
-  const files = readdirSync4(receiptsDir).filter((f) => f.endsWith(".json"));
+  const { readdirSync: readdirSync5 } = await import("fs");
+  const files = readdirSync5(receiptsDir).filter((f) => f.endsWith(".json"));
   process.stdout.write(`  Scanning ${files.length} local receipts...
 
 `);
   const receipts = [];
   for (const file of files) {
     try {
-      const content = readFileSync11(join9(receiptsDir, file), "utf-8");
+      const content = readFileSync12(join10(receiptsDir, file), "utf-8");
       const receipt = JSON.parse(content);
       receipts.push(receipt);
     } catch {
@@ -12905,8 +10338,8 @@ function getTypeEmoji(type) {
   }
 }
 async function handleInitHooks(argv) {
-  const { writeFileSync: writeFileSync5, existsSync: existsSync10, mkdirSync: mkdirSync4, readFileSync: readFileSync11 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { writeFileSync: writeFileSync5, existsSync: existsSync11, mkdirSync: mkdirSync4, readFileSync: readFileSync12 } = await import("fs");
+  const { join: join10 } = await import("path");
   const { generateHookSettings: generateHookSettings2, generateSampleCedarPolicy: generateSampleCedarPolicy2, generateVerifyReceiptSkill: generateVerifyReceiptSkill2 } = await Promise.resolve().then(() => (init_hook_patterns(), hook_patterns_exports));
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
@@ -12920,15 +10353,15 @@ ${bold("protect-mcp init-hooks")}
   process.stdout.write(`${"\u2500".repeat(55)}
 
 `);
-  const claudeDir = join9(dir, ".claude");
-  const settingsPath = join9(claudeDir, "settings.json");
+  const claudeDir = join10(dir, ".claude");
+  const settingsPath = join10(claudeDir, "settings.json");
   let existingSettings = {};
-  if (!existsSync10(claudeDir)) {
+  if (!existsSync11(claudeDir)) {
     mkdirSync4(claudeDir, { recursive: true });
   }
-  if (existsSync10(settingsPath)) {
+  if (existsSync11(settingsPath)) {
     try {
-      existingSettings = JSON.parse(readFileSync11(settingsPath, "utf-8"));
+      existingSettings = JSON.parse(readFileSync12(settingsPath, "utf-8"));
     } catch {
       process.stderr.write(`[PROTECT_MCP] Warning: Could not parse existing ${settingsPath}
 `);
@@ -12950,25 +10383,25 @@ ${bold("protect-mcp init-hooks")}
   process.stdout.write(`    Events: PreToolUse, PostToolUse, SubagentStart/Stop, Task, Session, Config, Stop
 
 `);
-  const keysDir = join9(dir, "keys");
-  const keyPath = join9(keysDir, "gateway.json");
-  if (!existsSync10(keyPath)) {
-    if (!existsSync10(keysDir)) mkdirSync4(keysDir, { recursive: true });
+  const keysDir = join10(dir, "keys");
+  const keyPath = join10(keysDir, "gateway.json");
+  if (!existsSync11(keyPath)) {
+    if (!existsSync11(keysDir)) mkdirSync4(keysDir, { recursive: true });
     const { randomBytes: rb } = await import("crypto");
     try {
-      const { ed25519: ed255192 } = await Promise.resolve().then(() => (init_ed25519(), ed25519_exports));
-      const { bytesToHex: bytesToHex2 } = await Promise.resolve().then(() => (init_utils(), utils_exports));
+      const { ed25519: ed255195 } = await import("@noble/curves/ed25519");
+      const { bytesToHex: bytesToHex8 } = await import("@noble/hashes/utils");
       const privateKey = rb(32);
-      const publicKey = ed255192.getPublicKey(privateKey);
+      const publicKey = ed255195.getPublicKey(privateKey);
       writeFileSync5(keyPath, JSON.stringify({
-        privateKey: bytesToHex2(privateKey),
-        publicKey: bytesToHex2(publicKey),
+        privateKey: bytesToHex8(privateKey),
+        publicKey: bytesToHex8(publicKey),
         kid: `hook-${Date.now()}`,
         generated_at: (/* @__PURE__ */ new Date()).toISOString(),
         warning: "KEEP THIS FILE SECRET. Never commit to version control."
       }, null, 2) + "\n");
-      const gitignorePath = join9(keysDir, ".gitignore");
-      if (!existsSync10(gitignorePath)) {
+      const gitignorePath = join10(keysDir, ".gitignore");
+      if (!existsSync11(gitignorePath)) {
         writeFileSync5(gitignorePath, "# Never commit signing keys\n*.json\n");
       }
       process.stdout.write(`  ${green("\u2713")} ${keyPath} (Ed25519 keypair)
@@ -12984,10 +10417,10 @@ ${bold("protect-mcp init-hooks")}
 
 `);
   }
-  const policiesDir = join9(dir, "policies");
-  const cedarPath = join9(policiesDir, "agent.cedar");
-  if (!existsSync10(cedarPath)) {
-    if (!existsSync10(policiesDir)) mkdirSync4(policiesDir, { recursive: true });
+  const policiesDir = join10(dir, "policies");
+  const cedarPath = join10(policiesDir, "agent.cedar");
+  if (!existsSync11(cedarPath)) {
+    if (!existsSync11(policiesDir)) mkdirSync4(policiesDir, { recursive: true });
     writeFileSync5(cedarPath, generateSampleCedarPolicy2());
     process.stdout.write(`  ${green("\u2713")} ${cedarPath}
 `);
@@ -12999,8 +10432,8 @@ ${bold("protect-mcp init-hooks")}
 
 `);
   }
-  const configPath = join9(dir, "protect-mcp.json");
-  if (!existsSync10(configPath)) {
+  const configPath = join10(dir, "protect-mcp.json");
+  if (!existsSync11(configPath)) {
     const config = {
       tools: { "*": { rate_limit: "100/hour" } },
       default_tier: "unknown",
@@ -13015,9 +10448,9 @@ ${bold("protect-mcp init-hooks")}
 
 `);
   }
-  const skillsDir = join9(dir, ".claude", "skills", "verify-receipt");
-  const skillPath = join9(skillsDir, "SKILL.md");
-  if (!existsSync10(skillPath)) {
+  const skillsDir = join10(dir, ".claude", "skills", "verify-receipt");
+  const skillPath = join10(skillsDir, "SKILL.md");
+  if (!existsSync11(skillPath)) {
     mkdirSync4(skillsDir, { recursive: true });
     writeFileSync5(skillPath, generateVerifyReceiptSkill2());
     process.stdout.write(`  ${green("\u2713")} ${skillPath}
@@ -13075,13 +10508,13 @@ ${bold("protect-mcp init-hooks")}
 }
 async function sendInstallTelemetry() {
   try {
-    const { existsSync: existsSync10, mkdirSync: mkdirSync4, writeFileSync: writeFileSync5, readFileSync: readFileSync11 } = await import("fs");
-    const { join: join9, dirname: dirname3 } = await import("path");
+    const { existsSync: existsSync11, mkdirSync: mkdirSync4, writeFileSync: writeFileSync5, readFileSync: readFileSync12 } = await import("fs");
+    const { join: join10, dirname: dirname3 } = await import("path");
     const { homedir } = await import("os");
     const { fileURLToPath } = await import("url");
-    const markerDir = join9(homedir(), ".protect-mcp");
-    const markerFile = join9(markerDir, ".telemetry-sent");
-    if (existsSync10(markerFile) || process.env.PROTECT_MCP_TELEMETRY === "off") {
+    const markerDir = join10(homedir(), ".protect-mcp");
+    const markerFile = join10(markerDir, ".telemetry-sent");
+    if (existsSync11(markerFile) || process.env.PROTECT_MCP_TELEMETRY === "off") {
       return;
     }
     const version = await pkgVersion();
@@ -13101,7 +10534,7 @@ async function sendInstallTelemetry() {
       signal: controller.signal
     }).catch(() => {
     }).finally(() => clearTimeout(timeout));
-    if (!existsSync10(markerDir)) {
+    if (!existsSync11(markerDir)) {
       mkdirSync4(markerDir, { recursive: true });
     }
     writeFileSync5(markerFile, String(Date.now()), "utf-8");
@@ -13120,8 +10553,8 @@ function loadPolicyArg(argv) {
   const policyFile = flagValue(argv, "--policy");
   try {
     if (cedarDir) return loadCedarPolicies(cedarDir);
-    if (policyFile && (0, import_node_fs13.existsSync)(policyFile)) {
-      return policySetFromSource((0, import_node_fs13.readFileSync)(policyFile, "utf-8"), (0, import_node_path9.basename)(policyFile));
+    if (policyFile && (0, import_node_fs14.existsSync)(policyFile)) {
+      return policySetFromSource((0, import_node_fs14.readFileSync)(policyFile, "utf-8"), (0, import_node_path10.basename)(policyFile));
     }
   } catch {
   }
@@ -13222,7 +10655,7 @@ async function handleSign(argv) {
       if (m.tool) tool = m.tool;
     }
   }
-  if (keyPath && (0, import_node_fs13.existsSync)(keyPath)) {
+  if (keyPath && (0, import_node_fs14.existsSync)(keyPath)) {
     try {
       await initSigning({ enabled: true, key_path: keyPath });
     } catch {
@@ -13239,12 +10672,12 @@ async function handleSign(argv) {
     timestamp: Date.now()
   });
   try {
-    (0, import_node_fs13.mkdirSync)(receiptsDir, { recursive: true });
+    (0, import_node_fs14.mkdirSync)(receiptsDir, { recursive: true });
   } catch {
   }
   const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || "no signer configured" });
   try {
-    (0, import_node_fs13.appendFileSync)((0, import_node_path9.join)(receiptsDir, "receipts.jsonl"), line + "\n");
+    (0, import_node_fs14.appendFileSync)((0, import_node_path10.join)(receiptsDir, "receipts.jsonl"), line + "\n");
   } catch {
   }
   if (format === "hermes") {
@@ -13294,7 +10727,7 @@ ${bold("\u{1F6E1} Sample record seeded")} \xB7 8 decisions (1 blocked, 2 payment
 async function handlePolicy(argv) {
   const { readFileSync: rf, writeFileSync: wf, existsSync: ex, readdirSync: rd, appendFileSync: af } = await import("fs");
   const { join: pj } = await import("path");
-  const { createHash: createHash6 } = await import("crypto");
+  const { createHash: createHash5 } = await import("crypto");
   const sub = argv[0] || "list";
   const findDir = () => {
     for (const c of ["cedar", "policies", "."]) {
@@ -13308,7 +10741,13 @@ async function handlePolicy(argv) {
   const dir = findDir();
   const cedarFiles = dir ? rd(dir).filter((f) => f.endsWith(".cedar")).sort() : [];
   const readAll = () => cedarFiles.map((f) => rf(pj(dir, f), "utf-8")).join("\n\n");
-  const digestOf = (src) => createHash6("sha256").update(src).digest("hex").slice(0, 16);
+  const digestOf = (_src) => {
+    try {
+      return shortPolicyLabel(digestCedarDir(dir));
+    } catch {
+      return "unavailable";
+    }
+  };
   const stripComments = (src) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
   const targetFile = cedarFiles.includes("agent.cedar") ? "agent.cedar" : cedarFiles[0];
   if (sub === "path") {
@@ -13350,6 +10789,7 @@ async function handlePolicy(argv) {
     }
     const effect = sub === "allow" ? "permit" : "forbid";
     const before = readAll();
+    const beforeLabel = digestOf(before);
     const ruleRe = new RegExp(`${effect}\\s*\\([^)]*resource\\s*==\\s*Tool::"${tool.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}"`, "s");
     if (ruleRe.test(stripComments(before))) {
       process.stdout.write(`${dim("No change:")} a ${effect} rule for ${bold(tool)} already exists in ${targetFile}.
@@ -13370,10 +10810,66 @@ ${effect}(
 `);
     process.stdout.write(`  ${dim(`appended to ${pj(dir, targetFile)}`)}
 `);
-    process.stdout.write(`  ${dim(`policy digest ${digestOf(before)} \u2192 ${digestOf(after)}`)}
+    process.stdout.write(`  ${dim(`policy digest ${beforeLabel} \u2192 ${digestOf(after)}`)}
 `);
     process.stdout.write(`
 ${dim("A running gate (protect-mcp serve) hot-reloads on this change; no restart needed. The one-shot hook path re-reads per call.")}
+`);
+    process.exit(0);
+  }
+  if (sub === "digest") {
+    if (!dir) {
+      process.stderr.write("No Cedar policy found. Run: npx protect-mcp init-hooks\n");
+      process.exit(1);
+    }
+    const result = digestCedarDir(dir);
+    const expectIdx = argv.indexOf("--expect");
+    const expected = expectIdx >= 0 ? argv[expectIdx + 1] : null;
+    if (argv.includes("--json")) {
+      process.stdout.write(JSON.stringify({ ...result, ...expected ? { expected, matches: expected === result.policy_digest } : {} }, null, 2) + "\n");
+    } else {
+      process.stdout.write(`${bold("policy_digest")}  ${result.policy_digest}
+`);
+      process.stdout.write(`${dim(`construction   ${result.construction}`)}
+`);
+      process.stdout.write(`${dim(`engine         ${result.engine}   (${result.files.length} file${result.files.length === 1 ? "" : "s"} in ${dir})`)}
+`);
+      for (const f of result.files) process.stdout.write(`${dim(`  ${f.sha256.slice(0, 16)}\u2026  ${f.name}`)}
+`);
+      process.stdout.write(`${dim('recompute: sha256 each file; M = {construction, engine, files:[{name, sha256}] sorted by name}; digest = "sha256:" + hex(SHA-256(JCS(M)))')}
+`);
+      if (expected) process.stdout.write(expected === result.policy_digest ? `${bold("\u2713 matches --expect")}
+` : `${bold("\u2717 does NOT match --expect")} ${dim(expected)}
+`);
+    }
+    process.exit(expected && expected !== result.policy_digest ? 1 : 0);
+  }
+  if (sub === "publish") {
+    if (!dir) {
+      process.stderr.write("No Cedar policy found. Run: npx protect-mcp init-hooks\n");
+      process.exit(1);
+    }
+    const outIdx = argv.indexOf("--out");
+    const outDir = outIdx >= 0 && argv[outIdx + 1] ? argv[outIdx + 1] : pj(".well-known", "acta-policies");
+    const files = cedarFiles.map((f) => ({ name: f, content: rf(pj(dir, f), "utf-8") }));
+    const bundle = buildPolicyBundle("cedar", files);
+    const check = verifyPolicyBundle(bundle);
+    if (!check.valid) {
+      process.stderr.write(`internal error: bundle failed self-verification (${check.error})
+`);
+      process.exit(1);
+    }
+    const { mkdirSync: mk } = await import("fs");
+    mk(outDir, { recursive: true });
+    const outPath = pj(outDir, `${bundle.policy_digest.replace(/^sha256:/, "")}.json`);
+    wf(outPath, JSON.stringify(bundle, null, 2) + "\n");
+    process.stdout.write(`${bold("\u2713 published")} ${outPath}
+`);
+    process.stdout.write(`  ${dim(`policy_digest ${bundle.policy_digest}`)}
+`);
+    process.stdout.write(`  ${dim("self-verified: per-file hashes and manifest digest recompute from the bundle bytes alone")}
+`);
+    process.stdout.write(`  ${dim("serve this directory at https://<your-domain>/.well-known/acta-policies/")}
 `);
     process.exit(0);
   }
@@ -13617,10 +11113,10 @@ async function main() {
   let cedarPolicySet = null;
   let effectiveCedarDir = cedarDir;
   if (!effectiveCedarDir && !policyPath) {
-    const { existsSync: existsSync10, readdirSync: readdirSync4 } = await import("fs");
+    const { existsSync: existsSync11, readdirSync: readdirSync5 } = await import("fs");
     for (const candidate of ["cedar", "policies", "."]) {
       try {
-        if (existsSync10(candidate) && readdirSync4(candidate).some((f) => f.endsWith(".cedar"))) {
+        if (existsSync11(candidate) && readdirSync5(candidate).some((f) => f.endsWith(".cedar"))) {
           effectiveCedarDir = candidate;
           process.stderr.write(`[PROTECT_MCP] Auto-detected Cedar policies in ./${candidate}/
 `);
@@ -13731,8 +11227,8 @@ async function handleSimulate(args) {
     process.stderr.write("Usage: protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]\n");
     process.exit(1);
   }
-  const { existsSync: existsSync10 } = await import("fs");
-  if (!existsSync10(logPath)) {
+  const { existsSync: existsSync11 } = await import("fs");
+  if (!existsSync11(logPath)) {
     process.stderr.write(`Log file not found: ${logPath}
 `);
     process.stderr.write("Run protect-mcp in shadow mode first to generate a log file.\n");
@@ -13754,8 +11250,8 @@ async function handleSimulate(args) {
   }
 }
 async function handleDoctor() {
-  const { existsSync: existsSync10, readFileSync: readFileSync11, readdirSync: readdirSync4 } = await import("fs");
-  const { join: join9 } = await import("path");
+  const { existsSync: existsSync11, readFileSync: readFileSync12, readdirSync: readdirSync5 } = await import("fs");
+  const { join: join10 } = await import("path");
   const { execSync } = await import("child_process");
   const green2 = (s) => `\x1B[32m\u2713\x1B[0m ${s}`;
   const red2 = (s) => `\x1B[31m\u2717\x1B[0m ${s}`;
@@ -13774,10 +11270,10 @@ async function handleDoctor() {
 `));
     issues++;
   }
-  const configPath = join9(process.cwd(), "scopeblind.config.json");
-  if (existsSync10(configPath)) {
+  const configPath = join10(process.cwd(), "scopeblind.config.json");
+  if (existsSync11(configPath)) {
     try {
-      const config = JSON.parse(readFileSync11(configPath, "utf-8"));
+      const config = JSON.parse(readFileSync12(configPath, "utf-8"));
       if (config.signing?.private_key || config.signing?.key_file) {
         process.stdout.write(green2("Signing keys configured\n"));
       } else {
@@ -13794,7 +11290,7 @@ async function handleDoctor() {
   let policyFound = false;
   for (const dir of ["cedar", "policies", "."]) {
     try {
-      if (existsSync10(dir) && readdirSync4(dir).some((f) => f.endsWith(".cedar"))) {
+      if (existsSync11(dir) && readdirSync5(dir).some((f) => f.endsWith(".cedar"))) {
         process.stdout.write(green2(`Cedar policies found in ./${dir}/
 `));
         policyFound = true;
@@ -13805,7 +11301,7 @@ async function handleDoctor() {
   }
   if (!policyFound) {
     for (const name of ["policy.json", "protect-mcp.policy.json", "scopeblind-policy.json"]) {
-      if (existsSync10(name)) {
+      if (existsSync11(name)) {
         process.stdout.write(green2(`JSON policy found: ${name}
 `));
         policyFound = true;
@@ -13826,11 +11322,11 @@ async function handleDoctor() {
   } catch {
     process.stdout.write(dim2("  Cedar WASM not installed\n"));
   }
-  const logFile = join9(process.cwd(), "protect-mcp-decisions.jsonl");
-  const receiptFile = join9(process.cwd(), "protect-mcp-receipts.jsonl");
-  if (existsSync10(logFile)) {
+  const logFile = join10(process.cwd(), "protect-mcp-decisions.jsonl");
+  const receiptFile = join10(process.cwd(), "protect-mcp-receipts.jsonl");
+  if (existsSync11(logFile)) {
     try {
-      const lines = readFileSync11(logFile, "utf-8").trim().split("\n").length;
+      const lines = readFileSync12(logFile, "utf-8").trim().split("\n").length;
       process.stdout.write(green2(`Decision log: ${lines} entries
 `));
     } catch {
@@ -13839,9 +11335,9 @@ async function handleDoctor() {
   } else {
     process.stdout.write(dim2("  No decision log yet, will be created on first tool call\n"));
   }
-  if (existsSync10(receiptFile)) {
+  if (existsSync11(receiptFile)) {
     try {
-      const lines = readFileSync11(receiptFile, "utf-8").trim().split("\n").length;
+      const lines = readFileSync12(receiptFile, "utf-8").trim().split("\n").length;
       process.stdout.write(green2(`Receipt file: ${lines} signed receipts
 `));
     } catch {
@@ -13910,9 +11406,9 @@ async function handleReport(args) {
     }
   }
   const { generateReport: generateReport2, formatReportMarkdown: formatReportMarkdown2 } = await Promise.resolve().then(() => (init_report(), report_exports));
-  const { join: join9 } = await import("path");
-  const logPath = join9(dir, ".protect-mcp-log.jsonl");
-  const receiptPath = join9(dir, ".protect-mcp-receipts.jsonl");
+  const { join: join10 } = await import("path");
+  const logPath = join10(dir, ".protect-mcp-log.jsonl");
+  const receiptPath = join10(dir, ".protect-mcp-receipts.jsonl");
   const report = generateReport2(logPath, receiptPath, period);
   let output;
   if (format === "md") {
@@ -13964,16 +11460,3 @@ main().catch((err) => {
  *
  * @license MIT
  */
-/*! Bundled license information:
-
-@noble/hashes/esm/utils.js:
-  (*! noble-hashes - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
-
-@noble/curves/esm/utils.js:
-@noble/curves/esm/abstract/modular.js:
-@noble/curves/esm/abstract/curve.js:
-@noble/curves/esm/abstract/edwards.js:
-@noble/curves/esm/abstract/montgomery.js:
-@noble/curves/esm/ed25519.js:
-  (*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
-*/

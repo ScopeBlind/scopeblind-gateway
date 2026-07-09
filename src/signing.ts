@@ -10,6 +10,7 @@
  */
 
 import { readFileSync, existsSync } from 'node:fs';
+import { createReceiptEnvelope, computeSbIssuerKid } from './acta-envelope.js';
 import type { DecisionLog, SigningConfig, TrustTier } from './types.js';
 
 /** Loaded signing state */
@@ -21,7 +22,6 @@ interface SignerState {
 }
 
 let signerState: SignerState | null = null;
-let artifactsModule: any | null = null;
 let signingConfigured = false;
 let signingInitError: string | null = null;
 
@@ -52,7 +52,6 @@ export async function initSigning(config: SigningConfig | undefined): Promise<st
   // signing must not retain a previous key, and a failed reload must not fall
   // back to the previous signer.
   signerState = null;
-  artifactsModule = null;
   signingConfigured = Boolean(config && config.enabled !== false);
   signingInitError = null;
 
@@ -87,26 +86,17 @@ export async function initSigning(config: SigningConfig | undefined): Promise<st
     return warnings;
   }
 
-  // Load @veritasacta/artifacts only after the key configuration is sound.
-  try {
-    const moduleName = '@veritasacta/artifacts';
-    artifactsModule = await import(/* @vite-ignore */ moduleName);
-  } catch {
-    signingInitError = '@veritasacta/artifacts not available';
-    warnings.push(`signing: ${signingInitError} — enforce mode will fail closed`);
-    return warnings;
-  }
-
   try {
     signerState = {
       privateKey: keyData.privateKey,
       publicKey: keyData.publicKey,
-      kid: keyData.kid || artifactsModule.computeKid(keyData.publicKey),
+      // kid is opaque per draft-02; existing key files keep their explicit kid,
+      // and keys without one get the s2.1.1 RECOMMENDED sb:issuer format.
+      kid: keyData.kid || computeSbIssuerKid(keyData.publicKey),
       issuer: config.issuer || keyData.issuer || 'protect-mcp',
     };
   } catch (err) {
     signingInitError = `failed to initialize signer: ${err instanceof Error ? err.message : err}`;
-    artifactsModule = null;
     warnings.push(`signing: ${signingInitError} — enforce mode will fail closed`);
   }
 
@@ -114,20 +104,30 @@ export async function initSigning(config: SigningConfig | undefined): Promise<st
 }
 
 /**
- * Sign a decision log entry as a v2 artifact.
+ * Sign a decision log entry as a draft-02 Acta receipt envelope
+ * ({ payload, signature: { alg, kid, sig } }), signed over the JCS bytes of
+ * payload directly per draft s5.6.
  *
- * Returns the signed artifact JSON string, or null if signing is not configured.
- * On signing failure, returns an unsigned artifact with a warning.
+ * Returns the signed envelope JSON string, or null if signing is not
+ * configured. On signing failure, returns an unsigned result with a warning.
  *
- * @standard RFC 8032 (Ed25519), RFC 8785 (JCS)
+ * @param prevReceiptHash - Optional s5.7 chain link: the receiptHash of the
+ *   previous line in the receipt log this envelope will be appended to.
+ *
+ * @standard draft-farley-acta-signed-receipts-02, RFC 8032 (Ed25519), RFC 8785 (JCS)
  */
-export function signDecision(entry: DecisionLog): {
+export function signDecision(entry: DecisionLog, prevReceiptHash?: string): {
   ok: boolean;            // true only when a signature was actually produced
   signed: string | null;
   artifact_type: string;
+  receipt_hash?: string;  // s5.7 hash of the emitted envelope (chain link for the next receipt)
   warning?: string;
   error?: string;         // set only when a signer IS configured but signing failed
 } {
+  // Internal artifact class, kept for callers that branch on it. On the wire,
+  // draft-02 s3.1 covers allow AND deny under one payload type
+  // ("protectmcp:decision"); a deny is a first-class decision receipt, not a
+  // separate envelope shape.
   const artifactType = entry.decision === 'deny' ? 'gateway_restraint' : 'decision_receipt';
 
   if (signingConfigured && signingInitError) {
@@ -140,7 +140,7 @@ export function signDecision(entry: DecisionLog): {
     };
   }
 
-  if (signingConfigured && (!signerState || !artifactsModule)) {
+  if (signingConfigured && !signerState) {
     const error = 'signing was configured but no signer is ready';
     return {
       ok: false,
@@ -151,7 +151,7 @@ export function signDecision(entry: DecisionLog): {
     };
   }
 
-  if (!signerState || !artifactsModule) {
+  if (!signerState) {
     // No signer configured: legitimately unsigned (free/shadow tier). This is
     // NOT a failure — callers must not fail closed on it.
     return { ok: false, signed: null, artifact_type: 'none' };
@@ -159,15 +159,18 @@ export function signDecision(entry: DecisionLog): {
 
   try {
     const payload: Record<string, unknown> = {
-      tool: entry.tool,
+      // draft-02 s3.1 access-decision fields
+      type: 'protectmcp:decision',
+      tool_name: entry.tool,
       decision: entry.decision,
-      reason_code: entry.reason_code,
+      reason: entry.reason_code,
       policy_digest: entry.policy_digest,
+      // Extension fields (signed alongside the s3.1 core)
       scope: entry.request_id, // request scope
       mode: entry.mode,
       request_id: entry.request_id,
       // Spec version: ties every receipt to the IETF standard
-      spec: 'draft-farley-acta-signed-receipts-01',
+      spec: 'draft-farley-acta-signed-receipts-02',
       // Issuer certification: distinguishes VOPRF-backed receipts from self-signed ones
       // - scopeblind:verified  = issued via ScopeBlind VOPRF backend (paid tier)
       // - self-signed          = signed with local Ed25519 key (free tier, protect-mcp default)
@@ -180,6 +183,13 @@ export function signDecision(entry: DecisionLog): {
       // authenticity (that the key is YOUR gate's) still comes from pinning it.
       public_key: signerState.publicKey,
     };
+
+    // Operator-facing issuer label; issuer_id (== kid) is the draft-02
+    // identity and is set by createReceiptEnvelope.
+    if (signerState.issuer && signerState.issuer !== signerState.kid) {
+      payload.issuer_name = signerState.issuer;
+    }
+    if (prevReceiptHash) payload.previousReceiptHash = prevReceiptHash;
 
     if (entry.tier) payload.tier = entry.tier;
     if (entry.credential_ref) payload.credential_ref = entry.credential_ref;
@@ -198,20 +208,18 @@ export function signDecision(entry: DecisionLog): {
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
 
-    const result = artifactsModule.createSignedArtifact(
-      artifactType,
-      payload,
+    const result = createReceiptEnvelope(
+      payload as Record<string, unknown> & { type: string },
       signerState.privateKey,
-      {
-        kid: signerState.kid,
-        issuer: signerState.issuer,
-      },
+      signerState.kid,
+      Number.isFinite(entry.timestamp) ? new Date(entry.timestamp).toISOString() : undefined,
     );
 
     return {
       ok: true,
-      signed: JSON.stringify(result.artifact),
+      signed: JSON.stringify(result.envelope),
       artifact_type: artifactType,
+      receipt_hash: result.hash,
     };
   } catch (err) {
     // A signer IS configured but signing failed. Do not crash the process, but
@@ -253,5 +261,5 @@ export function getSignerInfo(): {
  * @standard RFC 8032 (Ed25519), RFC 8785 (JCS)
  */
 export function isSigningEnabled(): boolean {
-  return signingConfigured && signingInitError === null && signerState !== null && artifactsModule !== null;
+  return signingConfigured && signingInitError === null && signerState !== null;
 }

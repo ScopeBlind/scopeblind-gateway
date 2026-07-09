@@ -1,10 +1,12 @@
 /**
  * Locks the record viewer's in-browser verification algorithm to the real
- * signer. The viewer (RECORD_HTML + the web /record page) recomputes the
- * @veritasacta/artifacts preimage — JCS-style canonical JSON (sorted keys) of
- * the receipt minus its signature — and verifies Ed25519 over those bytes. If
- * this test passes, a receipt signed by the gate verifies in the viewer, and a
- * tampered one does not.
+ * signer. The viewer (RECORD_HTML + the web /record page) is dual-shape:
+ * for a draft-02 Acta envelope ({ payload, signature: { alg, kid, sig } }) it
+ * recomputes JCS(payload) and verifies signature.sig over those bytes (s5.6);
+ * for legacy receipts (top-level signature string) it recomputes
+ * JCS(receipt minus signature), the @veritasacta/artifacts preimage. If this
+ * test passes, receipts of both generations verify in the viewer, and
+ * tampered ones do not.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -27,15 +29,28 @@ function canonMirror(v: unknown): string {
   });
 }
 function viewerVerify(raw: Record<string, unknown>, keyOverride?: string): 'ok' | 'bad' | 'nokey' | 'unsigned' {
-  if (!raw || typeof raw.signature !== 'string') return 'unsigned';
-  const rest: Record<string, unknown> = {};
-  for (const k of Object.keys(raw)) if (k !== 'signature') rest[k] = raw[k];
-  const msg = new TextEncoder().encode(canonMirror(rest));
-  const payload = rest.payload as Record<string, unknown> | undefined;
-  const emb = keyOverride || String((payload && payload.public_key) || rest.public_key || '');
+  if (!raw) return 'unsigned';
+  let sigHex: string | null = null;
+  let msgObj: Record<string, unknown> | null = null;
+  const sig = raw.signature as Record<string, unknown> | string | undefined;
+  if (sig && typeof sig === 'object' && typeof (sig as Record<string, unknown>).sig === 'string' && raw.payload) {
+    if ((sig as Record<string, unknown>).alg !== 'EdDSA') return 'bad';
+    sigHex = (sig as Record<string, unknown>).sig as string;
+    msgObj = raw.payload as Record<string, unknown>;
+  } else if (typeof sig === 'string') {
+    const rest: Record<string, unknown> = {};
+    for (const k of Object.keys(raw)) if (k !== 'signature') rest[k] = raw[k];
+    sigHex = sig;
+    msgObj = rest;
+  } else {
+    return 'unsigned';
+  }
+  const msg = new TextEncoder().encode(canonMirror(msgObj));
+  const payload = (raw.payload || {}) as Record<string, unknown>;
+  const emb = keyOverride || String(payload.public_key || raw.public_key || '');
   if (!/^[0-9a-f]{64}$/i.test(emb)) return 'nokey';
   try {
-    return ed25519.verify(hexToBytes(raw.signature as string), msg, hexToBytes(emb)) ? 'ok' : 'bad';
+    return ed25519.verify(hexToBytes(sigHex), msg, hexToBytes(emb)) ? 'ok' : 'bad';
   } catch {
     return 'bad';
   }

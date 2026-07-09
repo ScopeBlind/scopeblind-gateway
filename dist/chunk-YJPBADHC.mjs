@@ -1,6 +1,6 @@
 import {
   buildEnrichment
-} from "./chunk-WWPQNIVF.mjs";
+} from "./chunk-KRKZ2YX7.mjs";
 import {
   ReceiptBuffer,
   buildActionReadback,
@@ -12,12 +12,15 @@ import {
   loadPolicy,
   parseRateLimit,
   signDecision
-} from "./chunk-G6X763MH.mjs";
+} from "./chunk-5AYAOZ34.mjs";
 import {
   evaluateCedar,
   isCedarAvailable,
   loadCedarPolicies
-} from "./chunk-MWXDXYWH.mjs";
+} from "./chunk-FGCNKEEW.mjs";
+import {
+  receiptHash
+} from "./chunk-XOP3PEBM.mjs";
 
 // src/hook-server.ts
 import { createServer } from "http";
@@ -181,6 +184,16 @@ var DEFAULT_PORT = 9377;
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE = ".protect-mcp-receipts.jsonl";
 var PAYLOAD_HASH_THRESHOLD = 1024;
+function resumeReceiptChain(receiptFilePath) {
+  try {
+    if (!existsSync(receiptFilePath)) return null;
+    const lines = readFileSync(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+    if (lines.length === 0) return null;
+    return receiptHash(JSON.parse(lines[lines.length - 1]));
+  } catch {
+    return null;
+  }
+}
 function detectSwarmContext() {
   const teamName = process.env.CLAUDE_CODE_TEAM_NAME;
   const agentId = process.env.CLAUDE_CODE_AGENT_ID;
@@ -683,10 +696,11 @@ function emitDecisionLog(state, entry) {
   } catch {
   }
   if (isSigningEnabled()) {
-    const signed = signDecision(log);
+    const signed = signDecision(log, state.lastReceiptHash || void 0);
     if (signed.signed) {
       try {
         appendFileSync(state.receiptFilePath, signed.signed + "\n");
+        if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
       } catch {
       }
       state.receiptBuffer.add(log.request_id, signed.signed);
@@ -701,16 +715,19 @@ function emitDecisionLog(state, entry) {
 `);
       }
     } else if (signed.error) {
-      const tombstone = JSON.stringify({
+      const tombstoneObj = {
         type: "scopeblind.signing_failure.v1",
         request_id: log.request_id,
         tool: log.tool,
         decision: log.decision,
         error: signed.error,
-        at: new Date(log.timestamp).toISOString()
-      });
+        at: new Date(log.timestamp).toISOString(),
+        ...state.lastReceiptHash ? { previousReceiptHash: state.lastReceiptHash } : {}
+      };
+      const tombstone = JSON.stringify(tombstoneObj);
       try {
         appendFileSync(state.receiptFilePath, tombstone + "\n");
+        state.lastReceiptHash = receiptHash(tombstoneObj);
       } catch {
       }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
@@ -826,6 +843,7 @@ async function startHookServer(options = {}) {
     policyDigest,
     logFilePath: join(process.cwd(), LOG_FILE),
     receiptFilePath: join(process.cwd(), RECEIPTS_FILE),
+    lastReceiptHash: resumeReceiptChain(join(process.cwd(), RECEIPTS_FILE)),
     permissionSuggestions: /* @__PURE__ */ new Map(),
     configAlerts: []
   };

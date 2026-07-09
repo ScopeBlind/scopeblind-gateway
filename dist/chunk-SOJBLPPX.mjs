@@ -1,3 +1,7 @@
+import {
+  receiptIdentity
+} from "./chunk-XOP3PEBM.mjs";
+
 // src/report.ts
 import { readFileSync, existsSync } from "fs";
 function generateReport(logPath, receiptPath, periodDays) {
@@ -34,8 +38,9 @@ function generateReport(logPath, receiptPath, periodDays) {
         const parsed = JSON.parse(trimmed);
         if (parsed.signature) {
           receiptsSigned++;
-          if (parsed.kid && !signerKid) signerKid = parsed.kid;
-          if (parsed.issuer && !signerIssuer) signerIssuer = parsed.issuer;
+          const identity = receiptIdentity(parsed);
+          if (identity.kid && !signerKid) signerKid = identity.kid;
+          if (identity.issuer && !signerIssuer) signerIssuer = identity.issuer;
         }
       } catch {
       }

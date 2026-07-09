@@ -1,20 +1,12 @@
 import {
   canonicalJson
-} from "./chunk-WWPQNIVF.mjs";
-import {
-  sha256
-} from "./chunk-AYNQIEN7.mjs";
-import {
-  ed25519
-} from "./chunk-FFVJL3KQ.mjs";
-import "./chunk-JIDDQUSQ.mjs";
-import {
-  bytesToHex,
-  hexToBytes
-} from "./chunk-D733KAPG.mjs";
+} from "./chunk-KRKZ2YX7.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/claim.ts
+import { sha256 } from "@noble/hashes/sha256";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
+import { ed25519 } from "@noble/curves/ed25519";
 var CLAIM_TYPE = "scopeblind.claim.v1";
 function sha256Hex(input) {
   const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;

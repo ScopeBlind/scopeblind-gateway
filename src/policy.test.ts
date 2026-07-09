@@ -29,8 +29,7 @@ describe('loadPolicy', () => {
     expect(policy.tools).toBeDefined();
     expect(policy.tools['file_write']).toEqual({ block: true });
     expect(policy.tools['*']).toEqual({ rate_limit: '10/minute' });
-    expect(digest).toHaveLength(16);
-    expect(/^[a-f0-9]{16}$/.test(digest)).toBe(true);
+    expect(digest).toMatch(/^sha256:[0-9a-f]{64}$/); // acta-policy-digest-v1
   });
 
   it('produces deterministic digest regardless of key order', () => {

@@ -602,7 +602,7 @@ declare function meetsMinTier(actual: TrustTier, required: TrustTier): boolean;
 interface CedarPolicySet {
     /** Raw concatenated Cedar source */
     source: string;
-    /** SHA-256 digest of the sorted, concatenated policy source */
+    /** "sha256:<64 hex>" under acta-policy-digest-v1 (see policy-digest.ts) */
     digest: string;
     /** Number of individual .cedar files loaded */
     fileCount: number;
@@ -892,17 +892,23 @@ declare function validateCredentials(credentials: Record<string, CredentialConfi
  */
 declare function initSigning(config: SigningConfig | undefined): Promise<string[]>;
 /**
- * Sign a decision log entry as a v2 artifact.
+ * Sign a decision log entry as a draft-02 Acta receipt envelope
+ * ({ payload, signature: { alg, kid, sig } }), signed over the JCS bytes of
+ * payload directly per draft s5.6.
  *
- * Returns the signed artifact JSON string, or null if signing is not configured.
- * On signing failure, returns an unsigned artifact with a warning.
+ * Returns the signed envelope JSON string, or null if signing is not
+ * configured. On signing failure, returns an unsigned result with a warning.
  *
- * @standard RFC 8032 (Ed25519), RFC 8785 (JCS)
+ * @param prevReceiptHash - Optional s5.7 chain link: the receiptHash of the
+ *   previous line in the receipt log this envelope will be appended to.
+ *
+ * @standard draft-farley-acta-signed-receipts-02, RFC 8032 (Ed25519), RFC 8785 (JCS)
  */
-declare function signDecision(entry: DecisionLog): {
+declare function signDecision(entry: DecisionLog, prevReceiptHash?: string): {
     ok: boolean;
     signed: string | null;
     artifact_type: string;
+    receipt_hash?: string;
     warning?: string;
     error?: string;
 };
@@ -922,6 +928,89 @@ declare function getSignerInfo(): {
  * @standard RFC 8032 (Ed25519), RFC 8785 (JCS)
  */
 declare function isSigningEnabled(): boolean;
+
+/**
+ * @scopeblind/protect-mcp — Acta draft-02 receipt envelope
+ *
+ * Implements the signed-receipt envelope from draft-farley-acta-signed-receipts-02:
+ *
+ *   { "payload": { "type", "issued_at", "issuer_id", ... },
+ *     "signature": { "alg": "EdDSA", "kid", "sig" } }
+ *
+ * Conformance points (section references are to the published draft-02 text):
+ *  - s2.1/s2.1.1: two-field envelope; alg "EdDSA" is mandatory-to-implement;
+ *    sig is 128 lowercase hex chars; kid RECOMMENDED format
+ *    sb:issuer:<first 12 Base58 chars of the Ed25519 public key>.
+ *  - s2.2: payload common fields type / issued_at / issuer_id, and issuer_id
+ *    MUST match signature.kid.
+ *  - s4.1/s5.6: the signature covers the JCS-canonical bytes of payload
+ *    directly (PureEdDSA, no intermediate hash).
+ *  - s5.7: previousReceiptHash is the bare lowercase hex SHA-256 of the JCS
+ *    bytes of the predecessor's ENTIRE envelope, signature included.
+ *
+ * Verification is dual-shape: envelopes produced by protect-mcp <= 0.9.x
+ * (flat v1 artifacts and structured v2 artifacts with a top-level signature
+ * string) continue to verify, so receipt logs written before the migration
+ * remain checkable with the same tooling.
+ */
+/** The receipt envelope shape a verification resolved to. */
+type ReceiptShape = 'acta-02' | 'legacy-v2' | 'legacy-v1';
+interface ActaSignature {
+    alg: 'EdDSA';
+    kid: string;
+    sig: string;
+}
+interface ActaEnvelope {
+    payload: Record<string, unknown>;
+    signature: ActaSignature;
+}
+/**
+ * s5.7 chain hash: lowercase hex SHA-256 over the JCS bytes of the object
+ * exactly as written (for a signed envelope, signature included). Applied
+ * uniformly to any receipt-log line (including legacy envelopes and signing
+ * tombstones) so a chain can span the migration boundary.
+ */
+declare function receiptHash(obj: unknown): string;
+/**
+ * s2.1.1 RECOMMENDED kid format: sb:issuer:<first 12 Base58 chars of the
+ * Ed25519 public key>. Existing key files that carry an explicit kid keep it
+ * (kid is an opaque string per the draft); this is the default for new keys.
+ */
+declare function computeSbIssuerKid(publicKeyHex: string): string;
+/**
+ * Create a signed draft-02 receipt envelope.
+ *
+ * The caller provides the payload fields (including `type`); issued_at and
+ * issuer_id are filled in if absent, and issuer_id is forced to equal kid
+ * per s2.2.
+ */
+declare function createReceiptEnvelope(fields: Record<string, unknown> & {
+    type: string;
+}, privateKeyHex: string, kid: string, issuedAt?: string): {
+    envelope: ActaEnvelope;
+    hash: string;
+};
+/**
+ * Verify a receipt envelope of any shape this stack has ever emitted.
+ *
+ *  - acta-02: signature is an object; verify sig over JCS(payload). Only
+ *    "EdDSA" is accepted (s2.1.1 MTI; this implementation supports no other).
+ *  - legacy (v1 flat / v2 structured): signature is a top-level string;
+ *    verify over JCS(envelope minus signature), exactly as
+ *    @veritasacta/artifacts <= 0.2.x did.
+ */
+declare function verifyReceipt(envelope: unknown, publicKeyHex: string): {
+    valid: boolean;
+    shape: ReceiptShape | null;
+    hash?: string;
+    error?: string;
+};
+/** Extract kid/issuer identity from any envelope shape, for display paths. */
+declare function receiptIdentity(envelope: unknown): {
+    kid: string | null;
+    issuer: string | null;
+    type: string | null;
+};
 
 /**
  * A Merkle inclusion proof for a single leaf.
@@ -3191,4 +3280,4 @@ declare function getScopeBlindBridge(): ScopeBlindBridge;
 /** Convenience: forward a signed receipt without instantiating yourself. */
 declare function forwardReceipt(signedReceipt: any): void;
 
-export { type ActionReceipt, type AdmissionResult, type AgentId, type AgentManifest, type ApprovalAssertion, type ApprovalChallenge, type ApprovalNotification, type ApprovalResult, type ArenaPayload, type ArenaReceipt, type AttestationDocument, type AttestationPayload, type AttestationProvider, type AttestationReceipt, type AttestationResult, type AuditBundle, type AuditBundleOptions, type BenchmarkPayload, type BenchmarkReceipt, type BuilderId, type C2PAAssertion, type C2PAIngredient, type C2PAManifest, type C2PAOptions, type CCRConnectorConfig, type CCRSessionContext, CONNECTOR_PILOTS, type CalibrationScore, type CedarEvalOptions, type CedarEvalRequest, type CedarPolicySet, type CedarSchema, type CedarSchemaResult, type CommittedFieldOpening, type CommittedSignResult, type ComplianceReport, ConfidentialGate, type ConfidentialGateConfig, type ConfidentialInferenceConfig, type ConnectorAction, type ConnectorEnvVar, type ConnectorPilot, type ConnectorPilotId, type CredentialConfig, type DecisionContext, type DecisionLog, type DelegationReceipt, type DisclosureMode, type Ed25519PublicKey, type EvidenceAttestation, type EvidenceAttestationInput, type EvidenceIssuer, type EvidenceReceipt, type EvidenceReceiptBase, type EvidenceSummary, type EvidenceSummaryEntry, type EvidenceType, type ExternalDecision, type ExternalPDPConfig, type HFDatasetMetadata, type HFReceiptRow, type HookEventName, type HookInput, type HookResponse, type InstalledConnectorPilot, type IssuerType, type JsonRpcRequest, type JsonRpcResponse, type LeaseCompatibility, type ManifestBuilder, type ManifestCapabilities, type ManifestConfig, type ManifestIdentity, type ManifestPresentation, type ManifestSignature, type ManifestStatus, type McpToolDescription, type MinimalDisclosure, type NotificationConfig, POLICY_PACKS, type PassportTokenClaims, type PayloadDigest, type PlanReceipt, type PolicyEngineMode, type PolicyPack, type PredictionReceipt, type PredictionResolution, type PropagatorConfig, type ProtectConfig, ProtectGateway, type ProtectPolicy, type RateLimit, ReceiptPropagator, type RedactedResult, type RedactionSalt, type RekorAnchor, type RekorVerification, type RestraintPayload, type RestraintReceipt, type SHA256Hash, type SafetyTranscript, type Sandbox, type SandboxConfig, type SandboxReceipt, type SandboxResult, type SandboxToolCall, type SchemaGeneratorConfig, ScopeBlindBridge, type SelectiveDisclosurePackageV0, type SelectiveDisclosureVerification, type SelfTestCase, type SelfTestReport, type SigningConfig, type SimulationResult, type SimulationSummary, type SwarmContext, type TierOverrides, type TimingMetrics, type ToolPolicy, type TrustTier, type WorkPayload, type WorkReceipt, anchorToRekor, buildDecisionContext, checkRateLimit, collectSignedReceipts, computeCalibration, confidentialInference, connectorDirectory, connectorDoctor, connectorPilotIds, createApprovalChallenge, createApprovalReceiptPayload, createAttestationField, createAuditBundle, createC2PAManifest, createDisclosurePackage, createEvidenceAttestation, createLogAnchorField, createReceiptChannel, createSandbox, createSelectiveDisclosurePackage, destroySandbox, discloseField, ed25519ToDIDKey, evaluateCedar, evaluateTier, exportC2PAManifestJSON, exportJSONL, formatReportMarkdown, formatSimulation, forwardReceipt, generateC2PACommand, generateCedarSchema, generateDatasetCard, generateHFMetadata, generateReport, generateSafetyTranscript, generateSchemaStub, getConnectorPilot, getPolicyPack, getScopeBlindBridge, getSignerInfo, getToolPolicy, hashReceipt, hashResponseBody, initSigning, isAgentId, isCedarAvailable, isDisclosureMode, isEvidenceType, isManifestStatus, isSigningEnabled, listCredentialLabels, loadCedarPolicies, loadPolicy, manifestToVC, meetsMinTier, parseLogFile, parseNotificationConfigFromEnv, parseRateLimit, policyPackIds, policySetFromSource, queryExternalPDP, readInstalledConnectorPilots, receiptToVP, receiptsToHFRows, redactFields, resolveCredential, revealField, runEvaluatorSelfTest, runInSandbox, sendApprovalNotification, signCommittedDecision, signDecision, simulate, toCredentialRequestOptions, toManifoldFormat, toMetaculusFormat, validateCredentials, validateEvidenceReceipt, validateManifest, verifyActaC2PAAssertions, verifyAllCommitments, verifyApprovalAssertion, verifyCommitment, verifyEvidenceAttestation, verifyRekorAnchor, verifySelectiveDisclosurePackage, writeConnectorPilots };
+export { type ActaEnvelope, type ActaSignature, type ActionReceipt, type AdmissionResult, type AgentId, type AgentManifest, type ApprovalAssertion, type ApprovalChallenge, type ApprovalNotification, type ApprovalResult, type ArenaPayload, type ArenaReceipt, type AttestationDocument, type AttestationPayload, type AttestationProvider, type AttestationReceipt, type AttestationResult, type AuditBundle, type AuditBundleOptions, type BenchmarkPayload, type BenchmarkReceipt, type BuilderId, type C2PAAssertion, type C2PAIngredient, type C2PAManifest, type C2PAOptions, type CCRConnectorConfig, type CCRSessionContext, CONNECTOR_PILOTS, type CalibrationScore, type CedarEvalOptions, type CedarEvalRequest, type CedarPolicySet, type CedarSchema, type CedarSchemaResult, type CommittedFieldOpening, type CommittedSignResult, type ComplianceReport, ConfidentialGate, type ConfidentialGateConfig, type ConfidentialInferenceConfig, type ConnectorAction, type ConnectorEnvVar, type ConnectorPilot, type ConnectorPilotId, type CredentialConfig, type DecisionContext, type DecisionLog, type DelegationReceipt, type DisclosureMode, type Ed25519PublicKey, type EvidenceAttestation, type EvidenceAttestationInput, type EvidenceIssuer, type EvidenceReceipt, type EvidenceReceiptBase, type EvidenceSummary, type EvidenceSummaryEntry, type EvidenceType, type ExternalDecision, type ExternalPDPConfig, type HFDatasetMetadata, type HFReceiptRow, type HookEventName, type HookInput, type HookResponse, type InstalledConnectorPilot, type IssuerType, type JsonRpcRequest, type JsonRpcResponse, type LeaseCompatibility, type ManifestBuilder, type ManifestCapabilities, type ManifestConfig, type ManifestIdentity, type ManifestPresentation, type ManifestSignature, type ManifestStatus, type McpToolDescription, type MinimalDisclosure, type NotificationConfig, POLICY_PACKS, type PassportTokenClaims, type PayloadDigest, type PlanReceipt, type PolicyEngineMode, type PolicyPack, type PredictionReceipt, type PredictionResolution, type PropagatorConfig, type ProtectConfig, ProtectGateway, type ProtectPolicy, type RateLimit, ReceiptPropagator, type ReceiptShape, type RedactedResult, type RedactionSalt, type RekorAnchor, type RekorVerification, type RestraintPayload, type RestraintReceipt, type SHA256Hash, type SafetyTranscript, type Sandbox, type SandboxConfig, type SandboxReceipt, type SandboxResult, type SandboxToolCall, type SchemaGeneratorConfig, ScopeBlindBridge, type SelectiveDisclosurePackageV0, type SelectiveDisclosureVerification, type SelfTestCase, type SelfTestReport, type SigningConfig, type SimulationResult, type SimulationSummary, type SwarmContext, type TierOverrides, type TimingMetrics, type ToolPolicy, type TrustTier, type WorkPayload, type WorkReceipt, anchorToRekor, buildDecisionContext, checkRateLimit, collectSignedReceipts, computeCalibration, computeSbIssuerKid, confidentialInference, connectorDirectory, connectorDoctor, connectorPilotIds, createApprovalChallenge, createApprovalReceiptPayload, createAttestationField, createAuditBundle, createC2PAManifest, createDisclosurePackage, createEvidenceAttestation, createLogAnchorField, createReceiptChannel, createReceiptEnvelope, createSandbox, createSelectiveDisclosurePackage, destroySandbox, discloseField, ed25519ToDIDKey, evaluateCedar, evaluateTier, exportC2PAManifestJSON, exportJSONL, formatReportMarkdown, formatSimulation, forwardReceipt, generateC2PACommand, generateCedarSchema, generateDatasetCard, generateHFMetadata, generateReport, generateSafetyTranscript, generateSchemaStub, getConnectorPilot, getPolicyPack, getScopeBlindBridge, getSignerInfo, getToolPolicy, hashReceipt, hashResponseBody, initSigning, isAgentId, isCedarAvailable, isDisclosureMode, isEvidenceType, isManifestStatus, isSigningEnabled, listCredentialLabels, loadCedarPolicies, loadPolicy, manifestToVC, meetsMinTier, parseLogFile, parseNotificationConfigFromEnv, parseRateLimit, policyPackIds, policySetFromSource, queryExternalPDP, readInstalledConnectorPilots, receiptHash, receiptIdentity, receiptToVP, receiptsToHFRows, redactFields, resolveCredential, revealField, runEvaluatorSelfTest, runInSandbox, sendApprovalNotification, signCommittedDecision, signDecision, simulate, toCredentialRequestOptions, toManifoldFormat, toMetaculusFormat, validateCredentials, validateEvidenceReceipt, validateManifest, verifyActaC2PAAssertions, verifyAllCommitments, verifyApprovalAssertion, verifyCommitment, verifyEvidenceAttestation, verifyReceipt, verifyRekorAnchor, verifySelectiveDisclosurePackage, writeConnectorPilots };
