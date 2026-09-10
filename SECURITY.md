@@ -6,9 +6,9 @@ This policy covers the `protect-mcp` npm package.
 
 | Version | Supported |
 |---------|-----------|
-| >= 0.7.0 | Yes |
-| 0.6.x | No, upgrade |
-| 0.5.x | No, upgrade |
+| >= 0.13.1 | Yes |
+| 0.7.0 to 0.13.0 | No, upgrade. On Node 18 and 20 the Cedar engine did not load and every evaluation was a fail-closed deny (fixed in 0.13.1). |
+| < 0.7.0 | No, upgrade. Failed open on evaluation errors. |
 
 ## Affected versions
 
