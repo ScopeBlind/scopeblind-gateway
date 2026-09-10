@@ -4473,14 +4473,14 @@ var require_util2 = __commonJS({
     }
     function randomString(length = 10) {
       const chars = "abcdefghijklmnopqrstuvwxyz";
-      let str = "";
+      let str2 = "";
       for (let i = 0; i < length; i++) {
-        str += chars[Math.floor(Math.random() * chars.length)];
+        str2 += chars[Math.floor(Math.random() * chars.length)];
       }
-      return str;
+      return str2;
     }
-    function esc(str) {
-      return JSON.stringify(str);
+    function esc(str2) {
+      return JSON.stringify(str2);
     }
     function slugify(input) {
       return input.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -4581,8 +4581,8 @@ var require_util2 = __commonJS({
     exports2.getParsedType = getParsedType;
     exports2.propertyKeyTypes = /* @__PURE__ */ new Set(["string", "number", "symbol"]);
     exports2.primitiveTypes = /* @__PURE__ */ new Set(["string", "number", "bigint", "boolean", "symbol", "undefined"]);
-    function escapeRegex(str) {
-      return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    function escapeRegex(str2) {
+      return str2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     }
     function clone(inst, def, params) {
       const cl = new inst._zod.constr(def ?? inst._zod.def);
@@ -23438,23 +23438,23 @@ var require_types2 = __commonJS({
       exports2.CreateTaskResultSchema
     ]);
     var McpError = class _McpError extends Error {
-      constructor(code, message, data) {
-        super(`MCP error ${code}: ${message}`);
-        this.code = code;
+      constructor(code2, message, data) {
+        super(`MCP error ${code2}: ${message}`);
+        this.code = code2;
         this.data = data;
         this.name = "McpError";
       }
       /**
        * Factory method to create the appropriate error type based on the error code and data
        */
-      static fromError(code, message, data) {
-        if (code === ErrorCode.UrlElicitationRequired && data) {
+      static fromError(code2, message, data) {
+        if (code2 === ErrorCode.UrlElicitationRequired && data) {
           const errorData = data;
           if (errorData.elicitations) {
             return new UrlElicitationRequiredError(errorData.elicitations, message);
           }
         }
-        return new _McpError(code, message, data);
+        return new _McpError(code2, message, data);
       }
     };
     exports2.McpError = McpError;
@@ -25817,7 +25817,7 @@ var require_protocol = __commonJS({
               return;
             }
             const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-            await new Promise((resolve) => setTimeout(resolve, pollInterval));
+            await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
             options?.signal?.throwIfAborted();
           }
         } catch (error) {
@@ -25834,7 +25834,7 @@ var require_protocol = __commonJS({
        */
       request(request, resultSchema, options) {
         const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve2, reject) => {
           const earlyReject = (error) => {
             reject(error);
           };
@@ -25912,7 +25912,7 @@ var require_protocol = __commonJS({
               if (!parseResult.success) {
                 reject(parseResult.error);
               } else {
-                resolve(parseResult.data);
+                resolve2(parseResult.data);
               }
             } catch (error) {
               reject(error);
@@ -26173,12 +26173,12 @@ var require_protocol = __commonJS({
           }
         } catch {
         }
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve2, reject) => {
           if (signal.aborted) {
             reject(new types_js_1.McpError(types_js_1.ErrorCode.InvalidRequest, "Request cancelled"));
             return;
           }
-          const timeoutId = setTimeout(resolve, interval);
+          const timeoutId = setTimeout(resolve2, interval);
           signal.addEventListener("abort", () => {
             clearTimeout(timeoutId);
             reject(new types_js_1.McpError(types_js_1.ErrorCode.InvalidRequest, "Request cancelled"));
@@ -26303,9 +26303,9 @@ var require_code = __commonJS({
     };
     exports2.Name = Name;
     var _Code = class extends _CodeOrName {
-      constructor(code) {
+      constructor(code2) {
         super();
-        this._items = typeof code === "string" ? [code] : code;
+        this._items = typeof code2 === "string" ? [code2] : code2;
       }
       toString() {
         return this.str;
@@ -26332,17 +26332,17 @@ var require_code = __commonJS({
     exports2._Code = _Code;
     exports2.nil = new _Code("");
     function _(strs, ...args) {
-      const code = [strs[0]];
+      const code2 = [strs[0]];
       let i = 0;
       while (i < args.length) {
-        addCodeArg(code, args[i]);
-        code.push(strs[++i]);
+        addCodeArg(code2, args[i]);
+        code2.push(strs[++i]);
       }
-      return new _Code(code);
+      return new _Code(code2);
     }
     exports2._ = _;
     var plus = new _Code("+");
-    function str(strs, ...args) {
+    function str2(strs, ...args) {
       const expr = [safeStringify(strs[0])];
       let i = 0;
       while (i < args.length) {
@@ -26353,14 +26353,14 @@ var require_code = __commonJS({
       optimize(expr);
       return new _Code(expr);
     }
-    exports2.str = str;
-    function addCodeArg(code, arg) {
+    exports2.str = str2;
+    function addCodeArg(code2, arg) {
       if (arg instanceof _Code)
-        code.push(...arg._items);
+        code2.push(...arg._items);
       else if (arg instanceof Name)
-        code.push(arg);
+        code2.push(arg);
       else
-        code.push(interpolate(arg));
+        code2.push(interpolate(arg));
     }
     exports2.addCodeArg = addCodeArg;
     function optimize(expr) {
@@ -26396,7 +26396,7 @@ var require_code = __commonJS({
       return;
     }
     function strConcat(c1, c2) {
-      return c2.emptyStr() ? c1 : c1.emptyStr() ? c2 : str`${c1}${c2}`;
+      return c2.emptyStr() ? c1 : c1.emptyStr() ? c2 : str2`${c1}${c2}`;
     }
     exports2.strConcat = strConcat;
     function interpolate(x) {
@@ -26544,7 +26544,7 @@ var require_scope = __commonJS({
         }, usedValues, getCode);
       }
       _reduceValues(values, valueCode, usedValues = {}, getCode) {
-        let code = code_1.nil;
+        let code2 = code_1.nil;
         for (const prefix in values) {
           const vs = values[prefix];
           if (!vs)
@@ -26557,16 +26557,16 @@ var require_scope = __commonJS({
             let c = valueCode(name);
             if (c) {
               const def = this.opts.es5 ? exports2.varKinds.var : exports2.varKinds.const;
-              code = (0, code_1._)`${code}${def} ${name} = ${c};${this.opts._n}`;
+              code2 = (0, code_1._)`${code2}${def} ${name} = ${c};${this.opts._n}`;
             } else if (c = getCode === null || getCode === void 0 ? void 0 : getCode(name)) {
-              code = (0, code_1._)`${code}${c}${this.opts._n}`;
+              code2 = (0, code_1._)`${code2}${c}${this.opts._n}`;
             } else {
               throw new ValueError(name);
             }
             nameSet.set(name, UsedValueState.Completed);
           });
         }
-        return code;
+        return code2;
       }
     };
     exports2.ValueScope = ValueScope;
@@ -26726,9 +26726,9 @@ var require_codegen = __commonJS({
       }
     };
     var AnyCode = class extends Node {
-      constructor(code) {
+      constructor(code2) {
         super();
-        this.code = code;
+        this.code = code2;
       }
       render({ _n }) {
         return `${this.code};` + _n;
@@ -26750,7 +26750,7 @@ var require_codegen = __commonJS({
         this.nodes = nodes;
       }
       render(opts) {
-        return this.nodes.reduce((code, n) => code + n.render(opts), "");
+        return this.nodes.reduce((code2, n) => code2 + n.render(opts), "");
       }
       optimizeNodes() {
         const { nodes } = this;
@@ -26798,10 +26798,10 @@ var require_codegen = __commonJS({
         this.condition = condition;
       }
       render(opts) {
-        let code = `if(${this.condition})` + super.render(opts);
+        let code2 = `if(${this.condition})` + super.render(opts);
         if (this.else)
-          code += "else " + this.else.render(opts);
-        return code;
+          code2 += "else " + this.else.render(opts);
+        return code2;
       }
       optimizeNodes() {
         super.optimizeNodes();
@@ -26922,12 +26922,12 @@ var require_codegen = __commonJS({
     Return.kind = "return";
     var Try = class extends BlockNode {
       render(opts) {
-        let code = "try" + super.render(opts);
+        let code2 = "try" + super.render(opts);
         if (this.catch)
-          code += this.catch.render(opts);
+          code2 += this.catch.render(opts);
         if (this.finally)
-          code += this.finally.render(opts);
-        return code;
+          code2 += this.finally.render(opts);
+        return code2;
       }
       optimizeNodes() {
         var _a, _b;
@@ -27044,18 +27044,18 @@ var require_codegen = __commonJS({
       }
       // returns code for object literal for the passed argument list of key-value pairs
       object(...keyValues) {
-        const code = ["{"];
+        const code2 = ["{"];
         for (const [key, value] of keyValues) {
-          if (code.length > 1)
-            code.push(",");
-          code.push(key);
+          if (code2.length > 1)
+            code2.push(",");
+          code2.push(key);
           if (key !== value || this.opts.es5) {
-            code.push(":");
-            (0, code_1.addCodeArg)(code, value);
+            code2.push(":");
+            (0, code_1.addCodeArg)(code2, value);
           }
         }
-        code.push("}");
-        return new code_1._Code(code);
+        code2.push("}");
+        return new code_1._Code(code2);
       }
       // `if` clause (or statement if `thenBody` and, optionally, `elseBody` are passed)
       if(condition, thenBody, elseBody) {
@@ -27358,22 +27358,22 @@ var require_util3 = __commonJS({
       return (0, codegen_1._)`${topSchemaRef}${schemaPath}${(0, codegen_1.getProperty)(keyword)}`;
     }
     exports2.schemaRefOrVal = schemaRefOrVal;
-    function unescapeFragment(str) {
-      return unescapeJsonPointer(decodeURIComponent(str));
+    function unescapeFragment(str2) {
+      return unescapeJsonPointer(decodeURIComponent(str2));
     }
     exports2.unescapeFragment = unescapeFragment;
-    function escapeFragment(str) {
-      return encodeURIComponent(escapeJsonPointer(str));
+    function escapeFragment(str2) {
+      return encodeURIComponent(escapeJsonPointer(str2));
     }
     exports2.escapeFragment = escapeFragment;
-    function escapeJsonPointer(str) {
-      if (typeof str == "number")
-        return `${str}`;
-      return str.replace(/~/g, "~0").replace(/\//g, "~1");
+    function escapeJsonPointer(str2) {
+      if (typeof str2 == "number")
+        return `${str2}`;
+      return str2.replace(/~/g, "~0").replace(/\//g, "~1");
     }
     exports2.escapeJsonPointer = escapeJsonPointer;
-    function unescapeJsonPointer(str) {
-      return str.replace(/~1/g, "/").replace(/~0/g, "~");
+    function unescapeJsonPointer(str2) {
+      return str2.replace(/~1/g, "/").replace(/~0/g, "~");
     }
     exports2.unescapeJsonPointer = unescapeJsonPointer;
     function eachItem(xs, f) {
@@ -28398,8 +28398,8 @@ var require_json_schema_traverse = __commonJS({
         post(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
       }
     }
-    function escapeJsonPtr(str) {
-      return str.replace(/~/g, "~0").replace(/\//g, "~1");
+    function escapeJsonPtr(str2) {
+      return str2.replace(/~/g, "~0").replace(/\//g, "~1");
     }
   }
 });
@@ -29225,7 +29225,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve2.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -29252,7 +29252,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve(root, ref) {
+    function resolve2(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -29350,120 +29350,156 @@ var require_utils = __commonJS({
     "use strict";
     var isUUID = RegExp.prototype.test.bind(/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu);
     var isIPv4 = RegExp.prototype.test.bind(/^(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]\d|\d)$/u);
+    var isPort = RegExp.prototype.test.bind(/^\d*$/u);
+    var isHexPair = RegExp.prototype.test.bind(/^[\da-f]{2}$/iu);
+    var isUnreserved = RegExp.prototype.test.bind(/^[\da-z\-._~]$/iu);
+    var isPathCharacter = RegExp.prototype.test.bind(/^[A-Za-z0-9\-._~!$&'()*+,;=:@/]$/u);
+    var isQueryFragmentCharacter = RegExp.prototype.test.bind(/^[A-Za-z0-9\-._~!$&'()*+,;=:@/?]$/u);
+    var isUserinfoCharacter = RegExp.prototype.test.bind(/^[A-Za-z0-9\-._~!$&'()*+,;=:]$/u);
+    var BYTE_HEX = new Array(256);
+    {
+      const HEX_DIGITS = "0123456789ABCDEF";
+      for (let i = 0; i < 256; i++) {
+        BYTE_HEX[i] = "%" + HEX_DIGITS[i >> 4] + HEX_DIGITS[i & 15];
+      }
+    }
+    function percentEncodeNonAscii(cp) {
+      if (cp < 2048) {
+        return BYTE_HEX[192 | cp >> 6] + BYTE_HEX[128 | cp & 63];
+      }
+      if (cp < 65536) {
+        return BYTE_HEX[224 | cp >> 12] + BYTE_HEX[128 | cp >> 6 & 63] + BYTE_HEX[128 | cp & 63];
+      }
+      return BYTE_HEX[240 | cp >> 18] + BYTE_HEX[128 | cp >> 12 & 63] + BYTE_HEX[128 | cp >> 6 & 63] + BYTE_HEX[128 | cp & 63];
+    }
     function stringArrayToHexStripped(input) {
       let acc = "";
-      let code = 0;
+      let code2 = 0;
       let i = 0;
       for (i = 0; i < input.length; i++) {
-        code = input[i].charCodeAt(0);
-        if (code === 48) {
+        code2 = input[i].charCodeAt(0);
+        if (code2 === 48) {
           continue;
         }
-        if (!(code >= 48 && code <= 57 || code >= 65 && code <= 70 || code >= 97 && code <= 102)) {
+        if (!(code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 70 || code2 >= 97 && code2 <= 102)) {
           return "";
         }
         acc += input[i];
         break;
       }
       for (i += 1; i < input.length; i++) {
-        code = input[i].charCodeAt(0);
-        if (!(code >= 48 && code <= 57 || code >= 65 && code <= 70 || code >= 97 && code <= 102)) {
+        code2 = input[i].charCodeAt(0);
+        if (!(code2 >= 48 && code2 <= 57 || code2 >= 65 && code2 <= 70 || code2 >= 97 && code2 <= 102)) {
           return "";
         }
         acc += input[i];
       }
       return acc;
     }
+    var isHextet = RegExp.prototype.test.bind(/^[\dA-Fa-f]{1,4}$/);
+    var isIPvFuture = RegExp.prototype.test.bind(/^[vV][\dA-Fa-f]+\.[A-Za-z\d\-._~!$&'()*+,;=:]+$/);
+    var isZoneCharacter = RegExp.prototype.test.bind(/^[A-Za-z\d\-._~]$/);
     var nonSimpleDomain = RegExp.prototype.test.bind(/[^!"$&'()*+,\-.;=_`a-z{}~]/u);
-    function consumeIsZone(buffer) {
-      buffer.length = 0;
-      return true;
-    }
-    function consumeHextets(buffer, address, output) {
-      if (buffer.length) {
-        const hex = stringArrayToHexStripped(buffer);
-        if (hex !== "") {
-          address.push(hex);
-        } else {
-          output.error = true;
-          return false;
+    function isZoneIdentifier(zone) {
+      if (zone.length === 0) return false;
+      for (let i = 0; i < zone.length; i++) {
+        if (isZoneCharacter(zone[i])) continue;
+        if (zone[i] === "%" && i + 2 < zone.length && isHexPair(zone.slice(i + 1, i + 3))) {
+          i += 2;
+          continue;
         }
-        buffer.length = 0;
+        return false;
       }
       return true;
     }
-    function getIPV6(input) {
-      let tokenCount = 0;
-      const output = { error: false, address: "", zone: "" };
-      const address = [];
-      const buffer = [];
-      let endipv6Encountered = false;
-      let endIpv6 = false;
-      let consume = consumeHextets;
-      for (let i = 0; i < input.length; i++) {
-        const cursor = input[i];
-        if (cursor === "[" || cursor === "]") {
-          continue;
-        }
-        if (cursor === ":") {
-          if (endipv6Encountered === true) {
-            endIpv6 = true;
+    function compressIPv6ZeroRun(hextets) {
+      let bestStart = -1;
+      let bestLength = 0;
+      let runStart = -1;
+      let runLength = 0;
+      for (let i = 0; i < hextets.length; i++) {
+        if (hextets[i] === "0") {
+          if (runStart === -1) runStart = i;
+          runLength++;
+          if (runLength > bestLength) {
+            bestLength = runLength;
+            bestStart = runStart;
           }
-          if (!consume(buffer, address, output)) {
-            break;
-          }
-          if (++tokenCount > 7) {
-            output.error = true;
-            break;
-          }
-          if (i > 0 && input[i - 1] === ":") {
-            endipv6Encountered = true;
-          }
-          address.push(":");
-          continue;
-        } else if (cursor === "%") {
-          if (!consume(buffer, address, output)) {
-            break;
-          }
-          consume = consumeIsZone;
         } else {
-          buffer.push(cursor);
-          continue;
+          runStart = -1;
+          runLength = 0;
         }
       }
-      if (buffer.length) {
-        if (consume === consumeIsZone) {
-          output.zone = buffer.join("");
-        } else if (endIpv6) {
-          address.push(buffer.join(""));
-        } else {
-          address.push(stringArrayToHexStripped(buffer));
-        }
+      if (bestLength < 2) return hextets.join(":");
+      const head = hextets.slice(0, bestStart).join(":");
+      const tail = hextets.slice(bestStart + bestLength).join(":");
+      return head + "::" + tail;
+    }
+    function normalizeIPv6Address(input) {
+      const compression = input.indexOf("::");
+      if (compression !== -1 && input.indexOf("::", compression + 1) !== -1) return void 0;
+      const left = compression === -1 ? input.split(":") : input.slice(0, compression).split(":");
+      const right = compression === -1 ? [] : input.slice(compression + 2).split(":");
+      if (compression !== -1) {
+        if (left.length === 1 && left[0] === "") left.length = 0;
+        if (right.length === 1 && right[0] === "") right.length = 0;
       }
-      output.address = address.join("");
-      return output;
+      const parts = left.concat(right);
+      let hextetCount = 0;
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (part === "") return void 0;
+        if (part.indexOf(".") !== -1) {
+          if (i !== parts.length - 1 || compression !== -1 && right.length === 0 || !isIPv4(part)) return void 0;
+          hextetCount += 2;
+          continue;
+        }
+        if (!isHextet(part)) return void 0;
+        parts[i] = parseInt(part, 16).toString(16);
+        hextetCount++;
+      }
+      if (compression === -1) {
+        if (hextetCount !== 8) return void 0;
+        return compressIPv6ZeroRun(parts);
+      }
+      if (hextetCount >= 8) return void 0;
+      const expanded = parts.slice(0, left.length);
+      for (let i = hextetCount; i < 8; i++) expanded.push("0");
+      for (let i = left.length; i < parts.length; i++) expanded.push(parts[i]);
+      return compressIPv6ZeroRun(expanded);
     }
     function normalizeIPv6(host) {
-      if (findToken(host, ":") < 2) {
-        return { host, isIPV6: false };
+      const bracketed = host[0] === "[" && host[host.length - 1] === "]";
+      const hasBracket = host[0] === "[" || host[host.length - 1] === "]";
+      if (hasBracket && !bracketed) return { host, isIPV6: false, error: true };
+      let input = bracketed ? host.slice(1, -1) : host;
+      if (bracketed && isIPvFuture(input)) {
+        input = input.toLowerCase();
+        return { host: `[${input}]`, escapedHost: input, isIPV6: false, isIPVFuture: true };
       }
-      const ipv6 = getIPV6(host);
-      if (!ipv6.error) {
-        let newHost = ipv6.address;
-        let escapedHost = ipv6.address;
-        if (ipv6.zone) {
-          newHost += "%" + ipv6.zone;
-          escapedHost += "%25" + ipv6.zone;
-        }
-        return { host: newHost, isIPV6: true, escapedHost };
-      } else {
-        return { host, isIPV6: false };
+      if (findToken(input, ":") < 2) {
+        return { host, isIPV6: false, error: bracketed };
       }
+      let zoneIdentifier = "";
+      const zoneSeparator = input.indexOf("%");
+      if (zoneSeparator !== -1) {
+        const separatorLength = input.slice(zoneSeparator, zoneSeparator + 3).toLowerCase() === "%25" ? 3 : 1;
+        zoneIdentifier = input.slice(zoneSeparator + separatorLength);
+        if (!isZoneIdentifier(zoneIdentifier)) return { host, isIPV6: false, error: true };
+        input = input.slice(0, zoneSeparator);
+      }
+      const address = normalizeIPv6Address(input);
+      if (address === void 0) return { host, isIPV6: false, error: true };
+      return {
+        host: address + (zoneIdentifier ? "%" + zoneIdentifier : ""),
+        escapedHost: address + (zoneIdentifier ? "%25" + zoneIdentifier : ""),
+        isIPV6: true
+      };
     }
-    function findToken(str, token) {
+    function findToken(str2, token) {
       let ind = 0;
-      for (let i = 0; i < str.length; i++) {
-        if (str[i] === token) ind++;
+      for (let i = 0; i < str2.length; i++) {
+        if (str2[i] === token) ind++;
       }
       return ind;
     }
@@ -29542,56 +29578,265 @@ var require_utils = __commonJS({
       }
       return output.join("");
     }
-    function normalizeComponentEncoding(component, esc) {
-      const func = esc !== true ? escape : unescape;
-      if (component.scheme !== void 0) {
-        component.scheme = func(component.scheme);
+    var HOST_DELIMS = { "@": "%40", "/": "%2F", "?": "%3F", "#": "%23", ":": "%3A" };
+    var HOST_DELIM_RE = /[@/?#:]/g;
+    var HOST_DELIM_NO_COLON_RE = /[@/?#]/g;
+    function reescapeHostDelimiters(host, isIP) {
+      const re = isIP ? HOST_DELIM_NO_COLON_RE : HOST_DELIM_RE;
+      re.lastIndex = 0;
+      return host.replace(re, (ch) => HOST_DELIMS[ch]);
+    }
+    function normalizePercentEncoding(input, decodeUnreserved = false) {
+      if (input.indexOf("%") === -1) {
+        return input;
       }
-      if (component.userinfo !== void 0) {
-        component.userinfo = func(component.userinfo);
+      let output = "";
+      for (let i = 0; i < input.length; i++) {
+        if (input[i] === "%" && i + 2 < input.length) {
+          const hex = input.slice(i + 1, i + 3);
+          if (isHexPair(hex)) {
+            const normalizedHex = hex.toUpperCase();
+            const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
+            if (decodeUnreserved && isUnreserved(decoded)) {
+              output += decoded;
+            } else {
+              output += "%" + normalizedHex;
+            }
+            i += 2;
+            continue;
+          }
+        }
+        output += input[i];
       }
-      if (component.host !== void 0) {
-        component.host = func(component.host);
+      return output;
+    }
+    function normalizePathEncoding(input) {
+      let output = "";
+      for (let i = 0; i < input.length; i++) {
+        const ch = input[i];
+        if (ch === "%" && i + 2 < input.length) {
+          const hex = input.slice(i + 1, i + 3);
+          if (isHexPair(hex)) {
+            const normalizedHex = hex.toUpperCase();
+            const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
+            if (decoded !== "." && isUnreserved(decoded)) {
+              output += decoded;
+            } else {
+              output += "%" + normalizedHex;
+            }
+            i += 2;
+            continue;
+          }
+        }
+        if (isPathCharacter(ch)) {
+          output += ch;
+        } else {
+          const code2 = input.charCodeAt(i);
+          if (code2 < 128) {
+            output += isEscapeSafe(code2) ? ch : BYTE_HEX[code2];
+          } else if (code2 < 55296 || code2 > 57343) {
+            output += percentEncodeNonAscii(code2);
+          } else if (code2 <= 56319 && i + 1 < input.length) {
+            const low = input.charCodeAt(i + 1);
+            if (low >= 56320 && low <= 57343) {
+              output += percentEncodeNonAscii(65536 + (code2 - 55296 << 10) + (low - 56320));
+              i++;
+            } else {
+              output += percentEncodeNonAscii(65533);
+            }
+          } else {
+            output += percentEncodeNonAscii(65533);
+          }
+        }
       }
-      if (component.path !== void 0) {
-        component.path = func(component.path);
+      return output;
+    }
+    function serializePathEncoding(input, pathNoScheme = false) {
+      let output = "";
+      let firstSegment = pathNoScheme && input[0] !== "/";
+      for (let i = 0; i < input.length; i++) {
+        const ch = input[i];
+        if (ch === "%" && i + 2 < input.length) {
+          const hex = input.slice(i + 1, i + 3);
+          if (isHexPair(hex)) {
+            output += "%" + hex.toUpperCase();
+            i += 2;
+            continue;
+          }
+        }
+        if (ch === "/") {
+          firstSegment = false;
+        }
+        if (isPathCharacter(ch) && (ch !== ":" || !firstSegment)) {
+          output += ch;
+        } else {
+          const code2 = input.charCodeAt(i);
+          if (code2 < 128) {
+            output += BYTE_HEX[code2];
+          } else if (code2 < 55296 || code2 > 57343) {
+            output += percentEncodeNonAscii(code2);
+          } else if (code2 <= 56319 && i + 1 < input.length) {
+            const low = input.charCodeAt(i + 1);
+            if (low >= 56320 && low <= 57343) {
+              output += percentEncodeNonAscii(65536 + (code2 - 55296 << 10) + (low - 56320));
+              i++;
+            } else {
+              output += percentEncodeNonAscii(65533);
+            }
+          } else {
+            output += percentEncodeNonAscii(65533);
+          }
+        }
       }
-      if (component.query !== void 0) {
-        component.query = func(component.query);
+      return output;
+    }
+    function encodeComponent(input, isAllowed) {
+      let output = "";
+      for (let i = 0; i < input.length; i++) {
+        const ch = input[i];
+        if (ch === "%" && i + 2 < input.length) {
+          const hex = input.slice(i + 1, i + 3);
+          if (isHexPair(hex)) {
+            output += "%" + hex.toUpperCase();
+            i += 2;
+            continue;
+          }
+        }
+        if (isAllowed(ch)) {
+          output += ch;
+        } else {
+          const code2 = input.charCodeAt(i);
+          if (code2 < 128) {
+            output += BYTE_HEX[code2];
+          } else if (code2 < 55296 || code2 > 57343) {
+            output += percentEncodeNonAscii(code2);
+          } else if (code2 <= 56319 && i + 1 < input.length) {
+            const low = input.charCodeAt(i + 1);
+            if (low >= 56320 && low <= 57343) {
+              output += percentEncodeNonAscii(65536 + (code2 - 55296 << 10) + (low - 56320));
+              i++;
+            } else {
+              output += percentEncodeNonAscii(65533);
+            }
+          } else {
+            output += percentEncodeNonAscii(65533);
+          }
+        }
       }
-      if (component.fragment !== void 0) {
-        component.fragment = func(component.fragment);
+      return output;
+    }
+    function encodeUserinfo(input) {
+      return encodeComponent(input, isUserinfoCharacter);
+    }
+    function encodeQuery(input) {
+      return encodeComponent(input, isQueryFragmentCharacter);
+    }
+    function encodeFragment(input) {
+      return encodeComponent(input, isQueryFragmentCharacter);
+    }
+    function isEscapeSafe(cp) {
+      return cp >= 48 && cp <= 57 || cp >= 65 && cp <= 90 || cp >= 97 && cp <= 122 || cp === 42 || cp === 43 || cp === 45 || cp === 46 || cp === 47 || cp === 64 || cp === 95;
+    }
+    function normalizeQueryFragmentEncoding(input) {
+      let output = "";
+      for (let i = 0; i < input.length; i++) {
+        const ch = input[i];
+        if (ch === "%" && i + 2 < input.length) {
+          const hex = input.slice(i + 1, i + 3);
+          if (isHexPair(hex)) {
+            const normalizedHex = hex.toUpperCase();
+            const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
+            if (isUnreserved(decoded)) {
+              output += decoded;
+            } else {
+              output += "%" + normalizedHex;
+            }
+            i += 2;
+            continue;
+          }
+        }
+        if (isQueryFragmentCharacter(ch)) {
+          output += ch;
+        } else {
+          const code2 = input.charCodeAt(i);
+          if (code2 < 128) {
+            output += isEscapeSafe(code2) ? ch : BYTE_HEX[code2];
+          } else if (code2 < 55296 || code2 > 57343) {
+            output += percentEncodeNonAscii(code2);
+          } else if (code2 <= 56319 && i + 1 < input.length) {
+            const low = input.charCodeAt(i + 1);
+            if (low >= 56320 && low <= 57343) {
+              output += percentEncodeNonAscii(65536 + (code2 - 55296 << 10) + (low - 56320));
+              i++;
+            } else {
+              output += percentEncodeNonAscii(65533);
+            }
+          } else {
+            output += percentEncodeNonAscii(65533);
+          }
+        }
       }
-      return component;
+      return output;
+    }
+    function escapePreservingEscapes(input) {
+      let output = "";
+      for (let i = 0; i < input.length; i++) {
+        if (input[i] === "%" && i + 2 < input.length) {
+          const hex = input.slice(i + 1, i + 3);
+          if (isHexPair(hex)) {
+            output += "%" + hex.toUpperCase();
+            i += 2;
+            continue;
+          }
+        }
+        output += escape(input[i]);
+      }
+      return output;
     }
     function recomposeAuthority(component) {
       const uriTokens = [];
       if (component.userinfo !== void 0) {
-        uriTokens.push(component.userinfo);
+        uriTokens.push(encodeUserinfo(component.userinfo));
         uriTokens.push("@");
       }
       if (component.host !== void 0) {
-        let host = unescape(component.host);
+        let host = component.host;
         if (!isIPv4(host)) {
-          const ipV6res = normalizeIPv6(host);
-          if (ipV6res.isIPV6 === true) {
+          let ipV6res = normalizeIPv6(host);
+          if (ipV6res.isIPV6 !== true && ipV6res.isIPVFuture !== true) {
+            host = normalizePercentEncoding(host, true);
+            ipV6res = normalizeIPv6(host);
+          }
+          if (ipV6res.isIPV6 === true || ipV6res.isIPVFuture === true) {
             host = `[${ipV6res.escapedHost}]`;
           } else {
-            host = component.host;
+            host = reescapeHostDelimiters(host, false);
           }
         }
         uriTokens.push(host);
       }
       if (typeof component.port === "number" || typeof component.port === "string") {
+        const port = String(component.port);
+        if (!isPort(port)) {
+          throw new TypeError("URI port is malformed.");
+        }
         uriTokens.push(":");
-        uriTokens.push(String(component.port));
+        uriTokens.push(port);
       }
       return uriTokens.length ? uriTokens.join("") : void 0;
     }
     module2.exports = {
       nonSimpleDomain,
       recomposeAuthority,
-      normalizeComponentEncoding,
+      reescapeHostDelimiters,
+      normalizePercentEncoding,
+      normalizePathEncoding,
+      serializePathEncoding,
+      normalizeQueryFragmentEncoding,
+      encodeUserinfo,
+      encodeQuery,
+      encodeFragment,
+      escapePreservingEscapes,
       removeDotSegments,
       isIPv4,
       isUUID,
@@ -29606,7 +29851,7 @@ var require_schemes = __commonJS({
   "node_modules/fast-uri/lib/schemes.js"(exports2, module2) {
     "use strict";
     var { isUUID } = require_utils();
-    var URN_REG = /([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-.:;=@]|%[\da-f]{2})+)/iu;
+    var URN_REG = /^([\da-z][\d\-a-z]{0,31}):((?:[\w!$'()*+,\-./:;=@]|%[\da-f]{2})+)$/iu;
     var supportedSchemeNames = (
       /** @type {const} */
       [
@@ -29667,9 +29912,10 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path, query] = wsComponent.resourceName.split("?");
+        const queryIndex = wsComponent.resourceName.indexOf("?");
+        const path = queryIndex === -1 ? wsComponent.resourceName : wsComponent.resourceName.slice(0, queryIndex);
         wsComponent.path = path && path !== "/" ? path : void 0;
-        wsComponent.query = query;
+        wsComponent.query = queryIndex === -1 ? void 0 : wsComponent.resourceName.slice(queryIndex + 1);
         wsComponent.resourceName = void 0;
       }
       wsComponent.fragment = void 0;
@@ -29681,7 +29927,7 @@ var require_schemes = __commonJS({
         return urnComponent;
       }
       const matches = urnComponent.path.match(URN_REG);
-      if (matches) {
+      if (matches && matches[0] === urnComponent.path) {
         const scheme = options.scheme || urnComponent.scheme || "urn";
         urnComponent.nid = matches[1].toLowerCase();
         urnComponent.nss = matches[2];
@@ -29815,21 +30061,57 @@ var require_schemes = __commonJS({
 var require_fast_uri = __commonJS({
   "node_modules/fast-uri/index.js"(exports2, module2) {
     "use strict";
-    var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizeComponentEncoding, isIPv4, nonSimpleDomain } = require_utils();
+    var { normalizeIPv6, removeDotSegments, recomposeAuthority, normalizePercentEncoding, normalizePathEncoding, serializePathEncoding, normalizeQueryFragmentEncoding, encodeQuery, encodeFragment, reescapeHostDelimiters, isIPv4, nonSimpleDomain } = require_utils();
     var { SCHEMES, getSchemeHandler } = require_schemes();
+    var VALID_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*$/u;
+    var MALFORMED_SCHEME_ERROR = "URI scheme is malformed.";
+    function decodeValidScheme(scheme) {
+      const decodedScheme = unescape(String(scheme));
+      if (!VALID_SCHEME.test(decodedScheme)) {
+        throw new TypeError(MALFORMED_SCHEME_ERROR);
+      }
+      return decodedScheme;
+    }
     function normalize2(uri, options) {
       if (typeof uri === "string") {
         uri = /** @type {T} */
-        serialize(parse(uri, options), options);
+        normalizeString(uri, options);
       } else if (typeof uri === "object") {
         uri = /** @type {T} */
         parse(serialize(uri, options), options);
       }
       return uri;
     }
-    function resolve(baseURI, relativeURI, options) {
+    function resolve2(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
-      const resolved = resolveComponent(parse(baseURI, schemelessOptions), parse(relativeURI, schemelessOptions), schemelessOptions, true);
+      const {
+        parsed: baseParsed,
+        malformedAuthorityOrPort: baseMalformed,
+        malformedPercentEncoding: baseMalformedPercentEncoding,
+        malformedSchemeSpecific: baseMalformedSchemeSpecific,
+        malformedHost: baseMalformedHost,
+        malformedScheme: baseMalformedScheme
+      } = parseWithStatus(baseURI, schemelessOptions);
+      const {
+        parsed: relativeParsed,
+        malformedAuthorityOrPort: relativeMalformed,
+        malformedPercentEncoding: relativeMalformedPercentEncoding,
+        malformedSchemeSpecific: relativeMalformedSchemeSpecific,
+        malformedHost: relativeMalformedHost,
+        malformedScheme: relativeMalformedScheme
+      } = parseWithStatus(relativeURI, schemelessOptions);
+      if (baseMalformed || relativeMalformed || baseMalformedPercentEncoding || relativeMalformedPercentEncoding || baseMalformedSchemeSpecific || relativeMalformedSchemeSpecific || baseMalformedHost || relativeMalformedHost || baseMalformedScheme || relativeMalformedScheme) {
+        throw new Error(baseParsed.error || relativeParsed.error || "URI is malformed.");
+      }
+      const resolved = resolveComponent(baseParsed, relativeParsed, schemelessOptions, true);
+      const resolvedSchemeHandler = getSchemeHandler(options && options.scheme || resolved.scheme);
+      const resolvedHost = resolved.host;
+      const resolvedHostIsIP = resolvedHost !== void 0 && resolvedHost !== "" && (isIPv4(resolvedHost) || normalizeIPv6(resolvedHost).isIPV6);
+      canonicalizeHost(resolved, options || {}, resolvedSchemeHandler, resolvedHostIsIP);
+      const encodedASCIIHost = resolvedHost && resolvedHost.indexOf("%") !== -1 && !/\P{ASCII}/u.test(resolvedHost);
+      if (resolved.error && !encodedASCIIHost) {
+        throw new Error(resolved.error);
+      }
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
@@ -29887,19 +30169,9 @@ var require_fast_uri = __commonJS({
       return target;
     }
     function equal(uriA, uriB, options) {
-      if (typeof uriA === "string") {
-        uriA = unescape(uriA);
-        uriA = serialize(normalizeComponentEncoding(parse(uriA, options), true), { ...options, skipEscape: true });
-      } else if (typeof uriA === "object") {
-        uriA = serialize(normalizeComponentEncoding(uriA, true), { ...options, skipEscape: true });
-      }
-      if (typeof uriB === "string") {
-        uriB = unescape(uriB);
-        uriB = serialize(normalizeComponentEncoding(parse(uriB, options), true), { ...options, skipEscape: true });
-      } else if (typeof uriB === "object") {
-        uriB = serialize(normalizeComponentEncoding(uriB, true), { ...options, skipEscape: true });
-      }
-      return uriA.toLowerCase() === uriB.toLowerCase();
+      const normalizedA = normalizeComparableURI(uriA, options);
+      const normalizedB = normalizeComparableURI(uriB, options);
+      return normalizedA !== void 0 && normalizedB !== void 0 && normalizedA === normalizedB;
     }
     function serialize(cmpts, opts) {
       const component = {
@@ -29920,19 +30192,22 @@ var require_fast_uri = __commonJS({
       };
       const options = Object.assign({}, opts);
       const uriTokens = [];
+      if (component.scheme) {
+        component.scheme = decodeValidScheme(component.scheme);
+      }
       const schemeHandler = getSchemeHandler(options.scheme || component.scheme);
       if (schemeHandler && schemeHandler.serialize) schemeHandler.serialize(component, options);
+      const hasAuthority = component.userinfo !== void 0 || component.host !== void 0 || component.port !== void 0;
+      const pathNoScheme = !options.skipEscape && component.scheme === void 0 && !hasAuthority;
       if (component.path !== void 0) {
         if (!options.skipEscape) {
-          component.path = escape(component.path);
-          if (component.scheme !== void 0) {
-            component.path = component.path.split("%3A").join(":");
-          }
+          component.path = serializePathEncoding(component.path, pathNoScheme);
         } else {
-          component.path = unescape(component.path);
+          component.path = normalizePercentEncoding(component.path);
         }
       }
       if (options.reference !== "suffix" && component.scheme) {
+        component.scheme = decodeValidScheme(component.scheme);
         uriTokens.push(component.scheme, ":");
       }
       const authority = recomposeAuthority(component);
@@ -29950,21 +30225,64 @@ var require_fast_uri = __commonJS({
         if (!options.absolutePath && (!schemeHandler || !schemeHandler.absolutePath)) {
           s = removeDotSegments(s);
         }
+        if (pathNoScheme) {
+          s = serializePathEncoding(s, true);
+        }
         if (authority === void 0 && s[0] === "/" && s[1] === "/") {
           s = "/%2F" + s.slice(2);
         }
         uriTokens.push(s);
       }
       if (component.query !== void 0) {
-        uriTokens.push("?", component.query);
+        uriTokens.push("?", encodeQuery(component.query));
       }
       if (component.fragment !== void 0) {
-        uriTokens.push("#", component.fragment);
+        uriTokens.push("#", encodeFragment(component.fragment));
       }
       return uriTokens.join("");
     }
     var URI_PARSE = /^(?:([^#/:?]+):)?(?:\/\/((?:([^#/?@]*)@)?(\[[^#/?\]]+\]|[^#/:?]*)(?::(\d*))?))?([^#?]*)(?:\?([^#]*))?(?:#((?:.|[\n\r])*))?/u;
-    function parse(uri, opts) {
+    var AUTHORITY_PREFIX = /^(?:[^#/:?]+:)?\/\/([^/?#]*)/;
+    var AUTHORITY_INTRODUCER_REGION = /^(?:[^#/:?]+:)?([/\\\t\n\r]*)/;
+    function getParseError(parsed, matches) {
+      if (matches[2] !== void 0 && parsed.path && parsed.path[0] !== "/") {
+        return 'URI path must start with "/" when authority is present.';
+      }
+      if (typeof parsed.port === "number" && (parsed.port < 0 || parsed.port > 65535)) {
+        return "URI port is malformed.";
+      }
+      return void 0;
+    }
+    function hasMalformedPercentEncoding(component) {
+      if (component === void 0) return false;
+      let percent = component.indexOf("%");
+      while (percent !== -1) {
+        if (percent + 2 >= component.length || !/^[\da-f]{2}$/iu.test(component.slice(percent + 1, percent + 3))) {
+          return true;
+        }
+        percent = component.indexOf("%", percent + 3);
+      }
+      return false;
+    }
+    function isIPLiteral(host) {
+      return host[0] === "[" && host[host.length - 1] === "]";
+    }
+    function hasMalformedComponentPercentEncoding(matches) {
+      const host = matches[4];
+      return hasMalformedPercentEncoding(matches[3]) || host !== void 0 && !isIPLiteral(host) && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches[6]) || hasMalformedPercentEncoding(matches[7]) || hasMalformedPercentEncoding(matches[8]);
+    }
+    function canonicalizeHost(parsed, options, schemeHandler, isIP) {
+      if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
+        try {
+          parsed.host = new URL("http://" + parsed.host).hostname;
+        } catch (e) {
+          parsed.error = parsed.error || "Host's domain name can not be converted to ASCII: " + e;
+          return true;
+        }
+      }
+      return false;
+    }
+    function parseWithStatus(uri, opts) {
       const options = Object.assign({}, opts);
       const parsed = {
         scheme: void 0,
@@ -29975,12 +30293,37 @@ var require_fast_uri = __commonJS({
         query: void 0,
         fragment: void 0
       };
+      let malformedAuthorityOrPort = false;
+      let malformedPercentEncoding = false;
+      let malformedSchemeSpecific = false;
+      let malformedHost = false;
+      let malformedIPLiteral = false;
+      let malformedScheme = false;
       let isIP = false;
       if (options.reference === "suffix") {
         if (options.scheme) {
           uri = options.scheme + ":" + uri;
         } else {
           uri = "//" + uri;
+        }
+      }
+      const authorityMatch = uri.match(AUTHORITY_PREFIX);
+      if (authorityMatch !== null && authorityMatch[1].indexOf("\\") !== -1) {
+        parsed.error = "URI authority must not contain a literal backslash.";
+        malformedAuthorityOrPort = true;
+      }
+      const introducerMatch = uri.match(AUTHORITY_INTRODUCER_REGION);
+      if (introducerMatch !== null) {
+        const region = introducerMatch[1];
+        const normalizedRegion = region.replace(/[\t\n\r]/g, "");
+        if (normalizedRegion.length >= 2) {
+          if (normalizedRegion.slice(0, 2) !== "//") {
+            parsed.error = parsed.error || "URI authority must not contain a literal backslash.";
+            malformedAuthorityOrPort = true;
+          } else if (region.length !== normalizedRegion.length) {
+            parsed.error = parsed.error || "URI authority introducer must not contain whitespace.";
+            malformedAuthorityOrPort = true;
+          }
         }
       }
       const matches = uri.match(URI_PARSE);
@@ -29992,15 +30335,40 @@ var require_fast_uri = __commonJS({
         parsed.path = matches[6] || "";
         parsed.query = matches[7];
         parsed.fragment = matches[8];
+        if (parsed.scheme !== void 0) {
+          const decodedScheme = unescape(parsed.scheme);
+          if (VALID_SCHEME.test(decodedScheme)) {
+            parsed.scheme = decodedScheme.toLowerCase();
+          } else {
+            parsed.error = parsed.error || MALFORMED_SCHEME_ERROR;
+            malformedScheme = true;
+          }
+        }
+        malformedPercentEncoding = hasMalformedComponentPercentEncoding(matches);
+        if (malformedPercentEncoding) {
+          parsed.error = parsed.error || "URI contains malformed percent-encoding.";
+        }
         if (isNaN(parsed.port)) {
           parsed.port = matches[5];
+        }
+        const parseError = getParseError(parsed, matches);
+        if (parseError !== void 0) {
+          parsed.error = parsed.error || parseError;
+          malformedAuthorityOrPort = true;
         }
         if (parsed.host) {
           const ipv4result = isIPv4(parsed.host);
           if (ipv4result === false) {
+            const bracketedIPLiteral = isIPLiteral(parsed.host);
+            const hasIPLiteralBracket = parsed.host.indexOf("[") !== -1 || parsed.host.indexOf("]") !== -1;
             const ipv6result = normalizeIPv6(parsed.host);
-            parsed.host = ipv6result.host.toLowerCase();
-            isIP = ipv6result.isIPV6;
+            isIP = ipv6result.isIPV6 || ipv6result.isIPVFuture === true;
+            malformedIPLiteral = hasIPLiteralBracket && (!bracketedIPLiteral || ipv6result.error === true);
+            parsed.host = isIP ? ipv6result.host : ipv6result.host.toLowerCase();
+            if (malformedIPLiteral) {
+              parsed.error = parsed.error || "URI host is malformed.";
+              malformedAuthorityOrPort = true;
+            }
           } else {
             isIP = true;
           }
@@ -30018,43 +30386,71 @@ var require_fast_uri = __commonJS({
           parsed.error = parsed.error || "URI is not a " + options.reference + " reference.";
         }
         const schemeHandler = getSchemeHandler(options.scheme || parsed.scheme);
-        if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport)) {
-          if (parsed.host && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
-            try {
-              parsed.host = URL.domainToASCII(parsed.host.toLowerCase());
-            } catch (e) {
-              parsed.error = parsed.error || "Host's domain name can not be converted to ASCII: " + e;
-            }
-          }
+        if (!malformedIPLiteral) {
+          malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP);
         }
         if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
           if (uri.indexOf("%") !== -1) {
-            if (parsed.scheme !== void 0) {
-              parsed.scheme = unescape(parsed.scheme);
-            }
-            if (parsed.host !== void 0) {
-              parsed.host = unescape(parsed.host);
+            if (parsed.host !== void 0 && !malformedIPLiteral) {
+              const host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true);
+              parsed.host = reescapeHostDelimiters(host, isIP);
             }
           }
           if (parsed.path) {
-            parsed.path = escape(unescape(parsed.path));
+            parsed.path = normalizePathEncoding(parsed.path);
+          }
+          if (parsed.query) {
+            parsed.query = normalizeQueryFragmentEncoding(parsed.query);
           }
           if (parsed.fragment) {
-            parsed.fragment = encodeURI(decodeURIComponent(parsed.fragment));
+            parsed.fragment = normalizeQueryFragmentEncoding(parsed.fragment);
           }
         }
         if (schemeHandler && schemeHandler.parse) {
           schemeHandler.parse(parsed, options);
+          if (schemeHandler === SCHEMES.urn && parsed.nid === void 0) {
+            malformedSchemeSpecific = true;
+          }
         }
       } else {
         parsed.error = parsed.error || "URI can not be parsed.";
       }
-      return parsed;
+      return { parsed, malformedAuthorityOrPort, malformedPercentEncoding, malformedSchemeSpecific, malformedHost, malformedScheme };
+    }
+    function parse(uri, opts) {
+      return parseWithStatus(uri, opts).parsed;
+    }
+    function normalizeString(uri, opts) {
+      return normalizeStringWithStatus(uri, opts).normalized;
+    }
+    function normalizeStringWithStatus(uri, opts) {
+      const { parsed, malformedAuthorityOrPort, malformedPercentEncoding, malformedSchemeSpecific, malformedHost, malformedScheme } = parseWithStatus(uri, opts);
+      return {
+        normalized: malformedAuthorityOrPort || malformedPercentEncoding || malformedSchemeSpecific || malformedHost || malformedScheme ? uri : serialize(parsed, opts),
+        malformedAuthorityOrPort,
+        malformedPercentEncoding,
+        malformedSchemeSpecific,
+        malformedHost,
+        malformedScheme
+      };
+    }
+    function normalizeComparableURI(uri, opts) {
+      if (typeof uri !== "string" && typeof uri !== "object") {
+        return void 0;
+      }
+      let value;
+      try {
+        value = typeof uri === "string" ? uri : serialize(uri, opts);
+      } catch {
+        return void 0;
+      }
+      const { normalized, malformedAuthorityOrPort, malformedPercentEncoding, malformedSchemeSpecific, malformedHost, malformedScheme } = normalizeStringWithStatus(value, opts);
+      return malformedAuthorityOrPort || malformedPercentEncoding || malformedSchemeSpecific || malformedHost || malformedScheme ? void 0 : normalized;
     }
     var fastUri = {
       SCHEMES,
       normalize: normalize2,
-      resolve,
+      resolve: resolve2,
       resolveComponent,
       equal,
       serialize,
@@ -30116,7 +30512,7 @@ var require_core3 = __commonJS({
     var util_1 = require_util3();
     var $dataRefSchema = require_data();
     var uri_1 = require_uri();
-    var defaultRegExp = (str, flags) => new RegExp(str, flags);
+    var defaultRegExp = (str2, flags) => new RegExp(str2, flags);
     defaultRegExp.code = "new RegExp";
     var META_IGNORE_OPTIONS = ["removeAdditional", "useDefaults", "coerceTypes"];
     var EXT_SCOPE_NAMES = /* @__PURE__ */ new Set([
@@ -30911,16 +31307,16 @@ var require_ucs2length = __commonJS({
   "node_modules/ajv/dist/runtime/ucs2length.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
-    function ucs2length(str) {
-      const len = str.length;
+    function ucs2length(str2) {
+      const len = str2.length;
       let length = 0;
       let pos = 0;
       let value;
       while (pos < len) {
         length++;
-        value = str.charCodeAt(pos++);
+        value = str2.charCodeAt(pos++);
         if (value >= 55296 && value <= 56319 && pos < len) {
-          value = str.charCodeAt(pos);
+          value = str2.charCodeAt(pos);
           if ((value & 64512) === 56320)
             pos++;
         }
@@ -32302,8 +32698,8 @@ var require_format = __commonJS({
             }
           }
           function getFormat(fmtDef) {
-            const code = fmtDef instanceof RegExp ? (0, codegen_1.regexpCode)(fmtDef) : opts.code.formats ? (0, codegen_1._)`${opts.code.formats}${(0, codegen_1.getProperty)(schema)}` : void 0;
-            const fmt = gen.scopeValue("formats", { key: schema, ref: fmtDef, code });
+            const code2 = fmtDef instanceof RegExp ? (0, codegen_1.regexpCode)(fmtDef) : opts.code.formats ? (0, codegen_1._)`${opts.code.formats}${(0, codegen_1.getProperty)(schema)}` : void 0;
+            const fmt = gen.scopeValue("formats", { key: schema, ref: fmtDef, code: code2 });
             if (typeof fmtDef == "object" && !(fmtDef instanceof RegExp)) {
               return [fmtDef.type || "string", fmtDef.validate, (0, codegen_1._)`${fmt}.validate`];
             }
@@ -32803,8 +33199,8 @@ var require_formats = __commonJS({
     }
     var DATE = /^(\d\d\d\d)-(\d\d)-(\d\d)$/;
     var DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    function date(str) {
-      const matches = DATE.exec(str);
+    function date(str2) {
+      const matches = DATE.exec(str2);
       if (!matches)
         return false;
       const year = +matches[1];
@@ -32823,8 +33219,8 @@ var require_formats = __commonJS({
     }
     var TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
     function getTime(strictTimeZone) {
-      return function time(str) {
-        const matches = TIME.exec(str);
+      return function time(str2) {
+        const matches = TIME.exec(str2);
         if (!matches)
           return false;
         const hr = +matches[1];
@@ -32870,8 +33266,8 @@ var require_formats = __commonJS({
     var DATE_TIME_SEPARATOR = /t|\s/i;
     function getDateTime(strictTimeZone) {
       const time = getTime(strictTimeZone);
-      return function date_time(str) {
-        const dateTime = str.split(DATE_TIME_SEPARATOR);
+      return function date_time(str2) {
+        const dateTime = str2.split(DATE_TIME_SEPARATOR);
         return dateTime.length === 2 && date(dateTime[0]) && time(dateTime[1]);
       };
     }
@@ -32896,13 +33292,13 @@ var require_formats = __commonJS({
     }
     var NOT_URI_FRAGMENT = /\/|:/;
     var URI = /^(?:[a-z][a-z0-9+\-.]*:)(?:\/?\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?(?:\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?))|(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|[Vv][0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+)\]|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)|(?:[a-z0-9\-._~!$&'()*+,;=]|%[0-9a-f]{2})*)(?::\d*)?(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*|\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?|(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)(?:\?(?:[a-z0-9\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?(?:#(?:[a-z0-9\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?$/i;
-    function uri(str) {
-      return NOT_URI_FRAGMENT.test(str) && URI.test(str);
+    function uri(str2) {
+      return NOT_URI_FRAGMENT.test(str2) && URI.test(str2);
     }
     var BYTE = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/gm;
-    function byte(str) {
+    function byte(str2) {
       BYTE.lastIndex = 0;
-      return BYTE.test(str);
+      return BYTE.test(str2);
     }
     var MIN_INT32 = -(2 ** 31);
     var MAX_INT32 = 2 ** 31 - 1;
@@ -32916,11 +33312,11 @@ var require_formats = __commonJS({
       return true;
     }
     var Z_ANCHOR = /[^\\]\\Z/;
-    function regex(str) {
-      if (Z_ANCHOR.test(str))
+    function regex(str2) {
+      if (Z_ANCHOR.test(str2))
         return false;
       try {
-        new RegExp(str);
+        new RegExp(str2);
         return true;
       } catch (e) {
         return false;
@@ -33834,12 +34230,12 @@ var require_uriTemplate = __commonJS({
        * A template expression is a sequence of characters enclosed in curly braces,
        * like {foo} or {?bar}.
        */
-      static isTemplate(str) {
-        return /\{[^}\s]+\}/.test(str);
+      static isTemplate(str2) {
+        return /\{[^}\s]+\}/.test(str2);
       }
-      static validateLength(str, max, context) {
-        if (str.length > max) {
-          throw new Error(`${context} exceeds maximum length of ${max} characters (got ${str.length})`);
+      static validateLength(str2, max, context) {
+        if (str2.length > max) {
+          throw new Error(`${context} exceeds maximum length of ${max} characters (got ${str2.length})`);
         }
       }
       get variableNames() {
@@ -33968,8 +34364,8 @@ var require_uriTemplate = __commonJS({
         }
         return result;
       }
-      escapeRegExp(str) {
-        return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      escapeRegExp(str2) {
+        return str2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       }
       partToRegExp(part) {
         const patterns = [];
@@ -34419,7 +34815,7 @@ var require_mcp = __commonJS({
         let task = createTaskResult.task;
         const pollInterval = task.pollInterval ?? 5e3;
         while (task.status !== "completed" && task.status !== "failed" && task.status !== "cancelled") {
-          await new Promise((resolve) => setTimeout(resolve, pollInterval));
+          await new Promise((resolve2) => setTimeout(resolve2, pollInterval));
           const updatedTask = await extra.taskStore.getTask(taskId);
           if (!updatedTask) {
             throw new types_js_1.McpError(types_js_1.ErrorCode.InternalError, `Task ${taskId} not found during polling`);
@@ -35021,11 +35417,15 @@ __export(index_exports, {
   BUILTIN_PATTERNS: () => BUILTIN_PATTERNS,
   CONNECTOR_PILOTS: () => CONNECTOR_PILOTS,
   ConfidentialGate: () => ConfidentialGate,
+  EGRESS_SUMMARY_FIELDS: () => EGRESS_SUMMARY_FIELDS,
   POLICY_PACKS: () => POLICY_PACKS,
   ProtectGateway: () => ProtectGateway,
   ReceiptPropagator: () => ReceiptPropagator,
   ScopeBlindBridge: () => ScopeBlindBridge,
   anchorToRekor: () => anchorToRekor,
+  approvePolicyProposalWithDirectSignature: () => approvePolicyProposalWithDirectSignature,
+  approvePolicyProposalWithWebAuthn: () => approvePolicyProposalWithWebAuthn,
+  assertEgressSafe: () => assertEgressSafe,
   buildDecisionContext: () => buildDecisionContext,
   checkRateLimit: () => checkRateLimit,
   collectSignedReceipts: () => collectSignedReceipts,
@@ -35040,14 +35440,18 @@ __export(index_exports, {
   createAttestationField: () => createAttestationField,
   createAuditBundle: () => createAuditBundle,
   createC2PAManifest: () => createC2PAManifest,
+  createDirectControllerApproval: () => createDirectControllerApproval,
   createDisclosurePackage: () => createDisclosurePackage,
   createEvidenceAttestation: () => createEvidenceAttestation,
   createLogAnchorField: () => createLogAnchorField,
+  createPolicyProposal: () => createPolicyProposal,
   createReceiptChannel: () => createReceiptChannel,
   createReceiptEnvelope: () => createReceiptEnvelope,
   createSandbox: () => createSandbox,
   createSandboxServer: () => createSandboxServer,
   createSelectiveDisclosurePackage: () => createSelectiveDisclosurePackage,
+  createWebAuthnPolicyChallenge: () => createWebAuthnPolicyChallenge,
+  describePolicyDiff: () => describePolicyDiff,
   destroySandbox: () => destroySandbox,
   discloseField: () => discloseField,
   ed25519ToDIDKey: () => ed25519ToDIDKey,
@@ -35055,6 +35459,7 @@ __export(index_exports, {
   evaluateTier: () => evaluateTier,
   exportC2PAManifestJSON: () => exportC2PAManifestJSON,
   exportJSONL: () => exportJSONL,
+  exportMandateDisciplineRecord: () => exportMandateDisciplineRecord,
   formatReportMarkdown: () => formatReportMarkdown,
   formatSimulation: () => formatSimulation,
   forwardReceipt: () => forwardReceipt,
@@ -35076,6 +35481,8 @@ __export(index_exports, {
   hashReceipt: () => hashReceipt,
   hashResponseBody: () => hashResponseBody,
   initSigning: () => initSigning,
+  initializeMandateRegistry: () => initializeMandateRegistry,
+  inspectEgress: () => inspectEgress,
   isAgentId: () => isAgentId,
   isCedarAvailable: () => isCedarAvailable,
   isDisclosureMode: () => isDisclosureMode,
@@ -35084,7 +35491,10 @@ __export(index_exports, {
   isSigningEnabled: () => isSigningEnabled,
   listCredentialLabels: () => listCredentialLabels,
   loadCedarPolicies: () => loadCedarPolicies,
+  loadGateSigner: () => loadGateSigner,
+  loadMandateRegistry: () => loadMandateRegistry,
   loadPolicy: () => loadPolicy,
+  mandatePaths: () => mandatePaths,
   manifestToVC: () => manifestToVC,
   meetsMinTier: () => meetsMinTier,
   parseLogFile: () => parseLogFile,
@@ -35092,6 +35502,7 @@ __export(index_exports, {
   parseRateLimit: () => parseRateLimit,
   policyPackIds: () => policyPackIds,
   policySetFromSource: () => policySetFromSource,
+  publicMandateStatus: () => publicMandateStatus,
   queryExternalPDP: () => queryExternalPDP,
   readInstalledConnectorPilots: () => readInstalledConnectorPilots,
   receiptHash: () => receiptHash,
@@ -35099,16 +35510,20 @@ __export(index_exports, {
   receiptToVP: () => receiptToVP,
   receiptsToHFRows: () => receiptsToHFRows,
   redactFields: () => redactFields,
+  refreshManagedMandate: () => refreshManagedMandate,
   resolveCredential: () => resolveCredential,
   revealField: () => revealField,
+  runEgressSelfCheck: () => runEgressSelfCheck,
   runEvaluatorSelfTest: () => runEvaluatorSelfTest,
   runInSandbox: () => runInSandbox,
   sendApprovalNotification: () => sendApprovalNotification,
   signCommittedDecision: () => signCommittedDecision,
   signDecision: () => signDecision,
   simulate: () => simulate,
+  snapshotFromDirectory: () => snapshotFromDirectory,
   startHookServer: () => startHookServer,
   toCredentialRequestOptions: () => toCredentialRequestOptions,
+  toEgressSummary: () => toEgressSummary,
   toManifoldFormat: () => toManifoldFormat,
   toMetaculusFormat: () => toMetaculusFormat,
   validateCredentials: () => validateCredentials,
@@ -35119,6 +35534,8 @@ __export(index_exports, {
   verifyApprovalAssertion: () => verifyApprovalAssertion,
   verifyCommitment: () => verifyCommitment,
   verifyEvidenceAttestation: () => verifyEvidenceAttestation,
+  verifyMandateLifecycleExport: () => verifyMandateLifecycleExport,
+  verifyMandateRegistry: () => verifyMandateRegistry,
   verifyReceipt: () => verifyReceipt,
   verifyRekorAnchor: () => verifyRekorAnchor,
   verifySelectiveDisclosurePackage: () => verifySelectiveDisclosurePackage,
@@ -35153,6 +35570,9 @@ function canonicalize(obj) {
 }
 function receiptHash(obj) {
   return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
+}
+function chainLink(receipt) {
+  return "sha256:" + receiptHash(receipt);
 }
 var B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 function base58(bytes) {
@@ -35660,7 +36080,7 @@ function signDecision(entry, prevReceiptHash) {
       mode: entry.mode,
       request_id: entry.request_id,
       // Spec version: ties every receipt to the IETF standard
-      spec: "draft-farley-acta-signed-receipts-02",
+      spec: "draft-farley-acta-signed-receipts-03",
       // Issuer certification: distinguishes VOPRF-backed receipts from self-signed ones
       // - scopeblind:verified  = issued via ScopeBlind VOPRF backend (paid tier)
       // - self-signed          = signed with local Ed25519 key (free tier, protect-mcp default)
@@ -35691,6 +36111,7 @@ function signDecision(entry, prevReceiptHash) {
     if (entry.enrichment) payload.enrichment = entry.enrichment;
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
+    if (entry.mandate_registry) payload.mandate_registry = entry.mandate_registry;
     const result = createReceiptEnvelope(
       payload,
       signerState.privateKey,
@@ -35712,6 +36133,33 @@ function signDecision(entry, prevReceiptHash) {
       warning: `signing failed: ${message}`,
       error: message
     };
+  }
+}
+function signGenericArtifact(_artifactType, payload) {
+  if (signingConfigured && signingInitError) {
+    return { ok: false, signed: null, warning: `signing initialization failed: ${signingInitError}`, error: signingInitError };
+  }
+  if (signingConfigured && !signerState) {
+    const error = "signing was configured but no signer is ready";
+    return { ok: false, signed: null, warning: error, error };
+  }
+  if (!signerState) {
+    return { ok: false, signed: null };
+  }
+  try {
+    const full = {
+      ...payload,
+      type: String(payload.type || "protectmcp:artifact"),
+      public_key: signerState.publicKey
+    };
+    if (signerState.issuer && signerState.issuer !== signerState.kid && full.type !== "scopeblind.egress_summary.v1") {
+      full.issuer_name = signerState.issuer;
+    }
+    const result = createReceiptEnvelope(full, signerState.privateKey, signerState.kid);
+    return { ok: true, signed: JSON.stringify(result.envelope) };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "unknown error";
+    return { ok: false, signed: null, warning: `signing failed: ${message}`, error: message };
   }
 }
 function getSignerInfo() {
@@ -35891,20 +36339,35 @@ var import_node_fs5 = require("fs");
 var import_node_path3 = require("path");
 var cedarWasm = null;
 var loadAttempted = false;
+var cedarWasmSpecifier = null;
+var cedarWasmLoadError = null;
+var CEDAR_WASM_SPECIFIERS = ["@cedar-policy/cedar-wasm/nodejs", "@cedar-policy/cedar-wasm"];
 async function ensureCedarWasm() {
   if (cedarWasm) return true;
   if (loadAttempted) return false;
   loadAttempted = true;
-  try {
-    const moduleName = "@cedar-policy/cedar-wasm";
-    cedarWasm = await import(
-      /* @vite-ignore */
-      moduleName
-    );
-    return true;
-  } catch {
-    return false;
+  const errors = [];
+  for (const moduleName of CEDAR_WASM_SPECIFIERS) {
+    try {
+      const mod = await import(
+        /* @vite-ignore */
+        moduleName
+      );
+      const engine = mod && (mod.default || mod);
+      if (!engine || typeof engine.isAuthorized !== "function") {
+        errors.push(`${moduleName}: loaded but has no isAuthorized`);
+        continue;
+      }
+      cedarWasm = mod;
+      cedarWasmSpecifier = moduleName;
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? `${err.code ? err.code + " " : ""}${err.message.split("\n")[0]}` : String(err);
+      errors.push(`${moduleName}: ${msg}`);
+    }
   }
+  cedarWasmLoadError = errors.join("; ");
+  return false;
 }
 function loadCedarPolicies(dirPath) {
   if (!(0, import_node_fs5.existsSync)(dirPath)) {
@@ -35956,7 +36419,7 @@ async function evaluateCedar(policySet, req, schema, options) {
   const failClosed = options?.failClosed ?? true;
   const available = await ensureCedarWasm();
   if (!available) {
-    return onEvalError("cedar_wasm_not_available", failClosed, { fallback: true });
+    return onEvalError(`cedar_wasm_not_available: ${cedarWasmLoadError || "unknown load failure"}`, failClosed, { fallback: true });
   }
   try {
     const agentId = req.agentId || req.tier;
@@ -35969,7 +36432,7 @@ async function evaluateCedar(policySet, req, schema, options) {
     }
     const authRequest = {
       principal: { type: "Agent", id: agentId },
-      action: { type: "Action", id: "MCP::Tool::call" },
+      action: { type: "Action", id: req.actionModel === "tool" ? req.tool : "MCP::Tool::call" },
       resource: { type: "Tool", id: req.tool },
       context
     };
@@ -36614,7 +37077,7 @@ var ProtectGateway = class {
     this.receiptFilePath = (0, import_node_path5.join)(process.cwd(), RECEIPTS_FILE);
     try {
       const existing = (0, import_node_fs7.readFileSync)(this.receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
-      if (existing.length > 0) this.lastReceiptHash = receiptHash(JSON.parse(existing[existing.length - 1]));
+      if (existing.length > 0) this.lastReceiptHash = chainLink(JSON.parse(existing[existing.length - 1]));
     } catch {
     }
     this.evidenceStore = new EvidenceStore();
@@ -36689,10 +37152,10 @@ var ProtectGateway = class {
     this.clientReader.on("line", (line) => {
       this.handleClientMessage(line);
     });
-    this.child.on("exit", (code, signal) => {
-      if (verbose) this.log(`Child process exited (code=${code}, signal=${signal})`);
+    this.child.on("exit", (code2, signal) => {
+      if (verbose) this.log(`Child process exited (code=${code2}, signal=${signal})`);
       this.evidenceStore.save();
-      process.exit(code ?? 1);
+      process.exit(code2 ?? 1);
     });
     this.child.on("error", (err) => {
       this.log(`Child process error: ${err.message}`);
@@ -36997,8 +37460,8 @@ var ProtectGateway = class {
       }
     }
   }
-  makeErrorResponse(id, code, message) {
-    return { jsonrpc: "2.0", id, error: { code, message } };
+  makeErrorResponse(id, code2, message) {
+    return { jsonrpc: "2.0", id, error: { code: code2, message } };
   }
   sendToChild(message) {
     if (this.child?.stdin?.writable) this.child.stdin.write(message + "\n");
@@ -37065,8 +37528,8 @@ var ProtectGateway = class {
     childReader.on("line", (line) => {
       this.handleServerMessage(line);
     });
-    this.child.on("exit", (code, signal) => {
-      if (verbose) this.log(`Child process exited (code=${code}, signal=${signal})`);
+    this.child.on("exit", (code2, signal) => {
+      if (verbose) this.log(`Child process exited (code=${code2}, signal=${signal})`);
       this.evidenceStore.save();
     });
     this.child.on("error", (err) => {
@@ -37085,23 +37548,23 @@ var ProtectGateway = class {
         return JSON.stringify(blocked);
       }
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve2, reject) => {
       const id = jsonRpc.id;
       if (id === void 0 || id === null) {
         const modified2 = this.injectParamsCredentials(jsonRpc);
         this.sendToChild(JSON.stringify(modified2));
-        resolve(JSON.stringify({ jsonrpc: "2.0", result: {}, id: null }));
+        resolve2(JSON.stringify({ jsonrpc: "2.0", result: {}, id: null }));
         return;
       }
       const timeout = setTimeout(() => {
         this.pendingResponses.delete(id);
-        resolve(JSON.stringify({
+        resolve2(JSON.stringify({
           jsonrpc: "2.0",
           error: { code: -32e3, message: "Request timeout (30s)" },
           id
         }));
       }, REQUEST_TIMEOUT_MS);
-      this.pendingResponses.set(id, { resolve, timeout });
+      this.pendingResponses.set(id, { resolve: resolve2, timeout });
       const modified = this.injectParamsCredentials(jsonRpc);
       this.sendToChild(JSON.stringify(modified));
     });
@@ -37351,7 +37814,7 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
   }
   const payload = {
     type: "scopeblind.receipt.committed.v1",
-    spec: "draft-farley-acta-signed-receipts-01",
+    spec: "draft-farley-acta-signed-receipts",
     issuer_certification: "self-signed",
     timestamp: (/* @__PURE__ */ new Date()).toISOString(),
     ...cleartextFields
@@ -37361,17 +37824,14 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
   const canonical = jcs(payload);
-  const messageHash = (0, import_sha2564.sha256)(new TextEncoder().encode(canonical));
-  const signatureBytes = import_ed255192.ed25519.sign(messageHash, (0, import_utils4.hexToBytes)(signingKey));
+  const signatureBytes = import_ed255192.ed25519.sign(new TextEncoder().encode(canonical), (0, import_utils4.hexToBytes)(signingKey));
   const signedReceipt = {
-    ...payload,
+    payload,
     signature: {
       alg: "EdDSA",
       kid,
       issuer,
-      sig: base64urlNoPad(signatureBytes),
-      public_key: publicKey
-      // hex
+      sig: (0, import_utils4.bytesToHex)(signatureBytes)
     }
   };
   const signedJson = JSON.stringify(signedReceipt);
@@ -37406,7 +37866,7 @@ function discloseField(receiptHash2, fieldName, openings) {
 }
 function createSelectiveDisclosurePackage(receipt, fieldNames, openings) {
   const receiptHash2 = receiptHashHex(receipt);
-  const committedFieldsRoot = typeof receipt.committed_fields_root === "string" ? receipt.committed_fields_root : "";
+  const committedFieldsRoot = typeof committedPayload(receipt).committed_fields_root === "string" ? committedPayload(receipt).committed_fields_root : "";
   if (!committedFieldsRoot) {
     throw new Error("selective disclosure requires a committed receipt with committed_fields_root");
   }
@@ -37435,7 +37895,7 @@ function createSelectiveDisclosurePackage(receipt, fieldNames, openings) {
     }
   };
 }
-function verifySelectiveDisclosurePackage(receipt, disclosure) {
+function verifySelectiveDisclosurePackage(receipt, disclosure, publicKeyHex) {
   const errors = [];
   if (disclosure.type !== "scopeblind.selective_disclosure.v0") {
     errors.push("disclosure.type is not scopeblind.selective_disclosure.v0");
@@ -37445,12 +37905,13 @@ function verifySelectiveDisclosurePackage(receipt, disclosure) {
   if (!receiptHashValid) {
     errors.push("parent_receipt_hash does not match the supplied receipt");
   }
-  const root = typeof receipt.committed_fields_root === "string" ? receipt.committed_fields_root : "";
+  const rootRaw = committedPayload(receipt).committed_fields_root;
+  const root = typeof rootRaw === "string" ? rootRaw : "";
   const commitmentRootValid = Boolean(root) && disclosure.committed_fields_root === root;
   if (!commitmentRootValid) {
     errors.push("committed_fields_root does not match the supplied receipt");
   }
-  const signatureValid = verifyCommittedReceiptSignature(receipt);
+  const signatureValid = verifyCommittedReceiptSignature(receipt, publicKeyHex);
   if (signatureValid === false) {
     errors.push("receipt signature failed verification");
   }
@@ -37499,24 +37960,31 @@ function verifySelectiveDisclosurePackage(receipt, disclosure) {
   };
 }
 function committedFieldNamesFromReceipt(receipt, openings) {
-  const fromReceipt = Array.isArray(receipt.committed_field_names) ? receipt.committed_field_names.filter((fieldName) => typeof fieldName === "string") : [];
+  const names_ = committedPayload(receipt).committed_field_names;
+  const fromReceipt = Array.isArray(names_) ? names_.filter((fieldName) => typeof fieldName === "string") : [];
   const names = fromReceipt.length ? fromReceipt : Object.keys(openings);
   return Array.from(new Set(names)).sort();
 }
 function receiptHashHex(receipt) {
   return (0, import_utils4.bytesToHex)((0, import_sha2564.sha256)(new TextEncoder().encode(jcs(receipt))));
 }
-function verifyCommittedReceiptSignature(receipt) {
+function committedPayload(receipt) {
+  const p = receipt.payload;
+  if (p && typeof p === "object" && !Array.isArray(p)) return p;
+  const { signature: _sig, ...rest } = receipt;
+  return rest;
+}
+function verifyCommittedReceiptSignature(receipt, publicKeyHex) {
   const signature = receipt.signature;
   if (!signature || typeof signature !== "object") return null;
   const sig = signature;
-  if (sig.alg !== "EdDSA" || typeof sig.sig !== "string" || typeof sig.public_key !== "string") {
-    return null;
-  }
-  const { signature: _signature, ...payloadWithoutSig } = receipt;
-  const messageHash = (0, import_sha2564.sha256)(new TextEncoder().encode(jcs(payloadWithoutSig)));
+  if (sig.alg !== "EdDSA" || typeof sig.sig !== "string") return null;
+  const key = publicKeyHex ?? (typeof sig.public_key === "string" ? sig.public_key : void 0);
+  if (!key) return null;
+  const signed = committedPayload(receipt);
+  const sigBytes = /^[0-9a-f]+$/i.test(sig.sig) && sig.sig.length % 2 === 0 ? (0, import_utils4.hexToBytes)(sig.sig) : base64urlDecode(sig.sig);
   try {
-    return import_ed255192.ed25519.verify(base64urlDecode(sig.sig), messageHash, (0, import_utils4.hexToBytes)(sig.public_key));
+    return import_ed255192.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed)), (0, import_utils4.hexToBytes)(key));
   } catch {
     return false;
   }
@@ -38029,9 +38497,192 @@ function validateEvidenceReceipt(receipt) {
 
 // src/hook-server.ts
 var import_node_http2 = require("http");
-var import_node_crypto4 = require("crypto");
+var import_node_crypto8 = require("crypto");
+var import_node_fs12 = require("fs");
+var import_node_path8 = require("path");
+
+// src/scopeblind-bridge.ts
+var import_node_crypto5 = require("crypto");
 var import_node_fs10 = require("fs");
+var import_node_os = require("os");
 var import_node_path6 = require("path");
+
+// src/egress-guard.ts
+var import_node_crypto4 = require("crypto");
+var EGRESS_SUMMARY_TYPE = "scopeblind.egress_summary.v1";
+var EGRESS_SUMMARY_VERSION = 1;
+var EGRESS_SUMMARY_FIELDS = /* @__PURE__ */ new Set([
+  "type",
+  "version",
+  "source_receipt_commitment",
+  "request_pseudonym",
+  "decision",
+  "reason_code",
+  "tool_category",
+  "policy_commitment",
+  "mode",
+  "action_commitment",
+  "output_commitment",
+  "disclosed_field_count",
+  "deny_iteration"
+]);
+var EGRESS_SIGNED_PAYLOAD_FIELDS = /* @__PURE__ */ new Set([
+  ...EGRESS_SUMMARY_FIELDS,
+  "public_key",
+  "issuer_id",
+  "issued_at"
+]);
+var KNOWN_RECEIPT_TYPES = /* @__PURE__ */ new Set(["protectmcp:decision", "protectmcp:artifact", "scopeblind.coverage_statement.v1"]);
+var DECISIONS = /* @__PURE__ */ new Set(["allow", "deny", "approve"]);
+var MODES = /* @__PURE__ */ new Set(["enforce", "shadow", "audit"]);
+var REASON_CODES = /* @__PURE__ */ new Set([
+  "cedar_allow",
+  "cedar_deny",
+  "policy_allow",
+  "policy_deny",
+  "policy_head_mismatch",
+  "mandate_expired",
+  "mandate_missing",
+  "mandate_denied",
+  "approval_required",
+  "approval_denied",
+  "signing_error",
+  "rate_limited",
+  "other"
+]);
+function str(v) {
+  return typeof v === "string" && v.length ? v : void 0;
+}
+function integer(v) {
+  return typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : void 0;
+}
+function hmacCommitment(domain, value, opts) {
+  return `hmac-sha256:${(0, import_node_crypto4.createHmac)("sha256", opts.pseudonymKey).update(`${domain}\0${opts.tenantScope || ""}\0${String(value ?? "")}`).digest("hex")}`;
+}
+function isReceiptCommitment(value) {
+  return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value);
+}
+function isPseudonym(value) {
+  return typeof value === "string" && /^hmac-sha256:[0-9a-f]{64}$/.test(value);
+}
+function isPublicKey(value) {
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+}
+function isIssuedAt(value) {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+function code(value) {
+  const leading = (str(value) || "").split(/[\s:]/)[0].toLowerCase().slice(0, 64);
+  return REASON_CODES.has(leading) ? leading : "other";
+}
+function category(tool) {
+  const value = (str(tool) || "").toLowerCase();
+  if (/(email|mail|slack|teams|message)/.test(value)) return "communication";
+  if (/(github|git|commit|pull_request)/.test(value)) return "source_control";
+  if (/(file|bash|shell|terminal|directory)/.test(value)) return "filesystem";
+  if (/(sql|database|query)/.test(value)) return "database";
+  if (/(aws|gcp|azure|cloud|deploy)/.test(value)) return "cloud";
+  if (/(browser|web|fetch|http)/.test(value)) return "browser";
+  if (/(trade|order|pms|broker|position)/.test(value)) return "finance";
+  return "other";
+}
+function toEgressSummary(envelope, opts) {
+  if (!opts?.pseudonymKey || typeof opts.pseudonymKey === "string" && !opts.pseudonymKey.length || opts.pseudonymKey instanceof Uint8Array && !opts.pseudonymKey.length) return null;
+  if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) return null;
+  const env = envelope;
+  const p = env.payload;
+  if (!p || typeof p !== "object" || typeof p.type !== "string" || !KNOWN_RECEIPT_TYPES.has(p.type)) return null;
+  const ar = p.action_readback;
+  const pd = p.payload_digest;
+  const disclosed = ar && Array.isArray(ar.disclosed_fields) ? ar.disclosed_fields.length : void 0;
+  const rawDecision = str(p.decision);
+  const summary = {
+    type: EGRESS_SUMMARY_TYPE,
+    version: EGRESS_SUMMARY_VERSION,
+    source_receipt_commitment: `sha256:${receiptHash(envelope)}`,
+    request_pseudonym: hmacCommitment("scopeblind.egress.request.v1", p.request_id || p.scope || "", opts),
+    decision: rawDecision && DECISIONS.has(rawDecision) ? rawDecision : "other",
+    reason_code: code(p.reason),
+    tool_category: category(p.tool_name),
+    policy_commitment: hmacCommitment("scopeblind.egress.policy.v1", p.policy_digest || "", opts),
+    mode: str(p.mode) && MODES.has(str(p.mode)) ? str(p.mode) : "other",
+    ...ar && str(ar.payload_hash) ? { action_commitment: hmacCommitment("scopeblind.egress.action.v1", ar.payload_hash, opts) } : {},
+    ...pd && str(pd.output_hash) ? { output_commitment: hmacCommitment("scopeblind.egress.output.v1", pd.output_hash, opts) } : {},
+    ...disclosed !== void 0 ? { disclosed_field_count: disclosed } : {},
+    ...integer(p.deny_iteration) !== void 0 ? { deny_iteration: integer(p.deny_iteration) } : {}
+  };
+  return summary;
+}
+function inspectEgress(obj, opts = {}) {
+  const violations = [];
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return { safe: false, violations: [{ path: "$", reason: "not an egress summary object" }] };
+  const o = obj;
+  const allowed = opts.signed ? EGRESS_SIGNED_PAYLOAD_FIELDS : EGRESS_SUMMARY_FIELDS;
+  for (const [key, value] of Object.entries(o)) {
+    if (!allowed.has(key)) {
+      violations.push({ path: `$.${key}`, reason: "field is not allowed in an egress summary" });
+      continue;
+    }
+    if (value === null || value === void 0) {
+      violations.push({ path: `$.${key}`, reason: "null and undefined are not permitted" });
+      continue;
+    }
+    if (typeof value === "object") violations.push({ path: `$.${key}`, reason: "nested objects and arrays are not permitted" });
+  }
+  if (o.type !== EGRESS_SUMMARY_TYPE) violations.push({ path: "$.type", reason: "wrong egress summary type" });
+  if (o.version !== EGRESS_SUMMARY_VERSION) violations.push({ path: "$.version", reason: "unsupported egress summary version" });
+  if (!isReceiptCommitment(o.source_receipt_commitment)) violations.push({ path: "$.source_receipt_commitment", reason: "must be a sha256 receipt commitment" });
+  for (const field of ["request_pseudonym", "policy_commitment"]) if (!isPseudonym(o[field])) violations.push({ path: `$.${field}`, reason: "must be a local hmac-sha256 pseudonym" });
+  for (const field of ["action_commitment", "output_commitment"]) if (o[field] !== void 0 && !isPseudonym(o[field])) violations.push({ path: `$.${field}`, reason: "must be a local hmac-sha256 pseudonym" });
+  if (!["allow", "deny", "approve", "other"].includes(String(o.decision))) violations.push({ path: "$.decision", reason: "invalid decision enum" });
+  if (!REASON_CODES.has(String(o.reason_code))) violations.push({ path: "$.reason_code", reason: "invalid reason code enum" });
+  if (!["communication", "source_control", "filesystem", "database", "cloud", "browser", "finance", "other"].includes(String(o.tool_category))) violations.push({ path: "$.tool_category", reason: "invalid tool category enum" });
+  if (!["enforce", "shadow", "audit", "other"].includes(String(o.mode))) violations.push({ path: "$.mode", reason: "invalid mode enum" });
+  for (const field of ["disclosed_field_count", "deny_iteration"]) if (o[field] !== void 0 && (!Number.isSafeInteger(o[field]) || Number(o[field]) < 0 || Number(o[field]) > 1e6)) violations.push({ path: `$.${field}`, reason: "must be a bounded non-negative integer" });
+  if (opts.signed) {
+    if (!isPublicKey(o.public_key)) violations.push({ path: "$.public_key", reason: "must be a 32-byte Ed25519 public key" });
+    if (typeof o.issuer_id !== "string" || !/^[\x21-\x7e]{1,160}$/.test(o.issuer_id)) violations.push({ path: "$.issuer_id", reason: "must be a compact issuer id" });
+    if (!isIssuedAt(o.issued_at)) violations.push({ path: "$.issued_at", reason: "must be an ISO timestamp" });
+  }
+  return { safe: violations.length === 0, violations };
+}
+function assertEgressSafe(summary, opts = {}) {
+  const check = inspectEgress(summary, opts);
+  if (!check.safe) throw new Error(`egress guard blocked a forward: ${check.violations.slice(0, 3).map((v) => `${v.path} (${v.reason})`).join("; ")}`);
+}
+function runEgressSelfCheck(sampleReceipts, now) {
+  const opts = { pseudonymKey: "scopeblind-egress-self-check-v1" };
+  const summaries = sampleReceipts.map((r) => toEgressSummary(r, opts)).filter((s) => s !== null);
+  const allSafe = summaries.every((s) => inspectEgress(s).safe);
+  const dirty = {
+    payload: {
+      type: "protectmcp:decision",
+      tool_name: "send_email",
+      decision: "allow",
+      request_id: "ceo@victim.com",
+      policy_digest: "strategy-mean-reversion",
+      action_readback: { destination: "ceo@victim.com", payload_preview: { body: "we miss earnings by 40%, sell before the print" }, payload_hash: "deadbeef", disclosed_fields: ["to", "subject", "body"] },
+      payload_digest: { preview: "positions AAPL 50000 shares", output_hash: "cafe" },
+      privateKey: "deadbeef".repeat(8)
+    },
+    signature: { alg: "EdDSA", kid: "k", sig: "y" }
+  };
+  const dirtySummary = toEgressSummary(dirty, opts);
+  const blob = JSON.stringify(dirtySummary);
+  const deny = { payload: { type: "protectmcp:decision", tool_name: "Bash", decision: "deny", reason: 'cedar_deny: {"reason":["policy0"]}', request_id: "d1", policy_digest: "p" }, signature: { alg: "EdDSA", kid: "k", sig: "y" } };
+  const denySummary = toEgressSummary(deny, opts);
+  return {
+    type: "scopeblind.egress_self_check.v1",
+    generated_at: now,
+    summary_fields: [...EGRESS_SUMMARY_FIELDS].sort(),
+    samples_checked: summaries.length,
+    all_summaries_safe: allSafe,
+    raw_content_dropped: inspectEgress(dirtySummary).safe && !blob.includes("ceo@victim.com") && !blob.includes("earnings") && !blob.includes("positions") && !blob.includes("40%"),
+    private_key_dropped: !blob.includes("deadbeef".repeat(8)),
+    deny_receipt_forwardable: Boolean(denySummary && inspectEgress(denySummary).safe && denySummary.decision === "deny" && denySummary.reason_code === "cedar_deny"),
+    statement: "The hosted layer receives a signed, fixed-schema summary of enums, a receipt hash, and local HMAC pseudonyms only. Request ids, policy references, action hashes, and output hashes cannot be dictionary-checked without the local key; raw prompts, payloads, outputs, recipients, positions, amounts, and private keys remain local."
+  };
+}
 
 // src/scopeblind-bridge.ts
 var DEFAULT_BASE = "https://scopeblind.com";
@@ -38039,18 +38690,23 @@ var FLUSH_INTERVAL_MS = 5e3;
 var BATCH_MAX = 128;
 var BRASS_REFRESH_MARGIN_MS = 5 * 60 * 1e3;
 var ScopeBlindBridge = class {
+  env;
   token;
   base;
   tenantOverride;
+  configuredPseudonymKey;
   cachedProof = null;
+  /** Raw receipts stay only in this process until minimized at flush time. */
   queue = [];
   flushTimer = null;
   stats;
   shuttingDown = false;
   constructor(env = process.env) {
+    this.env = env;
     this.token = env.SCOPEBLIND_TOKEN || null;
     this.base = (env.SCOPEBLIND_BASE || DEFAULT_BASE).replace(/\/$/, "");
     this.tenantOverride = env.SCOPEBLIND_TENANT || null;
+    this.configuredPseudonymKey = env.SCOPEBLIND_EGRESS_HMAC_KEY ? parseConfiguredPseudonymKey(env.SCOPEBLIND_EGRESS_HMAC_KEY) : null;
     this.stats = {
       enabled: Boolean(this.token),
       tenant_slug: this.tenantOverride,
@@ -38074,7 +38730,7 @@ var ScopeBlindBridge = class {
   enabled() {
     return Boolean(this.token);
   }
-  /** Push a signed receipt into the queue. Non-blocking. */
+  /** Push a receipt into the local-only queue. Non-blocking. */
   forward(signedReceipt) {
     if (!this.enabled() || this.shuttingDown) return;
     this.queue.push(signedReceipt);
@@ -38083,42 +38739,87 @@ var ScopeBlindBridge = class {
   /** Flush the queue. Safe to call concurrently. */
   async flush() {
     if (!this.enabled() || this.queue.length === 0) return;
-    const batch = this.queue.splice(0, BATCH_MAX);
+    const localReceipts = this.queue.splice(0, BATCH_MAX);
     try {
       const proof = await this.ensureBrassProof();
+      if (!proof) {
+        this.queue.unshift(...localReceipts);
+        return;
+      }
       const slug = this.tenantOverride || proof?.tenant_id;
       if (!slug) {
-        this.queue.unshift(...batch);
+        this.queue.unshift(...localReceipts);
         return;
       }
       this.stats.tenant_slug = slug;
-      const res = await fetch(`${this.base}/fn/console/${slug}/receipts`, {
+      let opts;
+      try {
+        opts = this.summaryOptions(slug);
+      } catch (err) {
+        this.stats.last_error = `local egress HMAC key: ${String(err?.message || err)}`;
+        this.queue.unshift(...localReceipts);
+        return;
+      }
+      const summaries = [];
+      for (const receipt of localReceipts) {
+        const summary = toEgressSummary(receipt, opts);
+        const guard = summary ? inspectEgress(summary) : { safe: false, violations: [{ path: "$", reason: "not a recognized receipt or local HMAC key" }] };
+        if (!summary || !guard.safe) {
+          this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
+          continue;
+        }
+        const signed = signGenericArtifact("scopeblind.egress_summary.v1", summary);
+        if (!signed.ok || !signed.signed) {
+          this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
+          process.stderr.write(`[PROTECT_MCP] egress summary dropped: a locally signed summary is required (${signed.error || signed.warning || "signer unavailable"})
+`);
+          continue;
+        }
+        try {
+          const envelope = JSON.parse(signed.signed);
+          const signedGuard = inspectEgress(envelope?.payload, { signed: true });
+          if (!signedGuard.safe || envelope?.signature?.alg !== "EdDSA") {
+            throw new Error(signedGuard.violations.slice(0, 2).map((v) => v.path).join(", "));
+          }
+          summaries.push(envelope);
+        } catch (err) {
+          this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
+          process.stderr.write(`[PROTECT_MCP] egress summary dropped after signing: ${String(err?.message || err)}
+`);
+        }
+      }
+      if (summaries.length === 0) return;
+      const res = await fetch(`${this.base}/fn/console/${slug}/summaries`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
           authorization: `Bearer ${this.token}`,
           "user-agent": "protect-mcp/scopeblind-bridge"
         },
-        body: JSON.stringify({ receipts: batch })
+        body: JSON.stringify({ auth_proof: proof, summaries })
       });
       if (!res.ok) {
         const errBody = await res.text().catch(() => "");
         this.stats.last_error = `HTTP ${res.status} ${errBody.slice(0, 160)}`;
-        this.stats.rejected_total += batch.length;
+        this.stats.rejected_total += summaries.length;
         if (res.status >= 500 && res.status !== 503) {
-          this.queue.unshift(...batch);
+          this.queue.unshift(...localReceipts);
         }
         return;
       }
       const body = await res.json().catch(() => ({}));
-      this.stats.forwarded_total += body?.accepted ?? batch.length;
+      this.stats.forwarded_total += body?.accepted ?? summaries.length;
       this.stats.rejected_total += body?.rejected ?? 0;
       this.stats.last_flush_at = (/* @__PURE__ */ new Date()).toISOString();
       this.stats.last_error = null;
     } catch (err) {
       this.stats.last_error = String(err?.message || err);
-      this.queue.unshift(...batch);
+      this.queue.unshift(...localReceipts);
     }
+  }
+  summaryOptions(slug) {
+    const pseudonymKey = this.configuredPseudonymKey || loadOrCreatePseudonymKey(this.env, this.base, slug);
+    return { pseudonymKey, tenantScope: `${this.base}\0${slug}` };
   }
   /** Exchange SCOPEBLIND_TOKEN for a BRASS-v2 proof; refresh near expiry. */
   async ensureBrassProof() {
@@ -38136,7 +38837,7 @@ var ScopeBlindBridge = class {
         },
         body: JSON.stringify({
           token: this.token,
-          scope: "protect-mcp-receipt-emit",
+          scope: "scopeblind-summary-emit",
           ttl_seconds: 3600
         })
       });
@@ -38175,6 +38876,37 @@ var ScopeBlindBridge = class {
     if (this.queue.length > 0) await this.flush();
   }
 };
+function parseConfiguredPseudonymKey(value) {
+  const key = Buffer.from(value, "base64url");
+  if (key.length !== 32) throw new Error("SCOPEBLIND_EGRESS_HMAC_KEY must be a base64url-encoded 32-byte key");
+  return key;
+}
+function loadOrCreatePseudonymKey(env, base, slug) {
+  const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path6.join)((0, import_node_os.homedir)(), ".protect-mcp", "egress-keys");
+  const scopeDigest = (0, import_node_crypto5.createHash)("sha256").update(`${base}\0${slug}`).digest("hex");
+  const path = (0, import_node_path6.join)(dir, `${scopeDigest}.key`);
+  (0, import_node_fs10.mkdirSync)(dir, { recursive: true, mode: 448 });
+  (0, import_node_fs10.chmodSync)(dir, 448);
+  try {
+    const existing = (0, import_node_fs10.readFileSync)(path);
+    if (existing.length !== 32) throw new Error(`local egress key has invalid length: ${path}`);
+    (0, import_node_fs10.chmodSync)(path, 384);
+    return existing;
+  } catch (err) {
+    if (err?.code !== "ENOENT") throw err;
+  }
+  const fresh = (0, import_node_crypto5.randomBytes)(32);
+  try {
+    (0, import_node_fs10.writeFileSync)(path, fresh, { mode: 384, flag: "wx" });
+    return fresh;
+  } catch (err) {
+    if (err?.code !== "EEXIST") throw err;
+    const existing = (0, import_node_fs10.readFileSync)(path);
+    if (existing.length !== 32) throw new Error(`local egress key has invalid length: ${path}`);
+    (0, import_node_fs10.chmodSync)(path, 384);
+    return existing;
+  }
+}
 var singleton = null;
 function getScopeBlindBridge() {
   if (!singleton) singleton = new ScopeBlindBridge();
@@ -38302,6 +39034,973 @@ function buildEnrichment(tool, input) {
   return e;
 }
 
+// src/mandate-lifecycle.ts
+var import_node_crypto7 = require("crypto");
+var import_node_fs11 = require("fs");
+var import_node_path7 = require("path");
+
+// src/webauthn-approval.ts
+var import_node_crypto6 = require("crypto");
+var import_p256 = require("@noble/curves/p256");
+var import_ed255193 = require("@noble/curves/ed25519");
+var import_sha2566 = require("@noble/hashes/sha256");
+var import_utils6 = require("@noble/hashes/utils");
+function createApprovalChallenge(requestId, toolName, agentId, rpId = "scopeblind.com", timeoutSeconds = 300, boundChallenge) {
+  const challenge = boundChallenge ?? base64urlEncode((0, import_node_crypto6.randomBytes)(32));
+  const contextHash = (0, import_node_crypto6.createHash)("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
+  return {
+    challenge,
+    requestId,
+    toolName,
+    agentId,
+    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+    timeoutSeconds,
+    rpId,
+    contextHash
+  };
+}
+function toCredentialRequestOptions(challenge, allowCredentials) {
+  return {
+    publicKey: {
+      challenge: base64urlDecode2(challenge.challenge).buffer,
+      rpId: challenge.rpId,
+      timeout: challenge.timeoutSeconds * 1e3,
+      userVerification: "required",
+      // Always require biometric
+      ...allowCredentials ? {
+        allowCredentials: allowCredentials.map((c) => ({
+          id: base64urlDecode2(c.id).buffer,
+          type: "public-key"
+        }))
+      } : {}
+    }
+  };
+}
+function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts = {}) {
+  const now = opts.now ?? Date.now();
+  const fail = (reason, partial = {}) => ({
+    valid: false,
+    reason,
+    credentialId: assertion.credentialId,
+    authenticatorType: "unknown",
+    userVerified: false,
+    signCount: 0,
+    contextHash: challenge.contextHash,
+    approvedAt: new Date(now).toISOString(),
+    ...partial
+  });
+  const createdAt = new Date(challenge.createdAt).getTime();
+  if (now - createdAt > challenge.timeoutSeconds * 1e3) return fail("challenge_expired");
+  if (!credentialPublicKey?.publicKeyHex) return fail("missing_credential_public_key");
+  const clientDataBytes = base64urlDecode2(assertion.clientDataJSON);
+  let clientData;
+  try {
+    clientData = JSON.parse(Buffer.from(clientDataBytes).toString("utf8"));
+  } catch {
+    return fail("client_data_parse_error");
+  }
+  if (clientData.type !== "webauthn.get") return fail("wrong_client_data_type");
+  if (!constantTimeStrEqual(clientData.challenge ?? "", challenge.challenge)) return fail("challenge_mismatch");
+  const allowedOrigins = opts.expectedOrigin ? Array.isArray(opts.expectedOrigin) ? opts.expectedOrigin : [opts.expectedOrigin] : [`https://${challenge.rpId}`];
+  if (!clientData.origin || !allowedOrigins.includes(clientData.origin)) return fail("origin_mismatch");
+  const authData = base64urlDecode2(assertion.authenticatorData);
+  if (authData.length < 37) return fail("authenticator_data_too_short");
+  const rpIdHash = authData.slice(0, 32);
+  const expectedRpIdHash = (0, import_sha2566.sha256)(new TextEncoder().encode(challenge.rpId));
+  if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail("rp_id_hash_mismatch");
+  const flags = authData[32];
+  const userPresent = !!(flags & 1);
+  const userVerified = !!(flags & 4);
+  if (!userPresent) return fail("user_not_present");
+  if ((opts.requireUserVerification ?? true) && !userVerified) return fail("user_verification_required", { userVerified });
+  const signCount = authData[33] << 24 | authData[34] << 16 | authData[35] << 8 | authData[36];
+  if (typeof opts.prevSignCount === "number" && signCount !== 0 && signCount <= opts.prevSignCount) {
+    return fail("sign_count_regression", { userVerified, signCount });
+  }
+  const signedData = concatBytes(authData, (0, import_sha2566.sha256)(clientDataBytes));
+  const sigBytes = base64urlDecode2(assertion.signature);
+  let sigOk = false;
+  try {
+    if (credentialPublicKey.alg === -7) {
+      sigOk = import_p256.p256.verify(sigBytes, (0, import_sha2566.sha256)(signedData), (0, import_utils6.hexToBytes)(credentialPublicKey.publicKeyHex), { format: "der" });
+    } else if (credentialPublicKey.alg === -8) {
+      sigOk = import_ed255193.ed25519.verify(sigBytes, signedData, (0, import_utils6.hexToBytes)(credentialPublicKey.publicKeyHex));
+    } else {
+      return fail("unsupported_algorithm", { userVerified, signCount });
+    }
+  } catch {
+    sigOk = false;
+  }
+  if (!sigOk) return fail("invalid_signature", { userVerified, signCount });
+  return {
+    valid: true,
+    credentialId: assertion.credentialId,
+    // Heuristic: platform authenticators (TouchID/FaceID/Hello) report UV; roaming
+    // keys without a PIN are UP-only. Attachment is authoritative only at registration.
+    authenticatorType: userVerified ? "platform" : "cross-platform",
+    userVerified,
+    signCount,
+    contextHash: challenge.contextHash,
+    approvedAt: new Date(now).toISOString()
+  };
+}
+function createApprovalReceiptPayload(challenge, result) {
+  return {
+    type: "acta:approval",
+    approval_method: "webauthn",
+    tool_name: challenge.toolName,
+    request_id: challenge.requestId,
+    agent_id: challenge.agentId,
+    authenticator_type: result.authenticatorType,
+    user_verified: result.userVerified,
+    context_hash: result.contextHash,
+    approved_at: result.approvedAt,
+    // Hash the credential ID for privacy — don't store the raw ID
+    credential_id_hash: (0, import_node_crypto6.createHash)("sha256").update(result.credentialId).digest("hex").slice(0, 16)
+  };
+}
+function base64urlEncode(buffer) {
+  return Buffer.from(buffer).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function base64urlDecode2(str2) {
+  const base64 = str2.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - base64.length % 4) % 4);
+  return new Uint8Array(Buffer.from(padded, "base64"));
+}
+function concatBytes(a, b) {
+  const out = new Uint8Array(a.length + b.length);
+  out.set(a, 0);
+  out.set(b, a.length);
+  return out;
+}
+function bytesEqual(a, b) {
+  if (a.length !== b.length) return false;
+  return (0, import_node_crypto6.timingSafeEqual)(Buffer.from(a), Buffer.from(b));
+}
+function constantTimeStrEqual(a, b) {
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return (0, import_node_crypto6.timingSafeEqual)(ab, bb);
+}
+
+// src/mandate-lifecycle.ts
+var MANDATE_REGISTRY_SCHEMA = "scopeblind.mandate-registry.v1";
+var MANDATE_PROPOSAL_SCHEMA = "scopeblind.mandate-proposal.v1";
+var MANDATE_APPROVAL_SCHEMA = "scopeblind.mandate-approval.v1";
+var SHA256 = (value) => (0, import_node_crypto7.createHash)("sha256").update(value).digest("hex");
+function nowIso(now) {
+  return (now || /* @__PURE__ */ new Date()).toISOString();
+}
+function mustIso(value, label) {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) throw new Error(`${label} must be an ISO-8601 timestamp`);
+  return parsed;
+}
+function safePolicyFileName(name) {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]*\.cedar$/.test(name) && !name.includes("..");
+}
+function stableDigest(value) {
+  return `sha256:${SHA256(Buffer.from(canonicalize(value), "utf-8"))}`;
+}
+function controllerIdentity(c) {
+  return c.type === "ed25519" ? { id: c.id, label: c.label, type: c.type, public_key: c.public_key.toLowerCase() } : { id: c.id, label: c.label, type: c.type, credential_id: c.credential_id, credential_public_key: c.credential_public_key };
+}
+function controllersDigest(controllers) {
+  const identities = controllers.map(controllerIdentity).sort((a, b) => String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0);
+  return stableDigest(identities);
+}
+function controllerKeyMaterial(c) {
+  return (c.type === "ed25519" ? c.public_key : c.credential_public_key?.publicKeyHex || "").toLowerCase();
+}
+function policyApprovalChallenge(proposal, controllerId) {
+  return (0, import_node_crypto7.createHash)("sha256").update(Buffer.from(canonicalize({
+    purpose: "scopeblind:policy-change",
+    proposed_by: proposal.proposed_by,
+    proposal_id: proposal.proposal_id,
+    proposal_digest: proposal.proposal_digest,
+    base_policy_digest: proposal.base_policy_digest,
+    proposed_policy_digest: proposal.proposed_policy_digest,
+    expires_at: proposal.expires_at,
+    controller_id: controllerId
+  }), "utf-8")).digest("base64url");
+}
+function mandatePaths(cedarDir) {
+  const absolute = (0, import_node_path7.resolve)(cedarDir);
+  const parent = (0, import_node_path7.dirname)(absolute);
+  const base = (0, import_node_path7.basename)(absolute);
+  return {
+    registry: (0, import_node_path7.join)(parent, `.${base}.scopeblind-mandate-registry.json`),
+    snapshots: (0, import_node_path7.join)(parent, `.${base}.scopeblind-mandate-snapshots`),
+    auditLog: (0, import_node_path7.join)(parent, `.${base}.scopeblind-mandate-history.jsonl`)
+  };
+}
+function loadGateSigner(keyPath) {
+  const raw = JSON.parse((0, import_node_fs11.readFileSync)(keyPath, "utf-8"));
+  if (typeof raw.privateKey !== "string" || !/^[0-9a-f]{64}$/i.test(raw.privateKey)) {
+    throw new Error("gate key must contain a 32-byte hexadecimal privateKey");
+  }
+  if (typeof raw.publicKey !== "string" || !/^[0-9a-f]{64}$/i.test(raw.publicKey)) {
+    throw new Error("gate key must contain a 32-byte hexadecimal publicKey");
+  }
+  if (typeof raw.kid !== "string" || raw.kid.length === 0) {
+    throw new Error("gate key must contain a non-empty kid");
+  }
+  return {
+    privateKey: raw.privateKey.toLowerCase(),
+    publicKey: raw.publicKey.toLowerCase(),
+    kid: raw.kid,
+    ...typeof raw.issuer === "string" ? { issuer: raw.issuer } : {}
+  };
+}
+function snapshotFromDirectory(cedarDir, compiledAt) {
+  const entries = (0, import_node_fs11.readdirSync)(cedarDir, { encoding: "utf-8" }).filter((name) => name.endsWith(".cedar")).sort();
+  if (entries.length === 0) throw new Error(`no Cedar policy files found in ${cedarDir}`);
+  const files = entries.map((name) => {
+    if (!safePolicyFileName(name)) throw new Error(`unsafe Cedar policy filename: ${name}`);
+    const content = (0, import_node_fs11.readFileSync)((0, import_node_path7.join)(cedarDir, name), "utf-8");
+    return { name, content, sha256: SHA256(Buffer.from(content, "utf-8")) };
+  });
+  const digest = digestPolicyFiles("cedar", files).policy_digest;
+  return { engine: "cedar", policy_digest: digest, files, compiled_at: compiledAt || nowIso() };
+}
+function assertSnapshot(snapshot) {
+  if (!snapshot || snapshot.engine !== "cedar" || !Array.isArray(snapshot.files) || snapshot.files.length === 0) {
+    throw new Error("invalid Cedar policy snapshot");
+  }
+  for (const file of snapshot.files) {
+    if (!safePolicyFileName(file.name)) throw new Error(`unsafe policy filename: ${file.name}`);
+    if (SHA256(Buffer.from(file.content, "utf-8")) !== file.sha256) {
+      throw new Error(`policy snapshot content hash mismatch: ${file.name}`);
+    }
+  }
+  const actual = digestPolicyFiles("cedar", snapshot.files).policy_digest;
+  if (actual !== snapshot.policy_digest) throw new Error("policy snapshot digest mismatch");
+}
+function signLifecycleEvent(signer, fields, issuedAt) {
+  return createReceiptEnvelope({
+    type: "scopeblind.mandate-transition.v1",
+    ...fields,
+    gate_public_key: signer.publicKey,
+    ...signer.issuer ? { gate_issuer: signer.issuer } : {}
+  }, signer.privateKey, signer.kid, issuedAt).envelope;
+}
+function verifyGateEnvelope(envelope, gate) {
+  const check = verifyReceipt(envelope, gate.public_key);
+  if (!check.valid) return false;
+  const payload = envelope.payload;
+  return payload.issuer_id === gate.kid && payload.gate_public_key === gate.public_key;
+}
+function writeAtomic(path, contents) {
+  const parent = (0, import_node_path7.dirname)(path);
+  (0, import_node_fs11.mkdirSync)(parent, { recursive: true });
+  const temp = (0, import_node_path7.join)(parent, `.${(0, import_node_path7.basename)(path)}.${process.pid}.${(0, import_node_crypto7.randomUUID)()}.tmp`);
+  try {
+    (0, import_node_fs11.writeFileSync)(temp, contents, { encoding: "utf-8", mode: 384 });
+    (0, import_node_fs11.renameSync)(temp, path);
+  } finally {
+    if ((0, import_node_fs11.existsSync)(temp)) (0, import_node_fs11.rmSync)(temp, { force: true });
+  }
+}
+function persistRegistry(cedarDir, registry) {
+  registry.updated_at = nowIso();
+  const paths = mandatePaths(cedarDir);
+  writeAtomic(paths.registry, JSON.stringify(registry, null, 2) + "\n");
+  const last = registry.history[registry.history.length - 1];
+  if (last) {
+    (0, import_node_fs11.writeFileSync)(paths.auditLog, JSON.stringify(last) + "\n", { encoding: "utf-8", flag: "a", mode: 384 });
+  }
+}
+function persistSnapshot(cedarDir, snapshot) {
+  const paths = mandatePaths(cedarDir);
+  (0, import_node_fs11.mkdirSync)(paths.snapshots, { recursive: true, mode: 448 });
+  const name = `${snapshot.policy_digest.replace(/^sha256:/, "")}.json`;
+  const output = (0, import_node_path7.join)(paths.snapshots, name);
+  if (!(0, import_node_fs11.existsSync)(output)) writeAtomic(output, JSON.stringify(snapshot, null, 2) + "\n");
+}
+function sourceStatements(snapshot) {
+  const byFile = /* @__PURE__ */ new Map();
+  for (const file of snapshot.files) {
+    const statements = file.content.split(/;\s*(?:\r?\n|$)/g).map((s) => s.replace(/\/\/[^\n]*/g, "").trim()).filter((s) => /^(permit|forbid)\s*\(/.test(s)).map((s) => `${s};`);
+    byFile.set(file.name, new Set(statements));
+  }
+  return byFile;
+}
+function describePolicyDiff(before, after) {
+  assertSnapshot(before);
+  assertSnapshot(after);
+  const beforeStatements = sourceStatements(before);
+  const afterStatements = sourceStatements(after);
+  const names = [.../* @__PURE__ */ new Set([...beforeStatements.keys(), ...afterStatements.keys()])].sort();
+  const added = [];
+  const removed = [];
+  for (const name of names) {
+    const oldSet = beforeStatements.get(name) || /* @__PURE__ */ new Set();
+    const newSet = afterStatements.get(name) || /* @__PURE__ */ new Set();
+    for (const statement of newSet) if (!oldSet.has(statement)) added.push(`${name}: ${statement}`);
+    for (const statement of oldSet) if (!newSet.has(statement)) removed.push(`${name}: ${statement}`);
+  }
+  const beforeFiles = new Map(before.files.map((file) => [file.name, file.sha256]));
+  const afterFiles = new Map(after.files.map((file) => [file.name, file.sha256]));
+  const changedFiles = names.filter((name) => beforeFiles.get(name) !== afterFiles.get(name)).map((name) => ({ name, before_sha256: beforeFiles.get(name) || null, after_sha256: afterFiles.get(name) || null }));
+  const plainEnglish = [];
+  if (added.length) plainEnglish.push(`Adds ${added.length} executable policy statement${added.length === 1 ? "" : "s"}: the lines are shown below exactly as compiled.`);
+  if (removed.length) plainEnglish.push(`Removes ${removed.length} executable policy statement${removed.length === 1 ? "" : "s"}: removed protections are shown below exactly as compiled.`);
+  if (!added.length && !removed.length && changedFiles.length) plainEnglish.push("Changes policy file bytes without changing a recognisable permit or forbid statement; review the exact file digest change before approval.");
+  if (!changedFiles.length) plainEnglish.push("No executable policy change was detected. The proposal cannot be used to widen a mandate.");
+  return { added_statements: added, removed_statements: removed, changed_files: changedFiles, plain_english: plainEnglish };
+}
+function assertController(controller) {
+  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(controller.id)) throw new Error("controller id is invalid");
+  if (!controller.label.trim()) throw new Error("controller label is required");
+  if (controller.type === "ed25519" && !/^[0-9a-f]{64}$/i.test(controller.public_key)) {
+    throw new Error(`controller ${controller.id} requires a 32-byte Ed25519 public key`);
+  }
+  if (controller.type === "webauthn" && (!controller.credential_id || !controller.credential_public_key?.publicKeyHex)) {
+    throw new Error(`controller ${controller.id} requires a registered WebAuthn credential`);
+  }
+}
+function proposalUnsigned(input) {
+  return {
+    schema: input.schema,
+    proposal_id: input.proposal_id,
+    created_at: input.created_at,
+    expires_at: input.expires_at,
+    proposed_by: input.proposed_by,
+    base_policy_digest: input.base_policy_digest,
+    proposed_policy_digest: input.proposed_policy_digest,
+    denial_origin: input.denial_origin,
+    reason: input.reason,
+    diff: input.diff,
+    candidate: input.candidate
+  };
+}
+function approvalDigest(approval) {
+  return stableDigest(approval);
+}
+function transition(registry, signer, event, headBefore, headAfter, fields = {}, at = nowIso()) {
+  const sequence = registry.history.length + 1;
+  const body = {
+    event,
+    registry_id: registry.registry_id,
+    sequence,
+    head_before: headBefore,
+    head_after: headAfter,
+    ...fields
+  };
+  return {
+    sequence,
+    event,
+    occurred_at: at,
+    head_before: headBefore,
+    head_after: headAfter,
+    ...fields,
+    transition_receipt: signLifecycleEvent(signer, body, at)
+  };
+}
+function initializeMandateRegistry(input) {
+  const { cedarDir, signer, controllers } = input;
+  const paths = mandatePaths(cedarDir);
+  if ((0, import_node_fs11.existsSync)(paths.registry)) throw new Error(`managed mandate registry already exists: ${paths.registry}`);
+  if (!controllers.length) throw new Error("at least one distinct controller is required before managing a mandate");
+  const ids = /* @__PURE__ */ new Set();
+  for (const controller of controllers) {
+    assertController(controller);
+    if (ids.has(controller.id)) throw new Error(`duplicate controller id: ${controller.id}`);
+    if (controller.id === signer.kid) throw new Error("the gate signer cannot be registered as a mandate controller");
+    if (controllerKeyMaterial(controller) === signer.publicKey.toLowerCase()) {
+      throw new Error("the gate signing key cannot also be a mandate controller key");
+    }
+    ids.add(controller.id);
+  }
+  const created = nowIso(input.now);
+  const baseline = snapshotFromDirectory(cedarDir, created);
+  const registryId = `sb:mandate:${SHA256(`${signer.kid}|${baseline.policy_digest}`).slice(0, 24)}`;
+  const compilation = signLifecycleEvent(signer, {
+    event: "compiled",
+    registry_id: registryId,
+    policy_digest: baseline.policy_digest,
+    snapshot_digest: stableDigest(baseline)
+  }, created);
+  const registry = {
+    schema: MANDATE_REGISTRY_SCHEMA,
+    registry_id: registryId,
+    created_at: created,
+    updated_at: created,
+    gate: { kid: signer.kid, public_key: signer.publicKey, ...signer.issuer ? { issuer: signer.issuer } : {} },
+    controllers,
+    active: {
+      policy_digest: baseline.policy_digest,
+      baseline_policy_digest: baseline.policy_digest,
+      activated_at: created,
+      compilation_receipt: compilation
+    },
+    policies: { [baseline.policy_digest]: baseline },
+    proposals: {},
+    approvals: {},
+    pending_webauthn: {},
+    history: []
+  };
+  registry.history.push(transition(registry, signer, "initialized", null, baseline.policy_digest, {
+    policy_digest: baseline.policy_digest,
+    controllers_digest: controllersDigest(controllers)
+  }, created));
+  persistSnapshot(cedarDir, baseline);
+  persistRegistry(cedarDir, registry);
+  return registry;
+}
+function loadMandateRegistry(cedarDir) {
+  const path = mandatePaths(cedarDir).registry;
+  if (!(0, import_node_fs11.existsSync)(path)) return null;
+  try {
+    return JSON.parse((0, import_node_fs11.readFileSync)(path, "utf-8"));
+  } catch (error) {
+    throw new Error(`could not parse mandate registry: ${error instanceof Error ? error.message : "unknown error"}`);
+  }
+}
+function verifyDirectApproval(registry, proposal, approval) {
+  const controller = registry.controllers.find((candidate) => candidate.id === approval.controller_id);
+  if (!controller || controller.type !== "ed25519") return "controller_not_registered";
+  const check = verifyReceipt(approval.approval_receipt, controller.public_key);
+  if (!check.valid) return `approval_${check.error || "signature_invalid"}`;
+  const payload = approval.approval_receipt.payload;
+  if (payload.type !== MANDATE_APPROVAL_SCHEMA) return "approval_schema_invalid";
+  if (payload.proposal_id !== proposal.proposal_id || payload.proposal_digest !== proposal.proposal_digest) return "approval_not_bound_to_proposal";
+  if (payload.controller_id !== controller.id || payload.decision !== "approve") return "approval_controller_or_decision_invalid";
+  if (approval.approval_receipt.signature.kid !== controller.id) return "approval_signer_kid_invalid";
+  return null;
+}
+function verifyWebAuthnApproval(registry, proposal, approval) {
+  const controller = registry.controllers.find((candidate) => candidate.id === approval.controller_id);
+  if (!controller || controller.type !== "webauthn") return "controller_not_registered";
+  if (approval.challenge.requestId !== proposal.proposal_id || approval.challenge.toolName !== "scopeblind:policy-change" || approval.challenge.challenge !== policyApprovalChallenge(proposal, controller.id)) {
+    return "approval_not_bound_to_proposal";
+  }
+  if (approval.assertion.credentialId !== controller.credential_id) return "approval_credential_not_registered";
+  const verified = verifyApprovalAssertion(approval.challenge, approval.assertion, controller.credential_public_key, {
+    expectedOrigin: approval.expected_origin,
+    requireUserVerification: true,
+    now: Date.parse(approval.approved_at)
+  });
+  if (!verified.valid || !verified.userVerified) return `approval_${verified.reason || "webauthn_invalid"}`;
+  if (!approval.result.valid || approval.result.contextHash !== verified.contextHash) return "approval_result_invalid";
+  return null;
+}
+function verifyProposal(registry, proposal) {
+  if (proposal.schema !== MANDATE_PROPOSAL_SCHEMA) return "proposal_schema_invalid";
+  const unsigned = proposalUnsigned(proposal);
+  if (stableDigest(unsigned) !== proposal.proposal_digest) return "proposal_digest_invalid";
+  if (!verifyGateEnvelope(proposal.proposal_receipt, registry.gate)) return "proposal_signature_invalid";
+  const payload = proposal.proposal_receipt.payload;
+  if (payload.type !== MANDATE_PROPOSAL_SCHEMA || payload.proposal_id !== proposal.proposal_id || payload.proposal_digest !== proposal.proposal_digest) {
+    return "proposal_receipt_binding_invalid";
+  }
+  if (payload.registry_id !== registry.registry_id) return "proposal_registry_mismatch";
+  if (proposal.proposed_by.gate_kid !== registry.gate.kid || proposal.proposed_by.gate_public_key !== registry.gate.public_key) {
+    return "proposal_gate_identity_invalid";
+  }
+  const denialCheck = verifyReceipt(proposal.denial_origin.receipt, registry.gate.public_key);
+  if (!denialCheck.valid || proposal.denial_origin.receipt_hash !== (denialCheck.hash || receiptHash(proposal.denial_origin.receipt))) {
+    return "proposal_denial_receipt_invalid";
+  }
+  const denialPayload = proposal.denial_origin.receipt.payload;
+  if (denialPayload.type !== "protectmcp:decision" || denialPayload.decision !== "deny" || denialPayload.policy_digest !== proposal.base_policy_digest || denialPayload.request_id !== proposal.denial_origin.request_id || denialPayload.tool_name !== proposal.denial_origin.tool) {
+    return "proposal_denial_binding_invalid";
+  }
+  try {
+    assertSnapshot(proposal.candidate);
+  } catch {
+    return "proposal_snapshot_invalid";
+  }
+  if (proposal.candidate.policy_digest !== proposal.proposed_policy_digest) return "proposal_snapshot_digest_invalid";
+  return null;
+}
+function verifyMandateRegistry(registry, now = /* @__PURE__ */ new Date()) {
+  try {
+    if (!registry || registry.schema !== MANDATE_REGISTRY_SCHEMA) return { valid: false, code: "unknown_registry_schema", message: "Registry schema is not recognised." };
+    if (!registry.gate?.kid || !/^[0-9a-f]{64}$/i.test(registry.gate.public_key)) return { valid: false, code: "gate_identity_invalid", message: "Registry gate identity is malformed." };
+    const controllerIds = /* @__PURE__ */ new Set();
+    for (const controller of registry.controllers || []) {
+      assertController(controller);
+      if (controllerIds.has(controller.id)) return { valid: false, code: "duplicate_controller", message: `Controller ${controller.id} appears more than once.` };
+      if (controller.id === registry.gate.kid || controllerKeyMaterial(controller) === registry.gate.public_key.toLowerCase()) {
+        return { valid: false, code: "gate_is_controller", message: "The gate signer cannot be a mandate controller." };
+      }
+      controllerIds.add(controller.id);
+    }
+    if (!registry.controllers.length) return { valid: false, code: "missing_controller", message: "Managed policy has no controller." };
+    for (const [digest, snapshot] of Object.entries(registry.policies || {})) {
+      assertSnapshot(snapshot);
+      if (digest !== snapshot.policy_digest) return { valid: false, code: "snapshot_map_mismatch", message: "A stored policy snapshot is addressed by the wrong digest." };
+    }
+    const activeSnapshot = registry.policies?.[registry.active?.policy_digest];
+    if (!activeSnapshot) return { valid: false, code: "active_snapshot_missing", message: "The active policy head has no compiled snapshot." };
+    if (!verifyGateEnvelope(registry.active.compilation_receipt, registry.gate)) return { valid: false, code: "active_compilation_signature_invalid", message: "The active compiled policy is not signed by the configured gate." };
+    const compilationPayload = registry.active.compilation_receipt.payload;
+    if (compilationPayload.policy_digest !== registry.active.policy_digest) return { valid: false, code: "active_compilation_binding_invalid", message: "The signed compiled policy does not bind the active head." };
+    let priorHash = null;
+    let currentHead = null;
+    let currentExpiry = null;
+    let currentBaseline = null;
+    let currentProposalId = null;
+    for (let index = 0; index < registry.history.length; index += 1) {
+      const item = registry.history[index];
+      if (item.sequence !== index + 1 || !verifyGateEnvelope(item.transition_receipt, registry.gate)) {
+        return { valid: false, code: "transition_signature_invalid", message: "A policy transition is missing or has an invalid gate signature." };
+      }
+      const payload = item.transition_receipt.payload;
+      if (payload.registry_id !== registry.registry_id || payload.sequence !== item.sequence || payload.event !== item.event) {
+        return { valid: false, code: "transition_binding_invalid", message: "A signed transition does not bind this registry state." };
+      }
+      if ((payload.head_before ?? null) !== (item.head_before ?? null) || (payload.head_after ?? null) !== (item.head_after ?? null) || (payload.proposal_id ?? null) !== (item.proposal_id ?? null) || (payload.approval_digest ?? null) !== (item.approval_digest ?? null) || (payload.policy_digest ?? null) !== (item.policy_digest ?? null) || (payload.controllers_digest ?? null) !== (item.controllers_digest ?? null) || (payload.expiry ?? null) !== (item.expiry ?? null)) {
+        return { valid: false, code: "transition_state_mismatch", message: "Displayed policy transition state does not match the signed transition." };
+      }
+      if (item.event === "initialized") {
+        const derived = controllersDigest(registry.controllers);
+        if (!payload.controllers_digest || payload.controllers_digest !== derived) {
+          return { valid: false, code: "controller_set_unanchored", message: "The controller set does not match the gate-signed controller-set digest. A controller may have been injected or a key swapped." };
+        }
+      }
+      if (item.head_before !== currentHead) {
+        return { valid: false, code: "transition_head_chain_invalid", message: "Policy transition heads are discontinuous." };
+      }
+      const hash = stableDigest(item.transition_receipt);
+      if (priorHash && payload.previous_transition_hash !== priorHash) {
+        return { valid: false, code: "transition_chain_invalid", message: "Policy transition chain is discontinuous." };
+      }
+      priorHash = hash;
+      currentHead = item.head_after;
+      const pExpiry = payload.expiry || null;
+      const pProposalId = payload.proposal_id || null;
+      const pHeadBefore = payload.head_before ?? null;
+      const pHeadAfter = payload.head_after || "";
+      if (item.event === "initialized") {
+        currentBaseline = pHeadAfter;
+        currentExpiry = null;
+        currentProposalId = null;
+      } else if (item.event === "policy_activated") {
+        currentBaseline = pHeadBefore;
+        currentExpiry = pExpiry;
+        currentProposalId = pProposalId;
+      } else if (item.event === "policy_expired_reverted") {
+        currentBaseline = pHeadAfter;
+        currentExpiry = null;
+        currentProposalId = null;
+      }
+    }
+    if (currentHead !== registry.active.policy_digest) return { valid: false, code: "active_head_transition_mismatch", message: "Active policy head does not match the signed transition chain." };
+    if ((registry.active.expires_at || null) !== currentExpiry) {
+      return { valid: false, code: "active_expiry_mismatch", message: "The active grant expiry does not match the gate-signed transition chain (stripped or extended)." };
+    }
+    if (registry.active.baseline_policy_digest !== currentBaseline) {
+      return { valid: false, code: "active_baseline_mismatch", message: "The active baseline policy digest does not match the gate-signed transition chain." };
+    }
+    if ((registry.active.proposal_id || null) !== currentProposalId) {
+      return { valid: false, code: "active_proposal_mismatch", message: "The active proposal id does not match the gate-signed transition chain." };
+    }
+    const usedDenials = /* @__PURE__ */ new Set();
+    for (const proposal of Object.values(registry.proposals || {})) {
+      const error = verifyProposal(registry, proposal);
+      if (error) return { valid: false, code: error, message: "A policy proposal cannot be verified." };
+      if (usedDenials.has(proposal.denial_origin.receipt_hash)) {
+        return { valid: false, code: "denial_receipt_reused", message: "A denial receipt was used for more than one policy proposal." };
+      }
+      usedDenials.add(proposal.denial_origin.receipt_hash);
+    }
+    for (const [proposalId, approval] of Object.entries(registry.approvals || {})) {
+      const proposal = registry.proposals[proposalId];
+      if (!proposal) return { valid: false, code: "approval_without_proposal", message: "A controller approval refers to no proposal." };
+      const error = approval.method === "ed25519" ? verifyDirectApproval(registry, proposal, approval) : verifyWebAuthnApproval(registry, proposal, approval);
+      if (error) return { valid: false, code: error, message: "A controller approval cannot be verified." };
+    }
+    for (const item of registry.history) {
+      if (item.event !== "proposal_approved" && item.event !== "policy_activated") continue;
+      if (!item.proposal_id || !item.approval_digest) return { valid: false, code: "activation_approval_missing", message: "A policy activation lacks its proposal or controller approval reference." };
+      const approval = registry.approvals[item.proposal_id];
+      const proposal = registry.proposals[item.proposal_id];
+      if (!approval || !proposal || approvalDigest(approval) !== item.approval_digest) {
+        return { valid: false, code: "activation_approval_mismatch", message: "A policy activation does not bind the exact verified controller approval." };
+      }
+      if (item.event === "policy_activated" && (item.head_before !== proposal.base_policy_digest || item.head_after !== proposal.proposed_policy_digest)) {
+        return { valid: false, code: "activation_policy_mismatch", message: "A policy activation does not bind the proposed policy transition." };
+      }
+    }
+    if (registry.active.expires_at && Date.parse(registry.active.expires_at) <= now.getTime()) {
+      return { valid: false, code: "active_grant_expired", message: "The active widened policy has expired and must be reverted before enforcement." };
+    }
+    return { valid: true, registry };
+  } catch (error) {
+    return { valid: false, code: "registry_verification_error", message: error instanceof Error ? error.message : "Registry verification failed." };
+  }
+}
+function installSnapshotAtomically(cedarDir, snapshot) {
+  assertSnapshot(snapshot);
+  const target = (0, import_node_path7.resolve)(cedarDir);
+  const parent = (0, import_node_path7.dirname)(target);
+  const base = (0, import_node_path7.basename)(target);
+  if (!(0, import_node_fs11.existsSync)(target) || !(0, import_node_fs11.statSync)(target).isDirectory()) throw new Error(`managed Cedar directory is missing: ${target}`);
+  const stage = (0, import_node_path7.join)(parent, `.${base}.scopeblind-stage-${process.pid}-${(0, import_node_crypto7.randomUUID)()}`);
+  const backup = (0, import_node_path7.join)(parent, `.${base}.scopeblind-backup-${process.pid}-${(0, import_node_crypto7.randomUUID)()}`);
+  (0, import_node_fs11.mkdirSync)(stage, { recursive: true, mode: 448 });
+  try {
+    for (const file of snapshot.files) (0, import_node_fs11.writeFileSync)((0, import_node_path7.join)(stage, file.name), file.content, { encoding: "utf-8", mode: 384 });
+    (0, import_node_fs11.renameSync)(target, backup);
+    try {
+      (0, import_node_fs11.renameSync)(stage, target);
+    } catch (error) {
+      (0, import_node_fs11.renameSync)(backup, target);
+      throw error;
+    }
+    (0, import_node_fs11.rmSync)(backup, { recursive: true, force: true });
+  } finally {
+    if ((0, import_node_fs11.existsSync)(stage)) (0, import_node_fs11.rmSync)(stage, { recursive: true, force: true });
+    if ((0, import_node_fs11.existsSync)(backup) && !(0, import_node_fs11.existsSync)(target)) (0, import_node_fs11.renameSync)(backup, target);
+  }
+}
+function addTransition(registry, signer, item, at) {
+  const previous = registry.history[registry.history.length - 1];
+  const previousTransitionHash = previous ? stableDigest(previous.transition_receipt) : void 0;
+  const trans = transition(registry, signer, item.event, item.head_before, item.head_after, {
+    ...item.proposal_id ? { proposal_id: item.proposal_id } : {},
+    ...item.approval_digest ? { approval_digest: item.approval_digest } : {},
+    ...item.policy_digest ? { policy_digest: item.policy_digest } : {},
+    ...item.expiry ? { expiry: item.expiry } : {},
+    ...previousTransitionHash ? { previous_transition_hash: previousTransitionHash } : {}
+  }, at || item.occurred_at);
+  registry.history.push(trans);
+  return trans;
+}
+function createPolicyProposal(input) {
+  const registry = loadMandateRegistry(input.cedarDir);
+  if (!registry) throw new Error("managed mandate registry not initialized");
+  const integrity = verifyMandateRegistry(registry, input.now);
+  if (!integrity.valid) throw new Error(`cannot propose against invalid registry: ${integrity.code}`);
+  if (input.signer.kid !== registry.gate.kid || input.signer.publicKey !== registry.gate.public_key) throw new Error("proposal signer does not match the registered gate");
+  const receiptCheck = verifyReceipt(input.denialReceipt, registry.gate.public_key);
+  if (!receiptCheck.valid) throw new Error("proposal origin must be a valid gate-signed denial receipt");
+  const receipt = input.denialReceipt.payload;
+  if (receipt.type !== "protectmcp:decision" || receipt.decision !== "deny") throw new Error("proposal origin must be a denied protect-mcp decision");
+  if (receipt.policy_digest !== registry.active.policy_digest) throw new Error("proposal origin was denied under a different policy head");
+  const expiresAtMs = mustIso(input.expiresAt, "proposal expiry");
+  const createdAt = nowIso(input.now);
+  if (expiresAtMs <= Date.parse(createdAt)) throw new Error("proposal expiry must be in the future");
+  const candidate = snapshotFromDirectory(input.candidateDir, createdAt);
+  if (candidate.policy_digest === registry.active.policy_digest) throw new Error("candidate policy is identical to the active policy");
+  if (registry.active.expires_at) throw new Error("a temporary widening is already active; let it expire or revert to baseline before proposing another");
+  const origin = {
+    receipt: input.denialReceipt,
+    receipt_hash: receiptCheck.hash || stableDigest(input.denialReceipt),
+    request_id: String(receipt.request_id || ""),
+    tool: String(receipt.tool_name || ""),
+    reason_code: String(receipt.reason || "")
+  };
+  if (!origin.request_id || !origin.tool) throw new Error("denial receipt lacks an actionable request id or tool name");
+  if (Object.values(registry.proposals).some((p) => p.denial_origin.receipt_hash === origin.receipt_hash)) {
+    throw new Error("this denial receipt has already been used for a policy proposal");
+  }
+  const draftBase = {
+    schema: MANDATE_PROPOSAL_SCHEMA,
+    proposal_id: `proposal-${(0, import_node_crypto7.randomUUID)()}`,
+    created_at: createdAt,
+    expires_at: input.expiresAt,
+    proposed_by: { gate_kid: input.signer.kid, gate_public_key: input.signer.publicKey },
+    base_policy_digest: registry.active.policy_digest,
+    proposed_policy_digest: candidate.policy_digest,
+    denial_origin: origin,
+    reason: input.reason.trim(),
+    diff: describePolicyDiff(registry.policies[registry.active.policy_digest], candidate),
+    candidate
+  };
+  if (!draftBase.reason) throw new Error("a controller-facing reason is required");
+  const proposalDigest = stableDigest(proposalUnsigned(draftBase));
+  const proposalReceipt = signLifecycleEvent(input.signer, {
+    type: MANDATE_PROPOSAL_SCHEMA,
+    registry_id: registry.registry_id,
+    proposal_id: draftBase.proposal_id,
+    proposal_digest: proposalDigest,
+    base_policy_digest: draftBase.base_policy_digest,
+    proposed_policy_digest: draftBase.proposed_policy_digest,
+    denial_receipt_hash: origin.receipt_hash
+  }, createdAt);
+  const proposal = { ...draftBase, proposal_digest: proposalDigest, proposal_receipt: proposalReceipt };
+  registry.proposals[proposal.proposal_id] = proposal;
+  persistSnapshot(input.cedarDir, candidate);
+  addTransition(registry, input.signer, {
+    event: "proposal_created",
+    occurred_at: createdAt,
+    head_before: registry.active.policy_digest,
+    head_after: registry.active.policy_digest,
+    proposal_id: proposal.proposal_id,
+    policy_digest: proposal.proposed_policy_digest,
+    expiry: proposal.expires_at
+  }, createdAt);
+  persistRegistry(input.cedarDir, registry);
+  return proposal;
+}
+function createDirectControllerApproval(input) {
+  const approvedAt = nowIso(input.now);
+  const approval = createReceiptEnvelope({
+    type: MANDATE_APPROVAL_SCHEMA,
+    proposal_id: input.proposal.proposal_id,
+    proposal_digest: input.proposal.proposal_digest,
+    controller_id: input.controller.id,
+    decision: "approve",
+    approval_method: "ed25519",
+    controller_public_key: input.controller.public_key
+  }, input.privateKey, input.controller.id, approvedAt).envelope;
+  return {
+    method: "ed25519",
+    controller_id: input.controller.id,
+    controller_label: input.controller.label,
+    approval_receipt: approval,
+    approved_at: approvedAt
+  };
+}
+function createWebAuthnPolicyChallenge(input) {
+  const registry = loadMandateRegistry(input.cedarDir);
+  if (!registry) throw new Error("managed mandate registry not initialized");
+  const proposal = registry.proposals[input.proposalId];
+  if (!proposal) throw new Error("unknown policy proposal");
+  const controller = registry.controllers.find((item) => item.id === input.controllerId);
+  if (!controller || controller.type !== "webauthn") throw new Error("selected controller has no registered WebAuthn credential");
+  const challenge = createApprovalChallenge(proposal.proposal_id, "scopeblind:policy-change", controller.id, input.rpId, input.timeoutSeconds || 300, policyApprovalChallenge(proposal, controller.id));
+  registry.pending_webauthn[proposal.proposal_id] = { proposal_id: proposal.proposal_id, controller_id: controller.id, challenge };
+  persistRegistry(input.cedarDir, registry);
+  return challenge;
+}
+function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at) {
+  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at)));
+  if (!integrity.valid && integrity.code !== "active_grant_expired") throw new Error(`cannot activate against invalid registry: ${integrity.code}`);
+  if (registry.active.policy_digest !== proposal.base_policy_digest) throw new Error("active policy changed after proposal; create a new proposal against the current head");
+  if (Date.parse(proposal.expires_at) <= Date.parse(at)) throw new Error("proposal expired before approval; it cannot be activated");
+  const controller = registry.controllers.find((item) => item.id === approval.controller_id);
+  if (!controller) throw new Error("approval controller is not registered");
+  const error = approval.method === "ed25519" ? verifyDirectApproval(registry, proposal, approval) : verifyWebAuthnApproval(registry, proposal, approval);
+  if (error) throw new Error(`controller approval rejected: ${error}`);
+  if (controller.id === registry.gate.kid) throw new Error("the gate cannot approve its own policy proposal");
+  const before = registry.active.policy_digest;
+  const candidate = registry.policies[proposal.proposed_policy_digest] || proposal.candidate;
+  assertSnapshot(candidate);
+  installSnapshotAtomically(cedarDir, candidate);
+  const compilationReceipt = signLifecycleEvent(signer, {
+    event: "compiled",
+    registry_id: registry.registry_id,
+    policy_digest: candidate.policy_digest,
+    snapshot_digest: stableDigest(candidate),
+    proposal_id: proposal.proposal_id,
+    approval_digest: approvalDigest(approval)
+  }, at);
+  registry.policies[candidate.policy_digest] = candidate;
+  registry.approvals[proposal.proposal_id] = approval;
+  registry.active = {
+    policy_digest: candidate.policy_digest,
+    baseline_policy_digest: before,
+    activated_at: at,
+    expires_at: proposal.expires_at,
+    proposal_id: proposal.proposal_id,
+    compilation_receipt: compilationReceipt
+  };
+  addTransition(registry, signer, {
+    event: "proposal_approved",
+    occurred_at: at,
+    head_before: before,
+    head_after: before,
+    proposal_id: proposal.proposal_id,
+    approval_digest: approvalDigest(approval)
+  }, at);
+  addTransition(registry, signer, {
+    event: "policy_activated",
+    occurred_at: at,
+    head_before: before,
+    head_after: candidate.policy_digest,
+    proposal_id: proposal.proposal_id,
+    approval_digest: approvalDigest(approval),
+    policy_digest: candidate.policy_digest,
+    expiry: proposal.expires_at
+  }, at);
+  delete registry.pending_webauthn[proposal.proposal_id];
+  persistRegistry(cedarDir, registry);
+  return registry;
+}
+function approvePolicyProposalWithDirectSignature(input) {
+  const registry = loadMandateRegistry(input.cedarDir);
+  if (!registry) throw new Error("managed mandate registry not initialized");
+  const proposal = registry.proposals[input.proposalId];
+  if (!proposal) throw new Error("unknown policy proposal");
+  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, input.approval, nowIso(input.now));
+}
+function approvePolicyProposalWithWebAuthn(input) {
+  const registry = loadMandateRegistry(input.cedarDir);
+  if (!registry) throw new Error("managed mandate registry not initialized");
+  const proposal = registry.proposals[input.proposalId];
+  const pending = registry.pending_webauthn[input.proposalId];
+  if (!proposal || !pending) throw new Error("no pending WebAuthn approval exists for this proposal");
+  const controller = registry.controllers.find((item) => item.id === pending.controller_id);
+  if (!controller || controller.type !== "webauthn") throw new Error("pending approval controller is not registered for WebAuthn");
+  if (pending.challenge.challenge !== policyApprovalChallenge(proposal, controller.id)) {
+    throw new Error("pending WebAuthn challenge is not bound to this proposal");
+  }
+  const at = nowIso(input.now);
+  const result = verifyApprovalAssertion(pending.challenge, input.assertion, controller.credential_public_key, {
+    expectedOrigin: input.expectedOrigin,
+    requireUserVerification: true,
+    prevSignCount: controller.sign_count,
+    now: Date.parse(at)
+  });
+  if (!result.valid || !result.userVerified) throw new Error(`WebAuthn approval rejected: ${result.reason || "user verification required"}`);
+  controller.sign_count = result.signCount;
+  const approval = {
+    method: "webauthn",
+    controller_id: controller.id,
+    controller_label: controller.label,
+    challenge: pending.challenge,
+    assertion: input.assertion,
+    result,
+    expected_origin: input.expectedOrigin,
+    approved_at: at
+  };
+  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at);
+}
+function refreshManagedMandate(input) {
+  const registry = loadMandateRegistry(input.cedarDir);
+  if (!registry) return { valid: true };
+  if (registry.gate.kid !== input.signer.kid || registry.gate.public_key !== input.signer.publicKey) {
+    return { valid: false, code: "gate_signer_mismatch", message: "The local gate signer does not match the signer pinned in the mandate registry." };
+  }
+  const now = input.now || /* @__PURE__ */ new Date();
+  const structural = verifyMandateRegistry(registry, now);
+  if (!structural.valid && structural.code !== "active_grant_expired") return structural;
+  const savedExpiry = registry.active.expires_at;
+  if (savedExpiry && Date.parse(savedExpiry) <= now.getTime()) {
+    const baseline = registry.policies[registry.active.baseline_policy_digest];
+    if (!baseline) return { valid: false, code: "expiry_baseline_missing", message: "Expired policy has no baseline snapshot to restore." };
+    try {
+      installSnapshotAtomically(input.cedarDir, baseline);
+      const at = nowIso(now);
+      const before = registry.active.policy_digest;
+      const compilationReceipt = signLifecycleEvent(input.signer, {
+        event: "compiled",
+        registry_id: registry.registry_id,
+        policy_digest: baseline.policy_digest,
+        snapshot_digest: stableDigest(baseline),
+        reverted_from: before
+      }, at);
+      registry.active = {
+        policy_digest: baseline.policy_digest,
+        baseline_policy_digest: baseline.policy_digest,
+        activated_at: at,
+        compilation_receipt: compilationReceipt
+      };
+      addTransition(registry, input.signer, {
+        event: "policy_expired_reverted",
+        occurred_at: at,
+        head_before: before,
+        head_after: baseline.policy_digest,
+        policy_digest: baseline.policy_digest,
+        expiry: savedExpiry
+      }, at);
+      persistRegistry(input.cedarDir, registry);
+      return { valid: true, registry, expired_reverted: true };
+    } catch (error) {
+      return { valid: false, code: "expiry_revert_failed", message: error instanceof Error ? error.message : "Failed to restore the expired policy baseline." };
+    }
+  }
+  const check = verifyMandateRegistry(registry, now);
+  if (!check.valid) return check;
+  try {
+    const current = snapshotFromDirectory(input.cedarDir);
+    if (current.policy_digest !== registry.active.policy_digest) {
+      return { valid: false, code: "policy_head_mismatch", message: "Policy files differ from the signed active registry head. The gate refuses to enforce an unauthorised edit." };
+    }
+  } catch (error) {
+    return { valid: false, code: "policy_read_failed", message: error instanceof Error ? error.message : "Could not read active policy files." };
+  }
+  return check;
+}
+function publicMandateStatus(registry) {
+  return {
+    schema: registry.schema,
+    registry_id: registry.registry_id,
+    gate: { kid: registry.gate.kid, public_key: registry.gate.public_key, ...registry.gate.issuer ? { issuer: registry.gate.issuer } : {} },
+    active: {
+      policy_digest: registry.active.policy_digest,
+      baseline_policy_digest: registry.active.baseline_policy_digest,
+      activated_at: registry.active.activated_at,
+      ...registry.active.expires_at ? { expires_at: registry.active.expires_at } : {},
+      ...registry.active.proposal_id ? { proposal_id: registry.active.proposal_id } : {}
+    },
+    controllers: registry.controllers.map((controller) => ({ id: controller.id, label: controller.label, type: controller.type })),
+    proposals: Object.values(registry.proposals).map((proposal) => ({
+      proposal_id: proposal.proposal_id,
+      proposal_digest: proposal.proposal_digest,
+      base_policy_digest: proposal.base_policy_digest,
+      proposed_policy_digest: proposal.proposed_policy_digest,
+      expires_at: proposal.expires_at,
+      reason: proposal.reason,
+      diff: proposal.diff,
+      approved: Boolean(registry.approvals[proposal.proposal_id])
+    })),
+    transitions: registry.history.map((entry) => ({
+      sequence: entry.sequence,
+      event: entry.event,
+      occurred_at: entry.occurred_at,
+      head_before: entry.head_before,
+      head_after: entry.head_after,
+      ...entry.proposal_id ? { proposal_id: entry.proposal_id } : {},
+      ...entry.expiry ? { expiry: entry.expiry } : {},
+      transition_receipt_hash: stableDigest(entry.transition_receipt)
+    }))
+  };
+}
+function exportMandateDisciplineRecord(registry, now) {
+  const check = verifyMandateRegistry(registry, now);
+  if (!check.valid) throw new Error(`cannot export invalid mandate lifecycle: ${check.code}`);
+  return {
+    type: "scopeblind.discipline-policy-changes.v1",
+    generated_at: nowIso(),
+    registry_id: registry.registry_id,
+    registry_digest: stableDigest(registry),
+    active_policy_digest: registry.active.policy_digest,
+    active_baseline_policy_digest: registry.active.baseline_policy_digest,
+    active_grant_expires_at: registry.active.expires_at || null,
+    invariant: "A policy head becomes active only after a gate-signed proposal bound to a signed denial, a distinct registered controller approval, and an atomic install. Expired widened grants restore their signed baseline before another action is evaluated.",
+    changes: registry.history.map((transition2) => ({
+      sequence: transition2.sequence,
+      event: transition2.event,
+      occurred_at: transition2.occurred_at,
+      head_before: transition2.head_before,
+      head_after: transition2.head_after,
+      proposal_id: transition2.proposal_id || null,
+      expires_at: transition2.expiry || null,
+      transition_receipt_hash: stableDigest(transition2.transition_receipt)
+    })),
+    proposals: Object.values(registry.proposals).map((proposal) => ({
+      proposal_id: proposal.proposal_id,
+      proposal_digest: proposal.proposal_digest,
+      base_policy_digest: proposal.base_policy_digest,
+      proposed_policy_digest: proposal.proposed_policy_digest,
+      denial_receipt_hash: proposal.denial_origin.receipt_hash,
+      expires_at: proposal.expires_at,
+      approval_method: registry.approvals[proposal.proposal_id]?.method || null,
+      active: registry.active.proposal_id === proposal.proposal_id
+    })),
+    disclosure: {
+      included: ["policy digests", "transition hashes", "denial receipt hashes", "controller approval method", "expiry"],
+      excluded: ["tool payloads", "prompts", "portfolio data", "strategy inputs"],
+      full_registry_attachment_required_for_offline_transition_verification: true
+    }
+  };
+}
+function verifyMandateLifecycleExport(registry, expectedPolicy, now) {
+  const status = verifyMandateRegistry(registry, now);
+  if (!status.valid || !expectedPolicy) return status;
+  const snapshot = registry.policies[registry.active.policy_digest];
+  if (!snapshot) return { valid: false, code: "active_snapshot_missing", message: "The active snapshot is absent." };
+  const bundled = digestPolicyFiles("cedar", expectedPolicy.files.map((file) => ({ name: file.name, content: file.content }))).policy_digest;
+  if (bundled !== snapshot.policy_digest) return { valid: false, code: "export_policy_mismatch", message: "The exported policy bundle does not match the active lifecycle head." };
+  return status;
+}
+
 // src/hook-server.ts
 var DEFAULT_PORT = 9377;
 var LOG_FILE3 = ".protect-mcp-log.jsonl";
@@ -38309,8 +40008,8 @@ var RECEIPTS_FILE2 = ".protect-mcp-receipts.jsonl";
 var PAYLOAD_HASH_THRESHOLD = 1024;
 function resumeReceiptChain(receiptFilePath) {
   try {
-    if (!(0, import_node_fs10.existsSync)(receiptFilePath)) return null;
-    const lines = (0, import_node_fs10.readFileSync)(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+    if (!(0, import_node_fs12.existsSync)(receiptFilePath)) return null;
+    const lines = (0, import_node_fs12.readFileSync)(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
     if (lines.length === 0) return null;
     return receiptHash(JSON.parse(lines[lines.length - 1]));
   } catch {
@@ -38340,7 +40039,7 @@ function computePayloadDigest(input) {
     return void 0;
   }
   return {
-    input_hash: (0, import_node_crypto4.createHash)("sha256").update(content).digest("hex"),
+    input_hash: (0, import_node_crypto8.createHash)("sha256").update(content).digest("hex"),
     input_size: size,
     truncated: true,
     preview: content.slice(0, 256)
@@ -38353,7 +40052,7 @@ function computeOutputDigest(output) {
     return void 0;
   }
   return {
-    output_hash: (0, import_node_crypto4.createHash)("sha256").update(content).digest("hex"),
+    output_hash: (0, import_node_crypto8.createHash)("sha256").update(content).digest("hex"),
     output_size: size
   };
 }
@@ -38366,7 +40065,7 @@ function detectSandboxState() {
   }
   if (process.platform === "linux") {
     try {
-      const procStatus = (0, import_node_fs10.readFileSync)("/proc/self/status", "utf-8");
+      const procStatus = (0, import_node_fs12.readFileSync)("/proc/self/status", "utf-8");
       if (procStatus.includes("Seccomp:	2")) return "enabled";
     } catch {
     }
@@ -38376,7 +40075,7 @@ function detectSandboxState() {
 async function handlePreToolUse(input, state) {
   const hookStart = Date.now();
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto4.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto8.randomUUID)().slice(0, 12);
   state.inflightTools.set(requestId, {
     tool: toolName,
     startedAt: hookStart,
@@ -38384,6 +40083,27 @@ async function handlePreToolUse(input, state) {
   });
   const payloadDigest = computePayloadDigest(input.toolInput);
   const actionReadback = buildActionReadback(toolName, input.toolInput || {});
+  const mandate = ensureManagedMandate(state);
+  if (!mandate.valid) {
+    const hookLatency2 = Date.now() - hookStart;
+    emitDecisionLog(state, {
+      tool: toolName,
+      decision: "deny",
+      reason_code: mandate.code,
+      request_id: requestId,
+      hook_event: "PreToolUse",
+      timing: { hook_latency_ms: hookLatency2, started_at: hookStart },
+      action_readback: actionReadback,
+      sandbox_state: detectSandboxState()
+    });
+    return {
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason: `[ScopeBlind] Denied "${toolName}": the managed mandate cannot be verified (${mandate.code}). ${mandate.message} Failing closed until the signed policy state is restored.`
+      }
+    };
+  }
   const enrichment = buildEnrichment(toolName, input.toolInput || {});
   const inflightRec = state.inflightTools.get(requestId);
   if (inflightRec) inflightRec.enrichment = enrichment;
@@ -38581,7 +40301,7 @@ async function handlePreToolUse(input, state) {
 }
 async function handlePostToolUse(input, state) {
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto4.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto8.randomUUID)().slice(0, 12);
   const now = Date.now();
   const inflight = state.inflightTools.get(requestId);
   const timing = {
@@ -38593,7 +40313,7 @@ async function handlePostToolUse(input, state) {
     state.inflightTools.delete(requestId);
   }
   const outputDigest = computeOutputDigest(input.toolResult);
-  const receiptId = (0, import_node_crypto4.randomUUID)().slice(0, 8);
+  const receiptId = (0, import_node_crypto8.randomUUID)().slice(0, 8);
   const policyName = state.cedarPolicies ? `cedar:${state.policyDigest}` : state.policyDigest;
   const additionalContext = `[ScopeBlind] Tool call receipted. Policy: ${policyName}. Decision: allow. Receipt: #${receiptId}.` + (timing.tool_duration_ms !== void 0 ? ` Duration: ${timing.tool_duration_ms}ms.` : "") + (timing.hook_latency_ms !== void 0 ? ` Overhead: ${timing.hook_latency_ms}ms.` : "");
   emitDecisionLog(state, {
@@ -38625,7 +40345,7 @@ function handleSubagentStart(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_started",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
     hook_event: "SubagentStart",
     swarm: {
       ...state.swarmContext,
@@ -38646,7 +40366,7 @@ function handleSubagentStop(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_stopped",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
     hook_event: "SubagentStop",
     swarm: {
       ...state.swarmContext,
@@ -38661,7 +40381,7 @@ function handleTaskCreated(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_created",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
     hook_event: "TaskCreated",
     swarm: {
       ...state.swarmContext,
@@ -38675,7 +40395,7 @@ function handleTaskCompleted(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_completed",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
     hook_event: "TaskCompleted",
     swarm: state.swarmContext
   });
@@ -38686,7 +40406,7 @@ function handleSessionStart(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_started",
-    request_id: input.sessionId || (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto8.randomUUID)().slice(0, 12),
     hook_event: "SessionStart",
     swarm: state.swarmContext,
     sandbox_state: detectSandboxState()
@@ -38709,7 +40429,7 @@ function handleSessionEnd(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_ended",
-    request_id: input.sessionId || (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto8.randomUUID)().slice(0, 12),
     hook_event: "SessionEnd",
     swarm: state.swarmContext
   });
@@ -38720,7 +40440,7 @@ function handleTeammateIdle(input, state) {
     tool: `teammate:${input.agentId || "unknown"}`,
     decision: "allow",
     reason_code: "teammate_idle",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
     hook_event: "TeammateIdle",
     swarm: {
       ...state.swarmContext,
@@ -38748,7 +40468,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "deny",
       reason_code: "config_tamper_detected",
-      request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange",
       swarm: state.swarmContext
     });
@@ -38757,7 +40477,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "allow",
       reason_code: "config_changed",
-      request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange"
     });
   }
@@ -38779,7 +40499,7 @@ function handleStop(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "agent_stopped",
-    request_id: (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
     hook_event: "Stop",
     swarm: state.swarmContext
   });
@@ -38787,8 +40507,8 @@ function handleStop(input, state) {
 }
 function emitDecisionLog(state, entry) {
   const mode = state.enforce ? "enforce" : "shadow";
-  const otelTraceId = (0, import_node_crypto4.randomBytes)(16).toString("hex");
-  const otelSpanId = (0, import_node_crypto4.randomBytes)(8).toString("hex");
+  const otelTraceId = (0, import_node_crypto8.randomBytes)(16).toString("hex");
+  const otelSpanId = (0, import_node_crypto8.randomBytes)(8).toString("hex");
   const log = {
     v: 2,
     tool: entry.tool || "unknown",
@@ -38796,7 +40516,7 @@ function emitDecisionLog(state, entry) {
     reason_code: entry.reason_code || "default_allow",
     policy_digest: state.policyDigest,
     policy_engine: state.cedarPolicies ? "cedar" : "built-in",
-    request_id: entry.request_id || (0, import_node_crypto4.randomUUID)().slice(0, 12),
+    request_id: entry.request_id || (0, import_node_crypto8.randomUUID)().slice(0, 12),
     timestamp: Date.now(),
     mode,
     otel_trace_id: otelTraceId,
@@ -38808,21 +40528,29 @@ function emitDecisionLog(state, entry) {
     ...entry.payload_digest && { payload_digest: entry.payload_digest },
     ...entry.deny_iteration && { deny_iteration: entry.deny_iteration },
     ...entry.sandbox_state && { sandbox_state: entry.sandbox_state },
-    ...entry.plan_receipt_id && { plan_receipt_id: entry.plan_receipt_id }
+    ...entry.plan_receipt_id && { plan_receipt_id: entry.plan_receipt_id },
+    ...state.managedMandate ? {
+      mandate_registry: {
+        registry_id: state.managedMandate.registry.registry_id,
+        active_policy_digest: state.managedMandate.registry.active.policy_digest,
+        active_transition_hash: receiptHash(state.managedMandate.registry.history.at(-1)?.transition_receipt || {}),
+        ...state.managedMandate.registry.active.expires_at ? { expires_at: state.managedMandate.registry.active.expires_at } : {}
+      }
+    } : {}
   };
   const enr = state.inflightTools.get(log.request_id)?.enrichment;
   if (enr) log.enrichment = enr;
   process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
   try {
-    (0, import_node_fs10.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
+    (0, import_node_fs12.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
   } catch {
   }
   if (isSigningEnabled()) {
     const signed = signDecision(log, state.lastReceiptHash || void 0);
     if (signed.signed) {
       try {
-        (0, import_node_fs10.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
+        (0, import_node_fs12.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
         if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
       } catch {
       }
@@ -38849,7 +40577,7 @@ function emitDecisionLog(state, entry) {
       };
       const tombstone = JSON.stringify(tombstoneObj);
       try {
-        (0, import_node_fs10.appendFileSync)(state.receiptFilePath, tombstone + "\n");
+        (0, import_node_fs12.appendFileSync)(state.receiptFilePath, tombstone + "\n");
         state.lastReceiptHash = receiptHash(tombstoneObj);
       } catch {
       }
@@ -38896,9 +40624,12 @@ async function startHookServer(options = {}) {
   const port = options.port || DEFAULT_PORT;
   const verbose = options.verbose || false;
   const enforce = options.enforce || false;
+  const dataDir = options.dataDir || process.cwd();
   let cedarPolicies = null;
   let jsonPolicy = null;
   let policyDigest = "none";
+  let gateKeyPath;
+  let managedMandate = null;
   const cedarDir = options.cedarDir || findCedarDir();
   if (cedarDir) {
     try {
@@ -38926,6 +40657,7 @@ async function startHookServer(options = {}) {
       process.stderr.write(`[PROTECT_MCP] JSON policy loaded from ${options.policyPath}
 `);
       if (jsonPolicy.signing) {
+        gateKeyPath = jsonPolicy.signing.key_path;
         const warnings = await initSigning(jsonPolicy.signing);
         for (const w of warnings) {
           process.stderr.write(`[PROTECT_MCP] Warning: ${w}
@@ -38938,14 +40670,100 @@ async function startHookServer(options = {}) {
     }
   }
   if (!jsonPolicy?.signing) {
-    const keyPath = (0, import_node_path6.join)(process.cwd(), "keys", "gateway.json");
-    if ((0, import_node_fs10.existsSync)(keyPath)) {
+    const keyPath = (0, import_node_path8.join)(dataDir, "keys", "gateway.json");
+    if ((0, import_node_fs12.existsSync)(keyPath)) {
+      gateKeyPath = keyPath;
       const warnings = await initSigning({ key_path: keyPath, issuer: "protect-mcp", enabled: true });
       for (const w of warnings) {
         process.stderr.write(`[PROTECT_MCP] Warning: ${w}
 `);
       }
     }
+  }
+  if (cedarDir) {
+    const existingRegistry = loadMandateRegistry(cedarDir);
+    if (existingRegistry) {
+      if (!gateKeyPath) {
+        const message = "managed mandate found but no local gate signing key is configured";
+        if (enforce) throw new Error(`enforce mode refused to start: ${message}`);
+        process.stderr.write(`[PROTECT_MCP] Warning: ${message}; governed enforcement remains unavailable.
+`);
+      } else {
+        try {
+          const gateSigner = loadGateSigner(gateKeyPath);
+          const receiptSigner = getSignerInfo();
+          if (!isSigningEnabled() || !receiptSigner || receiptSigner.kid !== gateSigner.kid || receiptSigner.publicKey !== gateSigner.publicKey) {
+            throw new Error("managed mandate requires decision receipt signing with the exact gate key pinned in the registry");
+          }
+          const check = refreshManagedMandate({ cedarDir, signer: gateSigner });
+          if (!check.valid || !check.registry) {
+            const message = `${check.code || "mandate_registry_invalid"}: ${check.message || "registry verification failed"}`;
+            if (enforce) throw new Error(`enforce mode refused to start: ${message}`);
+            process.stderr.write(`[PROTECT_MCP] Warning: managed mandate invalid (${message}).
+`);
+          } else {
+            const reloaded = loadCedarPolicies(cedarDir);
+            if (reloaded.digest !== check.registry.active.policy_digest) {
+              throw new Error("loaded Cedar bytes do not match the signed active mandate head");
+            }
+            cedarPolicies = reloaded;
+            policyDigest = reloaded.digest;
+            managedMandate = {
+              signer: gateSigner,
+              registry: check.registry,
+              rpId: options.mandateRelyingPartyId || "localhost",
+              expectedOrigin: options.mandateApprovalOrigin || `http://localhost:${port}`,
+              highWaterSequence: check.registry.history.length,
+              highWaterHash: check.registry.history.length ? receiptHash(check.registry.history[check.registry.history.length - 1].transition_receipt) : "",
+              maxSeenTimeMs: Math.max(Date.now(), check.registry.history.reduce((m, t) => Math.max(m, Date.parse(t.occurred_at) || 0), 0))
+            };
+            process.stderr.write(
+              `[PROTECT_MCP] Managed mandate loaded: ${check.registry.registry_id} (head: ${check.registry.active.policy_digest}${check.registry.active.expires_at ? `; expires ${check.registry.active.expires_at}` : ""}).
+`
+            );
+          }
+        } catch (error) {
+          if (enforce) throw error;
+          process.stderr.write(`[PROTECT_MCP] Warning: managed mandate unavailable: ${error instanceof Error ? error.message : error}
+`);
+        }
+      }
+    }
+  }
+  if (enforce) {
+    const selfTest = await runEvaluatorSelfTest();
+    for (const c of selfTest.cases) {
+      if (!c.pass) {
+        process.stderr.write(
+          `[PROTECT_MCP] SELF-TEST FAIL: ${c.name} (expected ${c.expected}, got ${c.actual})
+`
+        );
+      }
+    }
+    if (!selfTest.passed) {
+      throw new Error(
+        "enforce mode refused to start: the restraint self-test failed. A gate that cannot prove it denies must not arm."
+      );
+    }
+    const receiptProbe = signDecision({
+      v: 2,
+      tool: "__protect_mcp_startup_selftest__",
+      decision: "deny",
+      reason_code: "startup_selftest",
+      policy_digest: policyDigest,
+      request_id: `selftest-${Date.now()}`,
+      mode: "enforce",
+      timestamp: Date.now()
+    });
+    if (receiptProbe.error) {
+      throw new Error(
+        `enforce mode refused to start: signing is configured but a denial receipt could not be produced (${receiptProbe.error}). An enforcing gate that cannot evidence a denial must not arm.`
+      );
+    }
+    process.stderr.write(
+      `[PROTECT_MCP] Restraint self-test passed (${selfTest.cases.length} vectors${selfTest.wasmAvailable ? "" : "; Cedar WASM absent, fail-closed invariant verified"})${receiptProbe.ok ? "; denial receipt signing verified" : ""}. Arming enforce mode.
+`
+    );
   }
   const state = {
     cedarPolicies,
@@ -38964,11 +40782,12 @@ async function startHookServer(options = {}) {
     verbose,
     enforce,
     policyDigest,
-    logFilePath: (0, import_node_path6.join)(process.cwd(), LOG_FILE3),
-    receiptFilePath: (0, import_node_path6.join)(process.cwd(), RECEIPTS_FILE2),
-    lastReceiptHash: resumeReceiptChain((0, import_node_path6.join)(process.cwd(), RECEIPTS_FILE2)),
+    logFilePath: (0, import_node_path8.join)(dataDir, LOG_FILE3),
+    receiptFilePath: (0, import_node_path8.join)(dataDir, RECEIPTS_FILE2),
+    lastReceiptHash: resumeReceiptChain((0, import_node_path8.join)(dataDir, RECEIPTS_FILE2)),
     permissionSuggestions: /* @__PURE__ */ new Map(),
-    configAlerts: []
+    configAlerts: [],
+    managedMandate
   };
   const server = (0, import_node_http2.createServer)(async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -38995,8 +40814,124 @@ async function startHookServer(options = {}) {
         signing: isSigningEnabled(),
         swarm: state.swarmContext,
         signer: signerInfo ? { kid: signerInfo.kid, issuer: signerInfo.issuer } : null,
-        cedar_files: cedarPolicies?.fileCount || 0
+        cedar_files: cedarPolicies?.fileCount || 0,
+        mandate: state.managedMandate ? {
+          registry_id: state.managedMandate.registry.registry_id,
+          active_policy_digest: state.managedMandate.registry.active.policy_digest,
+          ...state.managedMandate.registry.active.expires_at ? { expires_at: state.managedMandate.registry.active.expires_at } : {},
+          controller_count: state.managedMandate.registry.controllers.length
+        } : null
       }));
+      return;
+    }
+    if (url.pathname === "/mandate" && req.method === "GET") {
+      const check = ensureManagedMandate(state);
+      if (!state.managedMandate) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: "no_managed_mandate", hint: "Run protect-mcp mandate init before requesting lifecycle status." }));
+        return;
+      }
+      res.writeHead(check.valid ? 200 : 409);
+      res.end(JSON.stringify({
+        valid: check.valid,
+        ...check.valid ? {} : { error: check.code, message: check.message },
+        mandate: publicMandateStatus(state.managedMandate.registry)
+      }));
+      return;
+    }
+    const approvalMatch = url.pathname.match(/^\/mandate\/proposals\/([^/]+)\/(approve|webauthn\/challenge)$/);
+    if (approvalMatch && req.method === "GET") {
+      const proposalId = decodeURIComponent(approvalMatch[1]);
+      const check = ensureManagedMandate(state);
+      if (!check.valid || !state.managedMandate) {
+        res.writeHead(409);
+        res.end(JSON.stringify({ error: check.valid ? "no_managed_mandate" : check.code, message: check.valid ? "No managed mandate is active." : check.message }));
+        return;
+      }
+      const proposal = state.managedMandate.registry.proposals[proposalId];
+      if (!proposal) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: "unknown_proposal" }));
+        return;
+      }
+      const controllerId = url.searchParams.get("controller_id") || state.managedMandate.registry.controllers.find((item) => item.type === "webauthn")?.id;
+      const controller = state.managedMandate.registry.controllers.find((item) => item.id === controllerId);
+      if (!controller || controller.type !== "webauthn") {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: "webauthn_controller_required", hint: "Register a WebAuthn controller before using browser approval." }));
+        return;
+      }
+      if (approvalMatch[2] === "webauthn/challenge") {
+        try {
+          const challenge = createWebAuthnPolicyChallenge({
+            cedarDir: state.cedarDir,
+            proposalId,
+            controllerId: controller.id,
+            rpId: state.managedMandate.rpId
+          });
+          state.managedMandate.registry = loadMandateRegistry(state.cedarDir);
+          res.writeHead(200);
+          res.end(JSON.stringify({
+            proposal_id: proposal.proposal_id,
+            proposal_digest: proposal.proposal_digest,
+            controller: { id: controller.id, label: controller.label },
+            publicKey: {
+              challenge: challenge.challenge,
+              rpId: challenge.rpId,
+              timeout: challenge.timeoutSeconds * 1e3,
+              userVerification: "required",
+              allowCredentials: [{ id: controller.credential_id, type: "public-key" }]
+            }
+          }));
+        } catch (error) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: "challenge_failed", message: error instanceof Error ? error.message : "Could not create approval challenge." }));
+        }
+        return;
+      }
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.writeHead(200);
+      res.end(renderMandateApprovalPage({ proposal, controller: { id: controller.id, label: controller.label }, port }));
+      return;
+    }
+    const approveMatch = url.pathname.match(/^\/mandate\/proposals\/([^/]+)\/webauthn\/approve$/);
+    if (approveMatch && req.method === "POST") {
+      const proposalId = decodeURIComponent(approveMatch[1]);
+      if (!state.managedMandate || !state.cedarDir) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: "no_managed_mandate" }));
+        return;
+      }
+      let body = "";
+      req.on("data", (chunk) => {
+        body += chunk;
+      });
+      req.on("end", () => {
+        try {
+          const parsed = JSON.parse(body);
+          if (!parsed.assertion) throw new Error("missing WebAuthn assertion");
+          const registry = approvePolicyProposalWithWebAuthn({
+            cedarDir: state.cedarDir,
+            signer: state.managedMandate.signer,
+            proposalId,
+            assertion: parsed.assertion,
+            expectedOrigin: state.managedMandate.expectedOrigin
+          });
+          state.managedMandate.registry = registry;
+          const refreshed = ensureManagedMandate(state);
+          if (!refreshed.valid) throw new Error(`${refreshed.code}: ${refreshed.message}`);
+          res.writeHead(200);
+          res.end(JSON.stringify({
+            approved: true,
+            active_policy_digest: state.managedMandate.registry.active.policy_digest,
+            expires_at: state.managedMandate.registry.active.expires_at || null,
+            mandate: publicMandateStatus(state.managedMandate.registry)
+          }));
+        } catch (error) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: "approval_rejected", message: error instanceof Error ? error.message : "Policy approval was rejected." }));
+        }
+      });
       return;
     }
     if (url.pathname === "/receipts" && req.method === "GET") {
@@ -39034,9 +40969,10 @@ async function startHookServer(options = {}) {
         body += chunk;
       });
       req.on("end", async () => {
+        let input;
         try {
           const raw = JSON.parse(body);
-          const input = normalizeHookInput(raw);
+          input = normalizeHookInput(raw);
           if (!input.hookEventName) {
             res.writeHead(400);
             res.end(JSON.stringify({ error: "missing_hook_event_name", hint: "Expected hook_event_name or hookEventName in POST body" }));
@@ -39049,6 +40985,17 @@ async function startHookServer(options = {}) {
           if (verbose) {
             process.stderr.write(`[PROTECT_MCP] Hook error: ${err instanceof Error ? err.message : err}
 `);
+          }
+          if (input?.hookEventName === "PreToolUse") {
+            res.writeHead(200);
+            res.end(JSON.stringify({
+              hookSpecificOutput: {
+                hookEventName: "PreToolUse",
+                permissionDecision: "deny",
+                permissionDecisionReason: `[ScopeBlind] Denied "${input.toolName || "unknown"}": the gate hit an unexpected error while deciding, so it fails closed rather than allow an unverified call. Check the server logs.`
+              }
+            }));
+            return;
           }
           res.writeHead(400);
           res.end(JSON.stringify({ error: "invalid_request" }));
@@ -39115,11 +41062,11 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs10.existsSync)((0, import_node_path6.join)(process.cwd(), ".scopeblind"));
+    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs12.existsSync)((0, import_node_path8.join)(dataDir, ".scopeblind"));
     if (!hasSlug) {
       w(`  Dashboard  npx protect-mcp connect
 `);
-      w(`             Free up to 20,000 receipts/month
+      w(`             Sends privacy-safe summaries; raw receipts stay local
 `);
       w(`
 `);
@@ -39146,9 +41093,9 @@ async function startHookServer(options = {}) {
 function newestCedarMtime(dir) {
   try {
     let newest = 0;
-    for (const f of (0, import_node_fs10.readdirSync)(dir)) {
+    for (const f of (0, import_node_fs12.readdirSync)(dir)) {
       if (!f.endsWith(".cedar")) continue;
-      const m = (0, import_node_fs10.statSync)((0, import_node_path6.join)(dir, f)).mtimeMs;
+      const m = (0, import_node_fs12.statSync)((0, import_node_path8.join)(dir, f)).mtimeMs;
       if (m > newest) newest = m;
     }
     return newest;
@@ -39157,8 +41104,60 @@ function newestCedarMtime(dir) {
   }
 }
 var CEDAR_CHECK_THROTTLE_MS = 2e3;
+function ensureManagedMandate(state) {
+  try {
+    if (!state.managedMandate || !state.cedarDir) return { valid: true };
+    const mm = state.managedMandate;
+    const floorMs = Math.max(Date.now(), mm.maxSeenTimeMs);
+    const result = refreshManagedMandate({ cedarDir: state.cedarDir, signer: mm.signer, now: new Date(floorMs) });
+    if (!result.valid || !result.registry) {
+      return {
+        valid: false,
+        code: result.code || "mandate_registry_invalid",
+        message: result.message || "The mandate registry could not be verified."
+      };
+    }
+    const history = result.registry.history;
+    if (mm.highWaterSequence > 0) {
+      if (history.length < mm.highWaterSequence) {
+        return { valid: false, code: "mandate_rollback_detected", message: "The mandate history is shorter than a state this gate already enforced. The registry was rolled back or truncated." };
+      }
+      const atMark = history[mm.highWaterSequence - 1];
+      if (!atMark || receiptHash(atMark.transition_receipt) !== mm.highWaterHash) {
+        return { valid: false, code: "mandate_history_forked", message: "The mandate history diverges from a state this gate already enforced. The registry was forked or rewritten." };
+      }
+    }
+    mm.highWaterSequence = history.length;
+    mm.highWaterHash = history.length ? receiptHash(history[history.length - 1].transition_receipt) : "";
+    const latestTransitionMs = history.reduce((m, t) => Math.max(m, Date.parse(t.occurred_at) || 0), 0);
+    mm.maxSeenTimeMs = Math.max(mm.maxSeenTimeMs, floorMs, latestTransitionMs);
+    state.managedMandate.registry = result.registry;
+    if (state.policyDigest !== result.registry.active.policy_digest || result.expired_reverted) {
+      const reloaded = loadCedarPolicies(state.cedarDir);
+      if (reloaded.digest !== result.registry.active.policy_digest) {
+        return { valid: false, code: "policy_head_mismatch", message: "Reloaded policy bytes do not match the signed active mandate head." };
+      }
+      state.cedarPolicies = reloaded;
+      state.policyDigest = reloaded.digest;
+      state.cedarMtimeMs = newestCedarMtime(state.cedarDir);
+      state.cedarCheckedMs = Date.now();
+      if (result.expired_reverted) {
+        process.stderr.write(`[PROTECT_MCP] Mandate grant expired; restored signed baseline ${reloaded.digest}.
+`);
+      }
+    }
+    return { valid: true };
+  } catch (error) {
+    return {
+      valid: false,
+      code: "mandate_registry_unreadable",
+      message: `The managed mandate registry could not be read or verified (${error instanceof Error ? error.message : "unknown error"}). Failing closed until the signed policy state is restored.`
+    };
+  }
+}
 function maybeReloadCedar(state) {
   if (!state.cedarDir) return;
+  if (state.managedMandate) return;
   const nowMs = Date.now();
   if (nowMs - state.cedarCheckedMs < CEDAR_CHECK_THROTTLE_MS) return;
   state.cedarCheckedMs = nowMs;
@@ -39180,8 +41179,8 @@ function maybeReloadCedar(state) {
 function findCedarDir() {
   for (const candidate of ["cedar", "policies", "."]) {
     try {
-      if ((0, import_node_fs10.existsSync)(candidate)) {
-        const files = (0, import_node_fs10.readdirSync)(candidate, { encoding: "utf-8" });
+      if ((0, import_node_fs12.existsSync)(candidate)) {
+        const files = (0, import_node_fs12.readdirSync)(candidate, { encoding: "utf-8" });
         if (files.some((f) => f.endsWith(".cedar"))) {
           return candidate;
         }
@@ -39190,6 +41189,53 @@ function findCedarDir() {
     }
   }
   return void 0;
+}
+function escapeHtml(value) {
+  return value.replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char] || char);
+}
+function renderMandateApprovalPage(input) {
+  const { proposal, controller } = input;
+  const rows = (values, empty) => values.length ? values.map((value) => `<li><code>${escapeHtml(value)}</code></li>`).join("") : `<li class="muted">${escapeHtml(empty)}</li>`;
+  const controllerId = JSON.stringify(controller.id);
+  const proposalId = JSON.stringify(proposal.proposal_id);
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Approve Policy Change | ScopeBlind</title>
+<style>
+  :root { color-scheme: light; --ink:#151515; --paper:#f7f5f0; --muted:#6d6b66; --line:#d8d3c9; --warn:#8b2b18; --ok:#22543d; }
+  * { box-sizing:border-box; } body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:48px 24px 72px; } .eyebrow { color:var(--muted); font:600 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:.09em; text-transform:uppercase; }
+  h1 { max-width:680px; font:600 clamp(30px,5vw,50px)/1.05 ui-serif, Georgia, serif; letter-spacing:-.035em; margin:12px 0 20px; } h2 { font-size:14px; letter-spacing:.04em; text-transform:uppercase; margin:0 0 12px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:22px; margin:16px 0; } .danger { border-left:4px solid var(--warn); } .meta { display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:13px; }
+  .meta strong { display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); } ul { margin:0; padding-left:20px; } li { margin:7px 0; } code { font:12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap:anywhere; } .muted { color:var(--muted); }
+  button { border:0; border-radius:8px; padding:13px 18px; color:white; background:#151515; cursor:pointer; font:600 15px/1 ui-sans-serif, sans-serif; } button:disabled { cursor:wait; opacity:.6; } #result { min-height:24px; margin:14px 0 0; font-weight:600; } .success { color:var(--ok); } .error { color:var(--warn); }
+</style></head><body><main>
+  <div class="eyebrow">ScopeBlind Legate \xB7 controller approval</div>
+  <h1>You are approving exactly this policy change.</h1>
+  <p class="muted">This is a time-limited change to a local enforcement gate. Your passkey approves this exact proposal digest, not a general permission for the agent to edit its mandate.</p>
+  <section class="card danger"><h2>Why it was proposed</h2><p>${escapeHtml(proposal.reason)}</p><div class="meta"><div><strong>Blocked action</strong>${escapeHtml(proposal.denial_origin.tool)}</div><div><strong>Denied request</strong><code>${escapeHtml(proposal.denial_origin.request_id)}</code></div><div><strong>Current policy</strong><code>${escapeHtml(proposal.base_policy_digest)}</code></div><div><strong>Expires automatically</strong>${escapeHtml(proposal.expires_at)}</div></div></section>
+  <section class="card"><h2>Plain-English diff</h2><ul>${rows(proposal.diff.plain_english, "No interpretable policy change.")}</ul></section>
+  <section class="card"><h2>Executable statements added</h2><ul>${rows(proposal.diff.added_statements, "None.")}</ul></section>
+  <section class="card"><h2>Executable statements removed</h2><ul>${rows(proposal.diff.removed_statements, "None.")}</ul></section>
+  <section class="card"><h2>Controller</h2><p><strong>${escapeHtml(controller.label)}</strong><br><span class="muted">A user-verified passkey is required. This local page sends neither a portfolio nor agent prompt to ScopeBlind.</span></p><button id="approve">Approve this exact change</button><div id="result" role="status"></div></section>
+<script>
+const proposalId = ${proposalId}; const controllerId = ${controllerId};
+const result = document.getElementById('result'); const button = document.getElementById('approve');
+const toBytes = (s) => { const b = atob(s.replace(/-/g,'+').replace(/_/g,'/') + '='.repeat((4 - s.length % 4) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+const fromBytes = (buffer) => { const b = new Uint8Array(buffer); let out=''; for (const x of b) out += String.fromCharCode(x); return btoa(out).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,''); };
+button.addEventListener('click', async () => { try {
+  button.disabled = true; result.className = ''; result.textContent = 'Requesting a passkey for this exact policy diff...';
+  const challengeResponse = await fetch('/mandate/proposals/' + encodeURIComponent(proposalId) + '/webauthn/challenge?controller_id=' + encodeURIComponent(controllerId));
+  const challenge = await challengeResponse.json(); if (!challengeResponse.ok) throw new Error(challenge.message || challenge.error);
+  const p = challenge.publicKey; p.challenge = toBytes(p.challenge); p.allowCredentials = p.allowCredentials.map(c => ({...c, id: toBytes(c.id)}));
+  const credential = await navigator.credentials.get({ publicKey:p }); if (!credential) throw new Error('No passkey assertion was returned.');
+  const response = credential.response;
+  const assertion = { credentialId: fromBytes(credential.rawId), authenticatorData: fromBytes(response.authenticatorData), clientDataJSON: fromBytes(response.clientDataJSON), signature: fromBytes(response.signature), ...(response.userHandle ? { userHandle: fromBytes(response.userHandle) } : {}) };
+  const approved = await fetch('/mandate/proposals/' + encodeURIComponent(proposalId) + '/webauthn/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({assertion}) });
+  const body = await approved.json(); if (!approved.ok) throw new Error(body.message || body.error);
+  result.className = 'success'; result.textContent = 'Approved. The signed policy head is now active' + (body.expires_at ? ' until ' + body.expires_at : '') + '.'; button.remove();
+} catch (error) { result.className = 'error'; result.textContent = 'Not approved: ' + (error && error.message ? error.message : String(error)); button.disabled = false; } });
+</script></main></body></html>`;
 }
 var SNAKE_TO_CAMEL_MAP = {
   hook_event_name: "hookEventName",
@@ -39939,6 +41985,35 @@ forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash")
   )
 };
 ${defaultPermit}`;
+var researchSafe = `${header("research-safe", "Let a research agent read and search, but never exfiltrate findings or touch secrets.")}// Reading credentials or secret-like files is never part of research.
+forbid(principal, action == Action::"MCP::Tool::call", resource) when {
+  context has "input" && context.input has "path" && (
+    context.input.path like "*/.env*" ||
+    context.input.path like "*/.ssh/*" ||
+    context.input.path like "*/.aws/credentials*" ||
+    context.input.path like "*secret*" ||
+    context.input.path like "*credential*" ||
+    context.input.path like "*token*"
+  )
+};
+
+// Research observes; it does not send or publish externally on its own.
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"send_email");
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"mail.send");
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"slack.post");
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"http.post");
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"webhook.send");
+
+// Shell fallbacks that exfiltrate (curl/wget POST, netcat) are blocked too.
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash") when {
+  context has "command" && (
+    context.command like "*curl*-d*" ||
+    context.command like "*curl*--data*" ||
+    context.command like "*wget*--post*" ||
+    context.command like "*nc *"
+  )
+};
+${defaultPermit}`;
 var financeMandateSafe = `${header("finance-mandate-safe", "Block restricted-list and concentration-limit breaches in booking tools.")}forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"pms.book") when {
   context has "input" && context.input has "on_restricted_list" && context.input.on_restricted_list == true
 };
@@ -39961,6 +42036,13 @@ forbid(principal, action == Action::"MCP::Tool::call", resource) when {
 };
 ${defaultPermit}`;
 var POLICY_PACKS = [
+  {
+    id: "research-safe",
+    name: "Research Safe",
+    description: "Lets a research agent read and search, but blocks external sends and secret access.",
+    recommendedMode: "shadow-first",
+    files: [{ path: "research-safe.cedar", contents: researchSafe }]
+  },
   {
     id: "filesystem-safe",
     name: "Filesystem Safe",
@@ -40019,8 +42101,8 @@ function policyPackIds() {
 }
 
 // src/connector-pilots.ts
-var import_node_fs11 = require("fs");
-var import_node_path7 = require("path");
+var import_node_fs13 = require("fs");
+var import_node_path9 = require("path");
 var defaultPermit2 = `
 // Default posture: observe all non-matching tools so the connector can be piloted in shadow mode.
 permit(principal, action == Action::"MCP::Tool::call", resource);
@@ -40611,11 +42693,11 @@ function getConnectorPilot(id) {
   return CONNECTOR_PILOTS.find((pilot) => pilot.id === id);
 }
 function connectorDirectory(dir) {
-  return (0, import_node_path7.join)(dir, ".protect-mcp", "connectors");
+  return (0, import_node_path9.join)(dir, ".protect-mcp", "connectors");
 }
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
-  (0, import_node_fs11.mkdirSync)(directory, { recursive: true });
+  (0, import_node_fs13.mkdirSync)(directory, { recursive: true });
   const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id) => {
     const pilot = getConnectorPilot(id);
     if (!pilot) throw new Error(`Unknown connector pilot: ${id}`);
@@ -40623,42 +42705,42 @@ function writeConnectorPilots(opts) {
   }) : CONNECTOR_PILOTS;
   const written = [];
   for (const pilot of selected) {
-    const configPath = (0, import_node_path7.join)(directory, `${pilot.id}.json`);
-    const policyPath = (0, import_node_path7.join)(directory, `${pilot.id}.cedar`);
-    if (!opts.force && ((0, import_node_fs11.existsSync)(configPath) || (0, import_node_fs11.existsSync)(policyPath))) {
+    const configPath = (0, import_node_path9.join)(directory, `${pilot.id}.json`);
+    const policyPath = (0, import_node_path9.join)(directory, `${pilot.id}.cedar`);
+    if (!opts.force && ((0, import_node_fs13.existsSync)(configPath) || (0, import_node_fs13.existsSync)(policyPath))) {
       throw new Error(`Refusing to overwrite ${pilot.id}. Re-run with --force if intentional.`);
     }
-    (0, import_node_fs11.writeFileSync)(configPath, JSON.stringify({ ...pilot.config, id: pilot.id, name: pilot.name, category: pilot.category, tools: pilot.tools, actions: pilot.actions, setup: pilot.setup }, null, 2) + "\n");
-    (0, import_node_fs11.writeFileSync)(policyPath, pilot.cedar.endsWith("\n") ? pilot.cedar : `${pilot.cedar}
+    (0, import_node_fs13.writeFileSync)(configPath, JSON.stringify({ ...pilot.config, id: pilot.id, name: pilot.name, category: pilot.category, tools: pilot.tools, actions: pilot.actions, setup: pilot.setup }, null, 2) + "\n");
+    (0, import_node_fs13.writeFileSync)(policyPath, pilot.cedar.endsWith("\n") ? pilot.cedar : `${pilot.cedar}
 `);
     written.push(configPath, policyPath);
     for (const artifact of pilot.artifacts || []) {
       const artifactPath = connectorArtifactPath(directory, artifact.path);
-      (0, import_node_fs11.mkdirSync)((0, import_node_path7.dirname)(artifactPath), { recursive: true });
-      (0, import_node_fs11.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
+      (0, import_node_fs13.mkdirSync)((0, import_node_path9.dirname)(artifactPath), { recursive: true });
+      (0, import_node_fs13.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
 `);
-      if (artifact.executable) (0, import_node_fs11.chmodSync)(artifactPath, 493);
+      if (artifact.executable) (0, import_node_fs13.chmodSync)(artifactPath, 493);
       written.push(artifactPath);
     }
   }
-  (0, import_node_fs11.writeFileSync)((0, import_node_path7.join)(directory, "README.md"), renderConnectorReadme(selected));
-  written.push((0, import_node_path7.join)(directory, "README.md"));
+  (0, import_node_fs13.writeFileSync)((0, import_node_path9.join)(directory, "README.md"), renderConnectorReadme(selected));
+  written.push((0, import_node_path9.join)(directory, "README.md"));
   return { written, pilots: selected, directory };
 }
 function connectorArtifactPath(directory, relativePath) {
-  const clean = (0, import_node_path7.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
+  const clean = (0, import_node_path9.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
   if (clean.startsWith("/") || clean.includes("..")) {
     throw new Error(`Unsafe connector artifact path: ${relativePath}`);
   }
-  return (0, import_node_path7.join)(directory, clean);
+  return (0, import_node_path9.join)(directory, clean);
 }
 function readInstalledConnectorPilots(dir) {
   const directory = connectorDirectory(dir);
-  if (!(0, import_node_fs11.existsSync)(directory)) return [];
-  return (0, import_node_fs11.readdirSync)(directory).filter((name) => name.endsWith(".json")).map((name) => {
-    const configPath = (0, import_node_path7.join)(directory, name);
+  if (!(0, import_node_fs13.existsSync)(directory)) return [];
+  return (0, import_node_fs13.readdirSync)(directory).filter((name) => name.endsWith(".json")).map((name) => {
+    const configPath = (0, import_node_path9.join)(directory, name);
     try {
-      const parsed = JSON.parse((0, import_node_fs11.readFileSync)(configPath, "utf-8"));
+      const parsed = JSON.parse((0, import_node_fs13.readFileSync)(configPath, "utf-8"));
       const id = String(parsed.id || name.replace(/\.json$/, ""));
       const pilot = getConnectorPilot(id);
       return {
@@ -40667,7 +42749,7 @@ function readInstalledConnectorPilots(dir) {
         category: String(parsed.category || pilot?.category || "unknown"),
         status: String(parsed.status || parsed.type || "installed"),
         config_path: configPath,
-        policy_path: (0, import_node_path7.join)(directory, `${id}.cedar`)
+        policy_path: (0, import_node_path9.join)(directory, `${id}.cedar`)
       };
     } catch {
       return null;
@@ -40725,7 +42807,7 @@ Next: run \`npx protect-mcp dashboard --open\` and review tool inventory, policy
 }
 
 // src/rekor-anchor.ts
-var import_node_crypto5 = require("crypto");
+var import_node_crypto9 = require("crypto");
 var REKOR_API = "https://rekor.sigstore.dev/api/v1";
 async function anchorToRekor(receiptHash2, signature, publicKeyPem) {
   const entry = {
@@ -40794,7 +42876,7 @@ async function verifyRekorAnchor(logIndex, expectedHash) {
 }
 function hashReceipt(receipt) {
   const canonical = JSON.stringify(receipt, Object.keys(receipt).sort());
-  return (0, import_node_crypto5.createHash)("sha256").update(canonical).digest("hex");
+  return (0, import_node_crypto9.createHash)("sha256").update(canonical).digest("hex");
 }
 function createLogAnchorField(anchor) {
   return {
@@ -40807,7 +42889,7 @@ function createLogAnchorField(anchor) {
 }
 
 // src/selective-disclosure.ts
-var import_node_crypto6 = require("crypto");
+var import_node_crypto10 = require("crypto");
 function redactFields(receipt, fieldsToRedact) {
   const redacted = JSON.parse(JSON.stringify(receipt));
   const salts = [];
@@ -40823,7 +42905,7 @@ function redactFields(receipt, fieldsToRedact) {
       if (i === parts.length - 1) {
         if (key in current) {
           const originalValue = current[key];
-          const salt = (0, import_node_crypto6.randomBytes)(16).toString("hex");
+          const salt = (0, import_node_crypto10.randomBytes)(16).toString("hex");
           const commitment = computeCommitment(salt, originalValue);
           salts.push({ field: fieldPath, salt, originalValue });
           current[key] = `sha256(salt + ${typeof originalValue === "string" ? "..." : JSON.stringify(originalValue).slice(0, 20) + "..."})`;
@@ -40895,11 +42977,11 @@ function createDisclosurePackage(allSalts, fieldsToDisclose) {
 }
 function computeCommitment(salt, value) {
   const serialized = typeof value === "string" ? value : JSON.stringify(value);
-  return (0, import_node_crypto6.createHash)("sha256").update(salt + serialized).digest("hex");
+  return (0, import_node_crypto10.createHash)("sha256").update(salt + serialized).digest("hex");
 }
 function hashObject(obj) {
   const canonical = JSON.stringify(obj, Object.keys(obj).sort());
-  return (0, import_node_crypto6.createHash)("sha256").update(canonical).digest("hex");
+  return (0, import_node_crypto10.createHash)("sha256").update(canonical).digest("hex");
 }
 
 // src/huggingface-export.ts
@@ -41037,151 +43119,6 @@ The verification is offline, MIT-licensed, and does not contact any server.
 
 MIT
 `;
-}
-
-// src/webauthn-approval.ts
-var import_node_crypto7 = require("crypto");
-var import_p256 = require("@noble/curves/p256");
-var import_ed255193 = require("@noble/curves/ed25519");
-var import_sha2566 = require("@noble/hashes/sha256");
-var import_utils6 = require("@noble/hashes/utils");
-function createApprovalChallenge(requestId, toolName, agentId, rpId = "scopeblind.com", timeoutSeconds = 300) {
-  const challengeBytes = (0, import_node_crypto7.randomBytes)(32);
-  const contextHash = (0, import_node_crypto7.createHash)("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
-  return {
-    challenge: base64urlEncode(challengeBytes),
-    requestId,
-    toolName,
-    agentId,
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    timeoutSeconds,
-    rpId,
-    contextHash
-  };
-}
-function toCredentialRequestOptions(challenge, allowCredentials) {
-  return {
-    publicKey: {
-      challenge: base64urlDecode2(challenge.challenge).buffer,
-      rpId: challenge.rpId,
-      timeout: challenge.timeoutSeconds * 1e3,
-      userVerification: "required",
-      // Always require biometric
-      ...allowCredentials ? {
-        allowCredentials: allowCredentials.map((c) => ({
-          id: base64urlDecode2(c.id).buffer,
-          type: "public-key"
-        }))
-      } : {}
-    }
-  };
-}
-function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts = {}) {
-  const now = opts.now ?? Date.now();
-  const fail = (reason, partial = {}) => ({
-    valid: false,
-    reason,
-    credentialId: assertion.credentialId,
-    authenticatorType: "unknown",
-    userVerified: false,
-    signCount: 0,
-    contextHash: challenge.contextHash,
-    approvedAt: new Date(now).toISOString(),
-    ...partial
-  });
-  const createdAt = new Date(challenge.createdAt).getTime();
-  if (now - createdAt > challenge.timeoutSeconds * 1e3) return fail("challenge_expired");
-  if (!credentialPublicKey?.publicKeyHex) return fail("missing_credential_public_key");
-  const clientDataBytes = base64urlDecode2(assertion.clientDataJSON);
-  let clientData;
-  try {
-    clientData = JSON.parse(Buffer.from(clientDataBytes).toString("utf8"));
-  } catch {
-    return fail("client_data_parse_error");
-  }
-  if (clientData.type !== "webauthn.get") return fail("wrong_client_data_type");
-  if (!constantTimeStrEqual(clientData.challenge ?? "", challenge.challenge)) return fail("challenge_mismatch");
-  const allowedOrigins = opts.expectedOrigin ? Array.isArray(opts.expectedOrigin) ? opts.expectedOrigin : [opts.expectedOrigin] : [`https://${challenge.rpId}`];
-  if (!clientData.origin || !allowedOrigins.includes(clientData.origin)) return fail("origin_mismatch");
-  const authData = base64urlDecode2(assertion.authenticatorData);
-  if (authData.length < 37) return fail("authenticator_data_too_short");
-  const rpIdHash = authData.slice(0, 32);
-  const expectedRpIdHash = (0, import_sha2566.sha256)(new TextEncoder().encode(challenge.rpId));
-  if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail("rp_id_hash_mismatch");
-  const flags = authData[32];
-  const userPresent = !!(flags & 1);
-  const userVerified = !!(flags & 4);
-  if (!userPresent) return fail("user_not_present");
-  if ((opts.requireUserVerification ?? true) && !userVerified) return fail("user_verification_required", { userVerified });
-  const signCount = authData[33] << 24 | authData[34] << 16 | authData[35] << 8 | authData[36];
-  if (typeof opts.prevSignCount === "number" && signCount !== 0 && signCount <= opts.prevSignCount) {
-    return fail("sign_count_regression", { userVerified, signCount });
-  }
-  const signedData = concatBytes(authData, (0, import_sha2566.sha256)(clientDataBytes));
-  const sigBytes = base64urlDecode2(assertion.signature);
-  let sigOk = false;
-  try {
-    if (credentialPublicKey.alg === -7) {
-      sigOk = import_p256.p256.verify(sigBytes, (0, import_sha2566.sha256)(signedData), (0, import_utils6.hexToBytes)(credentialPublicKey.publicKeyHex), { format: "der" });
-    } else if (credentialPublicKey.alg === -8) {
-      sigOk = import_ed255193.ed25519.verify(sigBytes, signedData, (0, import_utils6.hexToBytes)(credentialPublicKey.publicKeyHex));
-    } else {
-      return fail("unsupported_algorithm", { userVerified, signCount });
-    }
-  } catch {
-    sigOk = false;
-  }
-  if (!sigOk) return fail("invalid_signature", { userVerified, signCount });
-  return {
-    valid: true,
-    credentialId: assertion.credentialId,
-    // Heuristic: platform authenticators (TouchID/FaceID/Hello) report UV; roaming
-    // keys without a PIN are UP-only. Attachment is authoritative only at registration.
-    authenticatorType: userVerified ? "platform" : "cross-platform",
-    userVerified,
-    signCount,
-    contextHash: challenge.contextHash,
-    approvedAt: new Date(now).toISOString()
-  };
-}
-function createApprovalReceiptPayload(challenge, result) {
-  return {
-    type: "acta:approval",
-    approval_method: "webauthn",
-    tool_name: challenge.toolName,
-    request_id: challenge.requestId,
-    agent_id: challenge.agentId,
-    authenticator_type: result.authenticatorType,
-    user_verified: result.userVerified,
-    context_hash: result.contextHash,
-    approved_at: result.approvedAt,
-    // Hash the credential ID for privacy — don't store the raw ID
-    credential_id_hash: (0, import_node_crypto7.createHash)("sha256").update(result.credentialId).digest("hex").slice(0, 16)
-  };
-}
-function base64urlEncode(buffer) {
-  return Buffer.from(buffer).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-function base64urlDecode2(str) {
-  const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64 + "=".repeat((4 - base64.length % 4) % 4);
-  return new Uint8Array(Buffer.from(padded, "base64"));
-}
-function concatBytes(a, b) {
-  const out = new Uint8Array(a.length + b.length);
-  out.set(a, 0);
-  out.set(b, a.length);
-  return out;
-}
-function bytesEqual(a, b) {
-  if (a.length !== b.length) return false;
-  return (0, import_node_crypto7.timingSafeEqual)(Buffer.from(a), Buffer.from(b));
-}
-function constantTimeStrEqual(a, b) {
-  const ab = Buffer.from(a, "utf8");
-  const bb = Buffer.from(b, "utf8");
-  if (ab.length !== bb.length) return false;
-  return (0, import_node_crypto7.timingSafeEqual)(ab, bb);
 }
 
 // src/did-vc.ts
@@ -41360,8 +43297,8 @@ async function createE2BSandbox(config) {
 }
 async function createDockerSandbox(config) {
   const { execSync } = await import("child_process");
-  const { randomUUID: randomUUID4 } = await import("crypto");
-  const id = `scopeblind-sandbox-${randomUUID4().slice(0, 8)}`;
+  const { randomUUID: randomUUID5 } = await import("crypto");
+  const id = `scopeblind-sandbox-${randomUUID5().slice(0, 8)}`;
   const image = config.template.includes(":") ? config.template : `node:${config.template.replace("node-", "")}`;
   const memoryFlag = config.memoryMB ? `--memory=${config.memoryMB}m` : "";
   const timeout = config.timeoutSeconds || 300;
@@ -41426,7 +43363,7 @@ function evaluatePolicy(tool, policy) {
 }
 
 // src/evidence-authenticity.ts
-var import_node_crypto8 = require("crypto");
+var import_node_crypto11 = require("crypto");
 async function createEvidenceAttestation(input) {
   const tlsNotaryAvailable = await isTLSNotaryAvailable();
   if (tlsNotaryAvailable) {
@@ -41486,14 +43423,14 @@ async function verifyEvidenceAttestation(attestation) {
   }
 }
 function hashResponseBody(body) {
-  return (0, import_node_crypto8.createHash)("sha256").update(typeof body === "string" ? body : body).digest("hex");
+  return (0, import_node_crypto11.createHash)("sha256").update(typeof body === "string" ? body : body).digest("hex");
 }
 function createAttestationField(attestation) {
   return {
     evidence_authenticity: {
       version: attestation.version,
       method: attestation.method,
-      url_hash: (0, import_node_crypto8.createHash)("sha256").update(attestation.url).digest("hex").slice(0, 16),
+      url_hash: (0, import_node_crypto11.createHash)("sha256").update(attestation.url).digest("hex").slice(0, 16),
       response_hash: attestation.responseHash,
       fetched_at: attestation.fetchedAt,
       verified: attestation.verified,
@@ -41524,7 +43461,7 @@ async function createTLSNotaryAttestation(input) {
 }
 
 // src/c2pa-credentials.ts
-var import_node_crypto9 = require("crypto");
+var import_node_crypto12 = require("crypto");
 function createC2PAManifest(receipts, options) {
   const generator = options.generator || "protect-mcp";
   const version = options.version || "0.3.3";
@@ -41538,7 +43475,7 @@ function createC2PAManifest(receipts, options) {
     (r) => r.payload?.decision === "deny"
   );
   const receiptHashes = receipts.map(
-    (r) => (0, import_node_crypto9.createHash)("sha256").update(JSON.stringify(r)).digest("hex")
+    (r) => (0, import_node_crypto12.createHash)("sha256").update(JSON.stringify(r)).digest("hex")
   );
   const merkleRoot2 = computeMerkleRoot(receiptHashes);
   const assertions = [
@@ -41680,7 +43617,7 @@ function computeMerkleRoot(hashes) {
     const left = hashes[i];
     const right = i + 1 < hashes.length ? hashes[i + 1] : left;
     nextLevel.push(
-      (0, import_node_crypto9.createHash)("sha256").update(left + right).digest("hex")
+      (0, import_node_crypto12.createHash)("sha256").update(left + right).digest("hex")
     );
   }
   return computeMerkleRoot(nextLevel);
@@ -41733,7 +43670,7 @@ function toManifoldFormat(prediction) {
 }
 
 // src/agent-exchange.ts
-var import_node_crypto10 = require("crypto");
+var import_node_crypto13 = require("crypto");
 var ReceiptPropagator = class {
   issuer;
   signer;
@@ -41754,7 +43691,7 @@ var ReceiptPropagator = class {
   delegate(delegateId, options) {
     const now = /* @__PURE__ */ new Date();
     const receipt = {
-      receipt_id: `del_${(0, import_node_crypto10.randomUUID)().slice(0, 12)}`,
+      receipt_id: `del_${(0, import_node_crypto13.randomUUID)().slice(0, 12)}`,
       receipt_type: "delegation",
       issuer_id: this.issuer,
       event_time: now.toISOString(),
@@ -41811,7 +43748,7 @@ var ReceiptPropagator = class {
     const currentCount = this.delegationCallCounts.get(options.delegation_receipt) || 0;
     this.delegationCallCounts.set(options.delegation_receipt, currentCount + 1);
     const receipt = {
-      receipt_id: `act_${(0, import_node_crypto10.randomUUID)().slice(0, 12)}`,
+      receipt_id: `act_${(0, import_node_crypto13.randomUUID)().slice(0, 12)}`,
       receipt_type: "execution",
       issuer_id: this.issuer,
       event_time: (/* @__PURE__ */ new Date()).toISOString(),
@@ -41903,7 +43840,7 @@ function createReceiptChannel(orchestratorId) {
     async withDelegation(delegateId, tools, fn, options) {
       const delegation = propagator.delegate(delegateId, {
         tools,
-        scope: options?.scope || `task-${(0, import_node_crypto10.randomUUID)().slice(0, 8)}`,
+        scope: options?.scope || `task-${(0, import_node_crypto13.randomUUID)().slice(0, 8)}`,
         ttl: options?.ttl || 3600,
         maxCalls: options?.maxCalls
       });
@@ -42257,11 +44194,15 @@ function createSandboxServer() {
   BUILTIN_PATTERNS,
   CONNECTOR_PILOTS,
   ConfidentialGate,
+  EGRESS_SUMMARY_FIELDS,
   POLICY_PACKS,
   ProtectGateway,
   ReceiptPropagator,
   ScopeBlindBridge,
   anchorToRekor,
+  approvePolicyProposalWithDirectSignature,
+  approvePolicyProposalWithWebAuthn,
+  assertEgressSafe,
   buildDecisionContext,
   checkRateLimit,
   collectSignedReceipts,
@@ -42276,14 +44217,18 @@ function createSandboxServer() {
   createAttestationField,
   createAuditBundle,
   createC2PAManifest,
+  createDirectControllerApproval,
   createDisclosurePackage,
   createEvidenceAttestation,
   createLogAnchorField,
+  createPolicyProposal,
   createReceiptChannel,
   createReceiptEnvelope,
   createSandbox,
   createSandboxServer,
   createSelectiveDisclosurePackage,
+  createWebAuthnPolicyChallenge,
+  describePolicyDiff,
   destroySandbox,
   discloseField,
   ed25519ToDIDKey,
@@ -42291,6 +44236,7 @@ function createSandboxServer() {
   evaluateTier,
   exportC2PAManifestJSON,
   exportJSONL,
+  exportMandateDisciplineRecord,
   formatReportMarkdown,
   formatSimulation,
   forwardReceipt,
@@ -42312,6 +44258,8 @@ function createSandboxServer() {
   hashReceipt,
   hashResponseBody,
   initSigning,
+  initializeMandateRegistry,
+  inspectEgress,
   isAgentId,
   isCedarAvailable,
   isDisclosureMode,
@@ -42320,7 +44268,10 @@ function createSandboxServer() {
   isSigningEnabled,
   listCredentialLabels,
   loadCedarPolicies,
+  loadGateSigner,
+  loadMandateRegistry,
   loadPolicy,
+  mandatePaths,
   manifestToVC,
   meetsMinTier,
   parseLogFile,
@@ -42328,6 +44279,7 @@ function createSandboxServer() {
   parseRateLimit,
   policyPackIds,
   policySetFromSource,
+  publicMandateStatus,
   queryExternalPDP,
   readInstalledConnectorPilots,
   receiptHash,
@@ -42335,16 +44287,20 @@ function createSandboxServer() {
   receiptToVP,
   receiptsToHFRows,
   redactFields,
+  refreshManagedMandate,
   resolveCredential,
   revealField,
+  runEgressSelfCheck,
   runEvaluatorSelfTest,
   runInSandbox,
   sendApprovalNotification,
   signCommittedDecision,
   signDecision,
   simulate,
+  snapshotFromDirectory,
   startHookServer,
   toCredentialRequestOptions,
+  toEgressSummary,
   toManifoldFormat,
   toMetaculusFormat,
   validateCredentials,
@@ -42355,6 +44311,8 @@ function createSandboxServer() {
   verifyApprovalAssertion,
   verifyCommitment,
   verifyEvidenceAttestation,
+  verifyMandateLifecycleExport,
+  verifyMandateRegistry,
   verifyReceipt,
   verifyRekorAnchor,
   verifySelectiveDisclosurePackage,
@@ -42374,8 +44332,10 @@ function createSandboxServer() {
  *      ~5 minutes before expiry, then refresh.
  *   2. As receipts are emitted by hook-server.ts, push them into an
  *      in-memory batch queue.
- *   3. Flush the queue every 5s (or when it reaches 128 receipts) by POSTing
- *      to /fn/console/<slug>/receipts with Bearer SCOPEBLIND_TOKEN.
+ *   3. After the tenant is known, reduce each local receipt to a pseudonymous
+ *      egress summary using a tenant-scoped, local-only HMAC key; sign that
+ *      separate summary envelope locally, and POST it to /summaries. The raw
+ *      signed receipt endpoint is intentionally not used by this bridge.
  *
  * Failure mode: forward errors NEVER throw upstream. protect-mcp continues
  * to mint and persist receipts locally regardless of dashboard availability.
@@ -42387,6 +44347,12 @@ function createSandboxServer() {
  *   SCOPEBLIND_TENANT       Optional slug override. By default we discover
  *                           the slug from the BRASS proof's tenant_id.
  *   SCOPEBLIND_BASE         Defaults to https://scopeblind.com.
+ *   SCOPEBLIND_EGRESS_HMAC_KEY
+ *                           Optional base64url 32-byte local-only HMAC key.
+ *                           If omitted, protect-mcp creates a per-tenant key
+ *                           in ~/.protect-mcp/egress-keys (mode 0600).
+ *   SCOPEBLIND_EGRESS_KEY_DIR
+ *                           Optional local directory for generated HMAC keys.
  *
  * @license MIT
  */

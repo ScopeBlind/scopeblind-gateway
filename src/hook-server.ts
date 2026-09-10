@@ -38,7 +38,7 @@ import type {
   PayloadDigest,
   TrustTier,
 } from './types.js';
-import { loadCedarPolicies, evaluateCedar, isCedarAvailable, type CedarPolicySet } from './cedar-evaluator.js';
+import { loadCedarPolicies, evaluateCedar, isCedarAvailable, runEvaluatorSelfTest, type CedarPolicySet } from './cedar-evaluator.js';
 import { initSigning, signDecision, isSigningEnabled, getSignerInfo } from './signing.js';
 import { receiptHash } from './acta-envelope.js';
 import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
@@ -46,6 +46,18 @@ import { ReceiptBuffer } from './http-server.js';
 import { getScopeBlindBridge } from './scopeblind-bridge.js';
 import { buildActionReadback } from './action-readback.js';
 import { buildEnrichment, type ReceiptEnrichment } from './receipt-enrichment.js';
+import {
+  loadGateSigner,
+  loadMandateRegistry,
+  publicMandateStatus,
+  refreshManagedMandate,
+  approvePolicyProposalWithWebAuthn,
+  createWebAuthnPolicyChallenge,
+  type GateSigner,
+  type MandateRegistry,
+  type MandateProposal,
+} from './mandate-lifecycle.js';
+import type { ApprovalAssertion } from './webauthn-approval.js';
 
 // ============================================================
 // Constants
@@ -55,6 +67,25 @@ const DEFAULT_PORT = 9377;
 const LOG_FILE = '.protect-mcp-log.jsonl';
 const RECEIPTS_FILE = '.protect-mcp-receipts.jsonl';
 const PAYLOAD_HASH_THRESHOLD = 1024; // bytes
+
+interface ManagedMandateState {
+  signer: GateSigner;
+  registry: MandateRegistry;
+  rpId: string;
+  expectedOrigin: string;
+  /**
+   * Session-scoped anti-rollback: the longest signed transition history this
+   * running gate has seen, and the receipt hash at that point. A registry file
+   * that is truncated or forked back to an earlier signed-consistent state
+   * (which would otherwise re-verify) is caught while the gate is live. Durable,
+   * across-restart anti-rollback needs an external append-only anchor and is
+   * documented as such, not silently claimed.
+   */
+  highWaterSequence: number;
+  highWaterHash: string;
+  /** Monotonic clock floor: the max time seen, so setting the system clock backward cannot un-expire a grant on a running gate. */
+  maxSeenTimeMs: number;
+}
 
 // ============================================================
 // Hook Server State
@@ -103,6 +134,8 @@ interface HookServerState {
   permissionSuggestions: Map<string, string>;
   /** Config change alerts issued */
   configAlerts: Array<{ timestamp: number; path: string; source: string }>;
+  /** A signed policy lifecycle, when this Cedar directory is mandate-managed. */
+  managedMandate: ManagedMandateState | null;
 }
 
 // ============================================================
@@ -225,6 +258,33 @@ async function handlePreToolUse(
   // Compute payload digest for large inputs
   const payloadDigest = computePayloadDigest(input.toolInput);
   const actionReadback = buildActionReadback(toolName, input.toolInput || {});
+
+  // A managed mandate is a security boundary, not a convenience layer. Do not
+  // evaluate against stale or hand-edited Cedar bytes: an inconsistent policy
+  // registry, gate signer, approval chain, or expired grant denies first.
+  const mandate = ensureManagedMandate(state);
+  if (!mandate.valid) {
+    const hookLatency = Date.now() - hookStart;
+    emitDecisionLog(state, {
+      tool: toolName,
+      decision: 'deny',
+      reason_code: mandate.code,
+      request_id: requestId,
+      hook_event: 'PreToolUse',
+      timing: { hook_latency_ms: hookLatency, started_at: hookStart },
+      action_readback: actionReadback,
+      sandbox_state: detectSandboxState(),
+    });
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason:
+          `[ScopeBlind] Denied "${toolName}": the managed mandate cannot be verified (${mandate.code}). ` +
+          `${mandate.message} Failing closed until the signed policy state is restored.`,
+      },
+    };
+  }
 
   // Deterministic, minimum-disclosure enrichment (input digest, capability tags,
   // hashed resource). Stored on the in-flight record and folded into the signed
@@ -754,6 +814,14 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
     ...(entry.deny_iteration && { deny_iteration: entry.deny_iteration }),
     ...(entry.sandbox_state && { sandbox_state: entry.sandbox_state }),
     ...(entry.plan_receipt_id && { plan_receipt_id: entry.plan_receipt_id }),
+    ...(state.managedMandate ? {
+      mandate_registry: {
+        registry_id: state.managedMandate.registry.registry_id,
+        active_policy_digest: state.managedMandate.registry.active.policy_digest,
+        active_transition_hash: receiptHash(state.managedMandate.registry.history.at(-1)?.transition_receipt || {}),
+        ...(state.managedMandate.registry.active.expires_at ? { expires_at: state.managedMandate.registry.active.expires_at } : {}),
+      },
+    } : {}),
   };
 
   // Fold in the per-call enrichment (set at PreToolUse) BEFORE signing, so the
@@ -853,19 +921,28 @@ export interface HookServerOptions {
   port?: number;
   policyPath?: string;
   cedarDir?: string;
+  /** Directory for local keys, receipts, logs, and connection state. Defaults to cwd. */
+  dataDir?: string;
   enforce?: boolean;
   verbose?: boolean;
+  /** WebAuthn RP ID for local mandate-controller approvals. Defaults to localhost. */
+  mandateRelyingPartyId?: string;
+  /** Expected browser origin for mandate-controller approvals. Defaults to local hook origin. */
+  mandateApprovalOrigin?: string;
 }
 
 export async function startHookServer(options: HookServerOptions = {}): Promise<Server> {
   const port = options.port || DEFAULT_PORT;
   const verbose = options.verbose || false;
   const enforce = options.enforce || false;
+  const dataDir = options.dataDir || process.cwd();
 
   // ── Load policies ──
   let cedarPolicies: CedarPolicySet | null = null;
   let jsonPolicy: ReturnType<typeof loadPolicy> | null = null;
   let policyDigest = 'none';
+  let gateKeyPath: string | undefined;
+  let managedMandate: ManagedMandateState | null = null;
 
   // Auto-detect Cedar policies
   const cedarDir = options.cedarDir || findCedarDir();
@@ -898,6 +975,7 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
 
       // Initialize signing if configured
       if (jsonPolicy.signing) {
+        gateKeyPath = jsonPolicy.signing.key_path;
         const warnings = await initSigning(jsonPolicy.signing);
         for (const w of warnings) {
           process.stderr.write(`[PROTECT_MCP] Warning: ${w}\n`);
@@ -910,13 +988,112 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
 
   // Auto-detect signing config if no policy loaded
   if (!jsonPolicy?.signing) {
-    const keyPath = join(process.cwd(), 'keys', 'gateway.json');
+    const keyPath = join(dataDir, 'keys', 'gateway.json');
     if (existsSync(keyPath)) {
+      gateKeyPath = keyPath;
       const warnings = await initSigning({ key_path: keyPath, issuer: 'protect-mcp', enabled: true });
       for (const w of warnings) {
         process.stderr.write(`[PROTECT_MCP] Warning: ${w}\n`);
       }
     }
+  }
+
+  // ── Managed mandate bootstrap ──
+  // The registry is intentionally discovered from the Cedar directory. An
+  // operator cannot accidentally start an enforcing managed gate in a looser
+  // direct-edit mode: invalid lifecycle state is a startup refusal in enforce
+  // mode and a visible warning in shadow mode.
+  if (cedarDir) {
+    const existingRegistry = loadMandateRegistry(cedarDir);
+    if (existingRegistry) {
+      if (!gateKeyPath) {
+        const message = 'managed mandate found but no local gate signing key is configured';
+        if (enforce) throw new Error(`enforce mode refused to start: ${message}`);
+        process.stderr.write(`[PROTECT_MCP] Warning: ${message}; governed enforcement remains unavailable.\n`);
+      } else {
+        try {
+          const gateSigner = loadGateSigner(gateKeyPath);
+          const receiptSigner = getSignerInfo();
+          if (!isSigningEnabled() || !receiptSigner || receiptSigner.kid !== gateSigner.kid || receiptSigner.publicKey !== gateSigner.publicKey) {
+            throw new Error('managed mandate requires decision receipt signing with the exact gate key pinned in the registry');
+          }
+          const check = refreshManagedMandate({ cedarDir, signer: gateSigner });
+          if (!check.valid || !check.registry) {
+            const message = `${check.code || 'mandate_registry_invalid'}: ${check.message || 'registry verification failed'}`;
+            if (enforce) throw new Error(`enforce mode refused to start: ${message}`);
+            process.stderr.write(`[PROTECT_MCP] Warning: managed mandate invalid (${message}).\n`);
+          } else {
+            const reloaded = loadCedarPolicies(cedarDir);
+            if (reloaded.digest !== check.registry.active.policy_digest) {
+              throw new Error('loaded Cedar bytes do not match the signed active mandate head');
+            }
+            cedarPolicies = reloaded;
+            policyDigest = reloaded.digest;
+            managedMandate = {
+              signer: gateSigner,
+              registry: check.registry,
+              rpId: options.mandateRelyingPartyId || 'localhost',
+              expectedOrigin: options.mandateApprovalOrigin || `http://localhost:${port}`,
+              highWaterSequence: check.registry.history.length,
+              highWaterHash: check.registry.history.length ? receiptHash(check.registry.history[check.registry.history.length - 1].transition_receipt) : '',
+              maxSeenTimeMs: Math.max(Date.now(), check.registry.history.reduce((m, t) => Math.max(m, Date.parse(t.occurred_at) || 0), 0)),
+            };
+            process.stderr.write(
+              `[PROTECT_MCP] Managed mandate loaded: ${check.registry.registry_id} ` +
+              `(head: ${check.registry.active.policy_digest}${check.registry.active.expires_at ? `; expires ${check.registry.active.expires_at}` : ''}).\n`,
+            );
+          }
+        } catch (error) {
+          if (enforce) throw error;
+          process.stderr.write(`[PROTECT_MCP] Warning: managed mandate unavailable: ${error instanceof Error ? error.message : error}\n`);
+        }
+      }
+    }
+  }
+
+  // ── Enforce-mode startup self-test (D5) ──
+  // A gate that cannot prove it denies must not arm. Before enforce mode
+  // accepts a single hook call, run the live evaluator against known
+  // deny/allow vectors (the fail-closed invariant, a real forbid, and the
+  // in-on-String regression from the 0.6.x advisory), and prove a denial
+  // receipt can actually be produced when a signer is configured. Failure
+  // refuses startup; shadow mode is never blocked by the self-test.
+  if (enforce) {
+    const selfTest = await runEvaluatorSelfTest();
+    for (const c of selfTest.cases) {
+      if (!c.pass) {
+        process.stderr.write(
+          `[PROTECT_MCP] SELF-TEST FAIL: ${c.name} (expected ${c.expected}, got ${c.actual})\n`,
+        );
+      }
+    }
+    if (!selfTest.passed) {
+      throw new Error(
+        'enforce mode refused to start: the restraint self-test failed. ' +
+        'A gate that cannot prove it denies must not arm.',
+      );
+    }
+    const receiptProbe = signDecision({
+      v: 2,
+      tool: '__protect_mcp_startup_selftest__',
+      decision: 'deny',
+      reason_code: 'startup_selftest',
+      policy_digest: policyDigest,
+      request_id: `selftest-${Date.now()}`,
+      mode: 'enforce',
+      timestamp: Date.now(),
+    } as DecisionLog);
+    if (receiptProbe.error) {
+      throw new Error(
+        `enforce mode refused to start: signing is configured but a denial receipt could not be produced (${receiptProbe.error}). ` +
+        'An enforcing gate that cannot evidence a denial must not arm.',
+      );
+    }
+    process.stderr.write(
+      `[PROTECT_MCP] Restraint self-test passed (${selfTest.cases.length} vectors` +
+      `${selfTest.wasmAvailable ? '' : '; Cedar WASM absent, fail-closed invariant verified'})` +
+      `${receiptProbe.ok ? '; denial receipt signing verified' : ''}. Arming enforce mode.\n`,
+    );
   }
 
   // ── Build state ──
@@ -937,11 +1114,12 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
     verbose,
     enforce,
     policyDigest,
-    logFilePath: join(process.cwd(), LOG_FILE),
-    receiptFilePath: join(process.cwd(), RECEIPTS_FILE),
-    lastReceiptHash: resumeReceiptChain(join(process.cwd(), RECEIPTS_FILE)),
+    logFilePath: join(dataDir, LOG_FILE),
+    receiptFilePath: join(dataDir, RECEIPTS_FILE),
+    lastReceiptHash: resumeReceiptChain(join(dataDir, RECEIPTS_FILE)),
     permissionSuggestions: new Map(),
     configAlerts: [],
+    managedMandate,
   };
 
   // ── Create HTTP server ──
@@ -976,7 +1154,126 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
         swarm: state.swarmContext,
         signer: signerInfo ? { kid: signerInfo.kid, issuer: signerInfo.issuer } : null,
         cedar_files: cedarPolicies?.fileCount || 0,
+        mandate: state.managedMandate ? {
+          registry_id: state.managedMandate.registry.registry_id,
+          active_policy_digest: state.managedMandate.registry.active.policy_digest,
+          ...(state.managedMandate.registry.active.expires_at ? { expires_at: state.managedMandate.registry.active.expires_at } : {}),
+          controller_count: state.managedMandate.registry.controllers.length,
+        } : null,
       }));
+      return;
+    }
+
+    // ── Managed-mandate status ──
+    if (url.pathname === '/mandate' && req.method === 'GET') {
+      const check = ensureManagedMandate(state);
+      if (!state.managedMandate) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'no_managed_mandate', hint: 'Run protect-mcp mandate init before requesting lifecycle status.' }));
+        return;
+      }
+      res.writeHead(check.valid ? 200 : 409);
+      res.end(JSON.stringify({
+        valid: check.valid,
+        ...(check.valid ? {} : { error: check.code, message: check.message }),
+        mandate: publicMandateStatus(state.managedMandate.registry),
+      }));
+      return;
+    }
+
+    // ── Desktop WebAuthn mandate approval ──
+    // This remains local-first: only the controller's browser speaks to the
+    // loopback gate, and only the signed policy diff leaves the browser as a
+    // WebAuthn assertion. The paired-iPhone transport can surface this same
+    // exact protocol later; it does not alter the approval object or receipt.
+    const approvalMatch = url.pathname.match(/^\/mandate\/proposals\/([^/]+)\/(approve|webauthn\/challenge)$/);
+    if (approvalMatch && req.method === 'GET') {
+      const proposalId = decodeURIComponent(approvalMatch[1]);
+      const check = ensureManagedMandate(state);
+      if (!check.valid || !state.managedMandate) {
+        res.writeHead(409);
+        res.end(JSON.stringify({ error: check.valid ? 'no_managed_mandate' : check.code, message: check.valid ? 'No managed mandate is active.' : check.message }));
+        return;
+      }
+      const proposal = state.managedMandate.registry.proposals[proposalId];
+      if (!proposal) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'unknown_proposal' }));
+        return;
+      }
+      const controllerId = url.searchParams.get('controller_id') || state.managedMandate.registry.controllers.find((item) => item.type === 'webauthn')?.id;
+      const controller = state.managedMandate.registry.controllers.find((item) => item.id === controllerId);
+      if (!controller || controller.type !== 'webauthn') {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'webauthn_controller_required', hint: 'Register a WebAuthn controller before using browser approval.' }));
+        return;
+      }
+      if (approvalMatch[2] === 'webauthn/challenge') {
+        try {
+          const challenge = createWebAuthnPolicyChallenge({
+            cedarDir: state.cedarDir!, proposalId, controllerId: controller.id,
+            rpId: state.managedMandate.rpId,
+          });
+          state.managedMandate.registry = loadMandateRegistry(state.cedarDir!)!;
+          res.writeHead(200);
+          res.end(JSON.stringify({
+            proposal_id: proposal.proposal_id,
+            proposal_digest: proposal.proposal_digest,
+            controller: { id: controller.id, label: controller.label },
+            publicKey: {
+              challenge: challenge.challenge,
+              rpId: challenge.rpId,
+              timeout: challenge.timeoutSeconds * 1000,
+              userVerification: 'required',
+              allowCredentials: [{ id: controller.credential_id, type: 'public-key' }],
+            },
+          }));
+        } catch (error) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'challenge_failed', message: error instanceof Error ? error.message : 'Could not create approval challenge.' }));
+        }
+        return;
+      }
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.writeHead(200);
+      res.end(renderMandateApprovalPage({ proposal, controller: { id: controller.id, label: controller.label }, port }));
+      return;
+    }
+
+    const approveMatch = url.pathname.match(/^\/mandate\/proposals\/([^/]+)\/webauthn\/approve$/);
+    if (approveMatch && req.method === 'POST') {
+      const proposalId = decodeURIComponent(approveMatch[1]);
+      if (!state.managedMandate || !state.cedarDir) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'no_managed_mandate' }));
+        return;
+      }
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; });
+      req.on('end', () => {
+        try {
+          const parsed = JSON.parse(body) as { assertion?: ApprovalAssertion };
+          if (!parsed.assertion) throw new Error('missing WebAuthn assertion');
+          const registry = approvePolicyProposalWithWebAuthn({
+            cedarDir: state.cedarDir!, signer: state.managedMandate!.signer,
+            proposalId, assertion: parsed.assertion,
+            expectedOrigin: state.managedMandate!.expectedOrigin,
+          });
+          state.managedMandate!.registry = registry;
+          const refreshed = ensureManagedMandate(state);
+          if (!refreshed.valid) throw new Error(`${refreshed.code}: ${refreshed.message}`);
+          res.writeHead(200);
+          res.end(JSON.stringify({
+            approved: true,
+            active_policy_digest: state.managedMandate!.registry.active.policy_digest,
+            expires_at: state.managedMandate!.registry.active.expires_at || null,
+            mandate: publicMandateStatus(state.managedMandate!.registry),
+          }));
+        } catch (error) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'approval_rejected', message: error instanceof Error ? error.message : 'Policy approval was rejected.' }));
+        }
+      });
       return;
     }
 
@@ -1021,11 +1318,15 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
       let body = '';
       req.on('data', (chunk) => { body += chunk; });
       req.on('end', async () => {
+        // Hoisted so the catch can tell an errored TOOL DECISION apart from a
+        // malformed request: a decision that throws must fail closed (deny), not
+        // return an ambiguous 400 that a PreToolUse hook reads as "no deny".
+        let input: HookInput | undefined;
         try {
           const raw = JSON.parse(body) as Record<string, unknown>;
 
           // Normalize snake_case (from Claude Code) → camelCase (our internal types)
-          const input = normalizeHookInput(raw);
+          input = normalizeHookInput(raw);
 
           if (!input.hookEventName) {
             res.writeHead(400);
@@ -1040,6 +1341,23 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
         } catch (err) {
           if (verbose) {
             process.stderr.write(`[PROTECT_MCP] Hook error: ${err instanceof Error ? err.message : err}\n`);
+          }
+          // Backstop: if we got far enough to know this was a PreToolUse decision,
+          // an unexpected throw MUST deny, not fail open. A body we could not even
+          // parse into a hook event is a malformed request, not a tool call, so it
+          // stays a 400.
+          if (input?.hookEventName === 'PreToolUse') {
+            res.writeHead(200);
+            res.end(JSON.stringify({
+              hookSpecificOutput: {
+                hookEventName: 'PreToolUse',
+                permissionDecision: 'deny',
+                permissionDecisionReason:
+                  `[ScopeBlind] Denied "${input.toolName || 'unknown'}": the gate hit an unexpected error while deciding, ` +
+                  `so it fails closed rather than allow an unverified call. Check the server logs.`,
+              },
+            }));
+            return;
           }
           res.writeHead(400);
           res.end(JSON.stringify({ error: 'invalid_request' }));
@@ -1089,10 +1407,10 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
     w(`                    a searchable view of every decision, all on this machine\n`);
     w(`\n`);
     // Dashboard hint — only show if not already connected
-    const hasSlug = process.env.SCOPEBLIND_SLUG || existsSync(join(process.cwd(), '.scopeblind'));
+    const hasSlug = process.env.SCOPEBLIND_SLUG || existsSync(join(dataDir, '.scopeblind'));
     if (!hasSlug) {
       w(`  Dashboard  npx protect-mcp connect\n`);
-      w(`             Free up to 20,000 receipts/month\n`);
+      w(`             Sends privacy-safe summaries; raw receipts stay local\n`);
       w(`\n`);
     }
   });
@@ -1140,8 +1458,84 @@ function newestCedarMtime(dir: string): number {
  * policy), the OLD policy stays active rather than opening the gate.
  */
 const CEDAR_CHECK_THROTTLE_MS = 2000; // keep policies cached; stat the dir at most this often
+
+/**
+ * Refresh the managed policy head before evaluating a tool. This runs before
+ * hot reload: a hand edit must produce a denial, never become the new policy
+ * merely because its mtime changed. Expiry may atomically restore a signed
+ * baseline, after which the Cedar cache is reloaded from that exact head.
+ */
+function ensureManagedMandate(state: HookServerState): { valid: true } | { valid: false; code: string; message: string } {
+  // This runs before every managed decision and MUST NOT throw: an unparseable
+  // or unreadable registry (a partial write, disk fault, or an attacker who can
+  // corrupt the registry file to invalid JSON) makes refreshManagedMandate /
+  // loadMandateRegistry throw, and a throw here escapes the caller's explicit
+  // deny and lands in the generic transport catch as a 400 with no
+  // permissionDecision — which a PreToolUse hook treats as "no deny" and lets
+  // the tool proceed. So we translate ANY exception into a fail-closed deny.
+  try {
+    if (!state.managedMandate || !state.cedarDir) return { valid: true };
+    const mm = state.managedMandate;
+    // Monotonic clock floor: a system clock set backward must not revive an
+    // expired grant on a running gate.
+    const floorMs = Math.max(Date.now(), mm.maxSeenTimeMs);
+    const result = refreshManagedMandate({ cedarDir: state.cedarDir, signer: mm.signer, now: new Date(floorMs) });
+    if (!result.valid || !result.registry) {
+      return {
+        valid: false,
+        code: result.code || 'mandate_registry_invalid',
+        message: result.message || 'The mandate registry could not be verified.',
+      };
+    }
+    // Session anti-rollback: the signed history may only grow and may not have
+    // its already-seen prefix rewritten. A truncation or fork back to an earlier
+    // (still self-consistent, still gate-signed) state is a rollback attack.
+    const history = result.registry.history;
+    if (mm.highWaterSequence > 0) {
+      if (history.length < mm.highWaterSequence) {
+        return { valid: false, code: 'mandate_rollback_detected', message: 'The mandate history is shorter than a state this gate already enforced. The registry was rolled back or truncated.' };
+      }
+      const atMark = history[mm.highWaterSequence - 1];
+      if (!atMark || receiptHash(atMark.transition_receipt) !== mm.highWaterHash) {
+        return { valid: false, code: 'mandate_history_forked', message: 'The mandate history diverges from a state this gate already enforced. The registry was forked or rewritten.' };
+      }
+    }
+    mm.highWaterSequence = history.length;
+    mm.highWaterHash = history.length ? receiptHash(history[history.length - 1].transition_receipt) : '';
+    const latestTransitionMs = history.reduce((m, t) => Math.max(m, Date.parse(t.occurred_at) || 0), 0);
+    mm.maxSeenTimeMs = Math.max(mm.maxSeenTimeMs, floorMs, latestTransitionMs);
+    state.managedMandate.registry = result.registry;
+    if (state.policyDigest !== result.registry.active.policy_digest || result.expired_reverted) {
+      const reloaded = loadCedarPolicies(state.cedarDir);
+      if (reloaded.digest !== result.registry.active.policy_digest) {
+        return { valid: false, code: 'policy_head_mismatch', message: 'Reloaded policy bytes do not match the signed active mandate head.' };
+      }
+      state.cedarPolicies = reloaded;
+      state.policyDigest = reloaded.digest;
+      state.cedarMtimeMs = newestCedarMtime(state.cedarDir);
+      state.cedarCheckedMs = Date.now();
+      if (result.expired_reverted) {
+        process.stderr.write(`[PROTECT_MCP] Mandate grant expired; restored signed baseline ${reloaded.digest}.\n`);
+      }
+    }
+    return { valid: true };
+  } catch (error) {
+    // A managed mandate whose registry cannot even be read/parsed is the most
+    // dangerous state, not the safest: deny rather than let the transport turn
+    // it into an allow.
+    return {
+      valid: false,
+      code: 'mandate_registry_unreadable',
+      message: `The managed mandate registry could not be read or verified (${error instanceof Error ? error.message : 'unknown error'}). Failing closed until the signed policy state is restored.`,
+    };
+  }
+}
+
 function maybeReloadCedar(state: HookServerState): void {
   if (!state.cedarDir) return;
+  // Managed directories are refreshed by ensureManagedMandate() and reject
+  // direct edits. Hot reload remains only for unmanaged, exploratory policy.
+  if (state.managedMandate) return;
   const nowMs = Date.now();
   if (nowMs - state.cedarCheckedMs < CEDAR_CHECK_THROTTLE_MS) return; // off the hot path
   state.cedarCheckedMs = nowMs;
@@ -1172,6 +1566,58 @@ function findCedarDir(): string | undefined {
     } catch { /* skip */ }
   }
   return undefined;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char] || char));
+}
+
+/** A deliberately small controller surface: one exact policy change, one passkey. */
+function renderMandateApprovalPage(input: { proposal: MandateProposal; controller: { id: string; label: string }; port: number }): string {
+  const { proposal, controller } = input;
+  const rows = (values: string[], empty: string) => values.length
+    ? values.map((value) => `<li><code>${escapeHtml(value)}</code></li>`).join('')
+    : `<li class="muted">${escapeHtml(empty)}</li>`;
+  const controllerId = JSON.stringify(controller.id);
+  const proposalId = JSON.stringify(proposal.proposal_id);
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Approve Policy Change | ScopeBlind</title>
+<style>
+  :root { color-scheme: light; --ink:#151515; --paper:#f7f5f0; --muted:#6d6b66; --line:#d8d3c9; --warn:#8b2b18; --ok:#22543d; }
+  * { box-sizing:border-box; } body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.5 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:48px 24px 72px; } .eyebrow { color:var(--muted); font:600 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:.09em; text-transform:uppercase; }
+  h1 { max-width:680px; font:600 clamp(30px,5vw,50px)/1.05 ui-serif, Georgia, serif; letter-spacing:-.035em; margin:12px 0 20px; } h2 { font-size:14px; letter-spacing:.04em; text-transform:uppercase; margin:0 0 12px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:22px; margin:16px 0; } .danger { border-left:4px solid var(--warn); } .meta { display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:13px; }
+  .meta strong { display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); } ul { margin:0; padding-left:20px; } li { margin:7px 0; } code { font:12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap:anywhere; } .muted { color:var(--muted); }
+  button { border:0; border-radius:8px; padding:13px 18px; color:white; background:#151515; cursor:pointer; font:600 15px/1 ui-sans-serif, sans-serif; } button:disabled { cursor:wait; opacity:.6; } #result { min-height:24px; margin:14px 0 0; font-weight:600; } .success { color:var(--ok); } .error { color:var(--warn); }
+</style></head><body><main>
+  <div class="eyebrow">ScopeBlind Legate · controller approval</div>
+  <h1>You are approving exactly this policy change.</h1>
+  <p class="muted">This is a time-limited change to a local enforcement gate. Your passkey approves this exact proposal digest, not a general permission for the agent to edit its mandate.</p>
+  <section class="card danger"><h2>Why it was proposed</h2><p>${escapeHtml(proposal.reason)}</p><div class="meta"><div><strong>Blocked action</strong>${escapeHtml(proposal.denial_origin.tool)}</div><div><strong>Denied request</strong><code>${escapeHtml(proposal.denial_origin.request_id)}</code></div><div><strong>Current policy</strong><code>${escapeHtml(proposal.base_policy_digest)}</code></div><div><strong>Expires automatically</strong>${escapeHtml(proposal.expires_at)}</div></div></section>
+  <section class="card"><h2>Plain-English diff</h2><ul>${rows(proposal.diff.plain_english, 'No interpretable policy change.')}</ul></section>
+  <section class="card"><h2>Executable statements added</h2><ul>${rows(proposal.diff.added_statements, 'None.')}</ul></section>
+  <section class="card"><h2>Executable statements removed</h2><ul>${rows(proposal.diff.removed_statements, 'None.')}</ul></section>
+  <section class="card"><h2>Controller</h2><p><strong>${escapeHtml(controller.label)}</strong><br><span class="muted">A user-verified passkey is required. This local page sends neither a portfolio nor agent prompt to ScopeBlind.</span></p><button id="approve">Approve this exact change</button><div id="result" role="status"></div></section>
+<script>
+const proposalId = ${proposalId}; const controllerId = ${controllerId};
+const result = document.getElementById('result'); const button = document.getElementById('approve');
+const toBytes = (s) => { const b = atob(s.replace(/-/g,'+').replace(/_/g,'/') + '='.repeat((4 - s.length % 4) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+const fromBytes = (buffer) => { const b = new Uint8Array(buffer); let out=''; for (const x of b) out += String.fromCharCode(x); return btoa(out).replace(/\\+/g,'-').replace(/\\//g,'_').replace(/=+$/,''); };
+button.addEventListener('click', async () => { try {
+  button.disabled = true; result.className = ''; result.textContent = 'Requesting a passkey for this exact policy diff...';
+  const challengeResponse = await fetch('/mandate/proposals/' + encodeURIComponent(proposalId) + '/webauthn/challenge?controller_id=' + encodeURIComponent(controllerId));
+  const challenge = await challengeResponse.json(); if (!challengeResponse.ok) throw new Error(challenge.message || challenge.error);
+  const p = challenge.publicKey; p.challenge = toBytes(p.challenge); p.allowCredentials = p.allowCredentials.map(c => ({...c, id: toBytes(c.id)}));
+  const credential = await navigator.credentials.get({ publicKey:p }); if (!credential) throw new Error('No passkey assertion was returned.');
+  const response = credential.response;
+  const assertion = { credentialId: fromBytes(credential.rawId), authenticatorData: fromBytes(response.authenticatorData), clientDataJSON: fromBytes(response.clientDataJSON), signature: fromBytes(response.signature), ...(response.userHandle ? { userHandle: fromBytes(response.userHandle) } : {}) };
+  const approved = await fetch('/mandate/proposals/' + encodeURIComponent(proposalId) + '/webauthn/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({assertion}) });
+  const body = await approved.json(); if (!approved.ok) throw new Error(body.message || body.error);
+  result.className = 'success'; result.textContent = 'Approved. The signed policy head is now active' + (body.expires_at ? ' until ' + body.expires_at : '') + '.'; button.remove();
+} catch (error) { result.className = 'error'; result.textContent = 'Not approved: ' + (error && error.message ? error.message : String(error)); button.disabled = false; } });
+</script></main></body></html>`;
 }
 
 // ============================================================

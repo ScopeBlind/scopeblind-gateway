@@ -2,7 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { createInterface, type Interface } from 'node:readline';
 import { appendFileSync, readFileSync } from 'node:fs';
-import { receiptHash } from './acta-envelope.js';
+import { chainLink } from './acta-envelope.js';
 import { join } from 'node:path';
 import type {
   ProtectConfig,
@@ -74,7 +74,7 @@ export class ProtectGateway {
     // Resume the s5.7 receipt chain across restarts from the existing log tail.
     try {
       const existing = readFileSync(this.receiptFilePath, 'utf-8').split('\n').filter((l) => l.trim());
-      if (existing.length > 0) this.lastReceiptHash = receiptHash(JSON.parse(existing[existing.length - 1]));
+      if (existing.length > 0) this.lastReceiptHash = chainLink(JSON.parse(existing[existing.length - 1]));
     } catch { /* missing or unparseable log starts a fresh chain */ }
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();

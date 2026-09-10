@@ -118,6 +118,36 @@ forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash")
 };
 ${defaultPermit}`;
 
+const researchSafe = `${header('research-safe', 'Let a research agent read and search, but never exfiltrate findings or touch secrets.')}// Reading credentials or secret-like files is never part of research.
+forbid(principal, action == Action::"MCP::Tool::call", resource) when {
+  context has "input" && context.input has "path" && (
+    context.input.path like "*/.env*" ||
+    context.input.path like "*/.ssh/*" ||
+    context.input.path like "*/.aws/credentials*" ||
+    context.input.path like "*secret*" ||
+    context.input.path like "*credential*" ||
+    context.input.path like "*token*"
+  )
+};
+
+// Research observes; it does not send or publish externally on its own.
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"send_email");
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"mail.send");
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"slack.post");
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"http.post");
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"webhook.send");
+
+// Shell fallbacks that exfiltrate (curl/wget POST, netcat) are blocked too.
+forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash") when {
+  context has "command" && (
+    context.command like "*curl*-d*" ||
+    context.command like "*curl*--data*" ||
+    context.command like "*wget*--post*" ||
+    context.command like "*nc *"
+  )
+};
+${defaultPermit}`;
+
 const financeMandateSafe = `${header('finance-mandate-safe', 'Block restricted-list and concentration-limit breaches in booking tools.')}forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"pms.book") when {
   context has "input" && context.input has "on_restricted_list" && context.input.on_restricted_list == true
 };
@@ -141,6 +171,13 @@ forbid(principal, action == Action::"MCP::Tool::call", resource) when {
 ${defaultPermit}`;
 
 export const POLICY_PACKS: PolicyPack[] = [
+  {
+    id: 'research-safe',
+    name: 'Research Safe',
+    description: 'Lets a research agent read and search, but blocks external sends and secret access.',
+    recommendedMode: 'shadow-first',
+    files: [{ path: 'research-safe.cedar', contents: researchSafe }],
+  },
   {
     id: 'filesystem-safe',
     name: 'Filesystem Safe',

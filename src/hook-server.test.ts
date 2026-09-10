@@ -88,6 +88,7 @@ writeFileSync(
 // cedar/ dir at its root, which would otherwise leak in and break the no-policy
 // tests. (Restored from koriyoshi2041's PR; necessary for cwd-independent tests.)
 const noPolicyDir = mkdtempSync(join(tmpdir(), 'pmcp-hook-empty-'));
+const hookDataDir = mkdtempSync(join(tmpdir(), 'pmcp-hook-data-'));
 
 beforeAll(async () => {
   // Dynamically import and start the hook server on test port
@@ -99,6 +100,7 @@ beforeAll(async () => {
       port: 19377,
       verbose: false,
       enforce: true,
+      dataDir: hookDataDir,
       // No cedar dir or policy path — runs in observe/allow-all mode
     });
   } finally {
@@ -129,6 +131,7 @@ describe('PreToolUse handler with Cedar policies', () => {
       verbose: false,
       enforce: true,
       cedarDir,
+      dataDir: hookDataDir,
     });
     await new Promise(r => setTimeout(r, 200));
   }, 10_000);

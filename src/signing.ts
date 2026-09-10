@@ -170,7 +170,7 @@ export function signDecision(entry: DecisionLog, prevReceiptHash?: string): {
       mode: entry.mode,
       request_id: entry.request_id,
       // Spec version: ties every receipt to the IETF standard
-      spec: 'draft-farley-acta-signed-receipts-02',
+      spec: 'draft-farley-acta-signed-receipts-03',
       // Issuer certification: distinguishes VOPRF-backed receipts from self-signed ones
       // - scopeblind:verified  = issued via ScopeBlind VOPRF backend (paid tier)
       // - self-signed          = signed with local Ed25519 key (free tier, protect-mcp default)
@@ -207,6 +207,7 @@ export function signDecision(entry: DecisionLog, prevReceiptHash?: string): {
     if (entry.enrichment) payload.enrichment = entry.enrichment;
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
+    if (entry.mandate_registry) payload.mandate_registry = entry.mandate_registry;
 
     const result = createReceiptEnvelope(
       payload as Record<string, unknown> & { type: string },
@@ -234,6 +235,50 @@ export function signDecision(entry: DecisionLog, prevReceiptHash?: string): {
       warning: `signing failed: ${message}`,
       error: message,
     };
+  }
+}
+
+/**
+ * Sign an arbitrary governance artifact (e.g. a coverage statement) with the
+ * same signer used for decision receipts. Mirrors signDecision's fail-closed
+ * contract: unsigned-without-error when no signer is configured, explicit
+ * error when a signer is configured but broken, so callers can refuse to emit
+ * an artifact that was promised to be signed. The payload's own `type` field
+ * is the envelope payload type (the anchor-envelope precedent); the signer's
+ * public key is bound inside the signed payload, as with decision receipts.
+ *
+ * @standard RFC 8032 (Ed25519), RFC 8785 (JCS)
+ */
+export function signGenericArtifact(
+  _artifactType: string,
+  payload: Record<string, unknown>,
+): { ok: boolean; signed: string | null; warning?: string; error?: string } {
+  if (signingConfigured && signingInitError) {
+    return { ok: false, signed: null, warning: `signing initialization failed: ${signingInitError}`, error: signingInitError };
+  }
+  if (signingConfigured && !signerState) {
+    const error = 'signing was configured but no signer is ready';
+    return { ok: false, signed: null, warning: error, error };
+  }
+  if (!signerState) {
+    return { ok: false, signed: null };
+  }
+  try {
+    const full: Record<string, unknown> & { type: string } = {
+      ...(payload as Record<string, unknown>),
+      type: String((payload as Record<string, unknown>).type || 'protectmcp:artifact'),
+      public_key: signerState.publicKey,
+    };
+    // Egress summaries deliberately have a closed schema. The recipient needs
+    // the pinned key and opaque kid, not a free-text issuer label.
+    if (signerState.issuer && signerState.issuer !== signerState.kid && full.type !== 'scopeblind.egress_summary.v1') {
+      full.issuer_name = signerState.issuer;
+    }
+    const result = createReceiptEnvelope(full, signerState.privateKey, signerState.kid);
+    return { ok: true, signed: JSON.stringify(result.envelope) };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error';
+    return { ok: false, signed: null, warning: `signing failed: ${message}`, error: message };
   }
 }
 

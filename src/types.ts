@@ -247,6 +247,13 @@ export interface DecisionLog {
     redacted_fields: string[];
     summary: string;
   };
+  /** Managed-mandate state that governed this decision, signed into the receipt. */
+  mandate_registry?: {
+    registry_id: string;
+    active_policy_digest: string;
+    active_transition_hash: string;
+    expires_at?: string;
+  };
 
   // ── Standard reference fields (v0.5.2+) ──
 

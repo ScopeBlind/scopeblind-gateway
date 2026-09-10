@@ -276,7 +276,7 @@ session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.9.1 evaluate --cedar ./cedar --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\""
+            "command": "npx protect-mcp@0.13.1 evaluate --cedar ./cedar --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\""
           }
         ]
       }
@@ -287,7 +287,7 @@ session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.9.1 sign --tool \"$TOOL_NAME\" --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx protect-mcp@0.13.1 sign --tool \"$TOOL_NAME\" --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }
@@ -295,6 +295,31 @@ session always runs the gate you tested:
   }
 }
 ```
+
+### Sign the policy decision itself
+
+From 0.13.0, `sign` can evaluate the policy and record the real decision in the
+receipt instead of an unconditional allow. Pass the policy directory and the
+same input and context the hook would pass to `evaluate`:
+
+```bash
+npx protect-mcp@0.13.1 sign --cedar ./cedar --tool Bash \
+  --input '{"command":"rm -rf /"}' --context '{"command_pattern":"rm -rf"}' \
+  --receipts ./receipts --key ./keys/gateway.json
+```
+
+The receipt payload then carries `decision` (allow or deny), `reason`
+(`cedar_allow` or `cedar_deny`), and `policy_digest` (the acta-policy-digest-v1
+digest of the policy set), and cites draft-farley-acta-signed-receipts-03. The
+command prints the decision and digest on stdout. A deny is still signed: the
+receipt is the record of the decision, not permission to proceed.
+
+Two Cedar action models are supported. The runtime gate evaluates
+`Action::"MCP::Tool::call"` with the tool as the resource, which is what the
+policies in `cedar/` expect and what `sign --cedar` uses by default. Policies
+that name the tool as the action (`action == Action::"Bash"`), such as the
+published conformance policy in agent-governance-testvectors, need
+`--action-model tool`. `evaluate` accepts the same flag.
 
 `evaluate` exits 2 on deny so Claude Code blocks the tool call, and 0 on allow.
 `sign` is best-effort: it appends an Ed25519-signed receipt when a key is

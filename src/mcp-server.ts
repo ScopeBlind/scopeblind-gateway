@@ -137,7 +137,7 @@ function buildReceiptPayload(args: {
     scope: args.request_id,
     mode: 'enforce',
     request_id: args.request_id,
-    spec: 'draft-farley-acta-signed-receipts-02',
+    spec: 'draft-farley-acta-signed-receipts-03',
     issuer_certification: 'self-signed',
     public_key: args.public_key,
   };
@@ -333,8 +333,10 @@ export async function runMcpServer(): Promise<void> {
     });
   });
   process.stderr.write('[PROTECT_MCP] gate MCP server started — 4 tools: evaluate_action, sign_decision, verify_receipt, self_test\n');
-  // Keep the process alive until stdin closes.
+  // Stdin can close before queued tool calls finish. Drain the serialized
+  // response chain so a short-lived MCP client receives every response.
   await new Promise<void>((resolve) => rl.on('close', () => resolve()));
+  await chain;
 }
 
 // Allow direct execution (dist/mcp-server.js) as well as dispatch from cli.ts.

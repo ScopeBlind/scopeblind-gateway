@@ -34,7 +34,7 @@ let server: Server | undefined;
 
 beforeAll(async () => {
   const { startHookServer } = await import('./hook-server.js');
-  server = await startHookServer({ port: 19379, verbose: false, enforce: true, cedarDir });
+  server = await startHookServer({ port: 19379, verbose: false, enforce: true, cedarDir, dataDir: cedarDir });
   await new Promise(r => setTimeout(r, 200));
 }, 10_000);
 

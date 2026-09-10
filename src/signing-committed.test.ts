@@ -64,24 +64,30 @@ describe('signCommittedDecision', () => {
     expect(result.signed).toBeTruthy();
     const receipt = JSON.parse(result.signed);
 
-    expect(receipt.type).toBe('scopeblind.receipt.committed.v1');
-    expect(receipt.spec).toBe('draft-farley-acta-signed-receipts-01');
-    expect(receipt.committed_fields_root).toMatch(/^[0-9a-f]{64}$/);
-    expect(receipt.committed_field_names).toEqual(
+    // Envelope shape: exactly a payload member and a signature member.
+    expect(Object.keys(receipt).sort()).toEqual(['payload', 'signature']);
+
+    expect(receipt.payload.type).toBe('scopeblind.receipt.committed.v1');
+    expect(receipt.payload.spec).toBe('draft-farley-acta-signed-receipts');
+    expect(receipt.payload.committed_fields_root).toMatch(/^[0-9a-f]{64}$/);
+    expect(receipt.payload.committed_field_names).toEqual(
       expect.arrayContaining(['tool', 'payload_digest', 'scope']),
     );
     expect(receipt.signature.alg).toBe('EdDSA');
     expect(receipt.signature.kid).toBe('test-kid');
+    // Lowercase hex, and no key travelling inside the artifact it authenticates.
+    expect(receipt.signature.sig).toMatch(/^[0-9a-f]{128}$/);
+    expect(receipt.signature.public_key).toBeUndefined();
 
     // Cleartext fields stay outside the committed root.
-    expect(receipt.decision).toBe('allow');
-    expect(receipt.reason_code).toBe('allowed_by_policy');
-    expect(receipt.tier).toBe('signed-known');
-    expect(receipt.tool).toBeUndefined();
-    expect(receipt.payload_digest).toBeUndefined();
+    expect(receipt.payload.decision).toBe('allow');
+    expect(receipt.payload.reason_code).toBe('allowed_by_policy');
+    expect(receipt.payload.tier).toBe('signed-known');
+    expect(receipt.payload.tool).toBeUndefined();
+    expect(receipt.payload.payload_digest).toBeUndefined();
   });
 
-  it('produces an Ed25519 signature that verifies over JCS(payload-minus-signature)', () => {
+  it('produces an Ed25519 signature that verifies over JCS(payload)', () => {
     const { skHex, pkHex } = makeKeyPair();
     const result = signCommittedDecision(
       sampleEntry(),
@@ -93,12 +99,22 @@ describe('signCommittedDecision', () => {
     );
 
     const receipt = JSON.parse(result.signed);
-    const { signature, ...payloadWithoutSig } = receipt;
-    const messageHash = sha256(new TextEncoder().encode(jcs(payloadWithoutSig)));
-    const sigBytes = b64urlDecode(signature.sig);
-    const pkBytes = hexToBytes(signature.public_key);
+    const sigBytes = hexToBytes(receipt.signature.sig);
+    const pkBytes = hexToBytes(pkHex);
 
-    expect(ed25519.verify(sigBytes, messageHash, pkBytes)).toBe(true);
+    // The signing input is JCS(payload), and the signature covers those bytes
+    // directly. PureEdDSA hashes the message internally, so a SHA-256 pre-hash
+    // is both redundant and forbidden by the spec; assert the direct form and
+    // that the pre-hashed form no longer verifies, so neither can silently
+    // regress.
+    const canonical = new TextEncoder().encode(jcs(receipt.payload));
+    expect(ed25519.verify(sigBytes, canonical, pkBytes)).toBe(true);
+    expect(ed25519.verify(sigBytes, sha256(canonical), pkBytes)).toBe(false);
+
+    // Canonicalizing the enclosing receipt is the other shape's rule and must
+    // not verify under this one.
+    const { signature: _s, ...receiptMinusSig } = receipt;
+    expect(ed25519.verify(sigBytes, new TextEncoder().encode(jcs(receiptMinusSig)), pkBytes)).toBe(false);
   });
 
   it('records openings keyed by field name', () => {
@@ -150,7 +166,7 @@ describe('signCommittedDecision', () => {
       const leafHash = hashLeaf(leafBytes);
 
       expect(
-        verifyProof(receipt.committed_fields_root, leafHash, disclosure.proof),
+        verifyProof(receipt.payload.committed_fields_root, leafHash, disclosure.proof),
       ).toBe(true);
     }
   });
@@ -178,7 +194,7 @@ describe('signCommittedDecision', () => {
 
     expect(
       verifyProof(
-        receipt.committed_fields_root,
+        receipt.payload.committed_fields_root,
         tamperedLeafHash,
         disclosure.proof,
       ),
@@ -201,10 +217,15 @@ describe('signCommittedDecision', () => {
       ['tool', 'scope'],
       result.openings,
     );
-    const verification = verifySelectiveDisclosurePackage(receipt, disclosure);
+    // The receipt carries no public key, so the verifier needs one supplied
+    // out of band. Without it the signature is undecidable, not valid.
+    const undecidable = verifySelectiveDisclosurePackage(receipt, disclosure);
+    expect(undecidable.signature_valid).toBeNull();
+
+    const verification = verifySelectiveDisclosurePackage(receipt, disclosure, pkHex);
 
     expect(disclosure.type).toBe('scopeblind.selective_disclosure.v0');
-    expect(disclosure.committed_fields_root).toBe(receipt.committed_fields_root);
+    expect(disclosure.committed_fields_root).toBe(receipt.payload.committed_fields_root);
     expect(disclosure.disclosed_fields.sort()).toEqual(['scope', 'tool']);
     expect(disclosure.hidden_fields).toEqual(['payload_digest']);
     expect(verification.valid).toBe(true);
@@ -245,9 +266,9 @@ describe('signCommittedDecision', () => {
     );
     const receipt = JSON.parse(result.signed);
 
-    expect(receipt.committed_fields_root).toBeUndefined();
-    expect(receipt.committed_field_names).toBeUndefined();
-    expect(receipt.tool).toBe('lookup_flights');
+    expect(receipt.payload.committed_fields_root).toBeUndefined();
+    expect(receipt.payload.committed_field_names).toBeUndefined();
+    expect(receipt.payload.tool).toBe('lookup_flights');
     expect(Object.keys(result.openings).length).toBe(0);
   });
 });

@@ -190,6 +190,39 @@ export {
 } from './webauthn-approval.js';
 export type { ApprovalChallenge, ApprovalAssertion, ApprovalResult } from './webauthn-approval.js';
 
+// ── Runtime-Enforced Mandate Lifecycle ────────────────────────
+export {
+  initializeMandateRegistry,
+  loadMandateRegistry,
+  loadGateSigner,
+  createPolicyProposal,
+  createDirectControllerApproval,
+  approvePolicyProposalWithDirectSignature,
+  createWebAuthnPolicyChallenge,
+  approvePolicyProposalWithWebAuthn,
+  refreshManagedMandate,
+  verifyMandateRegistry,
+  verifyMandateLifecycleExport,
+  publicMandateStatus,
+  exportMandateDisciplineRecord,
+  mandatePaths,
+  snapshotFromDirectory,
+  describePolicyDiff,
+} from './mandate-lifecycle.js';
+export type {
+  GateSigner,
+  MandateController,
+  DirectController,
+  WebAuthnController,
+  MandateRegistry,
+  MandateProposal,
+  MandateApproval,
+  MandateTransition,
+  PolicySnapshot,
+  PolicyDiff,
+  RegistryCheck,
+} from './mandate-lifecycle.js';
+
 // ── W3C DID/VC Interoperability ────────────────────────────────
 export { ed25519ToDIDKey, manifestToVC, receiptToVP } from './did-vc.js';
 
@@ -222,7 +255,8 @@ export type { AttestationDocument, AttestationResult, ConfidentialGateConfig, Co
 export { createSandboxServer } from './demo-server.js';
 
 // ── ScopeBlind Tenant Bridge (Founding Plan integration) ────────
-// Optional bridge that forwards signed receipts to a paid ScopeBlind tenant
+// Optional bridge that forwards signed privacy-safe summaries to ScopeBlind.
 // dashboard at https://scopeblind.com/console/<slug>. Activated when
 // SCOPEBLIND_TOKEN is set in env. Otherwise inert.
 export { ScopeBlindBridge, getScopeBlindBridge, forwardReceipt } from './scopeblind-bridge.js';
+export { inspectEgress, assertEgressSafe, toEgressSummary, runEgressSelfCheck, EGRESS_SUMMARY_FIELDS } from './egress-guard.js';

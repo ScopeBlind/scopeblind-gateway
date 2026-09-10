@@ -2,13 +2,13 @@
 import {
   evaluateCedar,
   policySetFromSource
-} from "./chunk-FGCNKEEW.mjs";
+} from "./chunk-PF7HOTBP.mjs";
 import {
   computeSbIssuerKid,
   createReceiptEnvelope,
   receiptIdentity,
   verifyReceipt
-} from "./chunk-XOP3PEBM.mjs";
+} from "./chunk-EIRUB2BZ.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/mcp-server.ts
@@ -89,7 +89,7 @@ function buildReceiptPayload(args) {
     scope: args.request_id,
     mode: "enforce",
     request_id: args.request_id,
-    spec: "draft-farley-acta-signed-receipts-02",
+    spec: "draft-farley-acta-signed-receipts-03",
     issuer_certification: "self-signed",
     public_key: args.public_key
   };
@@ -270,6 +270,7 @@ async function runMcpServer() {
   });
   process.stderr.write("[PROTECT_MCP] gate MCP server started \u2014 4 tools: evaluate_action, sign_decision, verify_receipt, self_test\n");
   await new Promise((resolve) => rl.on("close", () => resolve()));
+  await chain;
 }
 if (process.argv[1] && /mcp-server\.(js|mjs|cjs|ts)$/.test(process.argv[1])) {
   runMcpServer();

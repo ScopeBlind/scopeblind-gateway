@@ -302,6 +302,30 @@ async function anchorRecordCheckpoint(receipts, key, opts) {
     checkpoint
   };
 }
+var MANDATE_CONTINUITY_SCHEMA = "scopeblind.mandate_continuity_checkpoint.v1";
+function buildMandateContinuityCheckpoint(state, key, issuedAt) {
+  if (!/^sha256:[0-9a-f]{64}$/i.test(state.registry_digest) || !/^sha256:[0-9a-f]{64}$/i.test(state.active_policy_digest) || !/^sha256:[0-9a-f]{64}$/i.test(state.latest_transition_hash)) {
+    throw new Error("continuity state must contain sha256 commitments");
+  }
+  if (!Number.isSafeInteger(state.transition_count) || state.transition_count < 1) throw new Error("continuity state needs at least one transition");
+  const signed = {
+    type: "evidence_pack",
+    schema: MANDATE_CONTINUITY_SCHEMA,
+    anchors: "protect-mcp-mandate-continuity",
+    continuity: state,
+    issued_at: issuedAt,
+    verification_key: key.publicKey,
+    disclosure: "internal"
+  };
+  const hash = sha256(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  return { ...signed, signature: bytesToHex(ed25519.sign(hash, hexToBytes(key.privateKey))), digest: bytesToHex(hash) };
+}
+async function anchorMandateContinuityCheckpoint(checkpoint, opts) {
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
+  const out = await submitEnvelope(checkpoint, base, opts.fetchImpl);
+  if (!out.ok) return { ok: false, checkpoint, error: out.error };
+  return { ok: true, checkpoint, seq: out.seq, entry_url: `${base}/fn/log/${out.seq}`, anchored_at: out.anchored_at, already_anchored: out.already_anchored };
+}
 async function lookupPinnedIdentity(publicKey, opts) {
   const base = (opts && opts.log || DEFAULT_LOG).replace(/\/+$/, "");
   const doFetch = opts && opts.fetchImpl || globalThis.fetch;
@@ -328,10 +352,13 @@ export {
   CHECKPOINT_SCHEMA,
   CLAIM_TYPE,
   DEFAULT_LOG,
+  MANDATE_CONTINUITY_SCHEMA,
   anchorClaim,
+  anchorMandateContinuityCheckpoint,
   anchorRecordCheckpoint,
   buildAnchorEnvelope,
   buildClaim,
+  buildMandateContinuityCheckpoint,
   buildRecordCheckpoint,
   checkClaimAnchor,
   claimDigest,

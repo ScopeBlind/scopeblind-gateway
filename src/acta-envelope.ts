@@ -71,6 +71,18 @@ export function receiptHash(obj: unknown): string {
   return bytesToHex(sha256(utf8ToBytes(canonicalize(obj))));
 }
 
+/**
+ * The value to store in a successor's previousReceiptHash.
+ *
+ * Chain Hash Scope requires "sha256:" + lowercase hex over the whole receipt
+ * including its signature, matching the form used by policy_digest and
+ * source.ref. receiptHash stays a bare digest because it is also used as a
+ * receipt identifier, where the prefix would be noise.
+ */
+export function chainLink(receipt: unknown): string {
+  return 'sha256:' + receiptHash(receipt);
+}
+
 const B58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 function base58(bytes: Uint8Array): string {

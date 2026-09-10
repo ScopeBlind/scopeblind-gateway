@@ -75,7 +75,12 @@ export interface CommittedSignResult {
  * recomputes the leaf hash and walks the proof to confirm it reconstructs
  * the receipt's committed_fields_root.
  *
- * Compatible with @veritasacta/verify@>=0.6.0.
+ * NOTE: this receipt is NOT accepted by @veritasacta/verify. That verifier
+ * handles two shapes: the envelope ({payload, signature:{...}}) and the flat
+ * v1 artifact (fields at the top level with a hex-string signature). This
+ * receipt is a third, hybrid shape: flat fields with a signature OBJECT and a
+ * base64url signature. Making it externally verifiable is a shape change, not
+ * a signing change, and is deliberately not attempted here.
  */
 export interface MinimalDisclosure {
   /** The receipt this disclosure targets, by canonical hash. */
@@ -149,8 +154,9 @@ function freshSalt(): Uint8Array {
  *
  * @returns Signed receipt JSON, openings (per field), and receipt hash.
  *
- * @standard draft-farley-acta-signed-receipts-01 §signature-scope
- *   The signature covers SHA-256(JCS(payload_minus_signature)).
+ * @standard draft-farley-acta-signed-receipts §signature-scope
+ *   The signature covers JCS(payload_minus_signature) directly, with no
+ *   intermediate hash.
  */
 export function signCommittedDecision(
   entry: DecisionLog,
@@ -218,7 +224,7 @@ export function signCommittedDecision(
   // 4. Construct the signable payload.
   const payload: Record<string, unknown> = {
     type: 'scopeblind.receipt.committed.v1',
-    spec: 'draft-farley-acta-signed-receipts-01',
+    spec: 'draft-farley-acta-signed-receipts',
     issuer_certification: 'self-signed',
     timestamp: new Date().toISOString(),
     ...cleartextFields,
@@ -228,20 +234,31 @@ export function signCommittedDecision(
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
 
-  // 5. Sign per draft-01 §signature-scope:
-  //    signature = Sign(SHA-256(JCS(payload_minus_signature)))
+  // 5. Sign the canonical bytes directly. draft-01 signed
+  //    SHA-256(JCS(payload_minus_signature)); that pre-hash was removed in
+  //    -02 after Sam Gardner reported it, because PureEdDSA (RFC 8032)
+  //    already hashes the message internally and the spec now says
+  //    implementations MUST NOT pre-hash. This code was never updated.
   const canonical = jcs(payload);
-  const messageHash = sha256(new TextEncoder().encode(canonical));
-  const signatureBytes = ed25519.sign(messageHash, hexToBytes(signingKey));
+  const signatureBytes = ed25519.sign(new TextEncoder().encode(canonical), hexToBytes(signingKey));
 
+  // Envelope shape: the payload is a member, the signature sits beside it, and
+  // the signing input is JCS(payload), which is what was computed above. The
+  // previous flat form put the fields at the top level next to a signature
+  // OBJECT, which matched neither shape @veritasacta/verify accepts, so these
+  // receipts verified under nothing but this file's own function.
+  //
+  // The signature carries no public_key. A key travelling inside the artifact
+  // it authenticates proves nothing: anyone can re-sign a modified receipt with
+  // their own key and embed it. Verifiers resolve the key from kid through a
+  // trust anchor instead.
   const signedReceipt = {
-    ...payload,
+    payload,
     signature: {
       alg: 'EdDSA' as const,
       kid,
       issuer,
-      sig: base64urlNoPad(signatureBytes),
-      public_key: publicKey, // hex
+      sig: bytesToHex(signatureBytes),
     },
   };
 
@@ -306,8 +323,8 @@ export function createSelectiveDisclosurePackage(
   openings: Record<string, CommittedFieldOpening>,
 ): SelectiveDisclosurePackageV0 {
   const receiptHash = receiptHashHex(receipt);
-  const committedFieldsRoot = typeof receipt.committed_fields_root === 'string'
-    ? receipt.committed_fields_root
+  const committedFieldsRoot = typeof committedPayload(receipt).committed_fields_root === 'string'
+    ? (committedPayload(receipt).committed_fields_root as string)
     : '';
   if (!committedFieldsRoot) {
     throw new Error('selective disclosure requires a committed receipt with committed_fields_root');
@@ -345,6 +362,7 @@ export function createSelectiveDisclosurePackage(
 export function verifySelectiveDisclosurePackage(
   receipt: Record<string, unknown>,
   disclosure: SelectiveDisclosurePackageV0,
+  publicKeyHex?: string,
 ): SelectiveDisclosureVerification {
   const errors: string[] = [];
   if (disclosure.type !== 'scopeblind.selective_disclosure.v0') {
@@ -356,13 +374,14 @@ export function verifySelectiveDisclosurePackage(
     errors.push('parent_receipt_hash does not match the supplied receipt');
   }
 
-  const root = typeof receipt.committed_fields_root === 'string' ? receipt.committed_fields_root : '';
+  const rootRaw = committedPayload(receipt).committed_fields_root;
+  const root = typeof rootRaw === 'string' ? rootRaw : '';
   const commitmentRootValid = Boolean(root) && disclosure.committed_fields_root === root;
   if (!commitmentRootValid) {
     errors.push('committed_fields_root does not match the supplied receipt');
   }
 
-  const signatureValid = verifyCommittedReceiptSignature(receipt);
+  const signatureValid = verifyCommittedReceiptSignature(receipt, publicKeyHex);
   if (signatureValid === false) {
     errors.push('receipt signature failed verification');
   }
@@ -428,8 +447,9 @@ function committedFieldNamesFromReceipt(
   receipt: Record<string, unknown>,
   openings: Record<string, CommittedFieldOpening>,
 ): string[] {
-  const fromReceipt = Array.isArray(receipt.committed_field_names)
-    ? receipt.committed_field_names.filter((fieldName): fieldName is string => typeof fieldName === 'string')
+  const names_ = committedPayload(receipt).committed_field_names;
+  const fromReceipt = Array.isArray(names_)
+    ? names_.filter((fieldName): fieldName is string => typeof fieldName === 'string')
     : [];
   const names = fromReceipt.length ? fromReceipt : Object.keys(openings);
   return Array.from(new Set(names)).sort();
@@ -439,17 +459,48 @@ function receiptHashHex(receipt: Record<string, unknown>): string {
   return bytesToHex(sha256(new TextEncoder().encode(jcs(receipt))));
 }
 
-function verifyCommittedReceiptSignature(receipt: Record<string, unknown>): boolean | null {
+/**
+ * The payload of a committed receipt, for either shape. New receipts are
+ * envelopes; receipts issued before that carry their fields at the top level.
+ */
+function committedPayload(receipt: Record<string, unknown>): Record<string, unknown> {
+  const p = receipt.payload;
+  if (p && typeof p === 'object' && !Array.isArray(p)) return p as Record<string, unknown>;
+  const { signature: _sig, ...rest } = receipt;
+  return rest;
+}
+
+/**
+ * Verify a committed receipt.
+ *
+ * @param publicKeyHex - the issuer's key, resolved out of band. Required for
+ *   envelope receipts, which carry no key. Legacy flat receipts embedded one;
+ *   it is used only as a fallback and only to keep old artifacts checkable,
+ *   never as evidence of who issued them.
+ * @returns true, false, or null when no key is available to decide.
+ */
+function verifyCommittedReceiptSignature(
+  receipt: Record<string, unknown>,
+  publicKeyHex?: string,
+): boolean | null {
   const signature = receipt.signature;
   if (!signature || typeof signature !== 'object') return null;
   const sig = signature as Record<string, unknown>;
-  if (sig.alg !== 'EdDSA' || typeof sig.sig !== 'string' || typeof sig.public_key !== 'string') {
-    return null;
-  }
-  const { signature: _signature, ...payloadWithoutSig } = receipt;
-  const messageHash = sha256(new TextEncoder().encode(jcs(payloadWithoutSig)));
+  if (sig.alg !== 'EdDSA' || typeof sig.sig !== 'string') return null;
+
+  const key = publicKeyHex
+    ?? (typeof sig.public_key === 'string' ? sig.public_key : undefined);
+  if (!key) return null;
+
+  // Envelopes sign JCS(payload); legacy flat receipts signed the receipt minus
+  // its signature, which committedPayload returns for that shape.
+  const signed = committedPayload(receipt);
+  // Hex for envelopes, base64url for the legacy flat form.
+  const sigBytes = /^[0-9a-f]+$/i.test(sig.sig) && sig.sig.length % 2 === 0
+    ? hexToBytes(sig.sig)
+    : base64urlDecode(sig.sig);
   try {
-    return ed25519.verify(base64urlDecode(sig.sig), messageHash, hexToBytes(sig.public_key));
+    return ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed)), hexToBytes(key));
   } catch {
     return false;
   }

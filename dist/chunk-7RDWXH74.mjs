@@ -1,6 +1,6 @@
 import {
   receiptIdentity
-} from "./chunk-XOP3PEBM.mjs";
+} from "./chunk-EIRUB2BZ.mjs";
 
 // src/report.ts
 import { readFileSync, existsSync } from "fs";

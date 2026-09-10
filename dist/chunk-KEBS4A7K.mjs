@@ -228,7 +228,7 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
   }
   const payload = {
     type: "scopeblind.receipt.committed.v1",
-    spec: "draft-farley-acta-signed-receipts-01",
+    spec: "draft-farley-acta-signed-receipts",
     issuer_certification: "self-signed",
     timestamp: (/* @__PURE__ */ new Date()).toISOString(),
     ...cleartextFields
@@ -238,17 +238,14 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
   const canonical = jcs(payload);
-  const messageHash = sha2563(new TextEncoder().encode(canonical));
-  const signatureBytes = ed25519.sign(messageHash, hexToBytes3(signingKey));
+  const signatureBytes = ed25519.sign(new TextEncoder().encode(canonical), hexToBytes3(signingKey));
   const signedReceipt = {
-    ...payload,
+    payload,
     signature: {
       alg: "EdDSA",
       kid,
       issuer,
-      sig: base64urlNoPad(signatureBytes),
-      public_key: publicKey
-      // hex
+      sig: bytesToHex3(signatureBytes)
     }
   };
   const signedJson = JSON.stringify(signedReceipt);
@@ -283,7 +280,7 @@ function discloseField(receiptHash, fieldName, openings) {
 }
 function createSelectiveDisclosurePackage(receipt, fieldNames, openings) {
   const receiptHash = receiptHashHex(receipt);
-  const committedFieldsRoot = typeof receipt.committed_fields_root === "string" ? receipt.committed_fields_root : "";
+  const committedFieldsRoot = typeof committedPayload(receipt).committed_fields_root === "string" ? committedPayload(receipt).committed_fields_root : "";
   if (!committedFieldsRoot) {
     throw new Error("selective disclosure requires a committed receipt with committed_fields_root");
   }
@@ -312,7 +309,7 @@ function createSelectiveDisclosurePackage(receipt, fieldNames, openings) {
     }
   };
 }
-function verifySelectiveDisclosurePackage(receipt, disclosure) {
+function verifySelectiveDisclosurePackage(receipt, disclosure, publicKeyHex) {
   const errors = [];
   if (disclosure.type !== "scopeblind.selective_disclosure.v0") {
     errors.push("disclosure.type is not scopeblind.selective_disclosure.v0");
@@ -322,12 +319,13 @@ function verifySelectiveDisclosurePackage(receipt, disclosure) {
   if (!receiptHashValid) {
     errors.push("parent_receipt_hash does not match the supplied receipt");
   }
-  const root = typeof receipt.committed_fields_root === "string" ? receipt.committed_fields_root : "";
+  const rootRaw = committedPayload(receipt).committed_fields_root;
+  const root = typeof rootRaw === "string" ? rootRaw : "";
   const commitmentRootValid = Boolean(root) && disclosure.committed_fields_root === root;
   if (!commitmentRootValid) {
     errors.push("committed_fields_root does not match the supplied receipt");
   }
-  const signatureValid = verifyCommittedReceiptSignature(receipt);
+  const signatureValid = verifyCommittedReceiptSignature(receipt, publicKeyHex);
   if (signatureValid === false) {
     errors.push("receipt signature failed verification");
   }
@@ -376,24 +374,31 @@ function verifySelectiveDisclosurePackage(receipt, disclosure) {
   };
 }
 function committedFieldNamesFromReceipt(receipt, openings) {
-  const fromReceipt = Array.isArray(receipt.committed_field_names) ? receipt.committed_field_names.filter((fieldName) => typeof fieldName === "string") : [];
+  const names_ = committedPayload(receipt).committed_field_names;
+  const fromReceipt = Array.isArray(names_) ? names_.filter((fieldName) => typeof fieldName === "string") : [];
   const names = fromReceipt.length ? fromReceipt : Object.keys(openings);
   return Array.from(new Set(names)).sort();
 }
 function receiptHashHex(receipt) {
   return bytesToHex3(sha2563(new TextEncoder().encode(jcs(receipt))));
 }
-function verifyCommittedReceiptSignature(receipt) {
+function committedPayload(receipt) {
+  const p = receipt.payload;
+  if (p && typeof p === "object" && !Array.isArray(p)) return p;
+  const { signature: _sig, ...rest } = receipt;
+  return rest;
+}
+function verifyCommittedReceiptSignature(receipt, publicKeyHex) {
   const signature = receipt.signature;
   if (!signature || typeof signature !== "object") return null;
   const sig = signature;
-  if (sig.alg !== "EdDSA" || typeof sig.sig !== "string" || typeof sig.public_key !== "string") {
-    return null;
-  }
-  const { signature: _signature, ...payloadWithoutSig } = receipt;
-  const messageHash = sha2563(new TextEncoder().encode(jcs(payloadWithoutSig)));
+  if (sig.alg !== "EdDSA" || typeof sig.sig !== "string") return null;
+  const key = publicKeyHex ?? (typeof sig.public_key === "string" ? sig.public_key : void 0);
+  if (!key) return null;
+  const signed = committedPayload(receipt);
+  const sigBytes = /^[0-9a-f]+$/i.test(sig.sig) && sig.sig.length % 2 === 0 ? hexToBytes3(sig.sig) : base64urlDecode(sig.sig);
   try {
-    return ed25519.verify(base64urlDecode(sig.sig), messageHash, hexToBytes3(sig.public_key));
+    return ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed)), hexToBytes3(key));
   } catch {
     return false;
   }

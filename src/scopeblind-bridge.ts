@@ -12,8 +12,10 @@
  *      ~5 minutes before expiry, then refresh.
  *   2. As receipts are emitted by hook-server.ts, push them into an
  *      in-memory batch queue.
- *   3. Flush the queue every 5s (or when it reaches 128 receipts) by POSTing
- *      to /fn/console/<slug>/receipts with Bearer SCOPEBLIND_TOKEN.
+ *   3. After the tenant is known, reduce each local receipt to a pseudonymous
+ *      egress summary using a tenant-scoped, local-only HMAC key; sign that
+ *      separate summary envelope locally, and POST it to /summaries. The raw
+ *      signed receipt endpoint is intentionally not used by this bridge.
  *
  * Failure mode: forward errors NEVER throw upstream. protect-mcp continues
  * to mint and persist receipts locally regardless of dashboard availability.
@@ -25,9 +27,21 @@
  *   SCOPEBLIND_TENANT       Optional slug override. By default we discover
  *                           the slug from the BRASS proof's tenant_id.
  *   SCOPEBLIND_BASE         Defaults to https://scopeblind.com.
+ *   SCOPEBLIND_EGRESS_HMAC_KEY
+ *                           Optional base64url 32-byte local-only HMAC key.
+ *                           If omitted, protect-mcp creates a per-tenant key
+ *                           in ~/.protect-mcp/egress-keys (mode 0600).
+ *   SCOPEBLIND_EGRESS_KEY_DIR
+ *                           Optional local directory for generated HMAC keys.
  *
  * @license MIT
  */
+import { createHash, randomBytes } from 'node:crypto';
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import { inspectEgress, toEgressSummary, type EgressSummaryOptions } from './egress-guard.js';
+import { signGenericArtifact } from './signing.js';
 
 const DEFAULT_BASE = "https://scopeblind.com";
 const FLUSH_INTERVAL_MS = 5_000;
@@ -52,24 +66,30 @@ interface BridgeStats {
   tenant_slug: string | null;
   forwarded_total: number;
   rejected_total: number;
+  blocked_by_egress_guard?: number;
   last_flush_at: string | null;
   last_error: string | null;
 }
 
 export class ScopeBlindBridge {
+  private readonly env: Record<string, string | undefined>;
   private readonly token: string | null;
   private readonly base: string;
   private readonly tenantOverride: string | null;
+  private readonly configuredPseudonymKey: Buffer | null;
   private cachedProof: BrassAuthProof | null = null;
-  private queue: any[] = [];
+  /** Raw receipts stay only in this process until minimized at flush time. */
+  private queue: unknown[] = [];
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private stats: BridgeStats;
   private shuttingDown = false;
 
   constructor(env: Record<string, string | undefined> = process.env) {
+    this.env = env;
     this.token = env.SCOPEBLIND_TOKEN || null;
     this.base = (env.SCOPEBLIND_BASE || DEFAULT_BASE).replace(/\/$/, "");
     this.tenantOverride = env.SCOPEBLIND_TENANT || null;
+    this.configuredPseudonymKey = env.SCOPEBLIND_EGRESS_HMAC_KEY ? parseConfiguredPseudonymKey(env.SCOPEBLIND_EGRESS_HMAC_KEY) : null;
     this.stats = {
       enabled: Boolean(this.token),
       tenant_slug: this.tenantOverride,
@@ -92,9 +112,11 @@ export class ScopeBlindBridge {
 
   enabled(): boolean { return Boolean(this.token); }
 
-  /** Push a signed receipt into the queue. Non-blocking. */
+  /** Push a receipt into the local-only queue. Non-blocking. */
   forward(signedReceipt: any): void {
     if (!this.enabled() || this.shuttingDown) return;
+    // Do not create a summary until flush discovers the tenant and can select
+    // its local-only HMAC key. This raw object never crosses the network.
     this.queue.push(signedReceipt);
     if (this.queue.length >= BATCH_MAX) void this.flush();
   }
@@ -102,51 +124,96 @@ export class ScopeBlindBridge {
   /** Flush the queue. Safe to call concurrently. */
   async flush(): Promise<void> {
     if (!this.enabled() || this.queue.length === 0) return;
-    const batch = this.queue.splice(0, BATCH_MAX);
+    const localReceipts = this.queue.splice(0, BATCH_MAX);
     try {
       const proof = await this.ensureBrassProof();
+      if (!proof) {
+        this.queue.unshift(...localReceipts);
+        return;
+      }
       const slug = this.tenantOverride || proof?.tenant_id;
       if (!slug) {
         // Without a tenant, we can't address the ingestion endpoint. Re-queue
         // and try again next flush; common during the first call.
-        this.queue.unshift(...batch);
+        this.queue.unshift(...localReceipts);
         return;
       }
       this.stats.tenant_slug = slug;
 
-      const res = await fetch(`${this.base}/fn/console/${slug}/receipts`, {
+      let opts: EgressSummaryOptions;
+      try {
+        opts = this.summaryOptions(slug);
+      } catch (err: any) {
+        this.stats.last_error = `local egress HMAC key: ${String(err?.message || err)}`;
+        this.queue.unshift(...localReceipts);
+        return;
+      }
+
+      const summaries: unknown[] = [];
+      for (const receipt of localReceipts) {
+        const summary = toEgressSummary(receipt, opts);
+        const guard = summary ? inspectEgress(summary) : { safe: false, violations: [{ path: '$', reason: 'not a recognized receipt or local HMAC key' }] };
+        if (!summary || !guard.safe) {
+          this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
+          continue;
+        }
+        const signed = signGenericArtifact('scopeblind.egress_summary.v1', summary as unknown as Record<string, unknown>);
+        if (!signed.ok || !signed.signed) {
+          this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
+          process.stderr.write(`[PROTECT_MCP] egress summary dropped: a locally signed summary is required (${signed.error || signed.warning || 'signer unavailable'})\n`);
+          continue;
+        }
+        try {
+          const envelope = JSON.parse(signed.signed);
+          const signedGuard = inspectEgress(envelope?.payload, { signed: true });
+          if (!signedGuard.safe || envelope?.signature?.alg !== 'EdDSA') {
+            throw new Error(signedGuard.violations.slice(0, 2).map((v) => v.path).join(', '));
+          }
+          summaries.push(envelope);
+        } catch (err: any) {
+          this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
+          process.stderr.write(`[PROTECT_MCP] egress summary dropped after signing: ${String(err?.message || err)}\n`);
+        }
+      }
+      if (summaries.length === 0) return;
+
+      const res = await fetch(`${this.base}/fn/console/${slug}/summaries`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
           authorization: `Bearer ${this.token}`,
           "user-agent": "protect-mcp/scopeblind-bridge",
         },
-        body: JSON.stringify({ receipts: batch }),
+        body: JSON.stringify({ auth_proof: proof, summaries }),
       });
 
       if (!res.ok) {
         const errBody = await res.text().catch(() => "");
         this.stats.last_error = `HTTP ${res.status} ${errBody.slice(0, 160)}`;
-        this.stats.rejected_total += batch.length;
+        this.stats.rejected_total += summaries.length;
         // 429 = daily quota or rate limit; drop the batch (don't loop), the
         // local .receipts/ chain remains authoritative.
         if (res.status >= 500 && res.status !== 503) {
           // Transient server error: re-queue at the front so retry preserves order.
-          this.queue.unshift(...batch);
+          this.queue.unshift(...localReceipts);
         }
         return;
       }
-
       const body = await res.json().catch(() => ({}));
-      this.stats.forwarded_total += body?.accepted ?? batch.length;
+      this.stats.forwarded_total += body?.accepted ?? summaries.length;
       this.stats.rejected_total += body?.rejected ?? 0;
       this.stats.last_flush_at = new Date().toISOString();
       this.stats.last_error = null;
     } catch (err: any) {
       this.stats.last_error = String(err?.message || err);
       // Network-level failure: re-queue the batch so a future flush retries it.
-      this.queue.unshift(...batch);
+      this.queue.unshift(...localReceipts);
     }
+  }
+
+  private summaryOptions(slug: string): EgressSummaryOptions {
+    const pseudonymKey = this.configuredPseudonymKey || loadOrCreatePseudonymKey(this.env, this.base, slug);
+    return { pseudonymKey, tenantScope: `${this.base}\0${slug}` };
   }
 
   /** Exchange SCOPEBLIND_TOKEN for a BRASS-v2 proof; refresh near expiry. */
@@ -165,7 +232,7 @@ export class ScopeBlindBridge {
         },
         body: JSON.stringify({
           token: this.token,
-          scope: "protect-mcp-receipt-emit",
+          scope: "scopeblind-summary-emit",
           ttl_seconds: 3600,
         }),
       });
@@ -204,6 +271,42 @@ export class ScopeBlindBridge {
     this.shuttingDown = true;
     if (this.flushTimer) clearInterval(this.flushTimer);
     if (this.queue.length > 0) await this.flush();
+  }
+}
+
+function parseConfiguredPseudonymKey(value: string): Buffer {
+  const key = Buffer.from(value, 'base64url');
+  if (key.length !== 32) throw new Error('SCOPEBLIND_EGRESS_HMAC_KEY must be a base64url-encoded 32-byte key');
+  return key;
+}
+
+function loadOrCreatePseudonymKey(env: Record<string, string | undefined>, base: string, slug: string): Buffer {
+  const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || join(homedir(), '.protect-mcp', 'egress-keys');
+  const scopeDigest = createHash('sha256').update(`${base}\0${slug}`).digest('hex');
+  const path = join(dir, `${scopeDigest}.key`);
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
+  chmodSync(dir, 0o700);
+
+  try {
+    const existing = readFileSync(path);
+    if (existing.length !== 32) throw new Error(`local egress key has invalid length: ${path}`);
+    chmodSync(path, 0o600);
+    return existing;
+  } catch (err: any) {
+    if (err?.code !== 'ENOENT') throw err;
+  }
+
+  const fresh = randomBytes(32);
+  try {
+    writeFileSync(path, fresh, { mode: 0o600, flag: 'wx' });
+    return fresh;
+  } catch (err: any) {
+    // A second protect-mcp process may have created the same local key first.
+    if (err?.code !== 'EEXIST') throw err;
+    const existing = readFileSync(path);
+    if (existing.length !== 32) throw new Error(`local egress key has invalid length: ${path}`);
+    chmodSync(path, 0o600);
+    return existing;
   }
 }
 

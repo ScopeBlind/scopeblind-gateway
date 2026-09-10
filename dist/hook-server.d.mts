@@ -30,8 +30,14 @@ interface HookServerOptions {
     port?: number;
     policyPath?: string;
     cedarDir?: string;
+    /** Directory for local keys, receipts, logs, and connection state. Defaults to cwd. */
+    dataDir?: string;
     enforce?: boolean;
     verbose?: boolean;
+    /** WebAuthn RP ID for local mandate-controller approvals. Defaults to localhost. */
+    mandateRelyingPartyId?: string;
+    /** Expected browser origin for mandate-controller approvals. Defaults to local hook origin. */
+    mandateApprovalOrigin?: string;
 }
 declare function startHookServer(options?: HookServerOptions): Promise<Server>;
 

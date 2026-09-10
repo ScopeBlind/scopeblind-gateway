@@ -20,6 +20,9 @@ function canonicalize(obj) {
 function receiptHash(obj) {
   return bytesToHex(sha256(utf8ToBytes(canonicalize(obj))));
 }
+function chainLink(receipt) {
+  return "sha256:" + receiptHash(receipt);
+}
 var B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 function base58(bytes) {
   let n = BigInt("0x" + bytesToHex(bytes));
@@ -107,6 +110,7 @@ function receiptIdentity(envelope) {
 export {
   canonicalize,
   receiptHash,
+  chainLink,
   computeSbIssuerKid,
   createReceiptEnvelope,
   verifyReceipt,

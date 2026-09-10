@@ -32,6 +32,7 @@
 import { ProtectGateway } from './gateway.js';
 import { loadPolicy } from './policy.js';
 import { initSigning, signDecision } from './signing.js';
+import { chainLink } from './acta-envelope.js';
 import { digestCedarDir, buildPolicyBundle, verifyPolicyBundle, shortPolicyLabel } from './policy-digest.js';
 import { verifyReceipt as verifyReceiptEnvelope } from './acta-envelope.js';
 import { validateCredentials } from './credentials.js';
@@ -40,11 +41,26 @@ import { buildActionReadback } from './action-readback.js';
 import { loadCedarPolicies, isCedarAvailable, evaluateCedar, policySetFromSource, runEvaluatorSelfTest, type CedarPolicySet } from './cedar-evaluator.js';
 import { POLICY_PACKS, getPolicyPack, policyPackIds } from './policy-packs.js';
 import { CONNECTOR_PILOTS, connectorDoctor, getConnectorPilot, readInstalledConnectorPilots, writeConnectorPilots } from './connector-pilots.js';
+import {
+  approvePolicyProposalWithDirectSignature,
+  createDirectControllerApproval,
+  createPolicyProposal,
+  exportMandateDisciplineRecord,
+  initializeMandateRegistry,
+  loadGateSigner,
+  loadMandateRegistry,
+  mandatePaths,
+  publicMandateStatus,
+  snapshotFromDirectory,
+  verifyMandateRegistry,
+  type DirectController,
+  type WebAuthnController,
+} from './mandate-lifecycle.js';
 import { createHash as createHashCli } from 'node:crypto';
 import { readFileSync as readFileSyncCli, existsSync as existsSyncCli, appendFileSync as appendFileSyncCli, mkdirSync as mkdirSyncCli, readdirSync as readdirSyncCli, writeFileSync as writeFileSyncCli } from 'node:fs';
 import { basename as basenameCli, dirname as dirnameCli, join as joinCli, resolve as resolveCli } from 'node:path';
 import { homedir as homedirCli } from 'node:os';
-import type { ProtectConfig, ToolPolicy } from './types.js';
+import type { ProtectConfig, ToolPolicy, SigningConfig } from './types.js';
 
 function printHelp(): void {
   process.stderr.write(`
@@ -69,6 +85,7 @@ Usage:
   protect-mcp init [--dir <path>]
   protect-mcp sample [--dir <path>] [--force]
   protect-mcp policy list|show|allow <tool>|deny <tool>|path
+  protect-mcp mandate init|status|history|propose|approve|export|continuity|verify [--cedar <dir>]
   protect-mcp demo
   protect-mcp trace <receipt_id> [--endpoint <url>] [--depth <n>]
   protect-mcp status [--dir <path>]
@@ -81,6 +98,7 @@ Usage:
   protect-mcp bundle [--output <path>] [--dir <path>]
   protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]
   protect-mcp report [--period <days>d] [--format md|json] [--output <path>] [--dir <path>]
+  protect-mcp coverage --mode <hook|proxy> [--enforce] [--policy <path> | --cedar <dir>] [--out <file>]
 
 Options:
   --policy <path>   Policy/config JSON file (default: allow-all)
@@ -99,6 +117,8 @@ Commands:
   sign              Sign one tool call into a receipt (PostToolUse)
   init-hooks        Generate Claude Code hook config + skill + sample Cedar policy
   quickstart        Zero-config onboarding: init + demo + show receipts in one command
+  onboard           Guided first run: pick a policy pack, run a governed demo, verify a receipt
+  offboard          Remove ScopeBlind cleanly: delete local data / disable enforcement / uninstall
   wrap              Print or install a protect-mcp wrapper for MCP servers
   dashboard         Start a local-only action dashboard from logs/receipts
   recommend         Draft a policy from shadow-mode call inventory
@@ -108,6 +128,7 @@ Commands:
   connectors        Install and inspect real connector pilots
   verify-disclosure Verify a v0 selective-disclosure package and explain hidden fields
   policy-packs      List, inspect, or install starter Cedar policy packs
+  mandate           Require dual control, signed policy heads, automatic expiry, and optional external continuity anchors
   connect           Create a ScopeBlind sandbox dashboard and configure receipt upload
   init              Generate config template, Ed25519 keypair, and sample policy
   demo              Start a demo server wrapped with protect-mcp (see receipts instantly)
@@ -124,6 +145,8 @@ Commands:
   anchor-record     Checkpoint the record's Merkle root + count into the public log
                     (heartbeat-friendly: skips when unchanged; only hashes leave)
   bundle            Export an offline-verifiable audit bundle
+  coverage          Emit a signed coverage/scope statement: what is and is not governed
+  egress-check      Prove no raw data leaves the box: the pilot "no upload" health check
 
 Examples:
   protect-mcp serve                           # Start hook server (Claude Code)
@@ -152,8 +175,8 @@ Examples:
 
 Dashboard:
   npx protect-mcp dashboard      Local-only dashboard (127.0.0.1; no account)
-  npx protect-mcp connect        Create a free ScopeBlind dashboard
-                                  Free up to 20,000 receipts/month
+  npx protect-mcp connect        Connect privacy-safe summaries to ScopeBlind
+                                  Raw receipts, prompts, and outputs stay local
 
   https://scopeblind.com          Docs, pricing, enterprise
 
@@ -2799,8 +2822,8 @@ async function handleConnect(): Promise<void> {
   const dashboardUrl = await createSandbox();
   if (dashboardUrl) {
     process.stderr.write(green(`  ✓ Dashboard created: ${dashboardUrl}\n`));
-    process.stderr.write(`    Receipts will be uploaded automatically.\n`);
-    process.stderr.write(dim(`    Free tier: 20,000 receipts/month, no credit card required.\n`));
+    process.stderr.write(`    Privacy-safe summaries will be sent automatically.\n`);
+    process.stderr.write(dim(`    Raw receipts, prompts, payloads, and outputs stay local.\n`));
     process.stderr.write(`\n${'─'.repeat(50)}\n\n`);
   }
 }
@@ -2891,8 +2914,8 @@ async function handleQuickstart(argv: string[]): Promise<void> {
       writeFileSync(configPath, JSON.stringify(updatedConfig, null, 2) + '\n');
 
       process.stdout.write(green(`  ✓ Dashboard created: ${dashboardUrl}\n`));
-      process.stdout.write(`    Receipts will be uploaded automatically.\n`);
-      process.stdout.write(dim(`    Free tier: 20,000 receipts/month, no credit card required.\n`));
+      process.stdout.write(`    Privacy-safe summaries will be sent automatically.\n`);
+      process.stdout.write(dim(`    Raw receipts, prompts, payloads, and outputs stay local.\n`));
       process.stdout.write(`\n`);
     }
   }
@@ -3801,20 +3824,20 @@ async function handleInitHooks(argv: string[]): Promise<void> {
 }
 
 /**
- * Fire-and-forget install telemetry. Runs once per machine, opt-out via
- * PROTECT_MCP_TELEMETRY=off. Errors are silently swallowed.
+ * Install telemetry. Disabled by default and runs once per machine only after
+ * explicit opt-in via PROTECT_MCP_TELEMETRY=on.
+ * Errors are silently swallowed.
  */
 async function sendInstallTelemetry(): Promise<void> {
   try {
-    const { existsSync, mkdirSync, writeFileSync, readFileSync } = await import('node:fs');
-    const { join, dirname } = await import('node:path');
+    const { existsSync, mkdirSync, writeFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
     const { homedir } = await import('node:os');
-    const { fileURLToPath } = await import('node:url');
 
     const markerDir = join(homedir(), '.protect-mcp');
     const markerFile = join(markerDir, '.telemetry-sent');
 
-    if (existsSync(markerFile) || process.env.PROTECT_MCP_TELEMETRY === 'off') {
+    if (existsSync(markerFile) || process.env.PROTECT_MCP_TELEMETRY !== 'on') {
       return;
     }
 
@@ -3824,7 +3847,7 @@ async function sendInstallTelemetry(): Promise<void> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
 
-    fetch('https://api.scopeblind.com/telemetry/install', {
+    const response = await fetch('https://api.scopeblind.com/telemetry/install', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -3836,9 +3859,8 @@ async function sendInstallTelemetry(): Promise<void> {
         ts: Date.now(),
       }),
       signal: controller.signal,
-    })
-      .catch(() => {})
-      .finally(() => clearTimeout(timeout));
+    }).finally(() => clearTimeout(timeout));
+    if (!response.ok) return;
 
     // Create marker directory and file
     if (!existsSync(markerDir)) {
@@ -3847,7 +3869,7 @@ async function sendInstallTelemetry(): Promise<void> {
     writeFileSync(markerFile, String(Date.now()), 'utf-8');
 
     process.stderr.write(
-      '[protect-mcp] Thanks for installing! Anonymous telemetry sent (disable: PROTECT_MCP_TELEMETRY=off)\n' +
+      '[protect-mcp] Explicitly enabled anonymous install telemetry was accepted. Set PROTECT_MCP_TELEMETRY=off to disable future sends.\n' +
       '[protect-mcp] Free dashboard: npx protect-mcp connect | https://scopeblind.com\n',
     );
   } catch {
@@ -3943,6 +3965,7 @@ async function handleEvaluate(argv: string[]): Promise<void> {
   let tool = flagValue(argv, '--tool') || '';
   let inputRaw = flagValue(argv, '--input') || '{}';
   const contextRaw = flagValue(argv, '--context');
+  const actionModel: 'mcp' | 'tool' = flagValue(argv, '--action-model') === 'tool' ? 'tool' : 'mcp';
   const failOnMissing = flagValue(argv, '--fail-on-missing-policy') !== 'false';
 
   // With --format, accept the host's hook payload from stdin (overrides flags).
@@ -3980,7 +4003,7 @@ async function handleEvaluate(argv: string[]): Promise<void> {
   // Pass the parsed --input through as toolInput so policies can match the
   // documented nested `context.input.*` shape (the evaluator maps toolInput ->
   // context.input). The flattened top-level fields above are kept for back-compat.
-  const decision = await evaluateCedar(policySet, { tool, tier: 'unknown', context, toolInput: input }, undefined, { failClosed: true });
+  const decision = await evaluateCedar(policySet, { tool, tier: 'unknown', context, toolInput: input, actionModel }, undefined, { failClosed: true });
   if (format) emitDecision(format, decision.allowed, decision.reason || (decision.allowed ? 'allowed' : 'denied by policy'));
   process.stdout.write(JSON.stringify({ allowed: decision.allowed, reason: decision.reason, policy_digest: policySet.digest }) + '\n');
   process.exit(decision.allowed ? 0 : 2);
@@ -3997,32 +4020,103 @@ async function handleEvaluate(argv: string[]): Promise<void> {
  */
 async function handleSign(argv: string[]): Promise<void> {
   const format = flagValue(argv, '--format');
+  const dir = resolveCli(flagValue(argv, '--dir') || process.cwd());
   let tool = flagValue(argv, '--tool') || '';
-  const receiptsDir = flagValue(argv, '--receipts') || './receipts/';
+  const receiptsDir = flagValue(argv, '--receipts') || joinCli(dir, 'receipts');
   const keyPath = flagValue(argv, '--key');
+  // Optional policy evaluation at signing time. Without --cedar the verb keeps
+  // its post-execution behaviour (a signed record that the call happened, with
+  // decision 'allow' and no policy identity). With --cedar it evaluates the tool
+  // call against that policy directory and signs the real decision and the
+  // policy digest, which is what a conformance driver needs.
+  const cedarDir = flagValue(argv, '--cedar');
+  const actionModel: 'mcp' | 'tool' = flagValue(argv, '--action-model') === 'tool' ? 'tool' : 'mcp';
+  const contextRaw = flagValue(argv, '--context');
+  let toolInput: Record<string, unknown> | undefined;
+  const inputFlag = flagValue(argv, '--input');
+  if (inputFlag) { try { toolInput = JSON.parse(inputFlag); } catch { process.stderr.write('protect-mcp sign: --input is not valid JSON\n'); process.exit(2); } }
 
-  if (format) {
-    const j = await readHookStdin();
-    if (j) {
-      const m = mapHookPayload(j);
-      if (m.tool) tool = m.tool;
+  // PostToolUse hosts deliver the call on stdin. Read it whenever stdin is a
+  // pipe, not only when --format names a known host: the wshobson plugin and
+  // the conformance driver both pipe the payload with no --format, and this
+  // was recording an empty tool name for them.
+  const j = await readHookStdin();
+  if (j) {
+    const m = mapHookPayload(j);
+    if (m.tool) tool = m.tool;
+    if (toolInput === undefined && m.input && typeof m.input === 'object') toolInput = m.input as Record<string, unknown>;
+  }
+
+  // Resolve a signer. --key wins; otherwise take signing.key_path from the
+  // config in --dir. Without this the verb ran, exited 0, and wrote an
+  // unsigned line even when init had already generated and wired a key, so
+  // every caller believed it was producing receipts.
+  let policyDigest = 'none';
+  let signing: SigningConfig | undefined;
+  const signConfigPath = joinCli(dir, 'protect-mcp.json');
+  if (existsSyncCli(signConfigPath)) {
+    try {
+      const loaded = loadPolicy(signConfigPath);
+      policyDigest = loaded.digest || 'none';
+      signing = loaded.signing;
+      // key_path in the config is relative to the config, not to cwd.
+      if (signing?.key_path) {
+        signing = { ...signing, key_path: resolveCli(dir, signing.key_path) };
+      }
+    } catch (err) {
+      process.stderr.write(`[PROTECT_MCP] Warning: could not load ${signConfigPath}: ${err instanceof Error ? err.message : err}\n`);
+    }
+  }
+  if (keyPath) signing = { enabled: true, key_path: resolveCli(keyPath) };
+
+  if (signing) {
+    for (const w of await initSigning(signing)) {
+      process.stderr.write(`[PROTECT_MCP] Warning: ${w}\n`);
     }
   }
 
-  if (keyPath && existsSyncCli(keyPath)) {
-    try { await initSigning({ enabled: true, key_path: keyPath } as any); } catch { /* unsigned fallback below */ }
-  }
+  // Chain to the previous receipt in this log. Without this every receipt was
+  // a standalone island: individually valid, but carrying no evidence of what
+  // preceded it, so removing one left no trace. Genesis omits the member
+  // entirely rather than carrying null, which would change the signed bytes.
+  let prevReceiptHash: string | undefined;
+  try {
+    const logPath = joinCli(receiptsDir, 'receipts.jsonl');
+    if (existsSyncCli(logPath)) {
+      const lines = readFileSyncCli(logPath, 'utf-8').trim().split('\n').filter(Boolean);
+      const last = lines.length ? lines[lines.length - 1] : null;
+      if (last) {
+        const parsed = JSON.parse(last);
+        // Only chain to a receipt that was actually signed.
+        if (parsed && parsed.signature) prevReceiptHash = chainLink(parsed);
+      }
+    }
+  } catch { /* an unreadable log starts a new chain rather than failing the call */ }
 
+  let decisionValue: 'allow' | 'deny' = 'allow';
+  let reasonCode = 'post_execution_receipt';
+  if (cedarDir) {
+    const policySet = loadCedarPolicies(resolveCli(cedarDir));
+    let ctx: Record<string, unknown> = {};
+    if (contextRaw) { try { ctx = JSON.parse(contextRaw); } catch { process.stderr.write('protect-mcp sign: --context is not valid JSON\n'); process.exit(2); } }
+    const verdict = await evaluateCedar(policySet, { tool, tier: 'unknown', context: ctx, toolInput, actionModel }, undefined, { failClosed: true });
+    decisionValue = verdict.allowed ? 'allow' : 'deny';
+    // Record the evaluator's own reason, as the runtime hook does: a policy deny
+    // says cedar_deny, an engine or policy load failure says so. A receipt that
+    // called every fail-closed deny a policy decision misdescribed the outage.
+    reasonCode = verdict.allowed ? 'cedar_allow' : (verdict.reason || 'cedar_deny');
+    policyDigest = policySet.digest;
+  }
   const requestId = `tu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const signed = signDecision({
     tool,
-    decision: 'allow',
-    reason_code: 'post_execution_receipt',
-    policy_digest: 'none',
+    decision: decisionValue,
+    reason_code: reasonCode,
+    policy_digest: policyDigest,
     request_id: requestId,
     mode: 'enforce',
     timestamp: Date.now(),
-  } as any);
+  } as any, prevReceiptHash);
 
   try { mkdirSyncCli(receiptsDir, { recursive: true }); } catch { /* best-effort */ }
   const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || 'no signer configured' });
@@ -4030,7 +4124,7 @@ async function handleSign(argv: string[]): Promise<void> {
 
   // PostToolUse never blocks; Hermes reads stdout, so emit a no-op verdict there.
   if (format === 'hermes') { process.stdout.write('{}\n'); process.exit(0); }
-  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), artifact_type: signed.artifact_type, request_id: requestId }) + '\n');
+  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId }) + '\n');
   process.exit(0);
 }
 
@@ -4067,6 +4161,218 @@ async function handleSample(argv: string[]): Promise<void> {
   process.stdout.write(`${dim('Drop demo-tampered.jsonl into the record page to watch tampering get caught.')}\n`);
   process.stdout.write(`${dim('Everything runs locally; --anchor publishes only a digest to the public log.')}\n\n`);
   process.exit(0);
+}
+
+function mandateFlag(argv: string[], name: string): string | undefined {
+  const index = argv.indexOf(name);
+  return index >= 0 && argv[index + 1] && !argv[index + 1].startsWith('--') ? argv[index + 1] : undefined;
+}
+
+function mandateCedarDir(argv: string[]): string {
+  const explicit = mandateFlag(argv, '--cedar');
+  if (explicit) return explicit;
+  for (const candidate of ['cedar', 'policies', '.']) {
+    try {
+      if (existsSyncCli(candidate) && readdirSyncCli(candidate).some((file) => file.endsWith('.cedar'))) return candidate;
+    } catch { /* continue */ }
+  }
+  throw new Error('no Cedar policy directory found; pass --cedar <directory>');
+}
+
+function printMandateDiff(proposal: Awaited<ReturnType<typeof createPolicyProposal>>): void {
+  process.stdout.write(`\n${bold('Policy proposal')} ${proposal.proposal_id}\n`);
+  process.stdout.write(`  ${dim(`current ${proposal.base_policy_digest}`)}\n`);
+  process.stdout.write(`  ${dim(`proposed ${proposal.proposed_policy_digest}`)}\n`);
+  process.stdout.write(`  ${dim(`expires  ${proposal.expires_at}`)}\n\n`);
+  process.stdout.write(`${bold('You are changing')}\n`);
+  for (const item of proposal.diff.plain_english) process.stdout.write(`  - ${item}\n`);
+  if (proposal.diff.added_statements.length) {
+    process.stdout.write(`\n${bold('Added executable statements')}\n`);
+    for (const item of proposal.diff.added_statements) process.stdout.write(`  + ${item}\n`);
+  }
+  if (proposal.diff.removed_statements.length) {
+    process.stdout.write(`\n${bold('Removed executable statements')}\n`);
+    for (const item of proposal.diff.removed_statements) process.stdout.write(`  - ${item}\n`);
+  }
+  process.stdout.write(`\n${dim('This proposal is not active until a distinct registered controller approves this exact proposal digest.')}\n`);
+}
+
+/**
+ * Runtime policy control, deliberately separate from `policy allow|deny`.
+ * The legacy direct-edit command remains available for unmanaged local
+ * exploration, but a managed policy directory cannot be widened that way.
+ */
+async function handleMandate(argv: string[]): Promise<void> {
+  const sub = argv[0] || 'status';
+  const cedarDir = mandateCedarDir(argv);
+  const gateKeyPath = mandateFlag(argv, '--gate-key') || joinCli(process.cwd(), 'keys', 'gateway.json');
+
+  if (sub === 'init') {
+    const controllerId = mandateFlag(argv, '--controller-id');
+    const controllerLabel = mandateFlag(argv, '--controller-label') || 'Mandate controller';
+    const controllerPublicKey = mandateFlag(argv, '--controller-public-key');
+    if (!controllerId || !controllerPublicKey) {
+      throw new Error('usage: protect-mcp mandate init --cedar <dir> --controller-id <id> --controller-public-key <hex> [--controller-label <label>]');
+    }
+    const signer = loadGateSigner(gateKeyPath);
+    const credentialId = mandateFlag(argv, '--credential-id');
+    const controller: DirectController | WebAuthnController = credentialId
+      ? {
+          id: controllerId, label: controllerLabel, type: 'webauthn', credential_id: credentialId,
+          credential_public_key: { alg: mandateFlag(argv, '--credential-alg') === '-7' ? -7 : -8, publicKeyHex: controllerPublicKey },
+          sign_count: 0,
+        }
+      : { id: controllerId, label: controllerLabel, type: 'ed25519', public_key: controllerPublicKey };
+    const registry = initializeMandateRegistry({ cedarDir, signer, controllers: [controller] });
+    process.stdout.write(`${bold('Managed mandate initialized')}\n`);
+    process.stdout.write(`  ${dim(`registry ${registry.registry_id}`)}\n`);
+    process.stdout.write(`  ${dim(`active head ${registry.active.policy_digest}`)}\n`);
+    process.stdout.write(`  ${dim(`controller ${controller.label} (${controller.type})`)}\n`);
+    process.stdout.write(`\n${bold('Start the governed gate')}\n  protect-mcp serve --enforce --cedar ${cedarDir}\n`);
+    process.stdout.write(`${dim('Direct `policy allow|deny` writes are now refused for this directory. Use `mandate propose` and controller approval instead.')}\n`);
+    return;
+  }
+
+  const registry = loadMandateRegistry(cedarDir);
+  if (!registry) throw new Error(`no managed mandate registry found for ${cedarDir}; run protect-mcp mandate init first`);
+
+  if (sub === 'status' || sub === 'history') {
+    const check = verifyMandateRegistry(registry);
+    const output = publicMandateStatus(registry);
+    if (argv.includes('--json')) {
+      process.stdout.write(JSON.stringify({ valid: check.valid, ...(check.valid ? {} : { code: check.code, message: check.message }), mandate: output }, null, 2) + '\n');
+    } else {
+      process.stdout.write(`\n${bold('Managed mandate')} ${registry.registry_id}\n`);
+      process.stdout.write(`  ${check.valid ? green('verified') : red(`invalid: ${check.code}`)}\n`);
+      process.stdout.write(`  ${dim(`active head ${registry.active.policy_digest}`)}\n`);
+      process.stdout.write(`  ${dim(`baseline    ${registry.active.baseline_policy_digest}`)}\n`);
+      process.stdout.write(`  ${dim(`expires     ${registry.active.expires_at || 'no temporary grant active'}`)}\n`);
+      process.stdout.write(`  ${dim(`transitions ${registry.history.length}; proposals ${Object.keys(registry.proposals).length}`)}\n`);
+      if (sub === 'history') {
+        process.stdout.write('\n');
+        for (const transition of registry.history) process.stdout.write(`  #${transition.sequence} ${transition.occurred_at}  ${transition.event}  ${transition.head_before || 'none'} -> ${transition.head_after}\n`);
+        process.stdout.write(`\n${dim(`append-only transition export: ${mandatePaths(cedarDir).auditLog}`)}\n`);
+      }
+    }
+    process.exit(check.valid ? 0 : 1);
+  }
+
+  if (sub === 'propose') {
+    const candidateDir = mandateFlag(argv, '--candidate');
+    const denialPath = mandateFlag(argv, '--denial-receipt');
+    const reason = mandateFlag(argv, '--reason');
+    const expiresAt = mandateFlag(argv, '--expires-at');
+    if (!candidateDir || !denialPath || !reason || !expiresAt) {
+      throw new Error('usage: protect-mcp mandate propose --cedar <dir> --candidate <cedar-dir> --denial-receipt <receipt.json> --reason <plain-English reason> --expires-at <ISO-8601>');
+    }
+    const signer = loadGateSigner(gateKeyPath);
+    const proposal = createPolicyProposal({
+      cedarDir, signer, candidateDir,
+      denialReceipt: JSON.parse(readFileSyncCli(denialPath, 'utf-8')),
+      reason, expiresAt,
+    });
+    printMandateDiff(proposal);
+    const passkeyController = registry.controllers.find((controller) => controller.type === 'webauthn');
+    if (passkeyController) {
+      const approvalPort = mandateFlag(argv, '--approval-port') || '9377';
+      if (!/^\d{2,5}$/.test(approvalPort) || Number(approvalPort) > 65535) throw new Error('--approval-port must be a valid local TCP port');
+      process.stdout.write(`\n${bold('Desktop passkey approval')}\n  http://localhost:${approvalPort}/mandate/proposals/${proposal.proposal_id}/approve?controller_id=${encodeURIComponent(passkeyController.id)}\n`);
+    }
+    return;
+  }
+
+  if (sub === 'approve') {
+    const proposalId = argv[1];
+    const controllerId = mandateFlag(argv, '--controller-id');
+    const controllerKeyPath = mandateFlag(argv, '--controller-key');
+    if (!proposalId || !controllerId || !controllerKeyPath) {
+      throw new Error('usage: protect-mcp mandate approve <proposal-id> --controller-id <id> --controller-key <controller-key.json>');
+    }
+    const proposal = registry.proposals[proposalId];
+    const controller = registry.controllers.find((item) => item.id === controllerId);
+    if (!proposal || !controller || controller.type !== 'ed25519') throw new Error('proposal or direct Ed25519 controller not found');
+    const raw = JSON.parse(readFileSyncCli(controllerKeyPath, 'utf-8')) as { privateKey?: string };
+    if (!raw.privateKey) throw new Error('controller key file must contain privateKey');
+    const signer = loadGateSigner(gateKeyPath);
+    const approval = createDirectControllerApproval({ proposal, controller, privateKey: raw.privateKey });
+    const updated = approvePolicyProposalWithDirectSignature({ cedarDir, signer, proposalId, approval });
+    process.stdout.write(`${bold('Approved and activated')} ${proposalId}\n`);
+    process.stdout.write(`  ${dim(`active head ${updated.active.policy_digest}`)}\n`);
+    process.stdout.write(`  ${dim(`automatic rollback ${updated.active.expires_at || 'not scheduled'}`)}\n`);
+    process.stdout.write(`${dim('This direct-key path is an offline recovery/test ceremony. Production controller approval should use the local WebAuthn URL printed by `mandate propose`.')}\n`);
+    return;
+  }
+
+  if (sub === 'export') {
+    const output = mandateFlag(argv, '--output');
+    if (!output) throw new Error('usage: protect-mcp mandate export --output <discipline-policy-changes.json> [--cedar <dir>]');
+    const summary = exportMandateDisciplineRecord(registry);
+    const attachment = { type: 'scopeblind.mandate-registry-attachment.v1', registry };
+    const attachmentPath = output.replace(/\.json$/i, '') + '.registry.json';
+    writeFileSyncCli(output, JSON.stringify(summary, null, 2) + '\n');
+    writeFileSyncCli(attachmentPath, JSON.stringify(attachment, null, 2) + '\n');
+    process.stdout.write(`${bold('Discipline Record policy-change attachment exported')}\n`);
+    process.stdout.write(`  ${dim(output)}                 position-blind summary\n`);
+    process.stdout.write(`  ${dim(attachmentPath)}       full offline-verifiable registry; handle as audit evidence\n`);
+    return;
+  }
+
+  if (sub === 'continuity') {
+    const output = mandateFlag(argv, '--output') || joinCli(cedarDir, 'mandate-continuity-checkpoint.json');
+    const log = mandateFlag(argv, '--log');
+    const shouldAnchor = argv.includes('--anchor') || argv.includes('--require-anchor');
+    const summary = exportMandateDisciplineRecord(registry) as {
+      registry_id: string; registry_digest: string; active_policy_digest: string;
+      changes: Array<{ transition_receipt_hash: string }>;
+    };
+    const latest = summary.changes[summary.changes.length - 1];
+    if (!latest) throw new Error('managed mandate has no transition to checkpoint');
+    const { buildMandateContinuityCheckpoint, anchorMandateContinuityCheckpoint } = await import('./claim.js');
+    const signer = loadGateSigner(gateKeyPath);
+    const checkpoint = buildMandateContinuityCheckpoint({
+      registry_id: summary.registry_id,
+      registry_digest: summary.registry_digest,
+      active_policy_digest: summary.active_policy_digest,
+      transition_count: summary.changes.length,
+      latest_transition_hash: latest.transition_receipt_hash,
+    }, signer, new Date().toISOString());
+    writeFileSyncCli(output, JSON.stringify(checkpoint, null, 2) + '\n');
+    process.stdout.write(`${bold('Mandate continuity checkpoint written')}\n`);
+    process.stdout.write(`  ${dim(output)}\n`);
+    process.stdout.write(`  ${dim(`head ${summary.active_policy_digest}; transitions ${summary.changes.length}`)}\n`);
+    if (!shouldAnchor) {
+      process.stdout.write(`${yellow('Local checkpoint only')} ${dim('Use --anchor to witness this commitment outside the local host.') }\n`);
+      return;
+    }
+    const anchored = await anchorMandateContinuityCheckpoint(checkpoint, { ...(log ? { log } : {}) });
+    if (!anchored.ok) {
+      process.stdout.write(`${red('External anchor failed')} ${dim(anchored.error || 'unknown error')}\n`);
+      if (argv.includes('--require-anchor')) process.exit(1);
+      return;
+    }
+    const sidecar = output.replace(/\.json$/i, '') + '.anchor.json';
+    writeFileSyncCli(sidecar, JSON.stringify({ log: log || 'https://scopeblind.com', seq: anchored.seq, entry_url: anchored.entry_url, anchored_at: anchored.anchored_at, checkpoint_digest: checkpoint.digest }, null, 2) + '\n');
+    process.stdout.write(`${green('Externally anchored')} ${dim(`entry #${anchored.seq}; only commitments left this host`)}\n`);
+    process.stdout.write(`${dim(`sidecar ${sidecar}`)}\n`);
+    return;
+  }
+
+  if (sub === 'verify') {
+    const check = verifyMandateRegistry(registry);
+    let onDiskMatches = false;
+    try { onDiskMatches = snapshotFromDirectory(cedarDir).policy_digest === registry.active.policy_digest; } catch { /* verification reports below */ }
+    const valid = check.valid && onDiskMatches;
+    process.stdout.write(JSON.stringify({
+      valid,
+      ...(check.valid ? {} : { code: check.code, message: check.message }),
+      active_policy_digest: registry.active.policy_digest,
+      cedar_directory_matches_signed_head: onDiskMatches,
+      transitions: registry.history.length,
+    }, null, 2) + '\n');
+    process.exit(valid ? 0 : 1);
+  }
+
+  throw new Error('usage: protect-mcp mandate init|status|history|propose|approve|export|continuity|verify [--cedar <dir>]');
 }
 
 // Manage the Cedar policy from the terminal. The gate is default-deny and
@@ -4122,6 +4428,13 @@ async function handlePolicy(argv: string[]): Promise<void> {
     if (!tool) { process.stderr.write(`Usage: npx protect-mcp policy ${sub} <ToolName>\n`); process.exit(1); }
     if (!/^[A-Za-z0-9_.:-]+$/.test(tool)) { process.stderr.write(`Refusing: "${tool}" is not a valid tool name.\n`); process.exit(1); }
     if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    if (ex(mandatePaths(dir).registry)) {
+      process.stderr.write(
+        'This Cedar directory is managed by a signed mandate lifecycle. Direct policy writes are refused.\n' +
+        'Create a candidate policy, then run: protect-mcp mandate propose --candidate <dir> --denial-receipt <receipt.json> --reason <reason> --expires-at <ISO-8601>\n',
+      );
+      process.exit(1);
+    }
     const effect = sub === 'allow' ? 'permit' : 'forbid';
     const before = readAll();
     const beforeLabel = digestOf(before);
@@ -4236,9 +4549,57 @@ async function handlePolicy(argv: string[]): Promise<void> {
   process.exit(1);
 }
 
+/**
+ * `protect-mcp egress-check` — the pilot health check that PROVES no raw data
+ * leaves the box. It runs the egress guard over the local receipts, confirms each
+ * is minimized-and-safe, and confirms the guard BLOCKS a crafted receipt carrying
+ * a prompt / private key / raw output. Contacts nothing.
+ */
+async function handleEgressCheck(argv: string[]): Promise<void> {
+  const { readFileSync, existsSync, writeFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { inspectEgress, toEgressSummary, runEgressSelfCheck } = await import('./egress-guard.js');
+
+  let dir = process.cwd();
+  const di = argv.indexOf('--dir');
+  if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
+  const oi = argv.indexOf('--out');
+  const outPath = oi !== -1 && argv[oi + 1] ? argv[oi + 1] : undefined;
+
+  const receiptsPath = join(dir, '.protect-mcp-receipts.jsonl');
+  const receipts: unknown[] = existsSync(receiptsPath)
+    ? readFileSync(receiptsPath, 'utf-8').trim().split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return {}; } })
+    : [];
+
+  // Offline health check only: this deterministic key never leaves the process
+  // and exists solely to exercise the HMAC pseudonymization path.
+  const pseudonymKey = Buffer.from('scopeblind-egress-health-check-v1', 'utf8');
+  const summaries = receipts.map((r, i) => ({ i, s: toEgressSummary(r, { pseudonymKey }) }));
+  const unsafe = summaries.filter((x) => !x.s || !inspectEgress(x.s).safe);
+  const report = runEgressSelfCheck(receipts, new Date().toISOString());
+  if (outPath) writeFileSync(outPath, JSON.stringify(report, null, 2) + '\n');
+
+  process.stdout.write(`\n${bold('protect-mcp egress-check')}  ${dim('(the "no raw data leaves the box" health check)')}\n\n`);
+  process.stdout.write(`  Local receipts checked : ${receipts.length}\n`);
+  process.stdout.write(`  Summaries egress-safe   : ${report.all_summaries_safe ? green('yes') : red('NO')} ${dim('(only decision, tool name, digests, ids, public key leave)')}\n`);
+  process.stdout.write(`  Raw content dropped     : ${report.raw_content_dropped ? green('yes') : red('NO')} ${dim('(a receipt carrying an email body / recipient / position summarises WITHOUT them)')}\n`);
+  process.stdout.write(`  Private keys dropped    : ${report.private_key_dropped ? green('yes') : red('NO')}\n`);
+  process.stdout.write(`  Deny receipts forwarded : ${report.deny_receipt_forwardable ? green('yes') : red('NO')} ${dim('(a Cedar deny is not dropped by the guard)')}\n`);
+  if (unsafe.length) {
+    process.stdout.write(`\n  ${red(unsafe.length + ' local receipt(s) do not summarise to a safe shape')} (these would be DROPPED from the dashboard, not sent). The local copy stays authoritative.\n`);
+  }
+  process.stdout.write(`\n  ${dim('Only a minimized summary leaves, and only when you opt into the hosted dashboard. The full signed receipt stays local. No prompts, tool bodies, recipients, positions, outputs, or private keys.')}\n`);
+  if (outPath) process.stdout.write(`  ${dim('self-check written to ' + outPath)}\n`);
+  process.stdout.write('\n');
+  // Fail (a) if the guard would leak (raw content or a key), or (b) if it would
+  // wrongly DROP legitimate receipts (a deny, or any real local receipt): both are
+  // release-blocking regressions for a hosted-dashboard pilot.
+  if (!report.raw_content_dropped || !report.private_key_dropped || !report.deny_receipt_forwardable || unsafe.length > 0) process.exitCode = 1;
+}
+
 async function main(): Promise<void> {
-  // Fire-and-forget install telemetry (once per machine, opt-out via env)
-  sendInstallTelemetry().catch(() => {});
+  // Install telemetry is disabled unless the operator explicitly opts in.
+  await sendInstallTelemetry();
 
   // Skip node + script path
   const args = process.argv.slice(2);
@@ -4317,6 +4678,7 @@ async function main(): Promise<void> {
   if (args[0] === 'sample') { await handleSample(args.slice(1)); return; }
 
   // Manage the Cedar policy from the terminal (list/show/allow/deny/path)
+  if (args[0] === 'mandate') { await handleMandate(args.slice(1)); return; }
   if (args[0] === 'policy') { await handlePolicy(args.slice(1)); return; }
 
   // Handle init-hooks command — Claude Code integration setup
@@ -4329,6 +4691,20 @@ async function main(): Promise<void> {
   if (args[0] === 'quickstart') {
     await handleQuickstart(args.slice(1));
     return; // demo keeps running
+  }
+
+  // Guided local-first onboarding (pick a pack, run a governed demo, verify a receipt)
+  if (args[0] === 'onboard') {
+    const { handleOnboard } = await import('./onboard.js');
+    await handleOnboard(args.slice(1));
+    return;
+  }
+
+  // Clean removal: delete local data / disable enforcement / uninstall
+  if (args[0] === 'offboard') {
+    const { handleOffboard } = await import('./onboard.js');
+    await handleOffboard(args.slice(1));
+    return;
   }
 
   // Handle wrap command
@@ -4404,6 +4780,19 @@ async function main(): Promise<void> {
   if (args[0] === 'demo') {
     await handleDemo();
     return; // demo keeps running
+  }
+
+  // Handle coverage command — signed coverage/scope statement
+  if (args[0] === 'coverage') {
+    const { handleCoverage } = await import('./coverage.js');
+    await handleCoverage(args.slice(1));
+    process.exit(process.exitCode || 0);
+  }
+
+  // Handle egress-check — the pilot "no raw data leaves the box" health check
+  if (args[0] === 'egress-check') {
+    await handleEgressCheck(args.slice(1));
+    process.exit(process.exitCode || 0);
   }
 
   // Handle status command

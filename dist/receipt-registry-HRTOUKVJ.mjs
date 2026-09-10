@@ -150,8 +150,8 @@ async function hostedAnchors(opts) {
     },
     privacy: opts.org.privacy,
     billing: {
-      metered_unit: "receipt_digest_anchor",
-      count: opts.records.length,
+      metered_unit: null,
+      status: "not_metered_by_receipt",
       raw_prompt_upload: false,
       raw_data_upload: false
     },
@@ -159,7 +159,6 @@ async function hostedAnchors(opts) {
       receipt_hash: record.receipt_hash,
       receipt_bytes: record.receipt_bytes,
       receipt_type: record.receipt_type,
-      request_id: record.request_id,
       local_issuer: record.local_issuer,
       local_kid: record.local_kid
     }))
@@ -220,15 +219,16 @@ async function createReceiptRegistry(opts) {
     org,
     billing: {
       billing_account_id: org.billing_account_id,
-      metered_unit: "receipt_digest_anchor",
-      charge_basis: "anchored_receipt_digest_count",
+      metered_unit: null,
+      charge_basis: "not_metered_by_receipt",
+      status: "managed_witness_not_case_billing",
       raw_prompt_upload: false,
       raw_data_upload: false
     },
     privacy: {
-      statement: uploaded ? "ScopeBlind hosted registry received receipt digests and public identity metadata only." : "Local preview registry only. No independent timestamp exists until hosted anchoring succeeds.",
-      uploaded_fields: ["receipt_hash", "receipt_bytes", "receipt_type", "request_id", "local_issuer", "local_kid", "org_id", "billing_account_id", "org_public_keys"],
-      excluded_fields: ["raw_prompt", "raw_tool_payload", "payload_preview", "raw_receipt", "tool_output", "private_key"]
+      statement: uploaded ? "ScopeBlind managed witness received receipt digests and explicitly listed public metadata only. This is not an independent timestamp." : "Local preview registry only. It provides no independent timing or inclusion evidence.",
+      uploaded_fields: ["receipt_hash", "receipt_bytes", "receipt_type", "local_issuer", "local_kid", "org_id", "billing_account_id", "org_public_keys"],
+      excluded_fields: ["request_id", "raw_prompt", "raw_tool_payload", "payload_preview", "raw_receipt", "tool_output", "private_key"]
     },
     records,
     anchors,
@@ -257,13 +257,13 @@ function renderVerifierPage(registry) {
 :root{--ink:#11110f;--muted:#6d675d;--line:#ded7c9;--paper:#f7f3ea;--card:#fffdf7;--ok:#2f6f4e;--warn:#8d620f;--bad:#8f241c}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top left,#fffdf7,#f7f3ea 48%,#e8dfce);color:var(--ink);font:15px/1.5 ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{width:min(1040px,calc(100vw - 32px));margin:32px auto}.card{background:rgba(255,253,247,.94);border:1px solid var(--line);border-radius:24px;padding:22px;box-shadow:0 24px 70px rgba(36,30,18,.10);margin-bottom:16px}.kicker{text-transform:uppercase;letter-spacing:.17em;color:var(--muted);font-size:11px;font-weight:900}h1{font:520 clamp(36px,6vw,72px)/.94 ui-serif,Georgia,serif;letter-spacing:-.05em;margin:12px 0}input{width:100%;border:1px solid var(--line);border-radius:14px;padding:13px;background:#fffaf0;font:14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.pill{display:inline-flex;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900}.ok{background:#dcebdd;color:var(--ok)}.warn{background:#f4e5bd;color:var(--warn)}.bad{background:#f7d9d3;color:var(--bad)}pre{white-space:pre-wrap;background:#181712;color:#f8f1df;border-radius:16px;padding:14px;overflow:auto}.muted{color:var(--muted)}code{background:#f2eadc;border:1px solid var(--line);border-radius:8px;padding:2px 6px}</style>
 </head>
 <body><main>
-<section class="card"><div class="kicker">ScopeBlind verifier</div><h1>Verify that an independent registry saw this receipt digest.</h1><p class="muted">This page contains receipt digests, anchors, public key metadata, and billing metadata. It does not contain raw prompts, payloads, tool outputs, or raw receipts.</p></section>
+<section class="card"><div class="kicker">ScopeBlind verifier</div><h1>Verify that a managed witness saw this receipt digest.</h1><p class="muted">This page contains receipt digests, witness records, public key metadata, and commercial-boundary metadata. It does not contain raw prompts, payloads, tool outputs, request identifiers, or raw receipts. A ScopeBlind witness is not an independent timestamp.</p></section>
 <section class="card"><label class="kicker" for="digest">Receipt digest</label><input id="digest" placeholder="Paste receipt SHA-256 digest" oninput="render()"><div id="result" style="margin-top:16px"></div></section>
 <section class="card"><div class="kicker">Org public key directory</div><pre id="keys"></pre></section>
 </main><script>
 const registry=${embedded};
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function render(){const q=document.getElementById('digest').value.trim()||new URLSearchParams(location.search).get('digest')||location.hash.replace(/^#digest=/,'');const rec=registry.records.find(r=>r.receipt_hash===q);const anchor=registry.anchors.find(a=>a.receipt_hash===q);const el=document.getElementById('result');if(!q){el.innerHTML='<p class="muted">Paste a digest to verify registry inclusion.</p>';return;}if(!rec){el.innerHTML='<span class="pill bad">not found</span><p>No matching digest in this registry export.</p>';return;}const independent=anchor&&anchor.timestamp_source==='scopeblind-hosted';el.innerHTML='<span class="pill '+(independent?'ok':'warn')+'">'+(independent?'anchored by ScopeBlind':'local preview only')+'</span><pre>'+esc(JSON.stringify({receipt:rec,anchor:anchor||null,billing:registry.billing,privacy:registry.privacy},null,2))+'</pre>';}
+function render(){const q=document.getElementById('digest').value.trim()||new URLSearchParams(location.search).get('digest')||location.hash.replace(/^#digest=/,'');const rec=registry.records.find(r=>r.receipt_hash===q);const anchor=registry.anchors.find(a=>a.receipt_hash===q);const el=document.getElementById('result');if(!q){el.innerHTML='<p class="muted">Paste a digest to verify registry inclusion.</p>';return;}if(!rec){el.innerHTML='<span class="pill bad">not found</span><p>No matching digest in this registry export.</p>';return;}const managed=anchor&&anchor.timestamp_source==='scopeblind-hosted';el.innerHTML='<span class="pill '+(managed?'ok':'warn')+'">'+(managed?'ScopeBlind managed witness':'local preview only')+'</span><pre>'+esc(JSON.stringify({receipt:rec,anchor:anchor||null,billing:registry.billing,privacy:registry.privacy},null,2))+'</pre>';}
 document.getElementById('keys').textContent=JSON.stringify(registry.org.public_key_directory,null,2);render();
 </script></body></html>`;
 }

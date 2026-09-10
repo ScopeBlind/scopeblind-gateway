@@ -40,6 +40,14 @@ export interface CedarEvalRequest {
   /** Additional context fields */
   context?: Record<string, unknown>;
   /** Tool input (for schema-validated evaluation) */
+  /**
+   * Which Cedar action the tool call is evaluated as. 'mcp' (default) is the
+   * runtime model: Action::"MCP::Tool::call" with the tool as the resource.
+   * 'tool' uses the tool name itself as the action (Action::"Bash"), which is
+   * the model the published conformance policy in
+   * agent-governance-testvectors/fixtures/policy is written against.
+   */
+  actionModel?: 'mcp' | 'tool';
   toolInput?: Record<string, unknown>;
 }
 
@@ -57,23 +65,54 @@ export interface CedarSchema {
 
 let cedarWasm: any | null = null;
 let loadAttempted = false;
+let cedarWasmSpecifier: string | null = null;
+let cedarWasmLoadError: string | null = null;
+
+/**
+ * The package root of @cedar-policy/cedar-wasm resolves to its ESM build, whose
+ * entry imports the .wasm binary as an ES module. Node 22 accepts that (behind
+ * an experimental warning); Node 18 and 20 reject it with
+ * ERR_UNKNOWN_FILE_EXTENSION, and until 0.13.1 that rejection was swallowed and
+ * every evaluation became a fail-closed deny labelled cedar_wasm_not_available.
+ * The package's /nodejs entry loads the binary through fs and works on every
+ * supported Node, so it is tried first; the root is the fallback for bundlers.
+ */
+const CEDAR_WASM_SPECIFIERS = ['@cedar-policy/cedar-wasm/nodejs', '@cedar-policy/cedar-wasm'];
 
 /**
  * Attempt to load the Cedar WASM module.
- * Returns true if successful, false if not installed.
+ * Returns true if successful, false if it could not be loaded; the reason is
+ * kept for the decision that reports it.
  */
 async function ensureCedarWasm(): Promise<boolean> {
   if (cedarWasm) return true;
   if (loadAttempted) return false;
   loadAttempted = true;
 
-  try {
-    const moduleName = '@cedar-policy/cedar-wasm';
-    cedarWasm = await import(/* @vite-ignore */ moduleName);
-    return true;
-  } catch {
-    return false;
+  const errors: string[] = [];
+  for (const moduleName of CEDAR_WASM_SPECIFIERS) {
+    try {
+      const mod = await import(/* @vite-ignore */ moduleName);
+      const engine = mod && (mod.default || mod);
+      if (!engine || typeof engine.isAuthorized !== 'function') {
+        errors.push(`${moduleName}: loaded but has no isAuthorized`);
+        continue;
+      }
+      cedarWasm = mod;
+      cedarWasmSpecifier = moduleName;
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? `${(err as any).code ? (err as any).code + ' ' : ''}${err.message.split('\n')[0]}` : String(err);
+      errors.push(`${moduleName}: ${msg}`);
+    }
   }
+  cedarWasmLoadError = errors.join('; ');
+  return false;
+}
+
+/** Which specifier the engine loaded from, and why it did not, for diagnostics and tests. */
+export function getCedarWasmLoadInfo(): { loaded: boolean; specifier: string | null; error: string | null } {
+  return { loaded: Boolean(cedarWasm), specifier: cedarWasmSpecifier, error: cedarWasmLoadError };
 }
 
 // ============================================================
@@ -127,7 +166,7 @@ export function loadCedarPolicies(dirPath: string): CedarPolicySet {
  *
  * Entity model:
  *   Principal: Agent::"<tier>" (or Agent::"<agentId>" if known)
- *   Action:    Action::"MCP::Tool::call"
+ *   Action:    Action::"MCP::Tool::call" (or Action::"<toolName>" when actionModel is 'tool')
  *   Resource:  Tool::"<toolName>"
  */
 function buildEntities(req: CedarEvalRequest): Array<Record<string, unknown>> {
@@ -195,7 +234,7 @@ export async function evaluateCedar(
   const available = await ensureCedarWasm();
 
   if (!available) {
-    return onEvalError('cedar_wasm_not_available', failClosed, { fallback: true });
+    return onEvalError(`cedar_wasm_not_available: ${cedarWasmLoadError || 'unknown load failure'}`, failClosed, { fallback: true });
   }
 
   try {
@@ -215,7 +254,7 @@ export async function evaluateCedar(
 
     const authRequest = {
       principal: { type: 'Agent', id: agentId },
-      action: { type: 'Action', id: 'MCP::Tool::call' },
+      action: { type: 'Action', id: req.actionModel === 'tool' ? req.tool : 'MCP::Tool::call' },
       resource: { type: 'Tool', id: req.tool },
       context,
     };

@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.13.1 (2026-09-10)
+
+### The Cedar engine now loads on Node 18 and 20
+
+The evaluator loaded `@cedar-policy/cedar-wasm` through the package root,
+whose ESM entry imports the .wasm binary as an ES module. Node 22 accepts
+that; Node 18 and 20 reject it (`ERR_UNKNOWN_FILE_EXTENSION`), the rejection
+was swallowed, and every evaluation on those runtimes became a fail-closed
+deny with reason `cedar_wasm_not_available`. This has been true since 0.4.2.
+The engine is now loaded through the package's `/nodejs` entry first, which
+works on every supported Node, with the root as the fallback for bundlers.
+The reason string now carries the underlying load error, and
+`getCedarWasmLoadInfo()` exposes which entry loaded.
+
+Found by the conformance corpus: its CI runs on Node 20, and the reference
+driver signed four receipts whose denies were engine outages, not decisions.
+
+### sign records the evaluator's reason
+
+`sign --cedar` wrote `cedar_deny` for every deny. It now records the
+evaluator's reason, as the runtime hook does: `cedar_deny: ...` with the
+matched policy ids for a policy deny, `cedar_policy_errored: ...` when a policy
+errored during evaluation (an invalid policy, for instance), and
+`cedar_wasm_not_available: ...` for an engine that did not load. A receipt
+should say which.
+
+### CI
+
+The package pre-publish job now runs the built CLI against a policy on its
+Node version, so a loader regression fails the build instead of a user's gate.
+
+## 0.13.0 (2026-09-10)
+
+### sign can now sign a policy decision
+
+`sign --cedar <dir>` evaluates the tool call against that Cedar policy
+directory and signs the real decision (`allow` or `deny`) with the policy
+set's digest, instead of a default `allow` with `policy_digest: "none"`.
+`--context <json>` and `--input <json>` feed the evaluation (stdin payloads
+still work). Without `--cedar` the verb is unchanged.
+
+### An explicit action model for Cedar evaluation
+
+`--action-model tool` (on `evaluate` and `sign`) evaluates the tool name as
+the Cedar action (`Action::"Bash"`), which is how the published conformance
+policy in agent-governance-testvectors is written. The default `mcp` model
+(`Action::"MCP::Tool::call"`, tool as resource) is unchanged for the runtime.
+Under the default model that policy denied everything, including the Read
+call it permits; that is why the reference conformance driver was failing
+check 3.
+
+### Receipts cite draft -03
+
+`spec` in signed receipts is now `draft-farley-acta-signed-receipts-03`.
+
 ## 0.10.1: HTTP gateway mode enforces Cedar and emits chained receipts
 
 Three fixes found by running the cloud-gateway path end to end before

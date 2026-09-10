@@ -132,9 +132,15 @@ export function createApprovalChallenge(
   agentId?: string,
   rpId = 'scopeblind.com',
   timeoutSeconds = 300,
+  /**
+   * Optional base64url challenge to use instead of random bytes. Pass a value
+   * DERIVED from the exact thing being approved (e.g. a proposal digest) so the
+   * passkey signature over the challenge commits to that content, not a bare
+   * nonce. It stays per-approval-unique as long as the bound content is unique.
+   */
+  boundChallenge?: string,
 ): ApprovalChallenge {
-  // Generate random challenge bytes
-  const challengeBytes = randomBytes(32);
+  const challenge = boundChallenge ?? base64urlEncode(randomBytes(32));
 
   // Create context hash binding challenge to the specific action
   const contextHash = createHash('sha256')
@@ -142,7 +148,7 @@ export function createApprovalChallenge(
     .digest('hex');
 
   return {
-    challenge: base64urlEncode(challengeBytes),
+    challenge,
     requestId,
     toolName,
     agentId,

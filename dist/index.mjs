@@ -3,26 +3,28 @@ import {
   discloseField,
   signCommittedDecision,
   verifySelectiveDisclosurePackage
-} from "./chunk-K7AEEQWW.mjs";
+} from "./chunk-KEBS4A7K.mjs";
 import {
   formatReportMarkdown,
   generateReport
-} from "./chunk-SOJBLPPX.mjs";
+} from "./chunk-7RDWXH74.mjs";
 import {
   CONNECTOR_PILOTS,
-  POLICY_PACKS,
   connectorDirectory,
   connectorDoctor,
   connectorPilotIds,
   formatSimulation,
   getConnectorPilot,
-  getPolicyPack,
   parseLogFile,
-  policyPackIds,
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-5WH4VGW2.mjs";
+} from "./chunk-F32TW4GQ.mjs";
+import {
+  POLICY_PACKS,
+  getPolicyPack,
+  policyPackIds
+} from "./chunk-CIQDC3FN.mjs";
 import {
   ProtectGateway,
   buildDecisionContext,
@@ -34,10 +36,10 @@ import {
   resolveCredential,
   sendApprovalNotification,
   validateCredentials
-} from "./chunk-ZX7MTVDL.mjs";
+} from "./chunk-OIFZ7XTV.mjs";
 import {
   createSandboxServer
-} from "./chunk-ZG6NAATA.mjs";
+} from "./chunk-QRLQZXTO.mjs";
 import {
   BUILTIN_PATTERNS,
   generateHookSettings,
@@ -49,32 +51,64 @@ import {
   forwardReceipt,
   getScopeBlindBridge,
   startHookServer
-} from "./chunk-YJPBADHC.mjs";
+} from "./chunk-LPCJ3YTL.mjs";
 import "./chunk-KRKZ2YX7.mjs";
 import {
+  EGRESS_SUMMARY_FIELDS,
+  assertEgressSafe,
+  inspectEgress,
+  runEgressSelfCheck,
+  toEgressSummary
+} from "./chunk-UJMFRQOL.mjs";
+import {
+  approvePolicyProposalWithDirectSignature,
+  approvePolicyProposalWithWebAuthn,
+  createApprovalChallenge,
+  createApprovalReceiptPayload,
+  createDirectControllerApproval,
+  createPolicyProposal,
+  createWebAuthnPolicyChallenge,
+  describePolicyDiff,
+  exportMandateDisciplineRecord,
+  initializeMandateRegistry,
+  loadGateSigner,
+  loadMandateRegistry,
+  mandatePaths,
+  publicMandateStatus,
+  refreshManagedMandate,
+  snapshotFromDirectory,
+  toCredentialRequestOptions,
+  verifyApprovalAssertion,
+  verifyMandateLifecycleExport,
+  verifyMandateRegistry
+} from "./chunk-XO3CXSSD.mjs";
+import "./chunk-CIWIK6BT.mjs";
+import {
   checkRateLimit,
-  getSignerInfo,
   getToolPolicy,
+  loadPolicy,
+  parseRateLimit
+} from "./chunk-AROKUUGG.mjs";
+import {
+  getSignerInfo,
   initSigning,
   isSigningEnabled,
-  loadPolicy,
-  parseRateLimit,
   signDecision
-} from "./chunk-5AYAOZ34.mjs";
+} from "./chunk-7SHEPZV2.mjs";
 import {
   evaluateCedar,
   isCedarAvailable,
   loadCedarPolicies,
   policySetFromSource,
   runEvaluatorSelfTest
-} from "./chunk-FGCNKEEW.mjs";
+} from "./chunk-PF7HOTBP.mjs";
 import {
   computeSbIssuerKid,
   createReceiptEnvelope,
   receiptHash,
   receiptIdentity,
   verifyReceipt
-} from "./chunk-XOP3PEBM.mjs";
+} from "./chunk-EIRUB2BZ.mjs";
 import {
   collectSignedReceipts,
   createAuditBundle
@@ -818,151 +852,6 @@ MIT
 `;
 }
 
-// src/webauthn-approval.ts
-import { createHash as createHash3, randomBytes as randomBytes2, timingSafeEqual } from "crypto";
-import { p256 } from "@noble/curves/p256";
-import { ed25519 } from "@noble/curves/ed25519";
-import { sha256 } from "@noble/hashes/sha256";
-import { hexToBytes } from "@noble/hashes/utils";
-function createApprovalChallenge(requestId, toolName, agentId, rpId = "scopeblind.com", timeoutSeconds = 300) {
-  const challengeBytes = randomBytes2(32);
-  const contextHash = createHash3("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
-  return {
-    challenge: base64urlEncode(challengeBytes),
-    requestId,
-    toolName,
-    agentId,
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    timeoutSeconds,
-    rpId,
-    contextHash
-  };
-}
-function toCredentialRequestOptions(challenge, allowCredentials) {
-  return {
-    publicKey: {
-      challenge: base64urlDecode(challenge.challenge).buffer,
-      rpId: challenge.rpId,
-      timeout: challenge.timeoutSeconds * 1e3,
-      userVerification: "required",
-      // Always require biometric
-      ...allowCredentials ? {
-        allowCredentials: allowCredentials.map((c) => ({
-          id: base64urlDecode(c.id).buffer,
-          type: "public-key"
-        }))
-      } : {}
-    }
-  };
-}
-function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts = {}) {
-  const now = opts.now ?? Date.now();
-  const fail = (reason, partial = {}) => ({
-    valid: false,
-    reason,
-    credentialId: assertion.credentialId,
-    authenticatorType: "unknown",
-    userVerified: false,
-    signCount: 0,
-    contextHash: challenge.contextHash,
-    approvedAt: new Date(now).toISOString(),
-    ...partial
-  });
-  const createdAt = new Date(challenge.createdAt).getTime();
-  if (now - createdAt > challenge.timeoutSeconds * 1e3) return fail("challenge_expired");
-  if (!credentialPublicKey?.publicKeyHex) return fail("missing_credential_public_key");
-  const clientDataBytes = base64urlDecode(assertion.clientDataJSON);
-  let clientData;
-  try {
-    clientData = JSON.parse(Buffer.from(clientDataBytes).toString("utf8"));
-  } catch {
-    return fail("client_data_parse_error");
-  }
-  if (clientData.type !== "webauthn.get") return fail("wrong_client_data_type");
-  if (!constantTimeStrEqual(clientData.challenge ?? "", challenge.challenge)) return fail("challenge_mismatch");
-  const allowedOrigins = opts.expectedOrigin ? Array.isArray(opts.expectedOrigin) ? opts.expectedOrigin : [opts.expectedOrigin] : [`https://${challenge.rpId}`];
-  if (!clientData.origin || !allowedOrigins.includes(clientData.origin)) return fail("origin_mismatch");
-  const authData = base64urlDecode(assertion.authenticatorData);
-  if (authData.length < 37) return fail("authenticator_data_too_short");
-  const rpIdHash = authData.slice(0, 32);
-  const expectedRpIdHash = sha256(new TextEncoder().encode(challenge.rpId));
-  if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail("rp_id_hash_mismatch");
-  const flags = authData[32];
-  const userPresent = !!(flags & 1);
-  const userVerified = !!(flags & 4);
-  if (!userPresent) return fail("user_not_present");
-  if ((opts.requireUserVerification ?? true) && !userVerified) return fail("user_verification_required", { userVerified });
-  const signCount = authData[33] << 24 | authData[34] << 16 | authData[35] << 8 | authData[36];
-  if (typeof opts.prevSignCount === "number" && signCount !== 0 && signCount <= opts.prevSignCount) {
-    return fail("sign_count_regression", { userVerified, signCount });
-  }
-  const signedData = concatBytes(authData, sha256(clientDataBytes));
-  const sigBytes = base64urlDecode(assertion.signature);
-  let sigOk = false;
-  try {
-    if (credentialPublicKey.alg === -7) {
-      sigOk = p256.verify(sigBytes, sha256(signedData), hexToBytes(credentialPublicKey.publicKeyHex), { format: "der" });
-    } else if (credentialPublicKey.alg === -8) {
-      sigOk = ed25519.verify(sigBytes, signedData, hexToBytes(credentialPublicKey.publicKeyHex));
-    } else {
-      return fail("unsupported_algorithm", { userVerified, signCount });
-    }
-  } catch {
-    sigOk = false;
-  }
-  if (!sigOk) return fail("invalid_signature", { userVerified, signCount });
-  return {
-    valid: true,
-    credentialId: assertion.credentialId,
-    // Heuristic: platform authenticators (TouchID/FaceID/Hello) report UV; roaming
-    // keys without a PIN are UP-only. Attachment is authoritative only at registration.
-    authenticatorType: userVerified ? "platform" : "cross-platform",
-    userVerified,
-    signCount,
-    contextHash: challenge.contextHash,
-    approvedAt: new Date(now).toISOString()
-  };
-}
-function createApprovalReceiptPayload(challenge, result) {
-  return {
-    type: "acta:approval",
-    approval_method: "webauthn",
-    tool_name: challenge.toolName,
-    request_id: challenge.requestId,
-    agent_id: challenge.agentId,
-    authenticator_type: result.authenticatorType,
-    user_verified: result.userVerified,
-    context_hash: result.contextHash,
-    approved_at: result.approvedAt,
-    // Hash the credential ID for privacy — don't store the raw ID
-    credential_id_hash: createHash3("sha256").update(result.credentialId).digest("hex").slice(0, 16)
-  };
-}
-function base64urlEncode(buffer) {
-  return Buffer.from(buffer).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-function base64urlDecode(str) {
-  const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64 + "=".repeat((4 - base64.length % 4) % 4);
-  return new Uint8Array(Buffer.from(padded, "base64"));
-}
-function concatBytes(a, b) {
-  const out = new Uint8Array(a.length + b.length);
-  out.set(a, 0);
-  out.set(b, a.length);
-  return out;
-}
-function bytesEqual(a, b) {
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
-}
-function constantTimeStrEqual(a, b) {
-  const ab = Buffer.from(a, "utf8");
-  const bb = Buffer.from(b, "utf8");
-  if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
-}
-
 // src/did-vc.ts
 function ed25519ToDIDKey(publicKeyHex) {
   const multicodecPrefix = Buffer.from([237, 1]);
@@ -1205,7 +1094,7 @@ function evaluatePolicy(tool, policy) {
 }
 
 // src/evidence-authenticity.ts
-import { createHash as createHash4 } from "crypto";
+import { createHash as createHash3 } from "crypto";
 async function createEvidenceAttestation(input) {
   const tlsNotaryAvailable = await isTLSNotaryAvailable();
   if (tlsNotaryAvailable) {
@@ -1265,14 +1154,14 @@ async function verifyEvidenceAttestation(attestation) {
   }
 }
 function hashResponseBody(body) {
-  return createHash4("sha256").update(typeof body === "string" ? body : body).digest("hex");
+  return createHash3("sha256").update(typeof body === "string" ? body : body).digest("hex");
 }
 function createAttestationField(attestation) {
   return {
     evidence_authenticity: {
       version: attestation.version,
       method: attestation.method,
-      url_hash: createHash4("sha256").update(attestation.url).digest("hex").slice(0, 16),
+      url_hash: createHash3("sha256").update(attestation.url).digest("hex").slice(0, 16),
       response_hash: attestation.responseHash,
       fetched_at: attestation.fetchedAt,
       verified: attestation.verified,
@@ -1303,7 +1192,7 @@ async function createTLSNotaryAttestation(input) {
 }
 
 // src/c2pa-credentials.ts
-import { createHash as createHash5 } from "crypto";
+import { createHash as createHash4 } from "crypto";
 function createC2PAManifest(receipts, options) {
   const generator = options.generator || "protect-mcp";
   const version = options.version || "0.3.3";
@@ -1317,7 +1206,7 @@ function createC2PAManifest(receipts, options) {
     (r) => r.payload?.decision === "deny"
   );
   const receiptHashes = receipts.map(
-    (r) => createHash5("sha256").update(JSON.stringify(r)).digest("hex")
+    (r) => createHash4("sha256").update(JSON.stringify(r)).digest("hex")
   );
   const merkleRoot = computeMerkleRoot(receiptHashes);
   const assertions = [
@@ -1459,7 +1348,7 @@ function computeMerkleRoot(hashes) {
     const left = hashes[i];
     const right = i + 1 < hashes.length ? hashes[i + 1] : left;
     nextLevel.push(
-      createHash5("sha256").update(left + right).digest("hex")
+      createHash4("sha256").update(left + right).digest("hex")
     );
   }
   return computeMerkleRoot(nextLevel);
@@ -1782,11 +1671,15 @@ export {
   BUILTIN_PATTERNS,
   CONNECTOR_PILOTS,
   ConfidentialGate,
+  EGRESS_SUMMARY_FIELDS,
   POLICY_PACKS,
   ProtectGateway,
   ReceiptPropagator,
   ScopeBlindBridge,
   anchorToRekor,
+  approvePolicyProposalWithDirectSignature,
+  approvePolicyProposalWithWebAuthn,
+  assertEgressSafe,
   buildDecisionContext,
   checkRateLimit,
   collectSignedReceipts,
@@ -1801,14 +1694,18 @@ export {
   createAttestationField,
   createAuditBundle,
   createC2PAManifest,
+  createDirectControllerApproval,
   createDisclosurePackage,
   createEvidenceAttestation,
   createLogAnchorField,
+  createPolicyProposal,
   createReceiptChannel,
   createReceiptEnvelope,
   createSandbox,
   createSandboxServer,
   createSelectiveDisclosurePackage,
+  createWebAuthnPolicyChallenge,
+  describePolicyDiff,
   destroySandbox,
   discloseField,
   ed25519ToDIDKey,
@@ -1816,6 +1713,7 @@ export {
   evaluateTier,
   exportC2PAManifestJSON,
   exportJSONL,
+  exportMandateDisciplineRecord,
   formatReportMarkdown,
   formatSimulation,
   forwardReceipt,
@@ -1837,6 +1735,8 @@ export {
   hashReceipt,
   hashResponseBody,
   initSigning,
+  initializeMandateRegistry,
+  inspectEgress,
   isAgentId,
   isCedarAvailable,
   isDisclosureMode,
@@ -1845,7 +1745,10 @@ export {
   isSigningEnabled,
   listCredentialLabels,
   loadCedarPolicies,
+  loadGateSigner,
+  loadMandateRegistry,
   loadPolicy,
+  mandatePaths,
   manifestToVC,
   meetsMinTier,
   parseLogFile,
@@ -1853,6 +1756,7 @@ export {
   parseRateLimit,
   policyPackIds,
   policySetFromSource,
+  publicMandateStatus,
   queryExternalPDP,
   readInstalledConnectorPilots,
   receiptHash,
@@ -1860,16 +1764,20 @@ export {
   receiptToVP,
   receiptsToHFRows,
   redactFields,
+  refreshManagedMandate,
   resolveCredential,
   revealField,
+  runEgressSelfCheck,
   runEvaluatorSelfTest,
   runInSandbox,
   sendApprovalNotification,
   signCommittedDecision,
   signDecision,
   simulate,
+  snapshotFromDirectory,
   startHookServer,
   toCredentialRequestOptions,
+  toEgressSummary,
   toManifoldFormat,
   toMetaculusFormat,
   validateCredentials,
@@ -1880,6 +1788,8 @@ export {
   verifyApprovalAssertion,
   verifyCommitment,
   verifyEvidenceAttestation,
+  verifyMandateLifecycleExport,
+  verifyMandateRegistry,
   verifyReceipt,
   verifyRekorAnchor,
   verifySelectiveDisclosurePackage,

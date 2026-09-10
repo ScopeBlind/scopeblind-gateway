@@ -1,19 +1,23 @@
 import {
   ReceiptBuffer,
   buildActionReadback,
+  startStatusServer
+} from "./chunk-CIWIK6BT.mjs";
+import {
   checkRateLimit,
   getToolPolicy,
+  parseRateLimit
+} from "./chunk-AROKUUGG.mjs";
+import {
   isSigningEnabled,
-  parseRateLimit,
-  signDecision,
-  startStatusServer
-} from "./chunk-5AYAOZ34.mjs";
+  signDecision
+} from "./chunk-7SHEPZV2.mjs";
 import {
   evaluateCedar
-} from "./chunk-FGCNKEEW.mjs";
+} from "./chunk-PF7HOTBP.mjs";
 import {
-  receiptHash
-} from "./chunk-XOP3PEBM.mjs";
+  chainLink
+} from "./chunk-EIRUB2BZ.mjs";
 
 // src/evidence-store.ts
 import { readFileSync, writeFileSync, existsSync } from "fs";
@@ -626,7 +630,7 @@ var ProtectGateway = class {
     this.receiptFilePath = join2(process.cwd(), RECEIPTS_FILE);
     try {
       const existing = readFileSync2(this.receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
-      if (existing.length > 0) this.lastReceiptHash = receiptHash(JSON.parse(existing[existing.length - 1]));
+      if (existing.length > 0) this.lastReceiptHash = chainLink(JSON.parse(existing[existing.length - 1]));
     } catch {
     }
     this.evidenceStore = new EvidenceStore();

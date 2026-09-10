@@ -36,6 +36,8 @@ describe('receipt registry paid boundary', () => {
     expect(registry.records).toHaveLength(1);
     expect(registry.records[0].receipt_hash).toMatch(/^[a-f0-9]{64}$/);
     expect(registry.anchors[0].timestamp_source).toBe('local-preview-not-independent');
+    expect(registry.billing.metered_unit).toBeNull();
+    expect(registry.billing.charge_basis).toBe('not_metered_by_receipt');
     expect(registry.billing.raw_data_upload).toBe(false);
     expect(readFileSync(registryPath, 'utf-8')).not.toContain('should-not-upload');
     expect(readFileSync(verifierPath, 'utf-8')).toContain('ScopeBlind verifier');
@@ -47,6 +49,9 @@ describe('receipt registry paid boundary', () => {
       const body = JSON.parse(String(init.body));
       expect(JSON.stringify(body)).not.toContain('should-not-upload');
       expect(JSON.stringify(body)).not.toContain('payload_preview');
+      expect(JSON.stringify(body)).not.toContain('req-1');
+      expect(body.billing.metered_unit).toBeNull();
+      expect(body.billing.status).toBe('not_metered_by_receipt');
       expect(body.billing.raw_data_upload).toBe(false);
       expect(body.receipt_digests[0].receipt_hash).toMatch(/^[a-f0-9]{64}$/);
       return new Response(JSON.stringify({

@@ -121,7 +121,7 @@ describe('legacy dual-accept', () => {
   });
 });
 
-describe('signDecision emits chained draft-02 receipts', () => {
+describe('signDecision emits chained draft-03 receipts', () => {
   beforeAll(async () => {
     const dir = mkdtempSync(join(tmpdir(), 'pmcp-acta-'));
     mkdirSync(join(dir, 'keys'), { recursive: true });
@@ -141,14 +141,14 @@ describe('signDecision emits chained draft-02 receipts', () => {
     timestamp: 1751971200000,
   } as unknown as DecisionLog;
 
-  it('uses draft-02 s3.1 field names and pins spec revision 02', () => {
+  it('uses draft-02 s3.1 field names and pins spec revision 03', () => {
     const res = signDecision(entry);
     expect(res.ok).toBe(true);
     const env = JSON.parse(res.signed as string);
     expect(env.payload.type).toBe('protectmcp:decision');
     expect(env.payload.tool_name).toBe('Write');
     expect(env.payload.reason).toBe('policy_ok');
-    expect(env.payload.spec).toBe('draft-farley-acta-signed-receipts-02');
+    expect(env.payload.spec).toBe('draft-farley-acta-signed-receipts-03');
     expect(env.payload.issuer_id).toBe(env.signature.kid);
     expect(verifyReceipt(env, pubHex).valid).toBe(true);
   });

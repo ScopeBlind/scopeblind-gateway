@@ -1,6 +1,6 @@
 import {
   canonicalize
-} from "./chunk-XOP3PEBM.mjs";
+} from "./chunk-EIRUB2BZ.mjs";
 
 // src/policy-digest.ts
 import { createHash } from "crypto";
@@ -77,20 +77,35 @@ import { readFileSync as readFileSync2, readdirSync as readdirSync2, existsSync 
 import { join as join2, extname as extname2 } from "path";
 var cedarWasm = null;
 var loadAttempted = false;
+var cedarWasmSpecifier = null;
+var cedarWasmLoadError = null;
+var CEDAR_WASM_SPECIFIERS = ["@cedar-policy/cedar-wasm/nodejs", "@cedar-policy/cedar-wasm"];
 async function ensureCedarWasm() {
   if (cedarWasm) return true;
   if (loadAttempted) return false;
   loadAttempted = true;
-  try {
-    const moduleName = "@cedar-policy/cedar-wasm";
-    cedarWasm = await import(
-      /* @vite-ignore */
-      moduleName
-    );
-    return true;
-  } catch {
-    return false;
+  const errors = [];
+  for (const moduleName of CEDAR_WASM_SPECIFIERS) {
+    try {
+      const mod = await import(
+        /* @vite-ignore */
+        moduleName
+      );
+      const engine = mod && (mod.default || mod);
+      if (!engine || typeof engine.isAuthorized !== "function") {
+        errors.push(`${moduleName}: loaded but has no isAuthorized`);
+        continue;
+      }
+      cedarWasm = mod;
+      cedarWasmSpecifier = moduleName;
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? `${err.code ? err.code + " " : ""}${err.message.split("\n")[0]}` : String(err);
+      errors.push(`${moduleName}: ${msg}`);
+    }
   }
+  cedarWasmLoadError = errors.join("; ");
+  return false;
 }
 function loadCedarPolicies(dirPath) {
   if (!existsSync2(dirPath)) {
@@ -142,7 +157,7 @@ async function evaluateCedar(policySet, req, schema, options) {
   const failClosed = options?.failClosed ?? true;
   const available = await ensureCedarWasm();
   if (!available) {
-    return onEvalError("cedar_wasm_not_available", failClosed, { fallback: true });
+    return onEvalError(`cedar_wasm_not_available: ${cedarWasmLoadError || "unknown load failure"}`, failClosed, { fallback: true });
   }
   try {
     const agentId = req.agentId || req.tier;
@@ -155,7 +170,7 @@ async function evaluateCedar(policySet, req, schema, options) {
     }
     const authRequest = {
       principal: { type: "Agent", id: agentId },
-      action: { type: "Action", id: "MCP::Tool::call" },
+      action: { type: "Action", id: req.actionModel === "tool" ? req.tool : "MCP::Tool::call" },
       resource: { type: "Tool", id: req.tool },
       context
     };
@@ -274,6 +289,7 @@ async function runEvaluatorSelfTest() {
 }
 
 export {
+  digestPolicyFiles,
   digestCedarDir,
   digestBuiltinPolicy,
   shortPolicyLabel,

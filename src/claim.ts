@@ -537,6 +537,61 @@ export async function anchorRecordCheckpoint(
   };
 }
 
+// ── Managed-mandate continuity checkpoints ───────────────────────────────────
+// This is deliberately separate from a receipt-record checkpoint. It commits to
+// the lifecycle head and transition chain so a relying party can detect a local
+// host attempting to present an earlier, self-consistent mandate registry after
+// an anchor has been witnessed outside that host.
+export const MANDATE_CONTINUITY_SCHEMA = 'scopeblind.mandate_continuity_checkpoint.v1';
+
+export interface MandateContinuityState {
+  registry_id: string;
+  registry_digest: string;
+  active_policy_digest: string;
+  transition_count: number;
+  latest_transition_hash: string;
+}
+
+export interface MandateContinuityCheckpoint {
+  type: 'evidence_pack';
+  schema: typeof MANDATE_CONTINUITY_SCHEMA;
+  anchors: 'protect-mcp-mandate-continuity';
+  continuity: MandateContinuityState;
+  issued_at: string;
+  verification_key: string;
+  disclosure: 'internal';
+  signature: string;
+  digest: string;
+}
+
+export function buildMandateContinuityCheckpoint(state: MandateContinuityState, key: ClaimKey, issuedAt: string): MandateContinuityCheckpoint {
+  if (!/^sha256:[0-9a-f]{64}$/i.test(state.registry_digest) || !/^sha256:[0-9a-f]{64}$/i.test(state.active_policy_digest) || !/^sha256:[0-9a-f]{64}$/i.test(state.latest_transition_hash)) {
+    throw new Error('continuity state must contain sha256 commitments');
+  }
+  if (!Number.isSafeInteger(state.transition_count) || state.transition_count < 1) throw new Error('continuity state needs at least one transition');
+  const signed = {
+    type: 'evidence_pack' as const,
+    schema: MANDATE_CONTINUITY_SCHEMA,
+    anchors: 'protect-mcp-mandate-continuity' as const,
+    continuity: state,
+    issued_at: issuedAt,
+    verification_key: key.publicKey,
+    disclosure: 'internal' as const,
+  };
+  const hash = sha256(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  return { ...signed, signature: bytesToHex(ed25519.sign(hash, hexToBytes(key.privateKey))), digest: bytesToHex(hash) };
+}
+
+export async function anchorMandateContinuityCheckpoint(
+  checkpoint: MandateContinuityCheckpoint,
+  opts: { log?: string; fetchImpl?: typeof fetch },
+): Promise<{ ok: boolean; checkpoint: MandateContinuityCheckpoint; seq?: number; entry_url?: string; anchored_at?: string; already_anchored?: boolean; error?: string }> {
+  const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, '');
+  const out = await submitEnvelope(checkpoint, base, opts.fetchImpl);
+  if (!out.ok) return { ok: false, checkpoint, error: out.error };
+  return { ok: true, checkpoint, seq: out.seq, entry_url: `${base}/fn/log/${out.seq}`, anchored_at: out.anchored_at, already_anchored: out.already_anchored };
+}
+
 // ── Pinned identity: is this key enrolled in the public key directory? ─────────
 // The free anchor is anonymous (a timestamp, not an identity). Enrolling a key
 // (scopeblind.com/enroll) upgrades it: a counterparty resolves the key to a
