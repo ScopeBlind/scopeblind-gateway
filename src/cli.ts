@@ -57,7 +57,7 @@ import {
   type WebAuthnController,
 } from './mandate-lifecycle.js';
 import { createHash as createHashCli } from 'node:crypto';
-import { readFileSync as readFileSyncCli, existsSync as existsSyncCli, appendFileSync as appendFileSyncCli, mkdirSync as mkdirSyncCli, readdirSync as readdirSyncCli, writeFileSync as writeFileSyncCli } from 'node:fs';
+import { readFileSync as readFileSyncCli, existsSync as existsSyncCli, appendFileSync as appendFileSyncCli, mkdirSync as mkdirSyncCli, readdirSync as readdirSyncCli, writeFileSync as writeFileSyncCli, statSync as statSyncCli, rmSync as rmSyncCli } from 'node:fs';
 import { basename as basenameCli, dirname as dirnameCli, join as joinCli, resolve as resolveCli } from 'node:path';
 import { homedir as homedirCli } from 'node:os';
 import type { ProtectConfig, ToolPolicy, SigningConfig } from './types.js';
@@ -4081,6 +4081,16 @@ async function handleSign(argv: string[]): Promise<void> {
     }
   }
 
+  // The log is read and appended under a lock. Hosts run tool calls in
+  // parallel and every hook invocation is its own `sign` process; without the
+  // lock two processes read the same last line and both append, so two
+  // receipts chain to one predecessor and the chain forks, which a verifier
+  // rightly reports as broken. A stale lock (a crashed sign) is swept after 45 s;
+  // a sign that cannot take the lock in 55 s records an unsigned line rather
+  // than forging a link.
+  try { mkdirSyncCli(receiptsDir, { recursive: true }); } catch { /* best-effort */ }
+  const releaseLogLock = acquireReceiptLogLock(receiptsDir);
+  try {
   // Chain to the previous receipt in this log. Without this every receipt was
   // a standalone island: individually valid, but carrying no evidence of what
   // preceded it, so removing one left no trace. Genesis omits the member
@@ -4135,14 +4145,39 @@ async function handleSign(argv: string[]): Promise<void> {
     ...(payloadDigest ? { payload_digest: payloadDigest } : {}),
   } as any, prevReceiptHash);
 
-  try { mkdirSyncCli(receiptsDir, { recursive: true }); } catch { /* best-effort */ }
   const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || 'no signer configured' });
   try { appendFileSyncCli(receiptLogPath, line + '\n'); } catch { /* best-effort */ }
+  // Release here, before process.exit: a finally block never runs past an exit, and a lock left behind makes every later sign wait for the stale sweep.
+  releaseLogLock();
 
   // PostToolUse never blocks; Hermes reads stdout, so emit a no-op verdict there.
   if (format === 'hermes') { process.stdout.write('{}\n'); process.exit(0); }
   process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId, log: receiptLogPath }) + '\n');
   process.exit(0);
+  } finally {
+    releaseLogLock();
+  }
+}
+
+/**
+ * Take an exclusive lock on a receipt log directory so that reading the last
+ * receipt and appending the next one is one step across processes. mkdir is
+ * atomic on every filesystem Node runs on, so the lock is a directory; the
+ * wait is a synchronous sleep because `sign` is a short-lived hook process.
+ */
+function acquireReceiptLogLock(dir: string): () => void {
+  const lock = joinCli(dir, '.chain-lock');
+  const started = Date.now();
+  const pause = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  for (;;) {
+    try { mkdirSyncCli(lock); break; } catch (err) {
+      if ((err as { code?: string }).code !== 'EEXIST') return () => {};
+      try { if (Date.now() - statSyncCli(lock).mtimeMs > 45_000) rmSyncCli(lock, { recursive: true, force: true }); } catch { /* raced with the holder */ }
+      if (Date.now() - started > 55_000) { process.stderr.write('[PROTECT_MCP] Warning: could not take the receipt-log lock; this receipt is written without a chain link.\n'); return () => {}; }
+      pause(15);
+    }
+  }
+  return () => { try { rmSyncCli(lock, { recursive: true, force: true }); } catch { /* already gone */ } };
 }
 
 // Seed a labeled sample record (fresh key, kid "sample-demo") so the public

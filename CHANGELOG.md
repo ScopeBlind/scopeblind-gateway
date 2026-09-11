@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.3 (2026-09-11)
+
+### Fixed
+- `sign` reads and appends the receipt log under a lock. Hosts run tool calls in parallel and every PreToolUse or PostToolUse hook is its own `sign` process; two of them read the same last receipt and both appended, so two receipts chained to one predecessor and the chain forked, which any verifier reports as broken. Found on the first multi-task verified run under Codex CLI. The lock is a directory beside the log (`.chain-lock`), swept after 45 seconds if a sign crashed holding it; a sign that cannot take it in 55 seconds writes an unsigned line rather than forging a link. A test signs from twelve processes at once and checks every link.
+
 ## 0.13.2 (2026-09-11)
 
 ### Fixed

@@ -276,7 +276,7 @@ session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.13.2 evaluate --cedar ./cedar --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\""
+            "command": "npx protect-mcp@0.13.3 evaluate --cedar ./cedar --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\""
           }
         ]
       }
@@ -287,7 +287,7 @@ session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.13.2 sign --tool \"$TOOL_NAME\" --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx protect-mcp@0.13.3 sign --tool \"$TOOL_NAME\" --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }
@@ -303,7 +303,7 @@ receipt instead of an unconditional allow. Pass the policy directory and the
 same input and context the hook would pass to `evaluate`:
 
 ```bash
-npx protect-mcp@0.13.2 sign --cedar ./cedar --tool Bash \
+npx protect-mcp@0.13.3 sign --cedar ./cedar --tool Bash \
   --input '{"command":"rm -rf /"}' --context '{"command_pattern":"rm -rf"}' \
   --receipts ./receipts --key ./keys/gateway.json
 ```

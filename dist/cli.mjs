@@ -61,7 +61,7 @@ import "./chunk-PQJP2ZCI.mjs";
 
 // src/cli.ts
 import { createHash as createHashCli } from "crypto";
-import { readFileSync as readFileSyncCli, existsSync as existsSyncCli, appendFileSync as appendFileSyncCli, mkdirSync as mkdirSyncCli, readdirSync as readdirSyncCli, writeFileSync as writeFileSyncCli } from "fs";
+import { readFileSync as readFileSyncCli, existsSync as existsSyncCli, appendFileSync as appendFileSyncCli, mkdirSync as mkdirSyncCli, readdirSync as readdirSyncCli, writeFileSync as writeFileSyncCli, statSync as statSyncCli, rmSync as rmSyncCli } from "fs";
 import { basename as basenameCli, dirname as dirnameCli, join as joinCli, resolve as resolveCli } from "path";
 import { homedir as homedirCli } from "os";
 function printHelp() {
@@ -4172,68 +4172,104 @@ async function handleSign(argv) {
 `);
     }
   }
-  let prevReceiptHash;
-  try {
-    const logPath = receiptLogPath;
-    if (existsSyncCli(logPath)) {
-      const lines = readFileSyncCli(logPath, "utf-8").trim().split("\n").filter(Boolean);
-      const last = lines.length ? lines[lines.length - 1] : null;
-      if (last) {
-        const parsed = JSON.parse(last);
-        if (parsed && parsed.signature) prevReceiptHash = chainLink(parsed);
-      }
-    }
-  } catch {
-  }
-  let payloadDigest;
-  if (toolInput) {
-    const canonicalInput = canonicalize(toolInput);
-    payloadDigest = { input_hash: createHashCli("sha256").update(canonicalInput, "utf-8").digest("hex"), input_size: Buffer.byteLength(canonicalInput, "utf-8"), canonical: "jcs" };
-  }
-  let decisionValue = "allow";
-  let reasonCode = "post_execution_receipt";
-  if (cedarDir) {
-    const policySet = loadCedarPolicies(resolveCli(cedarDir));
-    let ctx = {};
-    if (contextRaw) {
-      try {
-        ctx = JSON.parse(contextRaw);
-      } catch {
-        process.stderr.write("protect-mcp sign: --context is not valid JSON\n");
-        process.exit(2);
-      }
-    }
-    const verdict = await evaluateCedar(policySet, { tool, tier: "unknown", context: ctx, toolInput, actionModel }, void 0, { failClosed: true });
-    decisionValue = verdict.allowed ? "allow" : "deny";
-    reasonCode = verdict.allowed ? "cedar_allow" : verdict.reason || "cedar_deny";
-    policyDigest = policySet.digest;
-  }
-  const requestId = `tu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  const signed = signDecision({
-    tool,
-    decision: decisionValue,
-    reason_code: reasonCode,
-    policy_digest: policyDigest,
-    request_id: requestId,
-    mode: "enforce",
-    timestamp: Date.now(),
-    ...payloadDigest ? { payload_digest: payloadDigest } : {}
-  }, prevReceiptHash);
   try {
     mkdirSyncCli(receiptsDir, { recursive: true });
   } catch {
   }
-  const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || "no signer configured" });
+  const releaseLogLock = acquireReceiptLogLock(receiptsDir);
   try {
-    appendFileSyncCli(receiptLogPath, line + "\n");
-  } catch {
-  }
-  if (format === "hermes") {
-    process.stdout.write("{}\n");
+    let prevReceiptHash;
+    try {
+      const logPath = receiptLogPath;
+      if (existsSyncCli(logPath)) {
+        const lines = readFileSyncCli(logPath, "utf-8").trim().split("\n").filter(Boolean);
+        const last = lines.length ? lines[lines.length - 1] : null;
+        if (last) {
+          const parsed = JSON.parse(last);
+          if (parsed && parsed.signature) prevReceiptHash = chainLink(parsed);
+        }
+      }
+    } catch {
+    }
+    let payloadDigest;
+    if (toolInput) {
+      const canonicalInput = canonicalize(toolInput);
+      payloadDigest = { input_hash: createHashCli("sha256").update(canonicalInput, "utf-8").digest("hex"), input_size: Buffer.byteLength(canonicalInput, "utf-8"), canonical: "jcs" };
+    }
+    let decisionValue = "allow";
+    let reasonCode = "post_execution_receipt";
+    if (cedarDir) {
+      const policySet = loadCedarPolicies(resolveCli(cedarDir));
+      let ctx = {};
+      if (contextRaw) {
+        try {
+          ctx = JSON.parse(contextRaw);
+        } catch {
+          process.stderr.write("protect-mcp sign: --context is not valid JSON\n");
+          process.exit(2);
+        }
+      }
+      const verdict = await evaluateCedar(policySet, { tool, tier: "unknown", context: ctx, toolInput, actionModel }, void 0, { failClosed: true });
+      decisionValue = verdict.allowed ? "allow" : "deny";
+      reasonCode = verdict.allowed ? "cedar_allow" : verdict.reason || "cedar_deny";
+      policyDigest = policySet.digest;
+    }
+    const requestId = `tu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const signed = signDecision({
+      tool,
+      decision: decisionValue,
+      reason_code: reasonCode,
+      policy_digest: policyDigest,
+      request_id: requestId,
+      mode: "enforce",
+      timestamp: Date.now(),
+      ...payloadDigest ? { payload_digest: payloadDigest } : {}
+    }, prevReceiptHash);
+    const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || "no signer configured" });
+    try {
+      appendFileSyncCli(receiptLogPath, line + "\n");
+    } catch {
+    }
+    releaseLogLock();
+    if (format === "hermes") {
+      process.stdout.write("{}\n");
+      process.exit(0);
+    }
+    process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId, log: receiptLogPath }) + "\n");
     process.exit(0);
+  } finally {
+    releaseLogLock();
   }
-  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId, log: receiptLogPath }) + "\n");
-  process.exit(0);
+}
+function acquireReceiptLogLock(dir) {
+  const lock = joinCli(dir, ".chain-lock");
+  const started = Date.now();
+  const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  for (; ; ) {
+    try {
+      mkdirSyncCli(lock);
+      break;
+    } catch (err) {
+      if (err.code !== "EEXIST") return () => {
+      };
+      try {
+        if (Date.now() - statSyncCli(lock).mtimeMs > 45e3) rmSyncCli(lock, { recursive: true, force: true });
+      } catch {
+      }
+      if (Date.now() - started > 55e3) {
+        process.stderr.write("[PROTECT_MCP] Warning: could not take the receipt-log lock; this receipt is written without a chain link.\n");
+        return () => {
+        };
+      }
+      pause(15);
+    }
+  }
+  return () => {
+    try {
+      rmSyncCli(lock, { recursive: true, force: true });
+    } catch {
+    }
+  };
 }
 async function handleSample(argv) {
   const dir = flagValue(argv, "--dir") || process.cwd();
