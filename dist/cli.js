@@ -4566,6 +4566,8 @@ function verifySelectiveDisclosurePackage(receipt, disclosure, publicKeyHex) {
   const signatureValid = verifyCommittedReceiptSignature(receipt, publicKeyHex);
   if (signatureValid === false) {
     errors.push("receipt signature failed verification");
+  } else if (signatureValid === null) {
+    errors.push("receipt signature not checked: no public key was supplied and the receipt carries none");
   }
   const committedFieldNames = committedFieldNamesFromReceipt(receipt, {});
   const disclosed = /* @__PURE__ */ new Set();
@@ -4592,10 +4594,10 @@ function verifySelectiveDisclosurePackage(receipt, disclosure, publicKeyHex) {
   }
   const disclosedFields = Array.from(disclosed);
   const hiddenFields = committedFieldNames.filter((fieldName) => !disclosed.has(fieldName));
-  const valid = errors.length === 0 && receiptHashValid && commitmentRootValid && signatureValid !== false;
+  const valid = errors.length === 0 && receiptHashValid && commitmentRootValid && signatureValid === true;
   const explanation = [
     valid ? "Selective disclosure verified: the disclosed fields open to the signed receipt commitment root." : "Selective disclosure failed verification.",
-    signatureValid === true ? "Receipt signature verified against the embedded Ed25519 public key." : signatureValid === null ? "Receipt signature was not checked because the committed receipt did not carry an embedded Ed25519 signature object." : "Receipt signature did not verify.",
+    signatureValid === true ? "Receipt signature verified against the embedded Ed25519 public key." : signatureValid === null ? "Receipt signature was not checked: supply the issuer's public key (envelope receipts carry none). Unchecked is not verified." : "Receipt signature did not verify.",
     disclosedFields.length ? `Disclosed fields: ${disclosedFields.join(", ")}.` : "No fields were disclosed.",
     hiddenFields.length ? `Hidden fields: ${hiddenFields.join(", ")}. These remain private but bound to the same commitment root.` : "No committed fields remain hidden.",
     "Limitation: this is salted commitment disclosure, not full zero-knowledge."
@@ -13045,7 +13047,9 @@ async function handleSign(argv) {
   const format = flagValue(argv, "--format");
   const dir = (0, import_node_path13.resolve)(flagValue(argv, "--dir") || process.cwd());
   let tool = flagValue(argv, "--tool") || "";
-  const receiptsDir = flagValue(argv, "--receipts") || (0, import_node_path13.join)(dir, "receipts");
+  const receiptsFlag = flagValue(argv, "--receipts");
+  const receiptsDir = receiptsFlag || dir;
+  const receiptLogPath = receiptsFlag ? (0, import_node_path13.join)(receiptsFlag, "receipts.jsonl") : (0, import_node_path13.join)(dir, ".protect-mcp-receipts.jsonl");
   const keyPath = flagValue(argv, "--key");
   const cedarDir = flagValue(argv, "--cedar");
   const actionModel = flagValue(argv, "--action-model") === "tool" ? "tool" : "mcp";
@@ -13091,7 +13095,7 @@ async function handleSign(argv) {
   }
   let prevReceiptHash;
   try {
-    const logPath = (0, import_node_path13.join)(receiptsDir, "receipts.jsonl");
+    const logPath = receiptLogPath;
     if ((0, import_node_fs18.existsSync)(logPath)) {
       const lines = (0, import_node_fs18.readFileSync)(logPath, "utf-8").trim().split("\n").filter(Boolean);
       const last = lines.length ? lines[lines.length - 1] : null;
@@ -13101,6 +13105,11 @@ async function handleSign(argv) {
       }
     }
   } catch {
+  }
+  let payloadDigest;
+  if (toolInput) {
+    const canonicalInput = canonicalize(toolInput);
+    payloadDigest = { input_hash: (0, import_node_crypto11.createHash)("sha256").update(canonicalInput, "utf-8").digest("hex"), input_size: Buffer.byteLength(canonicalInput, "utf-8"), canonical: "jcs" };
   }
   let decisionValue = "allow";
   let reasonCode = "post_execution_receipt";
@@ -13128,7 +13137,8 @@ async function handleSign(argv) {
     policy_digest: policyDigest,
     request_id: requestId,
     mode: "enforce",
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    ...payloadDigest ? { payload_digest: payloadDigest } : {}
   }, prevReceiptHash);
   try {
     (0, import_node_fs18.mkdirSync)(receiptsDir, { recursive: true });
@@ -13136,14 +13146,14 @@ async function handleSign(argv) {
   }
   const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || "no signer configured" });
   try {
-    (0, import_node_fs18.appendFileSync)((0, import_node_path13.join)(receiptsDir, "receipts.jsonl"), line + "\n");
+    (0, import_node_fs18.appendFileSync)(receiptLogPath, line + "\n");
   } catch {
   }
   if (format === "hermes") {
     process.stdout.write("{}\n");
     process.exit(0);
   }
-  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId }) + "\n");
+  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId, log: receiptLogPath }) + "\n");
   process.exit(0);
 }
 async function handleSample(argv) {

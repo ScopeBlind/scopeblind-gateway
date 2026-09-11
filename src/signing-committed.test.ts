@@ -221,6 +221,8 @@ describe('signCommittedDecision', () => {
     // out of band. Without it the signature is undecidable, not valid.
     const undecidable = verifySelectiveDisclosurePackage(receipt, disclosure);
     expect(undecidable.signature_valid).toBeNull();
+    expect(undecidable.valid).toBe(false);
+    expect(undecidable.errors.join(' ')).toContain('not checked');
 
     const verification = verifySelectiveDisclosurePackage(receipt, disclosure, pkHex);
 

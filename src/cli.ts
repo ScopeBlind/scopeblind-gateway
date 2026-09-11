@@ -32,7 +32,7 @@
 import { ProtectGateway } from './gateway.js';
 import { loadPolicy } from './policy.js';
 import { initSigning, signDecision } from './signing.js';
-import { chainLink } from './acta-envelope.js';
+import { chainLink, canonicalize as canonicalizeReceipt } from './acta-envelope.js';
 import { digestCedarDir, buildPolicyBundle, verifyPolicyBundle, shortPolicyLabel } from './policy-digest.js';
 import { verifyReceipt as verifyReceiptEnvelope } from './acta-envelope.js';
 import { validateCredentials } from './credentials.js';
@@ -4022,7 +4022,13 @@ async function handleSign(argv: string[]): Promise<void> {
   const format = flagValue(argv, '--format');
   const dir = resolveCli(flagValue(argv, '--dir') || process.cwd());
   let tool = flagValue(argv, '--tool') || '';
-  const receiptsDir = flagValue(argv, '--receipts') || joinCli(dir, 'receipts');
+  // Where the receipt goes. With --receipts, <dir>/receipts.jsonl as before.
+  // Without it, the SAME log the gateway and the hook server write
+  // (.protect-mcp-receipts.jsonl in --dir), so a deployment has one chain and
+  // `record` shows every receipt, not two logs that never link.
+  const receiptsFlag = flagValue(argv, '--receipts');
+  const receiptsDir = receiptsFlag || dir;
+  const receiptLogPath = receiptsFlag ? joinCli(receiptsFlag, 'receipts.jsonl') : joinCli(dir, '.protect-mcp-receipts.jsonl');
   const keyPath = flagValue(argv, '--key');
   // Optional policy evaluation at signing time. Without --cedar the verb keeps
   // its post-execution behaviour (a signed record that the call happened, with
@@ -4081,7 +4087,7 @@ async function handleSign(argv: string[]): Promise<void> {
   // entirely rather than carrying null, which would change the signed bytes.
   let prevReceiptHash: string | undefined;
   try {
-    const logPath = joinCli(receiptsDir, 'receipts.jsonl');
+    const logPath = receiptLogPath;
     if (existsSyncCli(logPath)) {
       const lines = readFileSyncCli(logPath, 'utf-8').trim().split('\n').filter(Boolean);
       const last = lines.length ? lines[lines.length - 1] : null;
@@ -4093,6 +4099,16 @@ async function handleSign(argv: string[]): Promise<void> {
     }
   } catch { /* an unreadable log starts a new chain rather than failing the call */ }
 
+  // Bind the receipt to the call it describes. Without this a receipt said
+  // "the gateway allowed submit_payment" and nothing about which payment, so a
+  // reader could not tell an allowed $185,000 from an allowed $1,850,000. The
+  // digest is over the JCS bytes of the input, so any verifier that holds the
+  // input can recompute it; the input itself stays out of the receipt.
+  let payloadDigest: { input_hash: string; input_size: number; canonical: 'jcs' } | undefined;
+  if (toolInput) {
+    const canonicalInput = canonicalizeReceipt(toolInput);
+    payloadDigest = { input_hash: createHashCli('sha256').update(canonicalInput, 'utf-8').digest('hex'), input_size: Buffer.byteLength(canonicalInput, 'utf-8'), canonical: 'jcs' };
+  }
   let decisionValue: 'allow' | 'deny' = 'allow';
   let reasonCode = 'post_execution_receipt';
   if (cedarDir) {
@@ -4116,15 +4132,16 @@ async function handleSign(argv: string[]): Promise<void> {
     request_id: requestId,
     mode: 'enforce',
     timestamp: Date.now(),
+    ...(payloadDigest ? { payload_digest: payloadDigest } : {}),
   } as any, prevReceiptHash);
 
   try { mkdirSyncCli(receiptsDir, { recursive: true }); } catch { /* best-effort */ }
   const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || 'no signer configured' });
-  try { appendFileSyncCli(joinCli(receiptsDir, 'receipts.jsonl'), line + '\n'); } catch { /* best-effort */ }
+  try { appendFileSyncCli(receiptLogPath, line + '\n'); } catch { /* best-effort */ }
 
   // PostToolUse never blocks; Hermes reads stdout, so emit a no-op verdict there.
   if (format === 'hermes') { process.stdout.write('{}\n'); process.exit(0); }
-  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId }) + '\n');
+  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId, log: receiptLogPath }) + '\n');
   process.exit(0);
 }
 

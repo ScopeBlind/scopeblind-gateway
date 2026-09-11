@@ -384,6 +384,11 @@ export function verifySelectiveDisclosurePackage(
   const signatureValid = verifyCommittedReceiptSignature(receipt, publicKeyHex);
   if (signatureValid === false) {
     errors.push('receipt signature failed verification');
+  } else if (signatureValid === null) {
+    // An unchecked signature is not a passed one. Envelope receipts carry no
+    // key by design, so the caller must supply the issuer's key; until then the
+    // package is undecidable and reported as not valid, never as verified.
+    errors.push('receipt signature not checked: no public key was supplied and the receipt carries none');
   }
 
   const committedFieldNames = committedFieldNamesFromReceipt(receipt, {});
@@ -412,7 +417,7 @@ export function verifySelectiveDisclosurePackage(
 
   const disclosedFields = Array.from(disclosed);
   const hiddenFields = committedFieldNames.filter((fieldName) => !disclosed.has(fieldName));
-  const valid = errors.length === 0 && receiptHashValid && commitmentRootValid && signatureValid !== false;
+  const valid = errors.length === 0 && receiptHashValid && commitmentRootValid && signatureValid === true;
   const explanation = [
     valid
       ? 'Selective disclosure verified: the disclosed fields open to the signed receipt commitment root.'
@@ -420,7 +425,7 @@ export function verifySelectiveDisclosurePackage(
     signatureValid === true
       ? 'Receipt signature verified against the embedded Ed25519 public key.'
       : signatureValid === null
-        ? 'Receipt signature was not checked because the committed receipt did not carry an embedded Ed25519 signature object.'
+        ? 'Receipt signature was not checked: supply the issuer\'s public key (envelope receipts carry none). Unchecked is not verified.'
         : 'Receipt signature did not verify.',
     disclosedFields.length
       ? `Disclosed fields: ${disclosedFields.join(', ')}.`

@@ -272,6 +272,8 @@ interface TimingMetrics {
 interface PayloadDigest {
     /** SHA-256 hash of the full tool input */
     input_hash?: string;
+    /** How the input was serialised before hashing: 'jcs' (sorted keys, ASCII-only, as `sign` writes) or absent for the hook server's JSON.stringify form. */
+    canonical?: 'jcs';
     /** SHA-256 hash of the full tool output */
     output_hash?: string;
     /** Size of tool input in bytes */

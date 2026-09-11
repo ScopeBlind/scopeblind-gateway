@@ -328,6 +328,8 @@ function verifySelectiveDisclosurePackage(receipt, disclosure, publicKeyHex) {
   const signatureValid = verifyCommittedReceiptSignature(receipt, publicKeyHex);
   if (signatureValid === false) {
     errors.push("receipt signature failed verification");
+  } else if (signatureValid === null) {
+    errors.push("receipt signature not checked: no public key was supplied and the receipt carries none");
   }
   const committedFieldNames = committedFieldNamesFromReceipt(receipt, {});
   const disclosed = /* @__PURE__ */ new Set();
@@ -354,10 +356,10 @@ function verifySelectiveDisclosurePackage(receipt, disclosure, publicKeyHex) {
   }
   const disclosedFields = Array.from(disclosed);
   const hiddenFields = committedFieldNames.filter((fieldName) => !disclosed.has(fieldName));
-  const valid = errors.length === 0 && receiptHashValid && commitmentRootValid && signatureValid !== false;
+  const valid = errors.length === 0 && receiptHashValid && commitmentRootValid && signatureValid === true;
   const explanation = [
     valid ? "Selective disclosure verified: the disclosed fields open to the signed receipt commitment root." : "Selective disclosure failed verification.",
-    signatureValid === true ? "Receipt signature verified against the embedded Ed25519 public key." : signatureValid === null ? "Receipt signature was not checked because the committed receipt did not carry an embedded Ed25519 signature object." : "Receipt signature did not verify.",
+    signatureValid === true ? "Receipt signature verified against the embedded Ed25519 public key." : signatureValid === null ? "Receipt signature was not checked: supply the issuer's public key (envelope receipts carry none). Unchecked is not verified." : "Receipt signature did not verify.",
     disclosedFields.length ? `Disclosed fields: ${disclosedFields.join(", ")}.` : "No fields were disclosed.",
     hiddenFields.length ? `Hidden fields: ${hiddenFields.join(", ")}. These remain private but bound to the same commitment root.` : "No committed fields remain hidden.",
     "Limitation: this is salted commitment disclosure, not full zero-knowledge."

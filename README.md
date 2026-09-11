@@ -276,7 +276,7 @@ session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.13.1 evaluate --cedar ./cedar --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\""
+            "command": "npx protect-mcp@0.13.2 evaluate --cedar ./cedar --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\""
           }
         ]
       }
@@ -287,7 +287,7 @@ session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.13.1 sign --tool \"$TOOL_NAME\" --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx protect-mcp@0.13.2 sign --tool \"$TOOL_NAME\" --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }
@@ -303,10 +303,12 @@ receipt instead of an unconditional allow. Pass the policy directory and the
 same input and context the hook would pass to `evaluate`:
 
 ```bash
-npx protect-mcp@0.13.1 sign --cedar ./cedar --tool Bash \
+npx protect-mcp@0.13.2 sign --cedar ./cedar --tool Bash \
   --input '{"command":"rm -rf /"}' --context '{"command_pattern":"rm -rf"}' \
   --receipts ./receipts --key ./keys/gateway.json
 ```
+
+Without `--receipts`, the receipt joins the gateway's own log (`.protect-mcp-receipts.jsonl` in `--dir`), so a deployment has one chain and `record` shows every decision; `--receipts <dir>` keeps a separate `receipts.jsonl`.
 
 The receipt payload then carries `decision` (allow or deny), `reason`
 (`cedar_allow` or `cedar_deny`), and `policy_digest` (the acta-policy-digest-v1

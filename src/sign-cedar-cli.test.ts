@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { createPrivateKey, createPublicKey } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey } from 'node:crypto';
 
 const CLI = join(__dirname, '..', 'dist', 'cli.js');
 const POLICY = `
@@ -48,6 +48,28 @@ describe('sign --cedar signs the policy decision', () => {
     expect(a.receipt.payload.decision).toBe('allow');
     expect(a.receipt.payload.policy_digest).toBe(b.receipt.payload.policy_digest);
   });
+  it('binds the receipt to the input it was given: payload_digest is the JCS SHA-256 of --input', () => {
+    const input = { amount_minor: 18_500_000, currency: 'USD', reference: 'Supplier invoice 20417' };
+    const { receipt } = sign('submit_payment', input, {}, join(dir, 'r-digest'));
+    const canonical = JSON.stringify({ amount_minor: 18_500_000, currency: 'USD', reference: 'Supplier invoice 20417' });
+    const expected = createHash('sha256').update(canonical, 'utf-8').digest('hex');
+    expect(receipt.payload.payload_digest).toEqual({ input_hash: expected, input_size: Buffer.byteLength(canonical, 'utf-8'), canonical: 'jcs' });
+  });
+
+  it('without --receipts the receipt joins the gateway log in --dir, one chain per deployment', () => {
+    const deployment = mkdtempSync(join(tmpdir(), 'pmcp-sign-deploy-'));
+    const run = (tool: string) => spawnSync('node', [CLI, 'sign', '--dir', deployment, '--tool', tool, '--input', '{}', '--key', join(dir, 'key.json')], { cwd: deployment, encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } });
+    const first = JSON.parse(run('Read').stdout.trim().split('\n').pop() as string);
+    expect(first.log).toBe(join(deployment, '.protect-mcp-receipts.jsonl'));
+    run('Glob');
+    const lines = readFileSync(join(deployment, '.protect-mcp-receipts.jsonl'), 'utf8').trim().split('\n');
+    expect(lines).toHaveLength(2);
+    const [a, b] = lines.map((l) => JSON.parse(l));
+    expect(a.payload.previousReceiptHash).toBeUndefined();
+    expect(typeof b.payload.previousReceiptHash).toBe('string');
+    expect(b.payload.previousReceiptHash.startsWith('sha256:')).toBe(true);
+  });
+
   it('without --cedar the verb is unchanged: allow, no policy identity', () => {
     const receipts = join(dir, 'r4');
     spawnSync('node', [CLI, 'sign', '--tool', 'Bash', '--input', '{"command":"rm -rf /"}', '--receipts', receipts, '--key', join(dir, 'key.json')], { cwd: dir, encoding: 'utf8' });

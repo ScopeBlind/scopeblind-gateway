@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.13.2 (2026-09-11)
+
+### Fixed
+- A selective-disclosure package whose receipt signature could not be checked (no key supplied, and envelope receipts carry none) reported `valid: true`. Unchecked is not verified: it now reports `valid: false` with the error `receipt signature not checked`, and `signature_valid: null` still says why.
+- `sign` without `--receipts` wrote to `./receipts/receipts.jsonl` while the gateway and the hook server wrote `.protect-mcp-receipts.jsonl`, so one deployment had two chains that never linked and `record` never showed the signed decisions. `sign` now appends to the gateway log in `--dir` by default and chains from it; `--receipts <dir>` keeps a separate `receipts.jsonl` as before. The command prints the log it wrote to.
+- CI runs the built CLI on every supported Node against a deny, and signs a decision with `sign --cedar`, so an engine that fails to load, a deny that is really an outage, or a receipt without its input digest fails the build (0.13.0 shipped `cedar_deny` for every fail-closed deny; vitest could not see it).
+
+### Added
+- `sign` binds the receipt to the call it describes: when `--input` (or a piped hook payload) supplies the tool input, the receipt carries `payload_digest: { input_hash, input_size, canonical: "jcs" }`, the SHA-256 of the JCS bytes of that input. A verifier holding the input recomputes it; the input itself stays out of the receipt. Until now a `sign` receipt said which tool was allowed and nothing about which call.
+
 ## 0.13.1 (2026-09-10)
 
 ### The Cedar engine now loads on Node 18 and 20

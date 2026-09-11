@@ -53,6 +53,7 @@ import {
   verifyPolicyBundle
 } from "./chunk-PF7HOTBP.mjs";
 import {
+  canonicalize,
   chainLink,
   verifyReceipt
 } from "./chunk-EIRUB2BZ.mjs";
@@ -3102,7 +3103,7 @@ async function handleKillerDemo(argv) {
     createSelectiveDisclosurePackage,
     signCommittedDecision,
     verifySelectiveDisclosurePackage
-  } = await import("./signing-committed-JMPTOV3A.mjs");
+  } = await import("./signing-committed-UTR2MMMI.mjs");
   const registryMod = await import("./receipt-registry-HRTOUKVJ.mjs");
   const dir = resolveCli(flagValue(argv, "--dir") || mkdtempSync(joinCli(tmpdir(), "scopeblind-killer-demo-")));
   mkdirSyncCli(dir, { recursive: true });
@@ -3371,7 +3372,7 @@ async function handleVerifyDisclosure(argv) {
     process.stderr.write("Usage: protect-mcp verify-disclosure --receipt <committed-receipt.json> --disclosure <selective-disclosure.json>\\n");
     process.exit(1);
   }
-  const { verifySelectiveDisclosurePackage } = await import("./signing-committed-JMPTOV3A.mjs");
+  const { verifySelectiveDisclosurePackage } = await import("./signing-committed-UTR2MMMI.mjs");
   const receipt = JSON.parse(readFileSyncCli(resolveCli(receiptPath), "utf-8"));
   const disclosure = JSON.parse(readFileSyncCli(resolveCli(disclosurePath), "utf-8"));
   const result = verifySelectiveDisclosurePackage(receipt, disclosure);
@@ -4125,7 +4126,9 @@ async function handleSign(argv) {
   const format = flagValue(argv, "--format");
   const dir = resolveCli(flagValue(argv, "--dir") || process.cwd());
   let tool = flagValue(argv, "--tool") || "";
-  const receiptsDir = flagValue(argv, "--receipts") || joinCli(dir, "receipts");
+  const receiptsFlag = flagValue(argv, "--receipts");
+  const receiptsDir = receiptsFlag || dir;
+  const receiptLogPath = receiptsFlag ? joinCli(receiptsFlag, "receipts.jsonl") : joinCli(dir, ".protect-mcp-receipts.jsonl");
   const keyPath = flagValue(argv, "--key");
   const cedarDir = flagValue(argv, "--cedar");
   const actionModel = flagValue(argv, "--action-model") === "tool" ? "tool" : "mcp";
@@ -4171,7 +4174,7 @@ async function handleSign(argv) {
   }
   let prevReceiptHash;
   try {
-    const logPath = joinCli(receiptsDir, "receipts.jsonl");
+    const logPath = receiptLogPath;
     if (existsSyncCli(logPath)) {
       const lines = readFileSyncCli(logPath, "utf-8").trim().split("\n").filter(Boolean);
       const last = lines.length ? lines[lines.length - 1] : null;
@@ -4181,6 +4184,11 @@ async function handleSign(argv) {
       }
     }
   } catch {
+  }
+  let payloadDigest;
+  if (toolInput) {
+    const canonicalInput = canonicalize(toolInput);
+    payloadDigest = { input_hash: createHashCli("sha256").update(canonicalInput, "utf-8").digest("hex"), input_size: Buffer.byteLength(canonicalInput, "utf-8"), canonical: "jcs" };
   }
   let decisionValue = "allow";
   let reasonCode = "post_execution_receipt";
@@ -4208,7 +4216,8 @@ async function handleSign(argv) {
     policy_digest: policyDigest,
     request_id: requestId,
     mode: "enforce",
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    ...payloadDigest ? { payload_digest: payloadDigest } : {}
   }, prevReceiptHash);
   try {
     mkdirSyncCli(receiptsDir, { recursive: true });
@@ -4216,14 +4225,14 @@ async function handleSign(argv) {
   }
   const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || "no signer configured" });
   try {
-    appendFileSyncCli(joinCli(receiptsDir, "receipts.jsonl"), line + "\n");
+    appendFileSyncCli(receiptLogPath, line + "\n");
   } catch {
   }
   if (format === "hermes") {
     process.stdout.write("{}\n");
     process.exit(0);
   }
-  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId }) + "\n");
+  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId, log: receiptLogPath }) + "\n");
   process.exit(0);
 }
 async function handleSample(argv) {
