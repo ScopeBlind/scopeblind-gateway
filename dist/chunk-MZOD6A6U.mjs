@@ -312,8 +312,166 @@ function buildActionReadback(tool, input) {
   };
 }
 
+// src/standard-gate.ts
+import { createHash as createHash2 } from "crypto";
+import { readFileSync as readFileSync2 } from "fs";
+var isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+function moneyFrom(v) {
+  if (!isObj(v) || typeof v.amount !== "number" || !(v.amount >= 0) || typeof v.currency !== "string" || !/^[A-Z]{3}$/.test(v.currency)) return null;
+  return { minor: Math.round(v.amount * 100), currency: v.currency };
+}
+var fmt = (m) => `${m.currency} ${(m.minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function parseStandard(value) {
+  if (!isObj(value) || value.type !== "scopeblind.proof_request.v1") throw new Error("not a signed standard (scopeblind.proof_request.v1)");
+  if (typeof value.request_id !== "string" || typeof value.digest !== "string") throw new Error("the standard has no request_id or digest");
+  const recipient = isObj(value.recipient) ? value.recipient : null;
+  if (!recipient || typeof recipient.verification_key !== "string" || !/^[0-9a-f]{64}$/i.test(recipient.verification_key)) throw new Error("the standard names no signer key");
+  if (!isObj(value.signature) || typeof value.signature.value !== "string") throw new Error("the standard is not signed");
+  const q = isObj(value.requirements) ? value.requirements : {};
+  const run = isObj(q.run) ? q.run : null;
+  const tools = run && Array.isArray(run.allowed_tools) ? run.allowed_tools.filter((t) => typeof t === "string") : null;
+  const limits = isObj(q.action_limits) ? q.action_limits : null;
+  const amount_max = limits ? moneyFrom(limits.amount_max) : null;
+  const approval = isObj(q.human_approval) ? q.human_approval : null;
+  const required_above = approval ? moneyFrom(approval.required_above) : null;
+  const enforcement = isObj(value.enforcement) ? value.enforcement : null;
+  const policy_digest = enforcement && typeof enforcement.policy_digest === "string" ? enforcement.policy_digest : null;
+  const parts = [tools ? `${tools.length} tool${tools.length === 1 ? "" : "s"}` : "no tool list", amount_max ? `at most ${fmt(amount_max)} per instruction` : "no amount limit", required_above ? `a person approves above ${fmt(required_above)}` : "no approval threshold"];
+  return { request_id: value.request_id, digest: value.digest, signer_key: recipient.verification_key.toLowerCase(), tools, amount_max, required_above, policy_digest, summary: parts.join(", ") };
+}
+function loadStandardFile(path) {
+  return parseStandard(JSON.parse(readFileSync2(path, "utf-8")));
+}
+function readAmount(input) {
+  if (!isObj(input)) return null;
+  const currency = typeof input.currency === "string" && /^[A-Za-z]{3}$/.test(input.currency) ? input.currency.toUpperCase() : null;
+  if (typeof input.amount_minor === "number" && Number.isFinite(input.amount_minor)) return { minor: Math.round(input.amount_minor), currency: currency ?? "" };
+  if (typeof input.amount === "number" && Number.isFinite(input.amount)) return { minor: Math.round(input.amount * 100), currency: currency ?? "" };
+  return null;
+}
+function checkAmount(gate, input) {
+  if (!gate.amount_max) return { ok: true };
+  const amount = readAmount(input);
+  if (!amount) return { ok: true };
+  if (amount.currency !== gate.amount_max.currency) return { ok: false, reason: "standard_currency_not_permitted", detail: `the standard permits ${gate.amount_max.currency} only; this call is in ${amount.currency || "no named currency"}` };
+  if (amount.minor > gate.amount_max.minor) return { ok: false, reason: "standard_amount_over_limit", detail: `${fmt(amount)} is over the standard's limit of ${fmt(gate.amount_max)} per instruction` };
+  return { ok: true };
+}
+function personRequired(gate, input) {
+  if (!gate.required_above) return { required: false };
+  const amount = readAmount(input);
+  if (!amount) return { required: false };
+  if (amount.currency !== gate.required_above.currency) return { required: true, detail: `${fmt(amount)} cannot be compared with the standard's threshold of ${fmt(gate.required_above)}` };
+  if (amount.minor > gate.required_above.minor) return { required: true, detail: `${fmt(amount)} is above ${fmt(gate.required_above)}, so a named person approves it` };
+  return { required: false };
+}
+function heldIdFor(sid, tool, payloadHash) {
+  return createHash2("sha256").update(`scopeblind.held_action.v1\0${sid}\0${tool}\0${payloadHash}`).digest("hex").slice(0, 24);
+}
+function sidFromReportUrl(url) {
+  try {
+    const s = new URL(url).searchParams.get("s");
+    return s && /^[0-9a-f]{24}$/.test(s) ? s : null;
+  } catch {
+    return null;
+  }
+}
+var RecordReporter = class {
+  url;
+  sid;
+  runId;
+  token;
+  fetchImpl;
+  log;
+  queue = [];
+  timer = null;
+  flushing = Promise.resolve();
+  /** Counts for the startup and shutdown lines. */
+  sent = 0;
+  failed = 0;
+  constructor(opts) {
+    const sid = sidFromReportUrl(opts.url);
+    if (!sid) throw new Error("--report must be the standard page's report URL (https://scopeblind.com/api/standard?s=<id>)");
+    this.url = opts.url;
+    this.sid = sid;
+    this.token = opts.token;
+    this.runId = opts.runId;
+    this.fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init));
+    this.log = opts.log ?? ((m) => process.stderr.write(`[PROTECT_MCP] ${m}
+`));
+  }
+  async post(op, body) {
+    const resp = await this.fetchImpl(`${this.url}&op=${op}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${this.token}` }, body: JSON.stringify({ sid: this.sid, ...body }), signal: AbortSignal.timeout(8e3) });
+    const parsed = await resp.json().catch(() => ({}));
+    return { ok: resp.ok, status: resp.status, body: parsed };
+  }
+  /** Queues one receipt line (and its call line) for the next flush. Never throws. */
+  record(receipt, call) {
+    this.queue.push({ receipt, call });
+    if (!this.timer) this.timer = setTimeout(() => {
+      this.timer = null;
+      void this.flush();
+    }, 800);
+    this.timer.unref?.();
+  }
+  /** Sends everything queued, in order, as one append. */
+  flush() {
+    this.flushing = this.flushing.then(async () => {
+      if (this.queue.length === 0) return;
+      const batch = this.queue;
+      this.queue = [];
+      const receipts = batch.map((b) => b.receipt).filter((r) => !!r).join("\n");
+      const calls = batch.map((b) => b.call).filter((c) => !!c).join("\n");
+      try {
+        const r = await this.post("record", { run_id: this.runId, receipts, calls, append: true });
+        if (r.ok) this.sent += batch.length;
+        else {
+          this.failed += batch.length;
+          this.log(`Record not accepted by the standard's page (${r.status} ${String(r.body.error ?? "")}); the local chain is intact`);
+        }
+      } catch (err) {
+        this.failed += batch.length;
+        this.log(`Record could not reach the standard's page (${err instanceof Error ? err.message : String(err)}); the local chain is intact`);
+      }
+    });
+    return this.flushing;
+  }
+  /** Posts a held action. Returns the page URL to send the model to, or null when the page could not be reached. */
+  async hold(held) {
+    try {
+      const r = await this.post("held", { ...held, run_id: this.runId });
+      if (r.ok && typeof r.body.url === "string") return r.body.url;
+      this.log(`Held action not accepted by the standard's page (${r.status} ${String(r.body.error ?? "")})`);
+      return null;
+    } catch (err) {
+      this.log(`Held action could not reach the standard's page (${err instanceof Error ? err.message : String(err)})`);
+      return null;
+    }
+  }
+  /** The decision a person recorded for a held action: approve, deny, none yet (null), or unreachable. */
+  async decision(hid) {
+    try {
+      const resp = await this.fetchImpl(`${this.url}&held=${hid}`, { method: "GET", headers: { accept: "application/json" }, signal: AbortSignal.timeout(8e3) });
+      if (resp.status === 404) return null;
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok || !body.ok || !body.held) return "unreachable";
+      const d = body.held.decision;
+      if (!d || d.decision !== "approve" && d.decision !== "deny") return null;
+      return { decision: d.decision, approver_key_id: d.approver?.key_id ?? "unknown", digest: d.digest ?? "", note: d.note ?? "" };
+    } catch {
+      return "unreachable";
+    }
+  }
+};
+
 export {
   ReceiptBuffer,
   startStatusServer,
-  buildActionReadback
+  buildActionReadback,
+  loadStandardFile,
+  readAmount,
+  checkAmount,
+  personRequired,
+  heldIdFor,
+  RecordReporter
 };

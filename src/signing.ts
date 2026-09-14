@@ -208,6 +208,9 @@ export function signDecision(entry: DecisionLog, prevReceiptHash?: string): {
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
     if (entry.mandate_registry) payload.mandate_registry = entry.mandate_registry;
+    // The signed standard in force, and a named person's decision on its page (0.14.0)
+    if (entry.standard) payload.standard = entry.standard;
+    if (entry.approval) payload.approval = entry.approval;
 
     const result = createReceiptEnvelope(
       payload as Record<string, unknown> & { type: string },

@@ -32699,11 +32699,11 @@ var require_format = __commonJS({
           }
           function getFormat(fmtDef) {
             const code2 = fmtDef instanceof RegExp ? (0, codegen_1.regexpCode)(fmtDef) : opts.code.formats ? (0, codegen_1._)`${opts.code.formats}${(0, codegen_1.getProperty)(schema)}` : void 0;
-            const fmt = gen.scopeValue("formats", { key: schema, ref: fmtDef, code: code2 });
+            const fmt2 = gen.scopeValue("formats", { key: schema, ref: fmtDef, code: code2 });
             if (typeof fmtDef == "object" && !(fmtDef instanceof RegExp)) {
-              return [fmtDef.type || "string", fmtDef.validate, (0, codegen_1._)`${fmt}.validate`];
+              return [fmtDef.type || "string", fmtDef.validate, (0, codegen_1._)`${fmt2}.validate`];
             }
-            return ["string", fmtDef, fmt];
+            return ["string", fmtDef, fmt2];
           }
           function validCondition() {
             if (typeof formatDef == "object" && !(formatDef instanceof RegExp) && formatDef.async) {
@@ -33365,8 +33365,8 @@ var require_limit = __commonJS({
             ref: self.formats,
             code: opts.code.formats
           });
-          const fmt = gen.const("fmt", (0, codegen_1._)`${fmts}[${fCxt.schemaCode}]`);
-          cxt.fail$data((0, codegen_1.or)((0, codegen_1._)`typeof ${fmt} != "object"`, (0, codegen_1._)`${fmt} instanceof RegExp`, (0, codegen_1._)`typeof ${fmt}.compare != "function"`, compareCode(fmt)));
+          const fmt2 = gen.const("fmt", (0, codegen_1._)`${fmts}[${fCxt.schemaCode}]`);
+          cxt.fail$data((0, codegen_1.or)((0, codegen_1._)`typeof ${fmt2} != "object"`, (0, codegen_1._)`${fmt2} instanceof RegExp`, (0, codegen_1._)`typeof ${fmt2}.compare != "function"`, compareCode(fmt2)));
         }
         function validateFormat() {
           const format = fCxt.schema;
@@ -33376,15 +33376,15 @@ var require_limit = __commonJS({
           if (typeof fmtDef != "object" || fmtDef instanceof RegExp || typeof fmtDef.compare != "function") {
             throw new Error(`"${keyword}": format "${format}" does not define "compare" function`);
           }
-          const fmt = gen.scopeValue("formats", {
+          const fmt2 = gen.scopeValue("formats", {
             key: format,
             ref: fmtDef,
             code: opts.code.formats ? (0, codegen_1._)`${opts.code.formats}${(0, codegen_1.getProperty)(format)}` : void 0
           });
-          cxt.fail$data(compareCode(fmt));
+          cxt.fail$data(compareCode(fmt2));
         }
-        function compareCode(fmt) {
-          return (0, codegen_1._)`${fmt}.compare(${data}, ${schemaCode}) ${KWDs[keyword].fail} 0`;
+        function compareCode(fmt2) {
+          return (0, codegen_1._)`${fmt2}.compare(${data}, ${schemaCode}) ${KWDs[keyword].fail} 0`;
         }
       },
       dependencies: ["format"]
@@ -35545,9 +35545,9 @@ module.exports = __toCommonJS(index_exports);
 
 // src/gateway.ts
 var import_node_child_process = require("child_process");
-var import_node_crypto3 = require("crypto");
+var import_node_crypto4 = require("crypto");
 var import_node_readline = require("readline");
-var import_node_fs7 = require("fs");
+var import_node_fs8 = require("fs");
 
 // src/acta-envelope.ts
 var import_ed25519 = require("@noble/curves/ed25519");
@@ -36112,6 +36112,8 @@ function signDecision(entry, prevReceiptHash) {
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
     if (entry.mandate_registry) payload.mandate_registry = entry.mandate_registry;
+    if (entry.standard) payload.standard = entry.standard;
+    if (entry.approval) payload.approval = entry.approval;
     const result = createReceiptEnvelope(
       payload,
       signerState.privateKey,
@@ -37044,6 +37046,158 @@ function buildActionReadback(tool, input) {
   };
 }
 
+// src/standard-gate.ts
+var import_node_crypto3 = require("crypto");
+var import_node_fs7 = require("fs");
+var isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+function moneyFrom(v) {
+  if (!isObj(v) || typeof v.amount !== "number" || !(v.amount >= 0) || typeof v.currency !== "string" || !/^[A-Z]{3}$/.test(v.currency)) return null;
+  return { minor: Math.round(v.amount * 100), currency: v.currency };
+}
+var fmt = (m) => `${m.currency} ${(m.minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function parseStandard(value) {
+  if (!isObj(value) || value.type !== "scopeblind.proof_request.v1") throw new Error("not a signed standard (scopeblind.proof_request.v1)");
+  if (typeof value.request_id !== "string" || typeof value.digest !== "string") throw new Error("the standard has no request_id or digest");
+  const recipient = isObj(value.recipient) ? value.recipient : null;
+  if (!recipient || typeof recipient.verification_key !== "string" || !/^[0-9a-f]{64}$/i.test(recipient.verification_key)) throw new Error("the standard names no signer key");
+  if (!isObj(value.signature) || typeof value.signature.value !== "string") throw new Error("the standard is not signed");
+  const q = isObj(value.requirements) ? value.requirements : {};
+  const run = isObj(q.run) ? q.run : null;
+  const tools = run && Array.isArray(run.allowed_tools) ? run.allowed_tools.filter((t) => typeof t === "string") : null;
+  const limits = isObj(q.action_limits) ? q.action_limits : null;
+  const amount_max = limits ? moneyFrom(limits.amount_max) : null;
+  const approval = isObj(q.human_approval) ? q.human_approval : null;
+  const required_above = approval ? moneyFrom(approval.required_above) : null;
+  const enforcement = isObj(value.enforcement) ? value.enforcement : null;
+  const policy_digest = enforcement && typeof enforcement.policy_digest === "string" ? enforcement.policy_digest : null;
+  const parts = [tools ? `${tools.length} tool${tools.length === 1 ? "" : "s"}` : "no tool list", amount_max ? `at most ${fmt(amount_max)} per instruction` : "no amount limit", required_above ? `a person approves above ${fmt(required_above)}` : "no approval threshold"];
+  return { request_id: value.request_id, digest: value.digest, signer_key: recipient.verification_key.toLowerCase(), tools, amount_max, required_above, policy_digest, summary: parts.join(", ") };
+}
+function loadStandardFile(path) {
+  return parseStandard(JSON.parse((0, import_node_fs7.readFileSync)(path, "utf-8")));
+}
+function readAmount(input) {
+  if (!isObj(input)) return null;
+  const currency = typeof input.currency === "string" && /^[A-Za-z]{3}$/.test(input.currency) ? input.currency.toUpperCase() : null;
+  if (typeof input.amount_minor === "number" && Number.isFinite(input.amount_minor)) return { minor: Math.round(input.amount_minor), currency: currency ?? "" };
+  if (typeof input.amount === "number" && Number.isFinite(input.amount)) return { minor: Math.round(input.amount * 100), currency: currency ?? "" };
+  return null;
+}
+function checkAmount(gate, input) {
+  if (!gate.amount_max) return { ok: true };
+  const amount = readAmount(input);
+  if (!amount) return { ok: true };
+  if (amount.currency !== gate.amount_max.currency) return { ok: false, reason: "standard_currency_not_permitted", detail: `the standard permits ${gate.amount_max.currency} only; this call is in ${amount.currency || "no named currency"}` };
+  if (amount.minor > gate.amount_max.minor) return { ok: false, reason: "standard_amount_over_limit", detail: `${fmt(amount)} is over the standard's limit of ${fmt(gate.amount_max)} per instruction` };
+  return { ok: true };
+}
+function personRequired(gate, input) {
+  if (!gate.required_above) return { required: false };
+  const amount = readAmount(input);
+  if (!amount) return { required: false };
+  if (amount.currency !== gate.required_above.currency) return { required: true, detail: `${fmt(amount)} cannot be compared with the standard's threshold of ${fmt(gate.required_above)}` };
+  if (amount.minor > gate.required_above.minor) return { required: true, detail: `${fmt(amount)} is above ${fmt(gate.required_above)}, so a named person approves it` };
+  return { required: false };
+}
+function heldIdFor(sid, tool, payloadHash) {
+  return (0, import_node_crypto3.createHash)("sha256").update(`scopeblind.held_action.v1\0${sid}\0${tool}\0${payloadHash}`).digest("hex").slice(0, 24);
+}
+function sidFromReportUrl(url) {
+  try {
+    const s = new URL(url).searchParams.get("s");
+    return s && /^[0-9a-f]{24}$/.test(s) ? s : null;
+  } catch {
+    return null;
+  }
+}
+var RecordReporter = class {
+  url;
+  sid;
+  runId;
+  token;
+  fetchImpl;
+  log;
+  queue = [];
+  timer = null;
+  flushing = Promise.resolve();
+  /** Counts for the startup and shutdown lines. */
+  sent = 0;
+  failed = 0;
+  constructor(opts) {
+    const sid = sidFromReportUrl(opts.url);
+    if (!sid) throw new Error("--report must be the standard page's report URL (https://scopeblind.com/api/standard?s=<id>)");
+    this.url = opts.url;
+    this.sid = sid;
+    this.token = opts.token;
+    this.runId = opts.runId;
+    this.fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init));
+    this.log = opts.log ?? ((m) => process.stderr.write(`[PROTECT_MCP] ${m}
+`));
+  }
+  async post(op, body) {
+    const resp = await this.fetchImpl(`${this.url}&op=${op}`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${this.token}` }, body: JSON.stringify({ sid: this.sid, ...body }), signal: AbortSignal.timeout(8e3) });
+    const parsed = await resp.json().catch(() => ({}));
+    return { ok: resp.ok, status: resp.status, body: parsed };
+  }
+  /** Queues one receipt line (and its call line) for the next flush. Never throws. */
+  record(receipt, call) {
+    this.queue.push({ receipt, call });
+    if (!this.timer) this.timer = setTimeout(() => {
+      this.timer = null;
+      void this.flush();
+    }, 800);
+    this.timer.unref?.();
+  }
+  /** Sends everything queued, in order, as one append. */
+  flush() {
+    this.flushing = this.flushing.then(async () => {
+      if (this.queue.length === 0) return;
+      const batch = this.queue;
+      this.queue = [];
+      const receipts = batch.map((b) => b.receipt).filter((r) => !!r).join("\n");
+      const calls = batch.map((b) => b.call).filter((c) => !!c).join("\n");
+      try {
+        const r = await this.post("record", { run_id: this.runId, receipts, calls, append: true });
+        if (r.ok) this.sent += batch.length;
+        else {
+          this.failed += batch.length;
+          this.log(`Record not accepted by the standard's page (${r.status} ${String(r.body.error ?? "")}); the local chain is intact`);
+        }
+      } catch (err) {
+        this.failed += batch.length;
+        this.log(`Record could not reach the standard's page (${err instanceof Error ? err.message : String(err)}); the local chain is intact`);
+      }
+    });
+    return this.flushing;
+  }
+  /** Posts a held action. Returns the page URL to send the model to, or null when the page could not be reached. */
+  async hold(held) {
+    try {
+      const r = await this.post("held", { ...held, run_id: this.runId });
+      if (r.ok && typeof r.body.url === "string") return r.body.url;
+      this.log(`Held action not accepted by the standard's page (${r.status} ${String(r.body.error ?? "")})`);
+      return null;
+    } catch (err) {
+      this.log(`Held action could not reach the standard's page (${err instanceof Error ? err.message : String(err)})`);
+      return null;
+    }
+  }
+  /** The decision a person recorded for a held action: approve, deny, none yet (null), or unreachable. */
+  async decision(hid) {
+    try {
+      const resp = await this.fetchImpl(`${this.url}&held=${hid}`, { method: "GET", headers: { accept: "application/json" }, signal: AbortSignal.timeout(8e3) });
+      if (resp.status === 404) return null;
+      const body = await resp.json().catch(() => ({}));
+      if (!resp.ok || !body.ok || !body.held) return "unreachable";
+      const d = body.held.decision;
+      if (!d || d.decision !== "approve" && d.decision !== "deny") return null;
+      return { decision: d.decision, approver_key_id: d.approver?.key_id ?? "unknown", digest: d.digest ?? "", note: d.note ?? "" };
+    } catch {
+      return "unreachable";
+    }
+  }
+};
+
 // src/gateway.ts
 var LOG_FILE2 = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE = ".protect-mcp-receipts.jsonl";
@@ -37061,7 +37215,7 @@ var ProtectGateway = class {
   /** Approval grants keyed by request_id (scoped to the specific action that was requested) */
   approvalStore = /* @__PURE__ */ new Map();
   /** Random nonce generated at startup — required for approval endpoint authentication */
-  approvalNonce = (0, import_node_crypto3.randomBytes)(16).toString("hex");
+  approvalNonce = (0, import_node_crypto4.randomBytes)(16).toString("hex");
   currentTier = "unknown";
   admissionResult = null;
   /** Notification config for approval gates (SMS, webhook, email) */
@@ -37071,18 +37225,25 @@ var ProtectGateway = class {
   httpMode = false;
   /** Loaded Cedar policy set (when policy_engine is "cedar") */
   cedarPolicySet = null;
+  /** The signed standard in force (--standard) and the page its record lands on (--report) */
+  standard = null;
+  reporter = null;
+  /** A person's decision on the page, attached to the receipt of the call it decided (keyed by request_id) */
+  approvalsToRecord = /* @__PURE__ */ new Map();
   constructor(config) {
     this.config = config;
     this.logFilePath = (0, import_node_path5.join)(process.cwd(), LOG_FILE2);
     this.receiptFilePath = (0, import_node_path5.join)(process.cwd(), RECEIPTS_FILE);
     try {
-      const existing = (0, import_node_fs7.readFileSync)(this.receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+      const existing = (0, import_node_fs8.readFileSync)(this.receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
       if (existing.length > 0) this.lastReceiptHash = chainLink(JSON.parse(existing[existing.length - 1]));
     } catch {
     }
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();
     this.notificationConfig = parseNotificationConfigFromEnv();
+    this.standard = config.standard ?? null;
+    this.reporter = config.reporter ?? null;
   }
   /**
    * Set the Cedar policy set for local evaluation.
@@ -37112,6 +37273,15 @@ var ProtectGateway = class {
       }
     }
     this.log(`Approval nonce: ${this.approvalNonce}`);
+    if (this.standard) this.log(`Standard in force: ${this.standard.request_id} (${this.standard.summary})`);
+    if (this.reporter) {
+      this.log(`Record lands on ${new URL(this.reporter.url).origin}/standard?s=${this.reporter.sid} as run ${this.reporter.runId}`);
+      if (!isSigningEnabled()) this.log("Warning: signing is not configured, so only unsigned call lines reach the page; add a signing key to protect-mcp.json for receipts");
+      const reporter = this.reporter;
+      process.once("beforeExit", () => {
+        void reporter.flush();
+      });
+    }
     const httpPort = parseInt(process.env.PROTECT_MCP_HTTP_PORT || "9876", 10);
     if (httpPort > 0) {
       try {
@@ -37220,7 +37390,7 @@ var ProtectGateway = class {
   }
   async interceptToolCall(request) {
     const toolName = request.params?.name || "unknown";
-    const requestId = (0, import_node_crypto3.randomUUID)().slice(0, 12);
+    const requestId = (0, import_node_crypto4.randomUUID)().slice(0, 12);
     const mode = this.config.enforce ? "enforce" : "shadow";
     const toolInput = request.params?.arguments && typeof request.params.arguments === "object" ? request.params.arguments : request.params || {};
     const actionReadback = buildActionReadback(toolName, toolInput);
@@ -37260,12 +37430,62 @@ var ProtectGateway = class {
         }
       }
     }
+    if (this.standard) {
+      const std = this.standard;
+      if (std.tools && !std.tools.includes(toolName)) {
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "standard_tool_not_allowed", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" is not among the tools the standard permits`);
+        return null;
+      }
+      const amount = checkAmount(std, toolInput);
+      if (!amount.ok) {
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: amount.reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" refused by the standard: ${amount.detail}`);
+        return null;
+      }
+      const person = personRequired(std, toolInput);
+      if (person.required) {
+        const hid = heldIdFor(this.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
+        const page = this.reporter ? `${new URL(this.reporter.url).origin}/standard?s=${this.reporter.sid}#held-${hid}` : "";
+        const localGrant = this.approvalStore.get(`always:${toolName}`);
+        const verdict = localGrant && Date.now() < localGrant.expires_at ? { decision: "approve", approver_key_id: "gate", digest: "", note: "granted at the gate" } : this.reporter ? await this.reporter.decision(hid) : null;
+        if (verdict === "unreachable") {
+          this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "standard_page_unreachable", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+          if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" needs a named person's approval and the standard's page could not be reached; retry the same call later`);
+        } else if (verdict) {
+          this.approvalsToRecord.set(requestId, { hid, approver_key_id: verdict.approver_key_id, digest: verdict.digest, page });
+          if (verdict.decision === "deny") {
+            this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "person_denied", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+            if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" was denied by ${verdict.approver_key_id} on the standard's page${verdict.note ? `: ${verdict.note}` : ""}`);
+          }
+        } else {
+          const amt = readAmount(toolInput);
+          if (this.config.enforce && this.reporter) {
+            await this.reporter.hold({ hid, request_id: requestId, tool: toolName, readback: { summary: actionReadback.summary, payload_hash: actionReadback.payload_hash, amount: amt ? amt.minor / 100 : null, currency: amt?.currency || null }, reason: person.detail });
+          }
+          this.emitDecisionLog({ tool: toolName, decision: "require_approval", reason_code: "standard_requires_person", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+          if (this.config.enforce) {
+            const where = page ? `The action is waiting for the named person at ${page}. Tell the user, and retry this exact call once they have decided there; a changed call is a new action.` : `No standard page is configured (--report), so it must be granted at the gate (approval nonce ${this.approvalNonce}, request ID ${requestId}) before a retry.`;
+            return {
+              jsonrpc: "2.0",
+              id: request.id,
+              result: {
+                content: [{ type: "text", text: `REQUIRES_APPROVAL: ${person.detail}. Exact action: ${actionReadback.summary}. Payload hash: ${actionReadback.payload_hash.slice(0, 16)}\u2026 ${where}` }],
+                isError: true
+              }
+            };
+          }
+        }
+      }
+    }
     if (this.config.policy?.policy_engine === "cedar" && this.cedarPolicySet) {
       try {
         const cedarDecision = await evaluateCedar(this.cedarPolicySet, {
           tool: toolName,
           tier: this.currentTier,
-          agentId: this.admissionResult?.agent_id
+          agentId: this.admissionResult?.agent_id,
+          // The call's input, so a policy compiled from a standard can read amounts and fields (context.input).
+          toolInput
         });
         if (!cedarDecision.allowed) {
           const reason = cedarDecision.reason || "cedar_deny";
@@ -37400,8 +37620,8 @@ var ProtectGateway = class {
    */
   emitDecisionLog(entry) {
     const mode = this.config.enforce ? "enforce" : "shadow";
-    const otelTraceId = entry.otel_trace_id || (0, import_node_crypto3.randomBytes)(16).toString("hex");
-    const otelSpanId = entry.otel_span_id || (0, import_node_crypto3.randomBytes)(8).toString("hex");
+    const otelTraceId = entry.otel_trace_id || (0, import_node_crypto4.randomBytes)(16).toString("hex");
+    const otelSpanId = entry.otel_span_id || (0, import_node_crypto4.randomBytes)(8).toString("hex");
     const log = {
       v: 2,
       tool: entry.tool || "unknown",
@@ -37409,7 +37629,7 @@ var ProtectGateway = class {
       reason_code: entry.reason_code || "default_allow",
       policy_digest: this.config.policyDigest,
       policy_engine: this.config.policy?.policy_engine || "built-in",
-      request_id: entry.request_id || (0, import_node_crypto3.randomUUID)().slice(0, 12),
+      request_id: entry.request_id || (0, import_node_crypto4.randomUUID)().slice(0, 12),
       timestamp: Date.now(),
       mode,
       ...entry.rate_limit_remaining !== void 0 && { rate_limit_remaining: entry.rate_limit_remaining },
@@ -37419,10 +37639,17 @@ var ProtectGateway = class {
       otel_trace_id: otelTraceId,
       otel_span_id: otelSpanId
     };
+    if (this.standard) log.standard = { request_id: this.standard.request_id, digest: this.standard.digest };
+    const approval = this.approvalsToRecord.get(log.request_id);
+    if (approval) {
+      log.approval = approval;
+      this.approvalsToRecord.delete(log.request_id);
+    }
+    const callLine = this.reporter ? JSON.stringify({ tool: log.tool, input: log.action_readback?.payload_preview ?? {}, decision: log.decision, request_id: log.request_id, at: new Date(log.timestamp).toISOString() }) : void 0;
     process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
     try {
-      (0, import_node_fs7.appendFileSync)(this.logFilePath, JSON.stringify(log) + "\n");
+      (0, import_node_fs8.appendFileSync)(this.logFilePath, JSON.stringify(log) + "\n");
     } catch {
     }
     if (isSigningEnabled()) {
@@ -37431,10 +37658,11 @@ var ProtectGateway = class {
         process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}
 `);
         try {
-          (0, import_node_fs7.appendFileSync)(this.receiptFilePath, signed.signed + "\n");
+          (0, import_node_fs8.appendFileSync)(this.receiptFilePath, signed.signed + "\n");
           if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
         } catch {
         }
+        this.reporter?.record(signed.signed, callLine);
         this.receiptBuffer.add(log.request_id, signed.signed);
         if (this.admissionResult?.agent_id) {
           this.evidenceStore.record(this.admissionResult.agent_id, this.config.signing?.issuer || "protect-mcp");
@@ -37452,12 +37680,14 @@ var ProtectGateway = class {
           at: new Date(log.timestamp).toISOString()
         });
         try {
-          (0, import_node_fs7.appendFileSync)(this.receiptFilePath, tombstone + "\n");
+          (0, import_node_fs8.appendFileSync)(this.receiptFilePath, tombstone + "\n");
         } catch {
         }
         process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
 `);
       }
+    } else if (this.reporter) {
+      this.reporter.record(void 0, callLine);
     }
   }
   makeErrorResponse(id, code2, message) {
@@ -37505,6 +37735,15 @@ var ProtectGateway = class {
       this.log(`Wrapping: ${command} ${args.join(" ")}`);
     }
     this.log(`Approval nonce: ${this.approvalNonce}`);
+    if (this.standard) this.log(`Standard in force: ${this.standard.request_id} (${this.standard.summary})`);
+    if (this.reporter) {
+      this.log(`Record lands on ${new URL(this.reporter.url).origin}/standard?s=${this.reporter.sid} as run ${this.reporter.runId}`);
+      if (!isSigningEnabled()) this.log("Warning: signing is not configured, so only unsigned call lines reach the page; add a signing key to protect-mcp.json for receipts");
+      const reporter = this.reporter;
+      process.once("beforeExit", () => {
+        void reporter.flush();
+      });
+    }
     const childEnv = { ...process.env };
     if (this.config.credentials) {
       for (const [label, credConfig] of Object.entries(this.config.credentials)) {
@@ -38050,9 +38289,9 @@ function collectSignedReceipts(logs) {
 }
 
 // src/simulate.ts
-var import_node_fs8 = require("fs");
+var import_node_fs9 = require("fs");
 function parseLogFile(path) {
-  const raw = (0, import_node_fs8.readFileSync)(path, "utf-8");
+  const raw = (0, import_node_fs9.readFileSync)(path, "utf-8");
   const entries = [];
   for (const line of raw.split("\n")) {
     const trimmed = line.trim();
@@ -38181,13 +38420,13 @@ function formatSimulation(summary) {
 }
 
 // src/report.ts
-var import_node_fs9 = require("fs");
+var import_node_fs10 = require("fs");
 function generateReport(logPath, receiptPath, periodDays) {
   const now = /* @__PURE__ */ new Date();
   const from = new Date(now.getTime() - periodDays * 864e5);
   const entries = [];
-  if ((0, import_node_fs9.existsSync)(logPath)) {
-    const raw = (0, import_node_fs9.readFileSync)(logPath, "utf-8");
+  if ((0, import_node_fs10.existsSync)(logPath)) {
+    const raw = (0, import_node_fs10.readFileSync)(logPath, "utf-8");
     for (const line of raw.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed) continue;
@@ -38207,8 +38446,8 @@ function generateReport(logPath, receiptPath, periodDays) {
   let receiptsSigned = 0;
   let signerKid = "";
   let signerIssuer = "";
-  if ((0, import_node_fs9.existsSync)(receiptPath)) {
-    const raw = (0, import_node_fs9.readFileSync)(receiptPath, "utf-8");
+  if ((0, import_node_fs10.existsSync)(receiptPath)) {
+    const raw = (0, import_node_fs10.readFileSync)(receiptPath, "utf-8");
     for (const line of raw.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed) continue;
@@ -38499,18 +38738,18 @@ function validateEvidenceReceipt(receipt) {
 
 // src/hook-server.ts
 var import_node_http2 = require("http");
-var import_node_crypto8 = require("crypto");
-var import_node_fs12 = require("fs");
+var import_node_crypto9 = require("crypto");
+var import_node_fs13 = require("fs");
 var import_node_path8 = require("path");
 
 // src/scopeblind-bridge.ts
-var import_node_crypto5 = require("crypto");
-var import_node_fs10 = require("fs");
+var import_node_crypto6 = require("crypto");
+var import_node_fs11 = require("fs");
 var import_node_os = require("os");
 var import_node_path6 = require("path");
 
 // src/egress-guard.ts
-var import_node_crypto4 = require("crypto");
+var import_node_crypto5 = require("crypto");
 var EGRESS_SUMMARY_TYPE = "scopeblind.egress_summary.v1";
 var EGRESS_SUMMARY_VERSION = 1;
 var EGRESS_SUMMARY_FIELDS = /* @__PURE__ */ new Set([
@@ -38559,7 +38798,7 @@ function integer(v) {
   return typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : void 0;
 }
 function hmacCommitment(domain, value, opts) {
-  return `hmac-sha256:${(0, import_node_crypto4.createHmac)("sha256", opts.pseudonymKey).update(`${domain}\0${opts.tenantScope || ""}\0${String(value ?? "")}`).digest("hex")}`;
+  return `hmac-sha256:${(0, import_node_crypto5.createHmac)("sha256", opts.pseudonymKey).update(`${domain}\0${opts.tenantScope || ""}\0${String(value ?? "")}`).digest("hex")}`;
 }
 function isReceiptCommitment(value) {
   return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value);
@@ -38885,27 +39124,27 @@ function parseConfiguredPseudonymKey(value) {
 }
 function loadOrCreatePseudonymKey(env, base, slug) {
   const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path6.join)((0, import_node_os.homedir)(), ".protect-mcp", "egress-keys");
-  const scopeDigest = (0, import_node_crypto5.createHash)("sha256").update(`${base}\0${slug}`).digest("hex");
+  const scopeDigest = (0, import_node_crypto6.createHash)("sha256").update(`${base}\0${slug}`).digest("hex");
   const path = (0, import_node_path6.join)(dir, `${scopeDigest}.key`);
-  (0, import_node_fs10.mkdirSync)(dir, { recursive: true, mode: 448 });
-  (0, import_node_fs10.chmodSync)(dir, 448);
+  (0, import_node_fs11.mkdirSync)(dir, { recursive: true, mode: 448 });
+  (0, import_node_fs11.chmodSync)(dir, 448);
   try {
-    const existing = (0, import_node_fs10.readFileSync)(path);
+    const existing = (0, import_node_fs11.readFileSync)(path);
     if (existing.length !== 32) throw new Error(`local egress key has invalid length: ${path}`);
-    (0, import_node_fs10.chmodSync)(path, 384);
+    (0, import_node_fs11.chmodSync)(path, 384);
     return existing;
   } catch (err) {
     if (err?.code !== "ENOENT") throw err;
   }
-  const fresh = (0, import_node_crypto5.randomBytes)(32);
+  const fresh = (0, import_node_crypto6.randomBytes)(32);
   try {
-    (0, import_node_fs10.writeFileSync)(path, fresh, { mode: 384, flag: "wx" });
+    (0, import_node_fs11.writeFileSync)(path, fresh, { mode: 384, flag: "wx" });
     return fresh;
   } catch (err) {
     if (err?.code !== "EEXIST") throw err;
-    const existing = (0, import_node_fs10.readFileSync)(path);
+    const existing = (0, import_node_fs11.readFileSync)(path);
     if (existing.length !== 32) throw new Error(`local egress key has invalid length: ${path}`);
-    (0, import_node_fs10.chmodSync)(path, 384);
+    (0, import_node_fs11.chmodSync)(path, 384);
     return existing;
   }
 }
@@ -39037,19 +39276,19 @@ function buildEnrichment(tool, input) {
 }
 
 // src/mandate-lifecycle.ts
-var import_node_crypto7 = require("crypto");
-var import_node_fs11 = require("fs");
+var import_node_crypto8 = require("crypto");
+var import_node_fs12 = require("fs");
 var import_node_path7 = require("path");
 
 // src/webauthn-approval.ts
-var import_node_crypto6 = require("crypto");
+var import_node_crypto7 = require("crypto");
 var import_p256 = require("@noble/curves/p256");
 var import_ed255193 = require("@noble/curves/ed25519");
 var import_sha2566 = require("@noble/hashes/sha256");
 var import_utils6 = require("@noble/hashes/utils");
 function createApprovalChallenge(requestId, toolName, agentId, rpId = "scopeblind.com", timeoutSeconds = 300, boundChallenge) {
-  const challenge = boundChallenge ?? base64urlEncode((0, import_node_crypto6.randomBytes)(32));
-  const contextHash = (0, import_node_crypto6.createHash)("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
+  const challenge = boundChallenge ?? base64urlEncode((0, import_node_crypto7.randomBytes)(32));
+  const contextHash = (0, import_node_crypto7.createHash)("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
   return {
     challenge,
     requestId,
@@ -39158,7 +39397,7 @@ function createApprovalReceiptPayload(challenge, result) {
     context_hash: result.contextHash,
     approved_at: result.approvedAt,
     // Hash the credential ID for privacy — don't store the raw ID
-    credential_id_hash: (0, import_node_crypto6.createHash)("sha256").update(result.credentialId).digest("hex").slice(0, 16)
+    credential_id_hash: (0, import_node_crypto7.createHash)("sha256").update(result.credentialId).digest("hex").slice(0, 16)
   };
 }
 function base64urlEncode(buffer) {
@@ -39177,20 +39416,20 @@ function concatBytes(a, b) {
 }
 function bytesEqual(a, b) {
   if (a.length !== b.length) return false;
-  return (0, import_node_crypto6.timingSafeEqual)(Buffer.from(a), Buffer.from(b));
+  return (0, import_node_crypto7.timingSafeEqual)(Buffer.from(a), Buffer.from(b));
 }
 function constantTimeStrEqual(a, b) {
   const ab = Buffer.from(a, "utf8");
   const bb = Buffer.from(b, "utf8");
   if (ab.length !== bb.length) return false;
-  return (0, import_node_crypto6.timingSafeEqual)(ab, bb);
+  return (0, import_node_crypto7.timingSafeEqual)(ab, bb);
 }
 
 // src/mandate-lifecycle.ts
 var MANDATE_REGISTRY_SCHEMA = "scopeblind.mandate-registry.v1";
 var MANDATE_PROPOSAL_SCHEMA = "scopeblind.mandate-proposal.v1";
 var MANDATE_APPROVAL_SCHEMA = "scopeblind.mandate-approval.v1";
-var SHA256 = (value) => (0, import_node_crypto7.createHash)("sha256").update(value).digest("hex");
+var SHA256 = (value) => (0, import_node_crypto8.createHash)("sha256").update(value).digest("hex");
 function nowIso(now) {
   return (now || /* @__PURE__ */ new Date()).toISOString();
 }
@@ -39216,7 +39455,7 @@ function controllerKeyMaterial(c) {
   return (c.type === "ed25519" ? c.public_key : c.credential_public_key?.publicKeyHex || "").toLowerCase();
 }
 function policyApprovalChallenge(proposal, controllerId) {
-  return (0, import_node_crypto7.createHash)("sha256").update(Buffer.from(canonicalize({
+  return (0, import_node_crypto8.createHash)("sha256").update(Buffer.from(canonicalize({
     purpose: "scopeblind:policy-change",
     proposed_by: proposal.proposed_by,
     proposal_id: proposal.proposal_id,
@@ -39238,7 +39477,7 @@ function mandatePaths(cedarDir) {
   };
 }
 function loadGateSigner(keyPath) {
-  const raw = JSON.parse((0, import_node_fs11.readFileSync)(keyPath, "utf-8"));
+  const raw = JSON.parse((0, import_node_fs12.readFileSync)(keyPath, "utf-8"));
   if (typeof raw.privateKey !== "string" || !/^[0-9a-f]{64}$/i.test(raw.privateKey)) {
     throw new Error("gate key must contain a 32-byte hexadecimal privateKey");
   }
@@ -39256,11 +39495,11 @@ function loadGateSigner(keyPath) {
   };
 }
 function snapshotFromDirectory(cedarDir, compiledAt) {
-  const entries = (0, import_node_fs11.readdirSync)(cedarDir, { encoding: "utf-8" }).filter((name) => name.endsWith(".cedar")).sort();
+  const entries = (0, import_node_fs12.readdirSync)(cedarDir, { encoding: "utf-8" }).filter((name) => name.endsWith(".cedar")).sort();
   if (entries.length === 0) throw new Error(`no Cedar policy files found in ${cedarDir}`);
   const files = entries.map((name) => {
     if (!safePolicyFileName(name)) throw new Error(`unsafe Cedar policy filename: ${name}`);
-    const content = (0, import_node_fs11.readFileSync)((0, import_node_path7.join)(cedarDir, name), "utf-8");
+    const content = (0, import_node_fs12.readFileSync)((0, import_node_path7.join)(cedarDir, name), "utf-8");
     return { name, content, sha256: SHA256(Buffer.from(content, "utf-8")) };
   });
   const digest = digestPolicyFiles("cedar", files).policy_digest;
@@ -39295,13 +39534,13 @@ function verifyGateEnvelope(envelope, gate) {
 }
 function writeAtomic(path, contents) {
   const parent = (0, import_node_path7.dirname)(path);
-  (0, import_node_fs11.mkdirSync)(parent, { recursive: true });
-  const temp = (0, import_node_path7.join)(parent, `.${(0, import_node_path7.basename)(path)}.${process.pid}.${(0, import_node_crypto7.randomUUID)()}.tmp`);
+  (0, import_node_fs12.mkdirSync)(parent, { recursive: true });
+  const temp = (0, import_node_path7.join)(parent, `.${(0, import_node_path7.basename)(path)}.${process.pid}.${(0, import_node_crypto8.randomUUID)()}.tmp`);
   try {
-    (0, import_node_fs11.writeFileSync)(temp, contents, { encoding: "utf-8", mode: 384 });
-    (0, import_node_fs11.renameSync)(temp, path);
+    (0, import_node_fs12.writeFileSync)(temp, contents, { encoding: "utf-8", mode: 384 });
+    (0, import_node_fs12.renameSync)(temp, path);
   } finally {
-    if ((0, import_node_fs11.existsSync)(temp)) (0, import_node_fs11.rmSync)(temp, { force: true });
+    if ((0, import_node_fs12.existsSync)(temp)) (0, import_node_fs12.rmSync)(temp, { force: true });
   }
 }
 function persistRegistry(cedarDir, registry) {
@@ -39310,15 +39549,15 @@ function persistRegistry(cedarDir, registry) {
   writeAtomic(paths.registry, JSON.stringify(registry, null, 2) + "\n");
   const last = registry.history[registry.history.length - 1];
   if (last) {
-    (0, import_node_fs11.writeFileSync)(paths.auditLog, JSON.stringify(last) + "\n", { encoding: "utf-8", flag: "a", mode: 384 });
+    (0, import_node_fs12.writeFileSync)(paths.auditLog, JSON.stringify(last) + "\n", { encoding: "utf-8", flag: "a", mode: 384 });
   }
 }
 function persistSnapshot(cedarDir, snapshot) {
   const paths = mandatePaths(cedarDir);
-  (0, import_node_fs11.mkdirSync)(paths.snapshots, { recursive: true, mode: 448 });
+  (0, import_node_fs12.mkdirSync)(paths.snapshots, { recursive: true, mode: 448 });
   const name = `${snapshot.policy_digest.replace(/^sha256:/, "")}.json`;
   const output = (0, import_node_path7.join)(paths.snapshots, name);
-  if (!(0, import_node_fs11.existsSync)(output)) writeAtomic(output, JSON.stringify(snapshot, null, 2) + "\n");
+  if (!(0, import_node_fs12.existsSync)(output)) writeAtomic(output, JSON.stringify(snapshot, null, 2) + "\n");
 }
 function sourceStatements(snapshot) {
   const byFile = /* @__PURE__ */ new Map();
@@ -39403,7 +39642,7 @@ function transition(registry, signer, event, headBefore, headAfter, fields = {},
 function initializeMandateRegistry(input) {
   const { cedarDir, signer, controllers } = input;
   const paths = mandatePaths(cedarDir);
-  if ((0, import_node_fs11.existsSync)(paths.registry)) throw new Error(`managed mandate registry already exists: ${paths.registry}`);
+  if ((0, import_node_fs12.existsSync)(paths.registry)) throw new Error(`managed mandate registry already exists: ${paths.registry}`);
   if (!controllers.length) throw new Error("at least one distinct controller is required before managing a mandate");
   const ids = /* @__PURE__ */ new Set();
   for (const controller of controllers) {
@@ -39453,9 +39692,9 @@ function initializeMandateRegistry(input) {
 }
 function loadMandateRegistry(cedarDir) {
   const path = mandatePaths(cedarDir).registry;
-  if (!(0, import_node_fs11.existsSync)(path)) return null;
+  if (!(0, import_node_fs12.existsSync)(path)) return null;
   try {
-    return JSON.parse((0, import_node_fs11.readFileSync)(path, "utf-8"));
+    return JSON.parse((0, import_node_fs12.readFileSync)(path, "utf-8"));
   } catch (error) {
     throw new Error(`could not parse mandate registry: ${error instanceof Error ? error.message : "unknown error"}`);
   }
@@ -39640,23 +39879,23 @@ function installSnapshotAtomically(cedarDir, snapshot) {
   const target = (0, import_node_path7.resolve)(cedarDir);
   const parent = (0, import_node_path7.dirname)(target);
   const base = (0, import_node_path7.basename)(target);
-  if (!(0, import_node_fs11.existsSync)(target) || !(0, import_node_fs11.statSync)(target).isDirectory()) throw new Error(`managed Cedar directory is missing: ${target}`);
-  const stage = (0, import_node_path7.join)(parent, `.${base}.scopeblind-stage-${process.pid}-${(0, import_node_crypto7.randomUUID)()}`);
-  const backup = (0, import_node_path7.join)(parent, `.${base}.scopeblind-backup-${process.pid}-${(0, import_node_crypto7.randomUUID)()}`);
-  (0, import_node_fs11.mkdirSync)(stage, { recursive: true, mode: 448 });
+  if (!(0, import_node_fs12.existsSync)(target) || !(0, import_node_fs12.statSync)(target).isDirectory()) throw new Error(`managed Cedar directory is missing: ${target}`);
+  const stage = (0, import_node_path7.join)(parent, `.${base}.scopeblind-stage-${process.pid}-${(0, import_node_crypto8.randomUUID)()}`);
+  const backup = (0, import_node_path7.join)(parent, `.${base}.scopeblind-backup-${process.pid}-${(0, import_node_crypto8.randomUUID)()}`);
+  (0, import_node_fs12.mkdirSync)(stage, { recursive: true, mode: 448 });
   try {
-    for (const file of snapshot.files) (0, import_node_fs11.writeFileSync)((0, import_node_path7.join)(stage, file.name), file.content, { encoding: "utf-8", mode: 384 });
-    (0, import_node_fs11.renameSync)(target, backup);
+    for (const file of snapshot.files) (0, import_node_fs12.writeFileSync)((0, import_node_path7.join)(stage, file.name), file.content, { encoding: "utf-8", mode: 384 });
+    (0, import_node_fs12.renameSync)(target, backup);
     try {
-      (0, import_node_fs11.renameSync)(stage, target);
+      (0, import_node_fs12.renameSync)(stage, target);
     } catch (error) {
-      (0, import_node_fs11.renameSync)(backup, target);
+      (0, import_node_fs12.renameSync)(backup, target);
       throw error;
     }
-    (0, import_node_fs11.rmSync)(backup, { recursive: true, force: true });
+    (0, import_node_fs12.rmSync)(backup, { recursive: true, force: true });
   } finally {
-    if ((0, import_node_fs11.existsSync)(stage)) (0, import_node_fs11.rmSync)(stage, { recursive: true, force: true });
-    if ((0, import_node_fs11.existsSync)(backup) && !(0, import_node_fs11.existsSync)(target)) (0, import_node_fs11.renameSync)(backup, target);
+    if ((0, import_node_fs12.existsSync)(stage)) (0, import_node_fs12.rmSync)(stage, { recursive: true, force: true });
+    if ((0, import_node_fs12.existsSync)(backup) && !(0, import_node_fs12.existsSync)(target)) (0, import_node_fs12.renameSync)(backup, target);
   }
 }
 function addTransition(registry, signer, item, at) {
@@ -39702,7 +39941,7 @@ function createPolicyProposal(input) {
   }
   const draftBase = {
     schema: MANDATE_PROPOSAL_SCHEMA,
-    proposal_id: `proposal-${(0, import_node_crypto7.randomUUID)()}`,
+    proposal_id: `proposal-${(0, import_node_crypto8.randomUUID)()}`,
     created_at: createdAt,
     expires_at: input.expiresAt,
     proposed_by: { gate_kid: input.signer.kid, gate_public_key: input.signer.publicKey },
@@ -40010,8 +40249,8 @@ var RECEIPTS_FILE2 = ".protect-mcp-receipts.jsonl";
 var PAYLOAD_HASH_THRESHOLD = 1024;
 function resumeReceiptChain(receiptFilePath) {
   try {
-    if (!(0, import_node_fs12.existsSync)(receiptFilePath)) return null;
-    const lines = (0, import_node_fs12.readFileSync)(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+    if (!(0, import_node_fs13.existsSync)(receiptFilePath)) return null;
+    const lines = (0, import_node_fs13.readFileSync)(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
     if (lines.length === 0) return null;
     return receiptHash(JSON.parse(lines[lines.length - 1]));
   } catch {
@@ -40041,7 +40280,7 @@ function computePayloadDigest(input) {
     return void 0;
   }
   return {
-    input_hash: (0, import_node_crypto8.createHash)("sha256").update(content).digest("hex"),
+    input_hash: (0, import_node_crypto9.createHash)("sha256").update(content).digest("hex"),
     input_size: size,
     truncated: true,
     preview: content.slice(0, 256)
@@ -40054,7 +40293,7 @@ function computeOutputDigest(output) {
     return void 0;
   }
   return {
-    output_hash: (0, import_node_crypto8.createHash)("sha256").update(content).digest("hex"),
+    output_hash: (0, import_node_crypto9.createHash)("sha256").update(content).digest("hex"),
     output_size: size
   };
 }
@@ -40067,7 +40306,7 @@ function detectSandboxState() {
   }
   if (process.platform === "linux") {
     try {
-      const procStatus = (0, import_node_fs12.readFileSync)("/proc/self/status", "utf-8");
+      const procStatus = (0, import_node_fs13.readFileSync)("/proc/self/status", "utf-8");
       if (procStatus.includes("Seccomp:	2")) return "enabled";
     } catch {
     }
@@ -40077,7 +40316,7 @@ function detectSandboxState() {
 async function handlePreToolUse(input, state) {
   const hookStart = Date.now();
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto8.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto9.randomUUID)().slice(0, 12);
   state.inflightTools.set(requestId, {
     tool: toolName,
     startedAt: hookStart,
@@ -40116,6 +40355,57 @@ async function handlePreToolUse(input, state) {
     ...input.teamName && { team_name: input.teamName },
     ...input.agentType && { agent_type: input.agentType }
   };
+  if (state.standard) {
+    const std = state.standard;
+    const common = () => ({ request_id: requestId, hook_event: "PreToolUse", swarm: swarm.team_name ? swarm : void 0, timing: { hook_latency_ms: Date.now() - hookStart, started_at: hookStart }, payload_digest: payloadDigest, action_readback: actionReadback, sandbox_state: detectSandboxState() });
+    const refuse = (reason_code, why) => {
+      emitDecisionLog(state, { tool: toolName, decision: "deny", reason_code, ...common() });
+      if (!state.enforce) return null;
+      return { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `[ScopeBlind] ${why}` } };
+    };
+    if (std.tools && !std.tools.includes(toolName)) {
+      const r = refuse("standard_tool_not_allowed", `"${toolName}" is not among the tools the standard permits.`);
+      if (r) return r;
+    } else {
+      const amount = checkAmount(std, input.toolInput);
+      if (!amount.ok) {
+        const r = refuse(amount.reason, `"${toolName}" refused by the standard: ${amount.detail}.`);
+        if (r) return r;
+      } else {
+        const person = personRequired(std, input.toolInput);
+        if (person.required) {
+          const hid = heldIdFor(state.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
+          const page = state.reporter ? `${new URL(state.reporter.url).origin}/standard?s=${state.reporter.sid}#held-${hid}` : "";
+          const verdict = state.reporter ? await state.reporter.decision(hid) : null;
+          if (verdict === "unreachable") {
+            const r = refuse("standard_page_unreachable", `"${toolName}" needs a named person's approval and the standard's page could not be reached; retry the same call later.`);
+            if (r) return r;
+          } else if (verdict) {
+            state.approvalsToRecord.set(requestId, { hid, approver_key_id: verdict.approver_key_id, digest: verdict.digest, page });
+            if (verdict.decision === "deny") {
+              const r = refuse("person_denied", `"${toolName}" was denied by ${verdict.approver_key_id} on the standard's page${verdict.note ? `: ${verdict.note}` : ""}.`);
+              if (r) return r;
+            }
+          } else {
+            const amt = readAmount(input.toolInput);
+            if (state.enforce && state.reporter) {
+              await state.reporter.hold({ hid, request_id: requestId, tool: toolName, readback: { summary: actionReadback.summary, payload_hash: actionReadback.payload_hash, amount: amt ? amt.minor / 100 : null, currency: amt?.currency || null }, reason: person.detail });
+            }
+            emitDecisionLog(state, { tool: toolName, decision: "require_approval", reason_code: "standard_requires_person", ...common() });
+            if (state.enforce) {
+              return {
+                hookSpecificOutput: {
+                  hookEventName: "PreToolUse",
+                  permissionDecision: "deny",
+                  permissionDecisionReason: `[ScopeBlind] ${person.detail}. Exact action: ${actionReadback.summary}. ${page ? `Waiting for the named person at ${page}; retry this exact call once they have decided there. A changed call is a new action.` : "No standard page is configured (--report), so it cannot be decided here."}`
+                }
+              };
+            }
+          }
+        }
+      }
+    }
+  }
   maybeReloadCedar(state);
   if (state.cedarPolicies) {
     try {
@@ -40303,7 +40593,7 @@ async function handlePreToolUse(input, state) {
 }
 async function handlePostToolUse(input, state) {
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto8.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto9.randomUUID)().slice(0, 12);
   const now = Date.now();
   const inflight = state.inflightTools.get(requestId);
   const timing = {
@@ -40315,7 +40605,7 @@ async function handlePostToolUse(input, state) {
     state.inflightTools.delete(requestId);
   }
   const outputDigest = computeOutputDigest(input.toolResult);
-  const receiptId = (0, import_node_crypto8.randomUUID)().slice(0, 8);
+  const receiptId = (0, import_node_crypto9.randomUUID)().slice(0, 8);
   const policyName = state.cedarPolicies ? `cedar:${state.policyDigest}` : state.policyDigest;
   const additionalContext = `[ScopeBlind] Tool call receipted. Policy: ${policyName}. Decision: allow. Receipt: #${receiptId}.` + (timing.tool_duration_ms !== void 0 ? ` Duration: ${timing.tool_duration_ms}ms.` : "") + (timing.hook_latency_ms !== void 0 ? ` Overhead: ${timing.hook_latency_ms}ms.` : "");
   emitDecisionLog(state, {
@@ -40347,7 +40637,7 @@ function handleSubagentStart(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_started",
-    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
     hook_event: "SubagentStart",
     swarm: {
       ...state.swarmContext,
@@ -40368,7 +40658,7 @@ function handleSubagentStop(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_stopped",
-    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
     hook_event: "SubagentStop",
     swarm: {
       ...state.swarmContext,
@@ -40383,7 +40673,7 @@ function handleTaskCreated(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_created",
-    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
     hook_event: "TaskCreated",
     swarm: {
       ...state.swarmContext,
@@ -40397,7 +40687,7 @@ function handleTaskCompleted(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_completed",
-    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
     hook_event: "TaskCompleted",
     swarm: state.swarmContext
   });
@@ -40408,7 +40698,7 @@ function handleSessionStart(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_started",
-    request_id: input.sessionId || (0, import_node_crypto8.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto9.randomUUID)().slice(0, 12),
     hook_event: "SessionStart",
     swarm: state.swarmContext,
     sandbox_state: detectSandboxState()
@@ -40431,7 +40721,7 @@ function handleSessionEnd(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_ended",
-    request_id: input.sessionId || (0, import_node_crypto8.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto9.randomUUID)().slice(0, 12),
     hook_event: "SessionEnd",
     swarm: state.swarmContext
   });
@@ -40442,7 +40732,7 @@ function handleTeammateIdle(input, state) {
     tool: `teammate:${input.agentId || "unknown"}`,
     decision: "allow",
     reason_code: "teammate_idle",
-    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
     hook_event: "TeammateIdle",
     swarm: {
       ...state.swarmContext,
@@ -40470,7 +40760,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "deny",
       reason_code: "config_tamper_detected",
-      request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange",
       swarm: state.swarmContext
     });
@@ -40479,7 +40769,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "allow",
       reason_code: "config_changed",
-      request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange"
     });
   }
@@ -40501,7 +40791,7 @@ function handleStop(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "agent_stopped",
-    request_id: (0, import_node_crypto8.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
     hook_event: "Stop",
     swarm: state.swarmContext
   });
@@ -40509,8 +40799,8 @@ function handleStop(input, state) {
 }
 function emitDecisionLog(state, entry) {
   const mode = state.enforce ? "enforce" : "shadow";
-  const otelTraceId = (0, import_node_crypto8.randomBytes)(16).toString("hex");
-  const otelSpanId = (0, import_node_crypto8.randomBytes)(8).toString("hex");
+  const otelTraceId = (0, import_node_crypto9.randomBytes)(16).toString("hex");
+  const otelSpanId = (0, import_node_crypto9.randomBytes)(8).toString("hex");
   const log = {
     v: 2,
     tool: entry.tool || "unknown",
@@ -40518,7 +40808,7 @@ function emitDecisionLog(state, entry) {
     reason_code: entry.reason_code || "default_allow",
     policy_digest: state.policyDigest,
     policy_engine: state.cedarPolicies ? "cedar" : "built-in",
-    request_id: entry.request_id || (0, import_node_crypto8.randomUUID)().slice(0, 12),
+    request_id: entry.request_id || (0, import_node_crypto9.randomUUID)().slice(0, 12),
     timestamp: Date.now(),
     mode,
     otel_trace_id: otelTraceId,
@@ -40542,21 +40832,30 @@ function emitDecisionLog(state, entry) {
   };
   const enr = state.inflightTools.get(log.request_id)?.enrichment;
   if (enr) log.enrichment = enr;
+  if (state.standard) log.standard = { request_id: state.standard.request_id, digest: state.standard.digest };
+  const approval = state.approvalsToRecord.get(log.request_id);
+  if (approval) {
+    log.approval = approval;
+    state.approvalsToRecord.delete(log.request_id);
+  }
+  const callLine = state.reporter ? JSON.stringify({ tool: log.tool, input: log.action_readback?.payload_preview ?? {}, decision: log.decision, request_id: log.request_id, at: new Date(log.timestamp).toISOString() }) : void 0;
+  if (state.reporter && !isSigningEnabled()) state.reporter.record(void 0, callLine);
   process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
   try {
-    (0, import_node_fs12.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
+    (0, import_node_fs13.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
   } catch {
   }
   if (isSigningEnabled()) {
     const signed = signDecision(log, state.lastReceiptHash || void 0);
     if (signed.signed) {
       try {
-        (0, import_node_fs12.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
+        (0, import_node_fs13.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
         if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
       } catch {
       }
       state.receiptBuffer.add(log.request_id, signed.signed);
+      state.reporter?.record(signed.signed, callLine);
       try {
         const bridge = getScopeBlindBridge();
         if (bridge.enabled()) {
@@ -40579,7 +40878,7 @@ function emitDecisionLog(state, entry) {
       };
       const tombstone = JSON.stringify(tombstoneObj);
       try {
-        (0, import_node_fs12.appendFileSync)(state.receiptFilePath, tombstone + "\n");
+        (0, import_node_fs13.appendFileSync)(state.receiptFilePath, tombstone + "\n");
         state.lastReceiptHash = receiptHash(tombstoneObj);
       } catch {
       }
@@ -40673,7 +40972,7 @@ async function startHookServer(options = {}) {
   }
   if (!jsonPolicy?.signing) {
     const keyPath = (0, import_node_path8.join)(dataDir, "keys", "gateway.json");
-    if ((0, import_node_fs12.existsSync)(keyPath)) {
+    if ((0, import_node_fs13.existsSync)(keyPath)) {
       gateKeyPath = keyPath;
       const warnings = await initSigning({ key_path: keyPath, issuer: "protect-mcp", enabled: true });
       for (const w of warnings) {
@@ -40767,6 +41066,22 @@ async function startHookServer(options = {}) {
 `
     );
   }
+  let standard = null;
+  let reporter = null;
+  if (options.standardPath) {
+    standard = loadStandardFile(options.standardPath);
+    process.stderr.write(`[PROTECT_MCP] Standard in force: ${standard.request_id} (${standard.summary})
+`);
+  }
+  if (options.reportUrl) {
+    if (!standard) throw new Error("--report needs --standard <standard.json>; the page belongs to a signed standard");
+    const token = options.reportToken || process.env.PROTECT_MCP_REPORT_TOKEN || "";
+    if (!token) throw new Error("--report needs the page's write token: --report-token <token> or PROTECT_MCP_REPORT_TOKEN");
+    reporter = new RecordReporter({ url: options.reportUrl, token, runId: options.runId || `run-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 19).replace(/[-:T]/g, "")}` });
+    process.stderr.write(`[PROTECT_MCP] Record lands on ${new URL(reporter.url).origin}/standard?s=${reporter.sid} as run ${reporter.runId}
+`);
+    if (!isSigningEnabled()) process.stderr.write("[PROTECT_MCP] Warning: signing is not configured, so only unsigned call lines reach the page; add a signing key for receipts\n");
+  }
   const state = {
     cedarPolicies,
     cedarDir: cedarDir || null,
@@ -40789,7 +41104,10 @@ async function startHookServer(options = {}) {
     lastReceiptHash: resumeReceiptChain((0, import_node_path8.join)(dataDir, RECEIPTS_FILE2)),
     permissionSuggestions: /* @__PURE__ */ new Map(),
     configAlerts: [],
-    managedMandate
+    managedMandate,
+    standard,
+    reporter,
+    approvalsToRecord: /* @__PURE__ */ new Map()
   };
   const server = (0, import_node_http2.createServer)(async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -41064,7 +41382,7 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs12.existsSync)((0, import_node_path8.join)(dataDir, ".scopeblind"));
+    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs13.existsSync)((0, import_node_path8.join)(dataDir, ".scopeblind"));
     if (!hasSlug) {
       w(`  Dashboard  npx protect-mcp connect
 `);
@@ -41095,9 +41413,9 @@ async function startHookServer(options = {}) {
 function newestCedarMtime(dir) {
   try {
     let newest = 0;
-    for (const f of (0, import_node_fs12.readdirSync)(dir)) {
+    for (const f of (0, import_node_fs13.readdirSync)(dir)) {
       if (!f.endsWith(".cedar")) continue;
-      const m = (0, import_node_fs12.statSync)((0, import_node_path8.join)(dir, f)).mtimeMs;
+      const m = (0, import_node_fs13.statSync)((0, import_node_path8.join)(dir, f)).mtimeMs;
       if (m > newest) newest = m;
     }
     return newest;
@@ -41181,8 +41499,8 @@ function maybeReloadCedar(state) {
 function findCedarDir() {
   for (const candidate of ["cedar", "policies", "."]) {
     try {
-      if ((0, import_node_fs12.existsSync)(candidate)) {
-        const files = (0, import_node_fs12.readdirSync)(candidate, { encoding: "utf-8" });
+      if ((0, import_node_fs13.existsSync)(candidate)) {
+        const files = (0, import_node_fs13.readdirSync)(candidate, { encoding: "utf-8" });
         if (files.some((f) => f.endsWith(".cedar"))) {
           return candidate;
         }
@@ -42103,7 +42421,7 @@ function policyPackIds() {
 }
 
 // src/connector-pilots.ts
-var import_node_fs13 = require("fs");
+var import_node_fs14 = require("fs");
 var import_node_path9 = require("path");
 var defaultPermit2 = `
 // Default posture: observe all non-matching tools so the connector can be piloted in shadow mode.
@@ -42699,7 +43017,7 @@ function connectorDirectory(dir) {
 }
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
-  (0, import_node_fs13.mkdirSync)(directory, { recursive: true });
+  (0, import_node_fs14.mkdirSync)(directory, { recursive: true });
   const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id) => {
     const pilot = getConnectorPilot(id);
     if (!pilot) throw new Error(`Unknown connector pilot: ${id}`);
@@ -42709,23 +43027,23 @@ function writeConnectorPilots(opts) {
   for (const pilot of selected) {
     const configPath = (0, import_node_path9.join)(directory, `${pilot.id}.json`);
     const policyPath = (0, import_node_path9.join)(directory, `${pilot.id}.cedar`);
-    if (!opts.force && ((0, import_node_fs13.existsSync)(configPath) || (0, import_node_fs13.existsSync)(policyPath))) {
+    if (!opts.force && ((0, import_node_fs14.existsSync)(configPath) || (0, import_node_fs14.existsSync)(policyPath))) {
       throw new Error(`Refusing to overwrite ${pilot.id}. Re-run with --force if intentional.`);
     }
-    (0, import_node_fs13.writeFileSync)(configPath, JSON.stringify({ ...pilot.config, id: pilot.id, name: pilot.name, category: pilot.category, tools: pilot.tools, actions: pilot.actions, setup: pilot.setup }, null, 2) + "\n");
-    (0, import_node_fs13.writeFileSync)(policyPath, pilot.cedar.endsWith("\n") ? pilot.cedar : `${pilot.cedar}
+    (0, import_node_fs14.writeFileSync)(configPath, JSON.stringify({ ...pilot.config, id: pilot.id, name: pilot.name, category: pilot.category, tools: pilot.tools, actions: pilot.actions, setup: pilot.setup }, null, 2) + "\n");
+    (0, import_node_fs14.writeFileSync)(policyPath, pilot.cedar.endsWith("\n") ? pilot.cedar : `${pilot.cedar}
 `);
     written.push(configPath, policyPath);
     for (const artifact of pilot.artifacts || []) {
       const artifactPath = connectorArtifactPath(directory, artifact.path);
-      (0, import_node_fs13.mkdirSync)((0, import_node_path9.dirname)(artifactPath), { recursive: true });
-      (0, import_node_fs13.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
+      (0, import_node_fs14.mkdirSync)((0, import_node_path9.dirname)(artifactPath), { recursive: true });
+      (0, import_node_fs14.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
 `);
-      if (artifact.executable) (0, import_node_fs13.chmodSync)(artifactPath, 493);
+      if (artifact.executable) (0, import_node_fs14.chmodSync)(artifactPath, 493);
       written.push(artifactPath);
     }
   }
-  (0, import_node_fs13.writeFileSync)((0, import_node_path9.join)(directory, "README.md"), renderConnectorReadme(selected));
+  (0, import_node_fs14.writeFileSync)((0, import_node_path9.join)(directory, "README.md"), renderConnectorReadme(selected));
   written.push((0, import_node_path9.join)(directory, "README.md"));
   return { written, pilots: selected, directory };
 }
@@ -42738,11 +43056,11 @@ function connectorArtifactPath(directory, relativePath) {
 }
 function readInstalledConnectorPilots(dir) {
   const directory = connectorDirectory(dir);
-  if (!(0, import_node_fs13.existsSync)(directory)) return [];
-  return (0, import_node_fs13.readdirSync)(directory).filter((name) => name.endsWith(".json")).map((name) => {
+  if (!(0, import_node_fs14.existsSync)(directory)) return [];
+  return (0, import_node_fs14.readdirSync)(directory).filter((name) => name.endsWith(".json")).map((name) => {
     const configPath = (0, import_node_path9.join)(directory, name);
     try {
-      const parsed = JSON.parse((0, import_node_fs13.readFileSync)(configPath, "utf-8"));
+      const parsed = JSON.parse((0, import_node_fs14.readFileSync)(configPath, "utf-8"));
       const id = String(parsed.id || name.replace(/\.json$/, ""));
       const pilot = getConnectorPilot(id);
       return {
@@ -42809,7 +43127,7 @@ Next: run \`npx protect-mcp dashboard --open\` and review tool inventory, policy
 }
 
 // src/rekor-anchor.ts
-var import_node_crypto9 = require("crypto");
+var import_node_crypto10 = require("crypto");
 var REKOR_API = "https://rekor.sigstore.dev/api/v1";
 async function anchorToRekor(receiptHash2, signature, publicKeyPem) {
   const entry = {
@@ -42878,7 +43196,7 @@ async function verifyRekorAnchor(logIndex, expectedHash) {
 }
 function hashReceipt(receipt) {
   const canonical = JSON.stringify(receipt, Object.keys(receipt).sort());
-  return (0, import_node_crypto9.createHash)("sha256").update(canonical).digest("hex");
+  return (0, import_node_crypto10.createHash)("sha256").update(canonical).digest("hex");
 }
 function createLogAnchorField(anchor) {
   return {
@@ -42891,7 +43209,7 @@ function createLogAnchorField(anchor) {
 }
 
 // src/selective-disclosure.ts
-var import_node_crypto10 = require("crypto");
+var import_node_crypto11 = require("crypto");
 function redactFields(receipt, fieldsToRedact) {
   const redacted = JSON.parse(JSON.stringify(receipt));
   const salts = [];
@@ -42907,7 +43225,7 @@ function redactFields(receipt, fieldsToRedact) {
       if (i === parts.length - 1) {
         if (key in current) {
           const originalValue = current[key];
-          const salt = (0, import_node_crypto10.randomBytes)(16).toString("hex");
+          const salt = (0, import_node_crypto11.randomBytes)(16).toString("hex");
           const commitment = computeCommitment(salt, originalValue);
           salts.push({ field: fieldPath, salt, originalValue });
           current[key] = `sha256(salt + ${typeof originalValue === "string" ? "..." : JSON.stringify(originalValue).slice(0, 20) + "..."})`;
@@ -42979,11 +43297,11 @@ function createDisclosurePackage(allSalts, fieldsToDisclose) {
 }
 function computeCommitment(salt, value) {
   const serialized = typeof value === "string" ? value : JSON.stringify(value);
-  return (0, import_node_crypto10.createHash)("sha256").update(salt + serialized).digest("hex");
+  return (0, import_node_crypto11.createHash)("sha256").update(salt + serialized).digest("hex");
 }
 function hashObject(obj) {
   const canonical = JSON.stringify(obj, Object.keys(obj).sort());
-  return (0, import_node_crypto10.createHash)("sha256").update(canonical).digest("hex");
+  return (0, import_node_crypto11.createHash)("sha256").update(canonical).digest("hex");
 }
 
 // src/huggingface-export.ts
@@ -43365,7 +43683,7 @@ function evaluatePolicy(tool, policy) {
 }
 
 // src/evidence-authenticity.ts
-var import_node_crypto11 = require("crypto");
+var import_node_crypto12 = require("crypto");
 async function createEvidenceAttestation(input) {
   const tlsNotaryAvailable = await isTLSNotaryAvailable();
   if (tlsNotaryAvailable) {
@@ -43425,14 +43743,14 @@ async function verifyEvidenceAttestation(attestation) {
   }
 }
 function hashResponseBody(body) {
-  return (0, import_node_crypto11.createHash)("sha256").update(typeof body === "string" ? body : body).digest("hex");
+  return (0, import_node_crypto12.createHash)("sha256").update(typeof body === "string" ? body : body).digest("hex");
 }
 function createAttestationField(attestation) {
   return {
     evidence_authenticity: {
       version: attestation.version,
       method: attestation.method,
-      url_hash: (0, import_node_crypto11.createHash)("sha256").update(attestation.url).digest("hex").slice(0, 16),
+      url_hash: (0, import_node_crypto12.createHash)("sha256").update(attestation.url).digest("hex").slice(0, 16),
       response_hash: attestation.responseHash,
       fetched_at: attestation.fetchedAt,
       verified: attestation.verified,
@@ -43463,7 +43781,7 @@ async function createTLSNotaryAttestation(input) {
 }
 
 // src/c2pa-credentials.ts
-var import_node_crypto12 = require("crypto");
+var import_node_crypto13 = require("crypto");
 function createC2PAManifest(receipts, options) {
   const generator = options.generator || "protect-mcp";
   const version = options.version || "0.3.3";
@@ -43477,7 +43795,7 @@ function createC2PAManifest(receipts, options) {
     (r) => r.payload?.decision === "deny"
   );
   const receiptHashes = receipts.map(
-    (r) => (0, import_node_crypto12.createHash)("sha256").update(JSON.stringify(r)).digest("hex")
+    (r) => (0, import_node_crypto13.createHash)("sha256").update(JSON.stringify(r)).digest("hex")
   );
   const merkleRoot2 = computeMerkleRoot(receiptHashes);
   const assertions = [
@@ -43619,7 +43937,7 @@ function computeMerkleRoot(hashes) {
     const left = hashes[i];
     const right = i + 1 < hashes.length ? hashes[i + 1] : left;
     nextLevel.push(
-      (0, import_node_crypto12.createHash)("sha256").update(left + right).digest("hex")
+      (0, import_node_crypto13.createHash)("sha256").update(left + right).digest("hex")
     );
   }
   return computeMerkleRoot(nextLevel);
@@ -43672,7 +43990,7 @@ function toManifoldFormat(prediction) {
 }
 
 // src/agent-exchange.ts
-var import_node_crypto13 = require("crypto");
+var import_node_crypto14 = require("crypto");
 var ReceiptPropagator = class {
   issuer;
   signer;
@@ -43693,7 +44011,7 @@ var ReceiptPropagator = class {
   delegate(delegateId, options) {
     const now = /* @__PURE__ */ new Date();
     const receipt = {
-      receipt_id: `del_${(0, import_node_crypto13.randomUUID)().slice(0, 12)}`,
+      receipt_id: `del_${(0, import_node_crypto14.randomUUID)().slice(0, 12)}`,
       receipt_type: "delegation",
       issuer_id: this.issuer,
       event_time: now.toISOString(),
@@ -43750,7 +44068,7 @@ var ReceiptPropagator = class {
     const currentCount = this.delegationCallCounts.get(options.delegation_receipt) || 0;
     this.delegationCallCounts.set(options.delegation_receipt, currentCount + 1);
     const receipt = {
-      receipt_id: `act_${(0, import_node_crypto13.randomUUID)().slice(0, 12)}`,
+      receipt_id: `act_${(0, import_node_crypto14.randomUUID)().slice(0, 12)}`,
       receipt_type: "execution",
       issuer_id: this.issuer,
       event_time: (/* @__PURE__ */ new Date()).toISOString(),
@@ -43842,7 +44160,7 @@ function createReceiptChannel(orchestratorId) {
     async withDelegation(delegateId, tools, fn, options) {
       const delegation = propagator.delegate(delegateId, {
         tools,
-        scope: options?.scope || `task-${(0, import_node_crypto13.randomUUID)().slice(0, 8)}`,
+        scope: options?.scope || `task-${(0, import_node_crypto14.randomUUID)().slice(0, 8)}`,
         ttl: options?.ttl || 3600,
         maxCalls: options?.maxCalls
       });

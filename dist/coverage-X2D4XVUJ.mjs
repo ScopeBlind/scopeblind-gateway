@@ -7,7 +7,7 @@ import {
   initSigning,
   isSigningEnabled,
   signGenericArtifact
-} from "./chunk-7SHEPZV2.mjs";
+} from "./chunk-WG5V64D7.mjs";
 import {
   loadCedarPolicies,
   runEvaluatorSelfTest

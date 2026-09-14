@@ -280,7 +280,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.13.4 evaluate --cedar ./cedar --format claude"
+            "command": "npx protect-mcp@0.14.0 evaluate --cedar ./cedar --format claude"
           }
         ]
       }
@@ -291,7 +291,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.13.4 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx protect-mcp@0.14.0 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }
@@ -300,6 +300,60 @@ the version so a Claude Code session always runs the gate you tested:
 }
 ```
 
+### Put a signed standard in force, and let the record land on its page
+
+From 0.14.0 the gateway can hold the signed standard itself (the `standard.json`
+written and signed on [scopeblind.com/write](https://scopeblind.com/write)) next
+to the Cedar policy compiled from it, and report to the standard's own page:
+
+```bash
+npx protect-mcp@0.14.0 wrap --cedar ./policy --standard ./standard.json \
+  --report 'https://scopeblind.com/api/standard?s=<standard id>' --report-token <token> \
+  -- <your MCP server command>
+```
+
+With `--standard`, three of the standard's terms are enforced from the standard
+rather than inferred: a call to a tool the standard does not name is refused
+(`standard_tool_not_allowed`); a call whose amount is over the per-instruction
+limit, or in another currency, is refused before it runs
+(`standard_amount_over_limit`, `standard_currency_not_permitted`); and a call
+whose amount is above the approval threshold is **held** for the named person
+(`standard_requires_person`). Amounts are read from the call's `amount_minor`
+(integer minor units) or `amount` (major units) and `currency` fields; a call
+that carries no amount is not a payment and is not held.
+
+A held call is answered to the model as a tool result, never an error, so the
+conversation continues: `REQUIRES_APPROVAL: ... waiting for the named person at
+https://scopeblind.com/standard?s=<id>#held-<hid>`. The person opens that page
+and approves or denies the exact action, signed in the browser with the key the
+standard accepts. When the model retries the same call (the same payload hash),
+the gate finds the decision: an approval lets the call through with the decision
+in the receipt (`approval: { hid, approver_key_id, digest, page }`); a denial
+refuses it (`person_denied`). A changed call is a new action.
+
+With `--report`, every receipt is appended to the local chain first and posted
+to the page after, in order, best-effort: the page never blocks a call, and a
+page that cannot be reached is logged, not fatal. The token comes from the Sign
+tab on the Write page, shown once; pass it as `--report-token` or in
+`PROTECT_MCP_REPORT_TOKEN`. `--run <id>` names the run on the page (default: a
+timestamp). Receipts carry `standard: { request_id, digest }` so a reader can
+tell which standard was in force.
+
+The hook server takes the same four flags, so a coding agent's calls through
+Claude Code hooks land on the page and are held under the standard the same way:
+
+```bash
+npx protect-mcp@0.14.0 serve --enforce --cedar ./policy --standard ./standard.json \
+  --report 'https://scopeblind.com/api/standard?s=<standard id>' --report-token <token>
+```
+
+A hold on the hook path is returned as a deny whose reason names the page; the
+agent retries the same call after the person has decided there.
+
+The gateway now also passes the call's input to Cedar as `context.input`, so a
+policy compiled from a standard's amount limit is evaluated at the gate exactly
+as `sign --cedar` and the hook server evaluate it.
+
 ### Sign the policy decision itself
 
 From 0.13.0, `sign` can evaluate the policy and record the real decision in the
@@ -307,7 +361,7 @@ receipt instead of an unconditional allow. Pass the policy directory and the
 same input and context the hook would pass to `evaluate`:
 
 ```bash
-npx protect-mcp@0.13.4 sign --cedar ./cedar --tool Bash \
+npx protect-mcp@0.14.0 sign --cedar ./cedar --tool Bash \
   --input '{"command":"rm -rf /"}' --context '{"command_pattern":"rm -rf"}' \
   --receipts ./receipts --key ./keys/gateway.json
 ```

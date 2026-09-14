@@ -38,6 +38,14 @@ interface HookServerOptions {
     mandateRelyingPartyId?: string;
     /** Expected browser origin for mandate-controller approvals. Defaults to local hook origin. */
     mandateApprovalOrigin?: string;
+    /** The signed standard in force: its tool list and per-instruction limit are refused, an amount above its approval threshold is held for the named person. */
+    standardPath?: string;
+    /** The standard page's report URL; receipts land there after they are chained locally, held actions wait there. */
+    reportUrl?: string;
+    /** The page's write token (or PROTECT_MCP_REPORT_TOKEN). */
+    reportToken?: string;
+    /** A name for this run on the page. */
+    runId?: string;
 }
 declare function startHookServer(options?: HookServerOptions): Promise<Server>;
 

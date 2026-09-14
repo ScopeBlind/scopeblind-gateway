@@ -39,6 +39,7 @@ import type {
   TrustTier,
 } from './types.js';
 import { loadCedarPolicies, evaluateCedar, isCedarAvailable, runEvaluatorSelfTest, type CedarPolicySet } from './cedar-evaluator.js';
+import { loadStandardFile, checkAmount, personRequired, readAmount, heldIdFor, RecordReporter, type StandardGate } from './standard-gate.js';
 import { initSigning, signDecision, isSigningEnabled, getSignerInfo } from './signing.js';
 import { receiptHash } from './acta-envelope.js';
 import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
@@ -136,6 +137,11 @@ interface HookServerState {
   configAlerts: Array<{ timestamp: number; path: string; source: string }>;
   /** A signed policy lifecycle, when this Cedar directory is mandate-managed. */
   managedMandate: ManagedMandateState | null;
+  /** The signed standard in force (--standard) and the page its record lands on (--report) */
+  standard: StandardGate | null;
+  reporter: RecordReporter | null;
+  /** A person's decision on the page, attached to the receipt of the call it decided (keyed by request_id) */
+  approvalsToRecord: Map<string, { hid: string; approver_key_id: string; digest: string; page: string }>;
 }
 
 // ============================================================
@@ -301,6 +307,62 @@ async function handlePreToolUse(
     ...(input.teamName && { team_name: input.teamName }),
     ...(input.agentType && { agent_type: input.agentType as SwarmContext['agent_type'] }),
   };
+
+  // ── The signed standard in force (--standard) ──
+  // The tool list and the per-instruction limit are refused here; an amount
+  // above the approval threshold is held for the named person on the
+  // standard's page, and a retry of the same exact action finds the decision.
+  if (state.standard) {
+    const std = state.standard;
+    const common = () => ({ request_id: requestId, hook_event: 'PreToolUse' as const, swarm: swarm.team_name ? swarm : undefined, timing: { hook_latency_ms: Date.now() - hookStart, started_at: hookStart }, payload_digest: payloadDigest, action_readback: actionReadback, sandbox_state: detectSandboxState() });
+    const refuse = (reason_code: string, why: string): HookResponse | null => {
+      emitDecisionLog(state, { tool: toolName, decision: 'deny', reason_code, ...common() });
+      if (!state.enforce) return null;
+      return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: `[ScopeBlind] ${why}` } };
+    };
+    if (std.tools && !std.tools.includes(toolName)) {
+      const r = refuse('standard_tool_not_allowed', `"${toolName}" is not among the tools the standard permits.`);
+      if (r) return r;
+    } else {
+      const amount = checkAmount(std, input.toolInput);
+      if (!amount.ok) {
+        const r = refuse(amount.reason, `"${toolName}" refused by the standard: ${amount.detail}.`);
+        if (r) return r;
+      } else {
+        const person = personRequired(std, input.toolInput);
+        if (person.required) {
+          const hid = heldIdFor(state.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
+          const page = state.reporter ? `${new URL(state.reporter.url).origin}/standard?s=${state.reporter.sid}#held-${hid}` : '';
+          const verdict = state.reporter ? await state.reporter.decision(hid) : null;
+          if (verdict === 'unreachable') {
+            const r = refuse('standard_page_unreachable', `"${toolName}" needs a named person's approval and the standard's page could not be reached; retry the same call later.`);
+            if (r) return r;
+          } else if (verdict) {
+            state.approvalsToRecord.set(requestId, { hid, approver_key_id: verdict.approver_key_id, digest: verdict.digest, page });
+            if (verdict.decision === 'deny') {
+              const r = refuse('person_denied', `"${toolName}" was denied by ${verdict.approver_key_id} on the standard's page${verdict.note ? `: ${verdict.note}` : ''}.`);
+              if (r) return r;
+            }
+          } else {
+            const amt = readAmount(input.toolInput);
+            if (state.enforce && state.reporter) {
+              await state.reporter.hold({ hid, request_id: requestId, tool: toolName, readback: { summary: actionReadback.summary, payload_hash: actionReadback.payload_hash, amount: amt ? amt.minor / 100 : null, currency: amt?.currency || null }, reason: person.detail });
+            }
+            emitDecisionLog(state, { tool: toolName, decision: 'require_approval', reason_code: 'standard_requires_person', ...common() });
+            if (state.enforce) {
+              return {
+                hookSpecificOutput: {
+                  hookEventName: 'PreToolUse',
+                  permissionDecision: 'deny',
+                  permissionDecisionReason: `[ScopeBlind] ${person.detail}. Exact action: ${actionReadback.summary}. ${page ? `Waiting for the named person at ${page}; retry this exact call once they have decided there. A changed call is a new action.` : 'No standard page is configured (--report), so it cannot be decided here.'}`,
+                },
+              };
+            }
+          }
+        }
+      }
+    }
+  }
 
   // ── Cedar evaluation ──
   maybeReloadCedar(state);
@@ -828,6 +890,12 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
   // input digest + capability tags + hashed resource are covered by the signature.
   const enr = state.inflightTools.get(log.request_id)?.enrichment;
   if (enr) log.enrichment = enr;
+  if (state.standard) log.standard = { request_id: state.standard.request_id, digest: state.standard.digest };
+  const approval = state.approvalsToRecord.get(log.request_id);
+  if (approval) { log.approval = approval; state.approvalsToRecord.delete(log.request_id); }
+  // The call line the standard's page shows beside the receipt: the disclosed readback, never the raw payload.
+  const callLine = state.reporter ? JSON.stringify({ tool: log.tool, input: log.action_readback?.payload_preview ?? {}, decision: log.decision, request_id: log.request_id, at: new Date(log.timestamp).toISOString() }) : undefined;
+  if (state.reporter && !isSigningEnabled()) state.reporter.record(undefined, callLine);
 
   process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}\n`);
 
@@ -842,6 +910,8 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
         if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
       } catch { /* best-effort */ }
       state.receiptBuffer.add(log.request_id, signed.signed);
+      // Chained locally first; the standard's page is where it lands, never a condition of the call.
+      state.reporter?.record(signed.signed, callLine);
 
       // Forward to ScopeBlind tenant dashboard when SCOPEBLIND_TOKEN is set.
       // Best-effort: failures never block local receipt emission.
@@ -929,6 +999,14 @@ export interface HookServerOptions {
   mandateRelyingPartyId?: string;
   /** Expected browser origin for mandate-controller approvals. Defaults to local hook origin. */
   mandateApprovalOrigin?: string;
+  /** The signed standard in force: its tool list and per-instruction limit are refused, an amount above its approval threshold is held for the named person. */
+  standardPath?: string;
+  /** The standard page's report URL; receipts land there after they are chained locally, held actions wait there. */
+  reportUrl?: string;
+  /** The page's write token (or PROTECT_MCP_REPORT_TOKEN). */
+  reportToken?: string;
+  /** A name for this run on the page. */
+  runId?: string;
 }
 
 export async function startHookServer(options: HookServerOptions = {}): Promise<Server> {
@@ -1097,6 +1175,22 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
   }
 
   // ── Build state ──
+  // The signed standard in force, and the page its record lands on.
+  let standard: StandardGate | null = null;
+  let reporter: RecordReporter | null = null;
+  if (options.standardPath) {
+    standard = loadStandardFile(options.standardPath);
+    process.stderr.write(`[PROTECT_MCP] Standard in force: ${standard.request_id} (${standard.summary})\n`);
+  }
+  if (options.reportUrl) {
+    if (!standard) throw new Error('--report needs --standard <standard.json>; the page belongs to a signed standard');
+    const token = options.reportToken || process.env.PROTECT_MCP_REPORT_TOKEN || '';
+    if (!token) throw new Error('--report needs the page\'s write token: --report-token <token> or PROTECT_MCP_REPORT_TOKEN');
+    reporter = new RecordReporter({ url: options.reportUrl, token, runId: options.runId || `run-${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}` });
+    process.stderr.write(`[PROTECT_MCP] Record lands on ${new URL(reporter.url).origin}/standard?s=${reporter.sid} as run ${reporter.runId}\n`);
+    if (!isSigningEnabled()) process.stderr.write('[PROTECT_MCP] Warning: signing is not configured, so only unsigned call lines reach the page; add a signing key for receipts\n');
+  }
+
   const state: HookServerState = {
     cedarPolicies,
     cedarDir: cedarDir || null,
@@ -1120,6 +1214,9 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
     permissionSuggestions: new Map(),
     configAlerts: [],
     managedMandate,
+    standard,
+    reporter,
+    approvalsToRecord: new Map(),
   };
 
   // ── Create HTTP server ──

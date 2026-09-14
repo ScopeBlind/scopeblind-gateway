@@ -39,6 +39,7 @@ import { validateCredentials } from './credentials.js';
 import { parseLogFile, simulate, formatSimulation } from './simulate.js';
 import { buildActionReadback } from './action-readback.js';
 import { loadCedarPolicies, isCedarAvailable, evaluateCedar, policySetFromSource, runEvaluatorSelfTest, type CedarPolicySet } from './cedar-evaluator.js';
+import { loadStandardFile, RecordReporter, type StandardGate } from './standard-gate.js';
 import { POLICY_PACKS, getPolicyPack, policyPackIds } from './policy-packs.js';
 import { CONNECTOR_PILOTS, connectorDoctor, getConnectorPilot, readInstalledConnectorPilots, writeConnectorPilots } from './connector-pilots.js';
 import {
@@ -105,6 +106,10 @@ Options:
   --cedar <dir>     Cedar policy directory (alternative to --policy, evaluates locally via WASM)
   --slug <slug>     ScopeBlind tenant slug (optional)
   --enforce         Enable enforcement mode (default: shadow mode)
+  --standard <file> The signed standard in force (standard.json from scopeblind.com/write): its tool list and per-instruction limit are refused at the gate; an amount above its approval threshold is held for the named person
+  --report <url>    The standard page's report URL; every receipt lands there after it is chained locally, and held actions wait there for a signed decision
+  --report-token <t> The page's write token (or PROTECT_MCP_REPORT_TOKEN)
+  --run <id>        A name for this run on the page (default: a timestamp)
   --http            Start HTTP/SSE server instead of stdio proxy
   --port <port>     HTTP server port (default: 3000 for --http, 9377 for serve)
   --verbose         Enable debug logging to stderr
@@ -190,6 +195,10 @@ function parseArgs(argv: string[]): {
   enforce: boolean;
   verbose: boolean;
   childCommand: string[];
+  standardPath?: string;
+  reportUrl?: string;
+  reportToken?: string;
+  runId?: string;
 } {
   let policyPath: string | undefined;
   let cedarDir: string | undefined;
@@ -197,6 +206,10 @@ function parseArgs(argv: string[]): {
   let enforce = false;
   let verbose = false;
   let childCommand: string[] = [];
+  let standardPath: string | undefined;
+  let reportUrl: string | undefined;
+  let reportToken: string | undefined;
+  let runId: string | undefined;
 
   // Find the -- separator
   const separatorIndex = argv.indexOf('--');
@@ -236,12 +249,20 @@ function parseArgs(argv: string[]): {
       enforce = true;
     } else if (arg === '--verbose' || arg === '-v') {
       verbose = true;
+    } else if (arg === '--standard' && i + 1 < options.length) {
+      standardPath = options[++i];
+    } else if (arg === '--report' && i + 1 < options.length) {
+      reportUrl = options[++i];
+    } else if (arg === '--report-token' && i + 1 < options.length) {
+      reportToken = options[++i];
+    } else if (arg === '--run' && i + 1 < options.length) {
+      runId = options[++i];
     } else {
       process.stderr.write(`[PROTECT_MCP] Warning: Unknown option "${arg}"\n`);
     }
   }
 
-  return { policyPath, cedarDir, slug, enforce, verbose, childCommand };
+  return { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId };
 }
 
 /**
@@ -688,11 +709,15 @@ function shellCommand(command: string, args: string[]): string {
   return [command, ...args].map(shellQuoteArg).join(' ');
 }
 
-function wrapperArgsFor(command: string[], opts: { configPath?: string; cedarDir?: string; enforce?: boolean }): string[] {
+function wrapperArgsFor(command: string[], opts: { configPath?: string; cedarDir?: string; enforce?: boolean; standardPath?: string; reportUrl?: string; reportToken?: string; runId?: string }): string[] {
   const args = ['-y', 'protect-mcp@latest'];
   if (opts.cedarDir) args.push('--cedar', opts.cedarDir);
   else args.push('--policy', opts.configPath || absoluteOrCwd('protect-mcp.json'));
   if (opts.enforce) args.push('--enforce');
+  if (opts.standardPath) args.push('--standard', opts.standardPath);
+  if (opts.reportUrl) args.push('--report', opts.reportUrl);
+  if (opts.reportToken) args.push('--report-token', opts.reportToken);
+  if (opts.runId) args.push('--run', opts.runId);
   args.push('--', ...command);
   return args;
 }
@@ -1891,9 +1916,14 @@ async function handleWrap(argv: string[]): Promise<void> {
 
   const configPath = cedarFlag ? undefined : resolve(configFlag || await ensureLocalConfig(process.cwd()));
   const cedarDir = cedarFlag ? resolve(cedarFlag) : undefined;
+  const standardFlag = flagValue(argv, '--standard');
+  const standardPath = standardFlag ? resolve(standardFlag) : undefined;
+  const reportUrl = flagValue(argv, '--report') || undefined;
+  const reportToken = flagValue(argv, '--report-token') || undefined;
+  const runId = flagValue(argv, '--run') || undefined;
 
   if (childCommand.length > 0) {
-    const args = wrapperArgsFor(childCommand, { configPath, cedarDir, enforce });
+    const args = wrapperArgsFor(childCommand, { configPath, cedarDir, enforce, standardPath, reportUrl, reportToken, runId });
     process.stdout.write(`\n${bold('protect-mcp wrap')}\n\n`);
     process.stdout.write(`Use this command in your MCP client config:\n\n`);
     process.stdout.write(`  ${shellCommand('npx', args)}\n\n`);
@@ -1951,7 +1981,7 @@ async function handleWrap(argv: string[]): Promise<void> {
       changes.push({ name, before, after: before, skipped: 'already wrapped' });
       continue;
     }
-    const wrappedArgs = wrapperArgsFor([originalCommand, ...originalArgs], { configPath, cedarDir, enforce });
+    const wrappedArgs = wrapperArgsFor([originalCommand, ...originalArgs], { configPath, cedarDir, enforce, standardPath, reportUrl, reportToken, runId });
     const after = { ...before, command: 'npx', args: wrappedArgs };
     next.mcpServers![name] = after;
     changes.push({ name, before, after });
@@ -4702,6 +4732,10 @@ async function main(): Promise<void> {
     const cedarDir = cedarIdx >= 0 && args[cedarIdx + 1] ? args[cedarIdx + 1] : undefined;
     const enforce = args.includes('--enforce');
     const verbose = args.includes('--verbose') || args.includes('-v');
+    const standardPath = flagValue(args, '--standard') || undefined;
+    const reportUrl = flagValue(args, '--report') || undefined;
+    const reportToken = flagValue(args, '--report-token') || undefined;
+    const runId = flagValue(args, '--run') || undefined;
 
     // Proof of restraint: before arming an enforcing gate, prove it actually
     // denies a known-forbidden vector. If it cannot, refuse to serve (fail-closed)
@@ -4718,7 +4752,12 @@ async function main(): Promise<void> {
       if (verbose) process.stderr.write(`protect-mcp: restraint self-test passed (${selfTest.cases.length} vectors). Arming gate.\n`);
     }
 
-    await startHookServer({ port, policyPath, cedarDir, enforce, verbose });
+    try {
+      await startHookServer({ port, policyPath, cedarDir, enforce, verbose, standardPath, reportUrl, reportToken, runId });
+    } catch (err) {
+      process.stderr.write(`[PROTECT_MCP] Error: ${err instanceof Error ? err.message : err}\n`);
+      process.exit(1);
+    }
     return; // Server keeps running
   }
 
@@ -4901,7 +4940,7 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  const { policyPath, cedarDir, slug, enforce, verbose, childCommand } = parseArgs(args);
+  const { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId } = parseArgs(args);
 
   // Load policy if provided
   let policy = null;
@@ -4996,6 +5035,35 @@ async function main(): Promise<void> {
     }
   }
 
+  // The signed standard in force, and the page its record lands on.
+  let standard: StandardGate | undefined;
+  let reporter: RecordReporter | undefined;
+  if (standardPath) {
+    try {
+      standard = loadStandardFile(standardPath);
+    } catch (err) {
+      process.stderr.write(`[PROTECT_MCP] Error loading the standard ${standardPath}: ${err instanceof Error ? err.message : err}\n`);
+      process.exit(1);
+    }
+  }
+  if (reportUrl) {
+    if (!standard) {
+      process.stderr.write('[PROTECT_MCP] Error: --report needs --standard <standard.json>; the page belongs to a signed standard\n');
+      process.exit(1);
+    }
+    const token = reportToken || process.env.PROTECT_MCP_REPORT_TOKEN || '';
+    if (!token) {
+      process.stderr.write('[PROTECT_MCP] Error: --report needs the page\'s write token: --report-token <token> or PROTECT_MCP_REPORT_TOKEN\n');
+      process.exit(1);
+    }
+    try {
+      reporter = new RecordReporter({ url: reportUrl, token, runId: runId || `run-${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}` });
+    } catch (err) {
+      process.stderr.write(`[PROTECT_MCP] Error: ${err instanceof Error ? err.message : err}\n`);
+      process.exit(1);
+    }
+  }
+
   const config: ProtectConfig = {
     command: childCommand[0],
     args: childCommand.slice(1),
@@ -5006,6 +5074,8 @@ async function main(): Promise<void> {
     verbose,
     signing,
     credentials,
+    standard,
+    reporter,
   };
 
   // HTTP transport mode

@@ -29,6 +29,89 @@ interface ReceiptEnrichment {
     payment?: PaymentInfo;
 }
 
+interface Money {
+    minor: number;
+    currency: string;
+}
+interface StandardGate {
+    request_id: string;
+    digest: string;
+    /** The author's Ed25519 verification key (hex). Approvals on the page are signed with it or with a key the standard's trust block accepts. */
+    signer_key: string;
+    /** Tools the standard permits; null when the standard names none (a standard without a run block). */
+    tools: string[] | null;
+    /** The per-instruction limit; null when the standard sets none. */
+    amount_max: Money | null;
+    /** The amount above which a named person approves; null when the standard needs no person. */
+    required_above: Money | null;
+    /** The gate policy digest the standard was signed with, when it carries one. */
+    policy_digest: string | null;
+    /** Plain words for the log line at startup. */
+    summary: string;
+}
+interface HeldDecision {
+    decision: 'approve' | 'deny';
+    approver_key_id: string;
+    digest: string;
+    note: string;
+}
+type FetchLike = (input: string, init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    signal?: AbortSignal;
+}) => Promise<{
+    ok: boolean;
+    status: number;
+    json(): Promise<unknown>;
+}>;
+/**
+ * Posts receipts and held actions to the standard's page and reads decisions
+ * from it. Every network failure is logged and swallowed: the local chain is
+ * the record; the page is where it lands.
+ */
+declare class RecordReporter {
+    readonly url: string;
+    readonly sid: string;
+    readonly runId: string;
+    private readonly token;
+    private readonly fetchImpl;
+    private readonly log;
+    private queue;
+    private timer;
+    private flushing;
+    /** Counts for the startup and shutdown lines. */
+    sent: number;
+    failed: number;
+    constructor(opts: {
+        url: string;
+        token: string;
+        runId: string;
+        fetchImpl?: FetchLike;
+        log?: (message: string) => void;
+    });
+    private post;
+    /** Queues one receipt line (and its call line) for the next flush. Never throws. */
+    record(receipt: string | undefined, call?: string): void;
+    /** Sends everything queued, in order, as one append. */
+    flush(): Promise<void>;
+    /** Posts a held action. Returns the page URL to send the model to, or null when the page could not be reached. */
+    hold(held: {
+        hid: string;
+        request_id: string;
+        tool: string;
+        readback: {
+            summary: string;
+            payload_hash: string;
+            amount?: number | null;
+            currency?: string | null;
+        };
+        reason: string;
+    }): Promise<string | null>;
+    /** The decision a person recorded for a held action: approve, deny, none yet (null), or unreachable. */
+    decision(hid: string): Promise<HeldDecision | null | 'unreachable'>;
+}
+
 interface ProtectPolicy {
     tools: Record<string, ToolPolicy>;
     /** Default trust tier for unidentified agents (default: "unknown") */
@@ -174,6 +257,18 @@ interface DecisionLog {
     decision: 'allow' | 'deny' | 'require_approval';
     /** Why this decision was made */
     reason_code: string;
+    /** The signed standard in force when this decision was made (--standard) */
+    standard?: {
+        request_id: string;
+        digest: string;
+    };
+    /** A named person's signed decision on the standard's page, attached to the receipt of the call it decided */
+    approval?: {
+        hid: string;
+        approver_key_id: string;
+        digest: string;
+        page: string;
+    };
     /** SHA-256 digest of the canonicalized policy file */
     policy_digest: string;
     /** Which policy engine made the decision */
@@ -306,6 +401,10 @@ interface ProtectConfig {
     credentials?: Record<string, CredentialConfig>;
     /** Multi-agent mode: identify calling agents and apply per-agent policy */
     multiAgent?: MultiAgentConfig;
+    /** The signed standard in force: its tool list, per-instruction limit, and approval threshold (--standard) */
+    standard?: StandardGate;
+    /** Where the record lands and held actions wait for the named person (--report) */
+    reporter?: RecordReporter;
 }
 /**
  * Multi-agent mode configuration.
@@ -729,6 +828,11 @@ declare class ProtectGateway {
     private httpMode;
     /** Loaded Cedar policy set (when policy_engine is "cedar") */
     private cedarPolicySet;
+    /** The signed standard in force (--standard) and the page its record lands on (--report) */
+    private standard;
+    private reporter;
+    /** A person's decision on the page, attached to the receipt of the call it decided (keyed by request_id) */
+    private approvalsToRecord;
     constructor(config: ProtectConfig);
     /**
      * Set the Cedar policy set for local evaluation.

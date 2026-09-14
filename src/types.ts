@@ -179,6 +179,8 @@ export interface JsonRpcNotification {
 // Decision log entry (v1: unsigned, v2: optionally signed)
 // ============================================================
 
+import type { StandardGate, RecordReporter } from './standard-gate.js';
+
 export interface DecisionLog {
   /** Schema version */
   v: 1 | 2;
@@ -188,6 +190,10 @@ export interface DecisionLog {
   decision: 'allow' | 'deny' | 'require_approval';
   /** Why this decision was made */
   reason_code: string;
+  /** The signed standard in force when this decision was made (--standard) */
+  standard?: { request_id: string; digest: string };
+  /** A named person's signed decision on the standard's page, attached to the receipt of the call it decided */
+  approval?: { hid: string; approver_key_id: string; digest: string; page: string };
   /** SHA-256 digest of the canonicalized policy file */
   policy_digest: string;
   /** Which policy engine made the decision */
@@ -346,6 +352,10 @@ export interface ProtectConfig {
   credentials?: Record<string, CredentialConfig>;
   /** Multi-agent mode: identify calling agents and apply per-agent policy */
   multiAgent?: MultiAgentConfig;
+  /** The signed standard in force: its tool list, per-instruction limit, and approval threshold (--standard) */
+  standard?: StandardGate;
+  /** Where the record lands and held actions wait for the named person (--report) */
+  reporter?: RecordReporter;
 }
 
 /**

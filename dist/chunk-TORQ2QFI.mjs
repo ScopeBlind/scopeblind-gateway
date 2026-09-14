@@ -1,8 +1,12 @@
 import {
   ReceiptBuffer,
   buildActionReadback,
+  checkAmount,
+  heldIdFor,
+  personRequired,
+  readAmount,
   startStatusServer
-} from "./chunk-CIWIK6BT.mjs";
+} from "./chunk-MZOD6A6U.mjs";
 import {
   checkRateLimit,
   getToolPolicy,
@@ -11,7 +15,7 @@ import {
 import {
   isSigningEnabled,
   signDecision
-} from "./chunk-7SHEPZV2.mjs";
+} from "./chunk-WG5V64D7.mjs";
 import {
   evaluateCedar
 } from "./chunk-PF7HOTBP.mjs";
@@ -624,6 +628,11 @@ var ProtectGateway = class {
   httpMode = false;
   /** Loaded Cedar policy set (when policy_engine is "cedar") */
   cedarPolicySet = null;
+  /** The signed standard in force (--standard) and the page its record lands on (--report) */
+  standard = null;
+  reporter = null;
+  /** A person's decision on the page, attached to the receipt of the call it decided (keyed by request_id) */
+  approvalsToRecord = /* @__PURE__ */ new Map();
   constructor(config) {
     this.config = config;
     this.logFilePath = join2(process.cwd(), LOG_FILE);
@@ -636,6 +645,8 @@ var ProtectGateway = class {
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();
     this.notificationConfig = parseNotificationConfigFromEnv();
+    this.standard = config.standard ?? null;
+    this.reporter = config.reporter ?? null;
   }
   /**
    * Set the Cedar policy set for local evaluation.
@@ -665,6 +676,15 @@ var ProtectGateway = class {
       }
     }
     this.log(`Approval nonce: ${this.approvalNonce}`);
+    if (this.standard) this.log(`Standard in force: ${this.standard.request_id} (${this.standard.summary})`);
+    if (this.reporter) {
+      this.log(`Record lands on ${new URL(this.reporter.url).origin}/standard?s=${this.reporter.sid} as run ${this.reporter.runId}`);
+      if (!isSigningEnabled()) this.log("Warning: signing is not configured, so only unsigned call lines reach the page; add a signing key to protect-mcp.json for receipts");
+      const reporter = this.reporter;
+      process.once("beforeExit", () => {
+        void reporter.flush();
+      });
+    }
     const httpPort = parseInt(process.env.PROTECT_MCP_HTTP_PORT || "9876", 10);
     if (httpPort > 0) {
       try {
@@ -813,12 +833,62 @@ var ProtectGateway = class {
         }
       }
     }
+    if (this.standard) {
+      const std = this.standard;
+      if (std.tools && !std.tools.includes(toolName)) {
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "standard_tool_not_allowed", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" is not among the tools the standard permits`);
+        return null;
+      }
+      const amount = checkAmount(std, toolInput);
+      if (!amount.ok) {
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: amount.reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" refused by the standard: ${amount.detail}`);
+        return null;
+      }
+      const person = personRequired(std, toolInput);
+      if (person.required) {
+        const hid = heldIdFor(this.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
+        const page = this.reporter ? `${new URL(this.reporter.url).origin}/standard?s=${this.reporter.sid}#held-${hid}` : "";
+        const localGrant = this.approvalStore.get(`always:${toolName}`);
+        const verdict = localGrant && Date.now() < localGrant.expires_at ? { decision: "approve", approver_key_id: "gate", digest: "", note: "granted at the gate" } : this.reporter ? await this.reporter.decision(hid) : null;
+        if (verdict === "unreachable") {
+          this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "standard_page_unreachable", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+          if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" needs a named person's approval and the standard's page could not be reached; retry the same call later`);
+        } else if (verdict) {
+          this.approvalsToRecord.set(requestId, { hid, approver_key_id: verdict.approver_key_id, digest: verdict.digest, page });
+          if (verdict.decision === "deny") {
+            this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "person_denied", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+            if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" was denied by ${verdict.approver_key_id} on the standard's page${verdict.note ? `: ${verdict.note}` : ""}`);
+          }
+        } else {
+          const amt = readAmount(toolInput);
+          if (this.config.enforce && this.reporter) {
+            await this.reporter.hold({ hid, request_id: requestId, tool: toolName, readback: { summary: actionReadback.summary, payload_hash: actionReadback.payload_hash, amount: amt ? amt.minor / 100 : null, currency: amt?.currency || null }, reason: person.detail });
+          }
+          this.emitDecisionLog({ tool: toolName, decision: "require_approval", reason_code: "standard_requires_person", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+          if (this.config.enforce) {
+            const where = page ? `The action is waiting for the named person at ${page}. Tell the user, and retry this exact call once they have decided there; a changed call is a new action.` : `No standard page is configured (--report), so it must be granted at the gate (approval nonce ${this.approvalNonce}, request ID ${requestId}) before a retry.`;
+            return {
+              jsonrpc: "2.0",
+              id: request.id,
+              result: {
+                content: [{ type: "text", text: `REQUIRES_APPROVAL: ${person.detail}. Exact action: ${actionReadback.summary}. Payload hash: ${actionReadback.payload_hash.slice(0, 16)}\u2026 ${where}` }],
+                isError: true
+              }
+            };
+          }
+        }
+      }
+    }
     if (this.config.policy?.policy_engine === "cedar" && this.cedarPolicySet) {
       try {
         const cedarDecision = await evaluateCedar(this.cedarPolicySet, {
           tool: toolName,
           tier: this.currentTier,
-          agentId: this.admissionResult?.agent_id
+          agentId: this.admissionResult?.agent_id,
+          // The call's input, so a policy compiled from a standard can read amounts and fields (context.input).
+          toolInput
         });
         if (!cedarDecision.allowed) {
           const reason = cedarDecision.reason || "cedar_deny";
@@ -972,6 +1042,13 @@ var ProtectGateway = class {
       otel_trace_id: otelTraceId,
       otel_span_id: otelSpanId
     };
+    if (this.standard) log.standard = { request_id: this.standard.request_id, digest: this.standard.digest };
+    const approval = this.approvalsToRecord.get(log.request_id);
+    if (approval) {
+      log.approval = approval;
+      this.approvalsToRecord.delete(log.request_id);
+    }
+    const callLine = this.reporter ? JSON.stringify({ tool: log.tool, input: log.action_readback?.payload_preview ?? {}, decision: log.decision, request_id: log.request_id, at: new Date(log.timestamp).toISOString() }) : void 0;
     process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
     try {
@@ -988,6 +1065,7 @@ var ProtectGateway = class {
           if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
         } catch {
         }
+        this.reporter?.record(signed.signed, callLine);
         this.receiptBuffer.add(log.request_id, signed.signed);
         if (this.admissionResult?.agent_id) {
           this.evidenceStore.record(this.admissionResult.agent_id, this.config.signing?.issuer || "protect-mcp");
@@ -1011,6 +1089,8 @@ var ProtectGateway = class {
         process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
 `);
       }
+    } else if (this.reporter) {
+      this.reporter.record(void 0, callLine);
     }
   }
   makeErrorResponse(id, code, message) {
@@ -1058,6 +1138,15 @@ var ProtectGateway = class {
       this.log(`Wrapping: ${command} ${args.join(" ")}`);
     }
     this.log(`Approval nonce: ${this.approvalNonce}`);
+    if (this.standard) this.log(`Standard in force: ${this.standard.request_id} (${this.standard.summary})`);
+    if (this.reporter) {
+      this.log(`Record lands on ${new URL(this.reporter.url).origin}/standard?s=${this.reporter.sid} as run ${this.reporter.runId}`);
+      if (!isSigningEnabled()) this.log("Warning: signing is not configured, so only unsigned call lines reach the page; add a signing key to protect-mcp.json for receipts");
+      const reporter = this.reporter;
+      process.once("beforeExit", () => {
+        void reporter.flush();
+      });
+    }
     const childEnv = { ...process.env };
     if (this.config.credentials) {
       for (const [label, credConfig] of Object.entries(this.config.credentials)) {

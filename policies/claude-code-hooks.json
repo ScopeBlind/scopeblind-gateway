@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.13.4 evaluate --cedar ./cedar --format claude",
+            "command": "npx protect-mcp@0.14.0 evaluate --cedar ./cedar --format claude",
             "timeout": 30
           }
         ]
@@ -19,7 +19,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.13.4 sign --format claude --receipts ./receipts --key ./keys/gateway.json",
+            "command": "npx protect-mcp@0.14.0 sign --format claude --receipts ./receipts --key ./keys/gateway.json",
             "timeout": 30
           }
         ]

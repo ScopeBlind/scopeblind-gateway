@@ -124,6 +124,8 @@ function signDecision(entry, prevReceiptHash) {
     if (entry.action_readback) payload.action_readback = entry.action_readback;
     if (entry.deny_iteration) payload.deny_iteration = entry.deny_iteration;
     if (entry.mandate_registry) payload.mandate_registry = entry.mandate_registry;
+    if (entry.standard) payload.standard = entry.standard;
+    if (entry.approval) payload.approval = entry.approval;
     const result = createReceiptEnvelope(
       payload,
       signerState.privateKey,

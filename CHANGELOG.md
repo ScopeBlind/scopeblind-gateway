@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.14.0 (2026-09-14)
+
+### Added
+- `--standard <standard.json>`: the signed standard in force at the gate. A call to a tool the standard does not name is refused; a call over the per-instruction amount limit or in another currency is refused before it runs; a call above the approval threshold is held for the named person and answered to the model as `REQUIRES_APPROVAL` with the page to go to. A retry of the same exact action finds the person's signed decision: an approval lets it through with the decision in the receipt, a denial refuses it.
+- `--report <url>` and `--report-token` (or `PROTECT_MCP_REPORT_TOKEN`): every receipt lands on the standard's page after it is chained locally, in order and best-effort; held actions are posted there. `--run <id>` names the run on the page.
+- Receipts carry `standard: { request_id, digest }` when a standard is in force, and `approval: { hid, approver_key_id, digest, page }` on a call a person decided.
+- `wrap` passes the four flags through to the printed command and the Claude Desktop snippet.
+- The hook server takes the same flags (`serve --enforce --cedar ./policy --standard ./standard.json --report <url> --report-token <token>`): a coding agent's calls through Claude Code hooks are refused, held, and reported under the standard exactly as MCP calls are, and a hold is returned to the hook as a deny naming the page.
+
+### Fixed
+- The stdio gateway evaluated Cedar without the call's input, so a policy compiled from a standard's amount limit (`context.input.amount_minor`) could never match and, written as permit-when plus forbid-unless, refused every call to that tool. The gateway now passes `toolInput` as `sign --cedar` and the hook server always did.
+
 ## 0.13.4 (2026-09-13)
 
 ### Fixed
