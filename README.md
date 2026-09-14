@@ -136,7 +136,7 @@ npx protect-mcp registry anchor
 SCOPEBLIND_TOKEN=... npx protect-mcp registry anchor \
   --hosted \
   --endpoint https://api.scopeblind.com \
-  --verifier-base https://legate.scopeblind.com
+  --verifier-base https://scopeblind.com
 ```
 
 The local preview is deliberately labeled `local-preview-not-independent`.
@@ -217,9 +217,9 @@ reveals the shape, not the content.
 
 ## Try it in 60 seconds (no agent required)
 
-[![Watch the two-minute demo film](https://legate.scopeblind.com/media/scopeblind-demo-poster.jpg)](https://legate.scopeblind.com/record)
+[![Watch the two-minute demo film](https://scopeblind.com/media/scopeblind-demo-poster.jpg)](https://scopeblind.com/film)
 
-Watch the two-minute film at [legate.scopeblind.com/record](https://legate.scopeblind.com/record), then replay it against your own copy:
+Watch the two-minute film at [scopeblind.com/film](https://scopeblind.com/film), then replay it against your own copy:
 
 ```bash
 npx protect-mcp sample     # seed a labeled sample record (8 decisions: 1 blocked, 2 payments)
@@ -307,7 +307,7 @@ receipt instead of an unconditional allow. Pass the policy directory and the
 same input and context the hook would pass to `evaluate`:
 
 ```bash
-npx protect-mcp@0.13.3 sign --cedar ./cedar --tool Bash \
+npx protect-mcp@0.13.4 sign --cedar ./cedar --tool Bash \
   --input '{"command":"rm -rf /"}' --context '{"command_pattern":"rm -rf"}' \
   --receipts ./receipts --key ./keys/gateway.json
 ```
@@ -430,7 +430,7 @@ The gateway can hold a secret and inject it at dispatch, so the agent works with
 
 `inject: "env"` puts the value in the wrapped server's environment; `inject: "header"` and `"query"` attach it to the outbound call. A tool whose name matches a label is resolved on every call; if the secret is missing the call is refused with `credential_error` rather than sent without it. Each receipt for such a call carries `credential_ref` with the label, never the value, so a reader can see that the credential the standard names was used through the gateway. What the receipts cannot show is that the agent had no other copy of the secret; that is a property of the deployment.
 
-A Legate standard states this as `requirements.credentials_held_by_gate`, and the gateway receipt report on legate.scopeblind.com/verify checks the label on every receipt for the tool.
+A ScopeBlind standard states this as `requirements.credentials_held_by_gate`, and the gateway receipt report on scopeblind.com/verify checks the label on every receipt for the tool.
 
 ## Verify a receipt
 
