@@ -12991,6 +12991,8 @@ function emitDecision(format, allowed, reason) {
     process.stdout.write(JSON.stringify({ permission: "deny", userMessage: reason }) + "\n");
   } else if (format === "gemini") {
     process.stdout.write(JSON.stringify({ decision: "deny", reason }) + "\n");
+  } else if (format === "claude") {
+    process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `protect-mcp denied: ${reason}` } }) + "\n");
   }
   process.stderr.write(`protect-mcp denied: ${reason}
 `);
@@ -13018,6 +13020,8 @@ async function handleEvaluate(argv) {
       process.stderr.write("protect-mcp evaluate: policy not found; denying (fail-closed). Pass --fail-on-missing-policy false to allow.\n");
       process.exit(2);
     }
+    process.stderr.write(`protect-mcp evaluate: no policy found${flagValue(argv, "--cedar") ? ` at ${flagValue(argv, "--cedar")}` : flagValue(argv, "--policy") ? ` at ${flagValue(argv, "--policy")}` : ""}; allowing because --fail-on-missing-policy false is set. Nothing is being enforced.
+`);
     if (format) emitDecision(format, true, "no_policy_configured");
     process.stdout.write(JSON.stringify({ allowed: true, reason: "no_policy_configured" }) + "\n");
     process.exit(0);

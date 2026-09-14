@@ -264,8 +264,12 @@ A missing or unloadable policy denies (exit 2) unless you explicitly pass
 
 `protect-mcp init-hooks` writes a `.claude/settings.json` for you. To wire the
 gate by hand, the two verbs you need are `evaluate` (PreToolUse, blocks on exit 2)
-and `sign` (PostToolUse, records a receipt). Pin the version so a Claude Code
-session always runs the gate you tested:
+and `sign` (PostToolUse, records a receipt). Claude Code hands a hook the call
+as JSON on stdin and sets no `TOOL_NAME` or `TOOL_INPUT` variables, so pass
+`--format claude` and nothing else about the call: the gate reads `tool_name`
+and `tool_input` from the payload, and on a deny it returns the reason to the
+model as `hookSpecificOutput.permissionDecisionReason` as well as exit 2. Pin
+the version so a Claude Code session always runs the gate you tested:
 
 ```json
 {
@@ -276,7 +280,7 @@ session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.13.3 evaluate --cedar ./cedar --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\""
+            "command": "npx protect-mcp@0.13.4 evaluate --cedar ./cedar --format claude"
           }
         ]
       }
@@ -287,7 +291,7 @@ session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.13.3 sign --tool \"$TOOL_NAME\" --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx protect-mcp@0.13.4 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }
@@ -410,6 +414,23 @@ Built-in packs:
 - `cloud-spend-safe`: obvious cloud spend creation and infrastructure destruction.
 - `secrets-safe`: common file, env, shell, and cloud secret exfiltration.
 - `finance-mandate-safe`: restricted-list and concentration breaches in booking flows.
+
+## Credentials the agent never holds
+
+The gateway can hold a secret and inject it at dispatch, so the agent works with a label and never sees the value. Configure the vault in `protect-mcp.json`; the value is read from the named environment variable of the gateway process, not the agent's:
+
+```json
+{
+  "credentials": {
+    "github_token": { "inject": "header", "name": "Authorization", "value_env": "GITHUB_TOKEN" },
+    "warehouse":    { "inject": "env",    "name": "PGPASSWORD",    "value_env": "WAREHOUSE_PASSWORD" }
+  }
+}
+```
+
+`inject: "env"` puts the value in the wrapped server's environment; `inject: "header"` and `"query"` attach it to the outbound call. A tool whose name matches a label is resolved on every call; if the secret is missing the call is refused with `credential_error` rather than sent without it. Each receipt for such a call carries `credential_ref` with the label, never the value, so a reader can see that the credential the standard names was used through the gateway. What the receipts cannot show is that the agent had no other copy of the secret; that is a property of the deployment.
+
+A Legate standard states this as `requirements.credentials_held_by_gate`, and the gateway receipt report on legate.scopeblind.com/verify checks the label on every receipt for the tool.
 
 ## Verify a receipt
 

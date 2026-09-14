@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { writeFileSync, mkdtempSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -77,6 +77,26 @@ describe.skipIf(!haveCli)('evaluate --format hook adapter', () => {
   it('exposes --input under context.input so nested-shape policies match', () => {
     const r = run(['evaluate', '--cedar', inputDir, '--tool', 'read_file', '--input', '{"path":"/tmp/.env"}'], '');
     expect(r.code).toBe(2);
+  });
+
+  it('Claude Code: the README hook command, payload on stdin, allows a permitted call and returns the deny reason to the model', () => {
+    // Exactly as Claude Code invokes a command hook: the call arrives as JSON on stdin, no TOOL_NAME or TOOL_INPUT in the environment.
+    const allowed = run(['evaluate', '--cedar', dir, '--format', 'claude'], ALLOW);
+    expect(allowed.code).toBe(0);
+    const denied = run(['evaluate', '--cedar', dir, '--format', 'claude'], DENY);
+    expect(denied.code).toBe(2);
+    const verdict = JSON.parse(denied.out.trim().split('\n')[0]);
+    expect(verdict.hookSpecificOutput.hookEventName).toBe('PreToolUse');
+    expect(verdict.hookSpecificOutput.permissionDecision).toBe('deny');
+    expect(verdict.hookSpecificOutput.permissionDecisionReason).toMatch(/rm -rf|denied/);
+  });
+
+  it('says so on stderr when no policy is found and --fail-on-missing-policy false allows the call', () => {
+    const empty = mkdtempSync(join(tmpdir(), 'pmcp-nopolicy-'));
+    const r = spawnSync('node', [CLI, 'evaluate', '--cedar', empty, '--format', 'claude', '--fail-on-missing-policy', 'false'], { input: ALLOW, encoding: 'utf-8', env: { ...process.env, PROTECT_MCP_TELEMETRY: 'off' } });
+    expect(r.status).toBe(0);
+    expect(r.stderr).toMatch(/no policy found/);
+    expect(r.stderr).toMatch(/Nothing is being enforced/);
   });
 
   it('maps a hook payload tool_input to context.input for exit-code hosts', () => {

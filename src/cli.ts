@@ -3942,10 +3942,15 @@ function emitDecision(format: string | undefined, allowed: boolean, reason: stri
   // claude / codex / gemini / cursor / grok all block on exit code 2. For the
   // hosts that ALSO accept a structured stdout verdict, emit it too so the deny
   // holds even if a host stops honoring the exit code (belt and suspenders).
+  // Claude Code reads a PreToolUse verdict from stdout and hands
+  // permissionDecisionReason to the model, so the reason reaches the agent and
+  // not only the terminal (scopeblind-gateway#10).
   if (format === 'cursor') {
     process.stdout.write(JSON.stringify({ permission: 'deny', userMessage: reason }) + '\n');
   } else if (format === 'gemini') {
     process.stdout.write(JSON.stringify({ decision: 'deny', reason }) + '\n');
+  } else if (format === 'claude') {
+    process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: `protect-mcp denied: ${reason}` } }) + '\n');
   }
   process.stderr.write(`protect-mcp denied: ${reason}\n`);
   process.exit(2);
@@ -3985,6 +3990,9 @@ async function handleEvaluate(argv: string[]): Promise<void> {
       process.stderr.write('protect-mcp evaluate: policy not found; denying (fail-closed). Pass --fail-on-missing-policy false to allow.\n');
       process.exit(2);
     }
+    // Allowing without a policy is a choice the operator made, but a fresh
+    // install that enforces nothing must say so every time, not silently.
+    process.stderr.write(`protect-mcp evaluate: no policy found${flagValue(argv, '--cedar') ? ` at ${flagValue(argv, '--cedar')}` : flagValue(argv, '--policy') ? ` at ${flagValue(argv, '--policy')}` : ''}; allowing because --fail-on-missing-policy false is set. Nothing is being enforced.\n`);
     if (format) emitDecision(format, true, 'no_policy_configured');
     process.stdout.write(JSON.stringify({ allowed: true, reason: 'no_policy_configured' }) + '\n');
     process.exit(0);

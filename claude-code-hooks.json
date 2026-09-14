@@ -1,15 +1,26 @@
 {
-  "$comment": "Claude Code hooks configuration. Add this to your .claude/settings.json to integrate protect-mcp as a pre-tool-use hook for Claude Code. Every tool call will be evaluated against your protect-mcp policy and produce a signed receipt.",
+  "$comment": "Claude Code hooks for protect-mcp. Merge into .claude/settings.json. Claude Code hands each hook the call as JSON on stdin; --format claude reads tool_name and tool_input from it. PreToolUse evaluates the call against ./cedar and blocks a deny (exit 2, with the reason returned to the model); PostToolUse signs a receipt for every call. A missing policy denies, fail-closed.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": ".*",
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp hook-eval --tool \"$TOOL_NAME\" --input \"$TOOL_INPUT\"",
-            "timeout": 5000,
-            "on_failure": "allow"
+            "command": "npx protect-mcp@0.13.4 evaluate --cedar ./cedar --format claude",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx protect-mcp@0.13.4 sign --format claude --receipts ./receipts --key ./keys/gateway.json",
+            "timeout": 30
           }
         ]
       }

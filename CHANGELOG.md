@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.4 (2026-09-13)
+
+### Fixed
+- The README's Claude Code hook example passed `--tool "$TOOL_NAME" --input "$TOOL_INPUT"`, variables Claude Code never sets, so the gate saw an empty tool name on every call: with no policy it allowed everything, with a policy it denied everything. The example now passes `--format claude`, which reads the call from the hook payload on stdin (reported by Will Hobson, scopeblind-gateway#10, from wshobson/agents#701).
+- `evaluate --format claude` returns a deny to Claude Code as `hookSpecificOutput.permissionDecision: "deny"` with the reason in `permissionDecisionReason`, so the model is told why, in addition to exit 2.
+- `evaluate` with `--fail-on-missing-policy false` and no policy found now says so on stderr every time. A fresh install that enforces nothing no longer does it silently.
+- A test pipes the hook payload to the README's command exactly as Claude Code would, which is the bridge the CLI tests never covered.
+
 ## 0.13.3 (2026-09-11)
 
 ### Fixed
