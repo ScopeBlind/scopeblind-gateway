@@ -117,13 +117,13 @@ the historical chain. These changes are included in `0.15.0`.
 
 ### Start with your agent, then authorize each task
 
-Version `0.23.0` includes a reusable agent profile. Open
+Version `0.24.0` includes a reusable agent profile. Open
 [Start through your agent](https://scopeblind.com/standard?trial=new&view=agent)
 for the setup command with the service’s displayed authority key. Check that key
 against a trusted source before connecting. For example:
 
 ```bash
-npx --yes protect-mcp@0.23.0 coordination agent setup \
+npx --yes protect-mcp@0.24.0 coordination agent setup \
   --client claude-code \
   --profile ~/.scopeblind/agent.json \
   --endpoint https://scopeblind.com/api/coordination \
@@ -212,7 +212,7 @@ permissions.
 
 ### Connect your agent to a shared invoice room
 
-`protect-mcp` version `0.23.0` connects your installed agent to the same admission and
+`protect-mcp` version `0.24.0` connects your installed agent to the same admission and
 sample-ledger service as the shared room. Start a room at
 [ScopeBlind](https://scopeblind.com/standard?trial=new), then choose **Use your
 own agent → Create pairing code**. It is a fictional invoice sandbox; no real
@@ -223,7 +223,7 @@ The release is distributed as a versioned package from scopeblind.com. Its
 is published alongside it. Run the room's command in your terminal. For a single connection:
 
 ```bash
-npx --yes protect-mcp@0.23.0 coordination pair
+npx --yes protect-mcp@0.24.0 coordination pair
 ```
 
 Paste the private code when prompted. It is never a command-line argument or
@@ -242,7 +242,7 @@ Successful pairing prints the Claude Code registration command directly. To
 print it again:
 
 ```bash
-npx --yes protect-mcp@0.23.0 coordination setup --client claude-code
+npx --yes protect-mcp@0.24.0 coordination setup --client claude-code
 ```
 
 Run the command it prints in the project where you use Claude Code. It registers
@@ -291,7 +291,7 @@ that raced with revocation. It does not undo confirmed payments.
 For custom service operators, the original explicit connection remains:
 
 ```bash
-npx --yes protect-mcp@0.23.0 coordination \
+npx --yes protect-mcp@0.24.0 coordination \
   --endpoint https://YOUR-HOST/api/coordination \
   --room ROOM_ID \
   --authority-key PINNED_64_HEX_AUTHORITY_KEY \
@@ -553,7 +553,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.23.0 evaluate --cedar ./cedar --format claude"
+            "command": "npx protect-mcp@0.24.0 evaluate --cedar ./cedar --format claude"
           }
         ]
       }
@@ -564,7 +564,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.23.0 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx protect-mcp@0.24.0 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }
@@ -581,8 +581,8 @@ to the Cedar policy compiled from it, and report to the standard's own page:
 
 ```bash
 # Initialize the signing key once, unless this directory already has one.
-npx protect-mcp@0.23.0 init
-npx protect-mcp@0.23.0 --enforce --cedar ./policy --standard ./standard.json \
+npx protect-mcp@0.24.0 init
+npx protect-mcp@0.24.0 --enforce --cedar ./policy --standard ./standard.json \
   --report 'https://scopeblind.com/api/standard?s=<standard id>' \
   -- <your MCP server command>
 ```
@@ -618,7 +618,7 @@ The hook server takes the same four flags, so a coding agent's calls through
 Claude Code hooks land on the page and are held under the standard the same way:
 
 ```bash
-npx protect-mcp@0.23.0 serve --enforce --cedar ./policy --standard ./standard.json \
+npx protect-mcp@0.24.0 serve --enforce --cedar ./policy --standard ./standard.json \
   --report 'https://scopeblind.com/api/standard?s=<standard id>'
 ```
 
@@ -636,7 +636,7 @@ receipt instead of an unconditional allow. Pass the policy directory and the
 same input and context the hook would pass to `evaluate`:
 
 ```bash
-npx protect-mcp@0.23.0 sign --cedar ./cedar --tool Bash \
+npx protect-mcp@0.24.0 sign --cedar ./cedar --tool Bash \
   --input '{"command":"rm -rf /"}' --context '{"command_pattern":"rm -rf"}' \
   --receipts ./receipts --key ./keys/gateway.json
 ```
@@ -669,10 +669,10 @@ in its contract:
 
 ```bash
 # the PreToolUse / before-tool command for each host
-npx -y protect-mcp@0.23.0 evaluate --format codex  --cedar ./cedar   # OpenAI Codex
-npx -y protect-mcp@0.23.0 evaluate --format gemini --cedar ./cedar   # Gemini CLI BeforeTool
-npx -y protect-mcp@0.23.0 evaluate --format cursor --cedar ./cedar   # Cursor beforeShellExecution
-npx -y protect-mcp@0.23.0 evaluate --format hermes --cedar ./cedar   # Hermes pre_tool_call
+npx -y protect-mcp@0.24.0 evaluate --format codex  --cedar ./cedar   # OpenAI Codex
+npx -y protect-mcp@0.24.0 evaluate --format gemini --cedar ./cedar   # Gemini CLI BeforeTool
+npx -y protect-mcp@0.24.0 evaluate --format cursor --cedar ./cedar   # Cursor beforeShellExecution
+npx -y protect-mcp@0.24.0 evaluate --format hermes --cedar ./cedar   # Hermes pre_tool_call
 ```
 
 Pair each with `sign --format <host>` on the post-tool event for receipts. The
@@ -830,7 +830,7 @@ MIT licensed. Built by [ScopeBlind](https://scopeblind.com).
 
 ### Let your agent negotiate for you
 
-Version `0.23.0` supports the two-person agreement at
+Version `0.24.0` supports the two-person agreement at
 [ScopeBlind](https://scopeblind.com/standard?trial=new&view=negotiate). Each person
 signs their own mandate and creates their own version-3 pairing code. The private
 configuration binds one principal and discussion; it does not inherit payment
@@ -868,7 +868,7 @@ people approve the exact reviewed commits before the trusted receiver applies th
 The recipient can accept the observed result or request a linked fresh revision.
 
 For your own repository, choose **Use your repository** and run the generated
-`protect-mcp@0.23.0 repository setup` command locally. It discovers actual check
+`protect-mcp@0.24.0 repository setup` command locally. It discovers actual check
 names/providers, saves a receiver key with owner-only permissions, and prepares a
 hash-pinned workflow for your review. The returned `connection.json` contains public
 keys and signed discovery evidence. Keep `receiver-key.json` private. Discovery,
@@ -882,7 +882,7 @@ or supply `GITHUB_TOKEN` through your local credential manager. Setup does not s
 or print that token.
 
 ```sh
-npx --yes protect-mcp@0.23.0 repository setup \
+npx --yes protect-mcp@0.24.0 repository setup \
   --repository OWNER/REPOSITORY \
   --owner-key YOUR_PUBLIC_OWNER_KEY \
   --authority-key REVIEWED_SERVICE_AUTHORITY_KEY \
@@ -896,7 +896,7 @@ the workflow or configuring Actions. Import only the public `connection.json`.
 To refresh local read-only readiness for this same connection, use a new output file:
 
 ```sh
-npx --yes protect-mcp@0.23.0 repository ready \
+npx --yes protect-mcp@0.24.0 repository ready \
   --connection ./repository-connection/connection-config.json \
   --key-file ./repository-connection/receiver-key.json \
   --output ./repository-readiness.json
@@ -958,3 +958,20 @@ Project recovery uses a separately enrolled recovery credential. It rotates that
 project member's future authority; it never recreates an old browser private key
 or rewrites historical approvals. Start a new review with the current membership
 before making further decisions on work assigned to a former key.
+
+
+### Guided connection and bounded code work
+
+Open [your projects](https://scopeblind.com/standard?trial=new&view=workspace) and connect a repository. The guided route identifies the selected repository and pull request, then supplies a version-pinned installer command. Paste its short-lived setup link into the prompt rather than a shell argument:
+
+```sh
+npx --yes protect-mcp@0.24.0 repository connect --link-stdin --install
+```
+
+Review the exact workflow, permissions and receiver key before authorizing installation. Keys are generated locally. A GitHub Actions identity proof and receiver signature establish which installed workflow answered the readiness challenge. Existing manual receiver setup remains available.
+
+Coding work is an optional, separate installation and permission. Both project members sign the allowed paths, fixed tests/build, immutable runtime image, public-preview permission, time, file, token and model-call limits. The worker starts from exact recorded feedback. Its untrusted repository programs run in a Docker container without network access or credentials; the trusted controller checks the resulting files and publishes the admitted new branch, PR and preview. The initial runtime supports small Node 22 static sites with self-contained relative assets and fixed Node test/build scripts.
+
+The result requires a fresh review. No coding grant authorizes a merge. After a publication was admitted, cancellation cannot undo effects already sent; an uncertain result is reconciled by reading its deterministic branch and PR. Signed evidence distinguishes these observations from proof that the code meets every criterion.
+
+Project members can also authorize a second browser for selected review actions. Both devices confirm the link. This preserves the original membership key and never grants project setup, recovery, agent delegation or execution permissions. Revocation stops new device access and decisions while preserving already recorded signatures.

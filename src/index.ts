@@ -293,3 +293,13 @@ export type {RepositoryReviewContent,RepositoryReviewBrief,RepositoryReviewPacke
 
 export {verifyRepositoryWorkspaceState,verifyRepositoryWorkspaceAgentState} from './coordination-repository-workspace.js';
 export type {RepositoryWorkspace,RepositoryWorkspaceState,RepositoryWorkspaceAgentState,WorkspacePreparationMandate,WorkspaceTaskAssignment,WorkspaceReviewDraft,WorkspaceMember,RepositoryWorkspaceInbox} from './coordination-repository-workspace.js';
+
+// Explicit repository connection, coding and human-device protocols.
+export * from './coordination-repository-connection.js';
+export * from './coordination-repository-coding.js';
+export * from './coordination-repository-coding-evidence.js';
+export * from './coordination-repository-devices.js';
+export * from './repository-preview-bundle.js';
+
+export {RepositoryCodingRunner,DockerCodingSandbox} from './repository-coding-runner.js';
+export type {RepositoryCodingConfig,CodingSandbox} from './repository-coding-runner.js';

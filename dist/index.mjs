@@ -1,15 +1,23 @@
 import {
-  verifyRepositoryCollaborationEvidence
-} from "./chunk-H64HVW5K.mjs";
-import {
   CoordinationClient,
   CoordinationError,
   validateCoordinationPayment
-} from "./chunk-2SYSTEXK.mjs";
+} from "./chunk-WUDE7YAF.mjs";
+import {
+  coordinationConfigFromArgs,
+  humanPrincipal,
+  validateCoordinationConfig,
+  verifyDeviceAuthorization,
+  verifyEvidence,
+  verifyHuman,
+  verifyNegotiationEvidence,
+  verifyOwnerAgreement,
+  verifyRehearsalEvidence
+} from "./chunk-PUKT6ZUQ.mjs";
 import {
   formatReportMarkdown,
   generateReport
-} from "./chunk-KV532C3M.mjs";
+} from "./chunk-GKV2PTW7.mjs";
 import {
   collectSignedReceipts,
   createAuditBundle
@@ -21,16 +29,20 @@ import {
   verifySelectiveDisclosurePackage
 } from "./chunk-NJX7GOKG.mjs";
 import {
-  coordinationConfigFromArgs,
-  humanPrincipal,
-  validateCoordinationConfig,
-  verifyDeviceAuthorization,
-  verifyEvidence,
-  verifyHuman,
-  verifyNegotiationEvidence,
-  verifyOwnerAgreement,
-  verifyRehearsalEvidence
-} from "./chunk-ZSS4X3C3.mjs";
+  REPOSITORY_CODING_IMAGE,
+  REPOSITORY_GUIDED_WORKFLOW,
+  REPOSITORY_SETUP_ACTIONS,
+  REPOSITORY_SETUP_TTL,
+  repositorySetupArtifactUrl,
+  validRepositoryCodingConnectionConfig,
+  validRepositorySetupAuthorization,
+  validRepositorySetupInspection,
+  validRepositorySetupRenewal,
+  validRepositorySetupRequest,
+  verifyRepositorySetupEnrollment,
+  verifyRepositorySetupReplacement,
+  verifyRepositorySetupState
+} from "./chunk-WAOYTUIJ.mjs";
 import {
   CONNECTOR_PILOTS,
   connectorDirectory,
@@ -42,7 +54,7 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-5KKNSXNI.mjs";
+} from "./chunk-TAOHHOM3.mjs";
 import {
   POLICY_PACKS,
   getPolicyPack,
@@ -59,7 +71,7 @@ import {
   resolveCredential,
   sendApprovalNotification,
   validateCredentials
-} from "./chunk-6DMPXIYJ.mjs";
+} from "./chunk-BQK6J5FY.mjs";
 import {
   createSandboxServer
 } from "./chunk-QRLQZXTO.mjs";
@@ -74,7 +86,7 @@ import {
   forwardReceipt,
   getScopeBlindBridge,
   startHookServer
-} from "./chunk-UMFUH2SF.mjs";
+} from "./chunk-N7NOARS7.mjs";
 import "./chunk-KRKZ2YX7.mjs";
 import {
   EGRESS_SUMMARY_FIELDS,
@@ -82,7 +94,7 @@ import {
   inspectEgress,
   runEgressSelfCheck,
   toEgressSummary
-} from "./chunk-W5MGNQNK.mjs";
+} from "./chunk-OTJXWQDE.mjs";
 import {
   approvePolicyProposalWithDirectSignature,
   approvePolicyProposalWithWebAuthn,
@@ -104,43 +116,81 @@ import {
   verifyApprovalAssertion,
   verifyMandateLifecycleExport,
   verifyMandateRegistry
-} from "./chunk-6WSDNYAH.mjs";
+} from "./chunk-66IKCPUU.mjs";
 import "./chunk-MZOD6A6U.mjs";
 import {
   checkRateLimit,
   getToolPolicy,
   loadPolicy,
   parseRateLimit
-} from "./chunk-GADWK3VN.mjs";
+} from "./chunk-5MQK42SD.mjs";
 import {
   getSignerInfo,
   initSigning,
   isSigningEnabled,
   signDecision
-} from "./chunk-VBLTBTAJ.mjs";
+} from "./chunk-GLPAPBKX.mjs";
 import {
   evaluateCedar,
   isCedarAvailable,
   loadCedarPolicies,
   policySetFromSource,
   runEvaluatorSelfTest
-} from "./chunk-LVMGH3VC.mjs";
+} from "./chunk-YNNVGCWP.mjs";
 import {
   computeSbIssuerKid,
   createReceiptEnvelope,
   receiptHash,
   receiptIdentity,
   verifyReceipt
-} from "./chunk-6JTYFG2X.mjs";
+} from "./chunk-SRLE63GU.mjs";
 import {
+  DockerCodingSandbox,
+  RepositoryCodingRunner
+} from "./chunk-5VHCPRXR.mjs";
+import {
+  CODING_PERMISSIONS,
+  REPOSITORY_CODING_ACTIONS,
+  REPOSITORY_DEVICE_ACTIONS,
+  REPOSITORY_DEVICE_DOMAIN,
+  REPOSITORY_DEVICE_LINK_MS,
+  REPOSITORY_DEVICE_MAX_MS,
+  REPOSITORY_DEVICE_PERMISSIONS,
+  codingCommand,
+  codingSafePath,
+  codingScopeWithin,
+  repositoryDevicePermission,
+  repositoryDevicePreimage,
+  repositoryHumanPermission,
+  repositoryHumanPrincipal,
   repositorySnapshotDigest,
-  verifyRepositoryEvidence
-} from "./chunk-62IJNG3V.mjs";
+  sameRepositoryHumanIntent,
+  validRepositoryCodingMandate,
+  validRepositoryCodingPlan,
+  validRepositoryCodingRefreshableConnections,
+  validRepositoryCodingRequest,
+  validRepositoryCodingResult,
+  validRepositoryCodingSource,
+  validRepositoryCodingStop,
+  validRepositoryDeviceAuthorization,
+  validRepositoryDeviceConfirmation,
+  validRepositoryDeviceLink,
+  validRepositoryHumanEnvelope,
+  verifyRepositoryCodingEvidence,
+  verifyRepositoryCollaborationEvidence,
+  verifyRepositoryDeviceAuthorization,
+  verifyRepositoryEvidence,
+  verifyRepositoryHuman,
+  verifyRepositoryReviewEvidence,
+  verifyRepositoryWorkspaceAgentState,
+  verifyRepositoryWorkspaceState
+} from "./chunk-W4EKTNR3.mjs";
 import {
+  bytesToHex,
   canonical,
   sha256,
   verify
-} from "./chunk-VS4TVKA7.mjs";
+} from "./chunk-O3K3FPBT.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/manifest.ts
@@ -1722,16 +1772,65 @@ async function verifyPublicSnapshot(value, authorityKey) {
   }
   return { valid: checks.length > 0 && checks.every((c) => c.passed), checks, limitations: ["This is a historical snapshot of the exact shared export. It does not establish current task status, current approval, or payment authority.", "The public link permits reading only. Its hosted copy is available for 30 days; downloaded evidence can be retained separately."] };
 }
+
+// src/repository-preview-bundle.ts
+var REPOSITORY_PREVIEW_MAX_BYTES = 512 * 1024;
+var REPOSITORY_PREVIEW_MAX_FILES = 64;
+var PREVIEW_TYPES = { html: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/javascript; charset=utf-8", mjs: "text/javascript; charset=utf-8", json: "application/json; charset=utf-8", svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif", ico: "image/x-icon", woff2: "font/woff2", txt: "text/plain; charset=utf-8" };
+function repositoryPreviewPath(path) {
+  return typeof path === "string" && path.length <= 200 && path.split("/").length <= 10 && path.split("/").every((p) => /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(p)) && Object.hasOwn(PREVIEW_TYPES, path.split(".").at(-1) ?? "");
+}
+var exact2 = (v, keys) => !!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join(" ") === [...keys].sort().join(" ");
+function need(value) {
+  if (!value) throw new Error("invalid_repository_preview_bundle");
+}
+async function validateRepositoryPreviewBundle(value) {
+  need(exact2(value, ["files", "sha256"]) && typeof value.sha256 === "string" && /^[a-f0-9]{64}$/.test(value.sha256) && Array.isArray(value.files) && value.files.length > 0 && value.files.length <= REPOSITORY_PREVIEW_MAX_FILES);
+  let total = 0, last = "";
+  const files = [], entries = [];
+  for (const file of value.files) {
+    need(exact2(file, ["path", "content_base64", "sha256"]) && repositoryPreviewPath(file.path) && file.path > last && typeof file.sha256 === "string" && /^[a-f0-9]{64}$/.test(file.sha256) && typeof file.content_base64 === "string" && file.content_base64.length <= Math.ceil(REPOSITORY_PREVIEW_MAX_BYTES / 3) * 4 && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(file.content_base64));
+    const raw = atob(file.content_base64);
+    need(btoa(raw) === file.content_base64);
+    const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+    total += bytes.byteLength;
+    need(total <= REPOSITORY_PREVIEW_MAX_BYTES);
+    need(bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))) === file.sha256);
+    last = file.path;
+    files.push({ path: file.path, bytes, sha256: file.sha256 });
+    entries.push({ path: file.path, sha256: file.sha256, bytes: bytes.length });
+  }
+  need(entries.some((f) => f.path === "index.html"));
+  const digest = await sha256(canonical(entries));
+  need(digest === value.sha256);
+  return { digest, entries, files };
+}
 export {
   BUILTIN_PATTERNS,
+  CODING_PERMISSIONS,
   CONNECTOR_PILOTS,
   ConfidentialGate,
   CoordinationClient,
   CoordinationError,
+  DockerCodingSandbox,
   EGRESS_SUMMARY_FIELDS,
   POLICY_PACKS,
+  PREVIEW_TYPES,
   ProtectGateway,
+  REPOSITORY_CODING_ACTIONS,
+  REPOSITORY_CODING_IMAGE,
+  REPOSITORY_DEVICE_ACTIONS,
+  REPOSITORY_DEVICE_DOMAIN,
+  REPOSITORY_DEVICE_LINK_MS,
+  REPOSITORY_DEVICE_MAX_MS,
+  REPOSITORY_DEVICE_PERMISSIONS,
+  REPOSITORY_GUIDED_WORKFLOW,
+  REPOSITORY_PREVIEW_MAX_BYTES,
+  REPOSITORY_PREVIEW_MAX_FILES,
+  REPOSITORY_SETUP_ACTIONS,
+  REPOSITORY_SETUP_TTL,
   ReceiptPropagator,
+  RepositoryCodingRunner,
   ScopeBlindBridge,
   anchorToRekor,
   approvePolicyProposalWithDirectSignature,
@@ -1739,6 +1838,9 @@ export {
   assertEgressSafe,
   buildDecisionContext,
   checkRateLimit,
+  codingCommand,
+  codingSafePath,
+  codingScopeWithin,
   collectSignedReceipts,
   computeCalibration,
   computeSbIssuerKid,
@@ -1824,12 +1926,19 @@ export {
   receiptsToHFRows,
   redactFields,
   refreshManagedMandate,
+  repositoryDevicePermission,
+  repositoryDevicePreimage,
+  repositoryHumanPermission,
+  repositoryHumanPrincipal,
+  repositoryPreviewPath,
+  repositorySetupArtifactUrl,
   repositorySnapshotDigest,
   resolveCredential,
   revealField,
   runEgressSelfCheck,
   runEvaluatorSelfTest,
   runInSandbox,
+  sameRepositoryHumanIntent,
   sendApprovalNotification,
   signCommittedDecision,
   signDecision,
@@ -1840,11 +1949,28 @@ export {
   toEgressSummary,
   toManifoldFormat,
   toMetaculusFormat,
+  validRepositoryCodingConnectionConfig,
+  validRepositoryCodingMandate,
+  validRepositoryCodingPlan,
+  validRepositoryCodingRefreshableConnections,
+  validRepositoryCodingRequest,
+  validRepositoryCodingResult,
+  validRepositoryCodingSource,
+  validRepositoryCodingStop,
+  validRepositoryDeviceAuthorization,
+  validRepositoryDeviceConfirmation,
+  validRepositoryDeviceLink,
+  validRepositoryHumanEnvelope,
+  validRepositorySetupAuthorization,
+  validRepositorySetupInspection,
+  validRepositorySetupRenewal,
+  validRepositorySetupRequest,
   validateCoordinationConfig,
   validateCoordinationPayment,
   validateCredentials,
   validateEvidenceReceipt,
   validateManifest,
+  validateRepositoryPreviewBundle,
   verifyActaC2PAAssertions,
   verifyAllCommitments,
   verifyApprovalAssertion,
@@ -1860,8 +1986,17 @@ export {
   verifyReceipt,
   verifyRehearsalEvidence,
   verifyRekorAnchor,
+  verifyRepositoryCodingEvidence,
   verifyRepositoryCollaborationEvidence,
+  verifyRepositoryDeviceAuthorization,
   verifyRepositoryEvidence,
+  verifyRepositoryHuman,
+  verifyRepositoryReviewEvidence,
+  verifyRepositorySetupEnrollment,
+  verifyRepositorySetupReplacement,
+  verifyRepositorySetupState,
+  verifyRepositoryWorkspaceAgentState,
+  verifyRepositoryWorkspaceState,
   verifySelectiveDisclosurePackage,
   writeConnectorPilots
 };

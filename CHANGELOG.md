@@ -1,3 +1,11 @@
+## 0.24.0 — Guided repositories and bounded coding work
+
+- Guide repository/PR setup through an authenticated GitHub installation, owner-reviewed workflow changes, locally generated keys and a signed readiness callback. The connection app can read selected repositories and wake approved workflows; it has no code-write permission.
+- Add an independent, dual-signed `edit_code` mandate. A trusted Actions controller calls the model within durable limits, applies allowed edits, runs fixed tests/build in a credential-free, networkless Docker container, and may publish one exact new PR and static preview. Destination updates still require fresh exact human decisions.
+- Preserve the exact source feedback and code-work proof in a new review without carrying forward earlier approval.
+- Add project-scoped human-device signatures, explicit confirmation, revocation and recorded live-authority checks. A device does not replace the member's primary key or gain setup, agent-grant or execution authority.
+- Verify repository code-work and device evidence offline using the same bounded public core. Test/build results and GitHub readbacks remain worker/receiver attestations.
+
 ## 0.23.0 — 2026-09-16
 
 - Add reusable client projects with signed membership, task assignments, decision inboxes and explicit recovery by membership-key rotation. Historical signatures retain their original identity.

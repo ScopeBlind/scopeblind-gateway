@@ -1,8 +1,8 @@
 {
   "name": "protect-mcp",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "mcpName": "com.scopeblind/protect-mcp",
-  "description": "Cedar policy enforcement and signed receipts for AI agent tool calls, with scoped repository review, bounded agent preparation and exact human approvals. Built by ScopeBlind.",
+  "description": "Cedar policy enforcement and signed receipts for AI agent tool calls, guided repository review, bounded coding work and exact human approvals. Built by ScopeBlind.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.mjs",
@@ -18,9 +18,10 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts src/cli.ts src/demo-server.ts src/hook-server.ts src/hook-patterns.ts src/mcp-server.ts src/repository-receiver-cli.ts src/repository-demo-cli.ts --format cjs,esm --dts --clean",
+    "build": "tsup src/index.ts src/cli.ts src/demo-server.ts src/hook-server.ts src/hook-patterns.ts src/mcp-server.ts src/repository-receiver-cli.ts src/repository-demo-cli.ts src/repository-coding-cli.ts --format cjs,esm --dts --clean",
     "pretest": "npm run build",
     "test": "vitest run",
+    "test:docker": "node scripts/coding-docker-smoke.mjs",
     "prepublishOnly": "npm run build"
   },
   "files": [

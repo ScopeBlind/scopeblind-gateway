@@ -60,7 +60,7 @@ export class RepositoryReceiver {
   return pr;
  }
  private async tree(sha:string){const body=(await this.github(`${this.repo}/git/trees/${sha}?recursive=1`)).body;requireValue(body.sha===sha&&!body.truncated&&Array.isArray(body.tree)&&body.tree.length<=10000,'repository_tree_incomplete');return new Map<string,{type:string;mode:string;sha:string}>(body.tree.map((v:any)=>[v.path,{type:v.type,mode:v.mode,sha:v.sha}]));}
- private async snapshot(task:Signed<RepositoryTask>,proposalId=crypto.randomUUID()):Promise<RepositoryProposal>{
+ private async snapshot(task:Signed<RepositoryTask>,proposalId:string=crypto.randomUUID()):Promise<RepositoryProposal>{
   const t=task.payload,pr=await this.pull(t.pull_number);
   requireValue(pr.number===t.pull_number&&pr.state==='open'&&!pr.draft&&!pr.merged&&pr.mergeable===true&&pr.base?.repo?.full_name===t.repository&&pr.head?.repo?.full_name===t.repository&&pr.base.ref===t.base_branch&&repositoryBranch(pr.head.ref)&&pr.head.ref!==pr.base.ref&&[pr.base.sha,pr.head.sha,pr.merge_commit_sha].every(s=>REPOSITORY_SHA.test(s)),'repository_pr_not_ready');
   const [repo,base,merge,comparison,runs,currentBase,currentHead]=await Promise.all([
@@ -87,10 +87,14 @@ export class RepositoryReceiver {
   requireValue(current.state==='open'&&!current.merged&&!current.draft&&current.head?.sha===pr.head.sha&&current.base?.sha===pr.base.sha&&current.merge_commit_sha===pr.merge_commit_sha&&current.head?.repo?.full_name===t.repository&&current.base?.repo?.full_name===t.repository,'repository_changed_during_inspection');
   const proposal:RepositoryProposal={type:'scopeblind.repository.proposal.v1',id:proposalId,task_id:t.id,task_digest:task.digest,repository_id:repo.body.node_id,base_ref:`refs/heads/${pr.base.ref}`,head_ref:`refs/heads/${pr.head.ref}`,base_sha:pr.base.sha,head_sha:pr.head.sha,merge_sha:pr.merge_commit_sha,tree_sha:merge.body.tree.sha,files,checks,observed_at:new Date().toISOString()};requireValue(validRepositoryProposal(proposal,t,task.digest),'invalid_repository_proposal');return proposal;
  }
- async inspect(taskId:string){
+ async inspect(taskId:string,proposalId?:string){
+  if(proposalId!==undefined)requireValue(REPOSITORY_ID.test(proposalId),'invalid_repository_proposal_id');
   requireValue(REPOSITORY_ID.test(taskId),'invalid_repository_task_id');const current=await this.review(taskId),state=current.repository_task;
   requireValue(!state.payload.execution&&state.payload.status!=='cancelled'&&Date.parse(state.payload.task.payload.expires_at)>Date.now(),'repository_task_inactive');
-  const proposal=await sign(await this.snapshot(state.payload.task),this.identity),saved=await this.rpc('repository_propose',taskId,{proposal});if(!current.review)return saved;
+  const prior=proposalId&&state.payload.proposal?.payload.id===proposalId?state.payload.proposal:null;
+  if(prior&&(!current.review||current.review.payload.packet?.payload.proposal_digest===prior.digest))return state;
+  const observed=await this.snapshot(state.payload.task,proposalId);if(prior)requireValue(await repositorySnapshotDigest(prior.payload)===await repositorySnapshotDigest(observed),'repository_approval_stale');
+  const proposal=prior??await sign(observed,this.identity),saved=prior?state:await this.rpc('repository_propose',taskId,{proposal});if(!current.review)return saved;
   const brief=current.review.payload.brief;requireValue(validRepositoryReviewBrief(brief.payload,state.payload.task.payload,state.payload.task.digest)&&await verify(brief,this.config.owner_key),'repository_review_brief_invalid');
   const preview=await observeRepositoryReviewPreview(path=>this.github(path),this.config.repository,brief,proposal),observedAt=new Date().toISOString(),expiresAt=new Date(Math.min(Date.now()+900000,Date.parse(brief.payload.expires_at))).toISOString();
   const packet=await sign<RepositoryReviewPacket>({type:'scopeblind.repository.review-packet.v1',task_id:taskId,task_digest:state.payload.task.digest,brief_digest:brief.digest,proposal_digest:proposal.digest,base_sha:proposal.payload.base_sha,head_sha:proposal.payload.head_sha,merge_sha:proposal.payload.merge_sha,preview,observed_at:observedAt,expires_at:expiresAt},this.identity);

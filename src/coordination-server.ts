@@ -121,7 +121,7 @@ const textResult = (id: Request['id'], value: unknown, isError = false) => ({ js
 export async function handleCoordinationRequest(client: CoordinationClient, request: Request, signal?: AbortSignal): Promise<unknown> {
   if (!request || request.jsonrpc !== '2.0' || typeof request.method !== 'string') return { jsonrpc: '2.0', id: request?.id ?? null, error: { code: -32600, message: 'Invalid JSON-RPC request.' } };
   if (request.id === undefined) return undefined;
-  if (request.method === 'initialize') return { jsonrpc: '2.0', id: request.id, result: { protocolVersion: '2024-11-05', serverInfo: { name: 'protect-mcp-coordination', version: process.env.PROTECT_MCP_VERSION || '0.23.0' }, capabilities: { tools: {} } } };
+  if (request.method === 'initialize') return { jsonrpc: '2.0', id: request.id, result: { protocolVersion: '2024-11-05', serverInfo: { name: 'protect-mcp-coordination', version: process.env.PROTECT_MCP_VERSION || '0.24.0' }, capabilities: { tools: {} } } };
   if (request.method === 'ping') return { jsonrpc: '2.0', id: request.id, result: {} };
   if (request.method === 'tools/list') return { jsonrpc: '2.0', id: request.id, result: { tools: toolsForPurpose(client.purpose) } };
   if (request.method !== 'tools/call') return { jsonrpc: '2.0', id: request.id, error: { code: -32601, message: 'Method not found.' } };

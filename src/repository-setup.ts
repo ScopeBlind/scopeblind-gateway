@@ -6,7 +6,7 @@ import {discoverRepositoryPreviewChoices} from './repository-review-preview.js';
 import type {RepositoryPreviewDiscovery} from './coordination-repository-review.js';
 import {RepositoryReceiverError,runRepositoryReceiver} from './repository-receiver.js';
 
-export const REPOSITORY_SETUP_VERSION='0.23.0';
+export const REPOSITORY_SETUP_VERSION='0.24.0';
 const REPO=/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/;
 const WORKFLOW_PATH='.github/workflows/scopeblind-receiver.yml';
 const safeText=(v:unknown,max:number):v is string=>typeof v==='string'&&v.length>0&&v.length<=max&&!/[\u0000-\u001f\u007f]/.test(v);
@@ -36,7 +36,7 @@ async function github(path:string,token:string,fetchImpl:typeof fetch):Promise<{
  need(response.ok,`setup_github_http_${response.status}`);return {status:response.status,body:await readJson(response)};
 }
 /** Every call is a bounded GET against api.github.com; credentials are never returned. */
-export async function discoverRepository(input:{repository:string;base_branch?:string;pull_number?:number},token:string,fetchImpl:typeof fetch=fetch):Promise<RepositoryDiscovery>{
+export async function discoverRepository(input:{repository:string;base_branch?:string;pull_number?:number;workflow_path?:'.github/workflows/scopeblind-connection.yml'|'.github/workflows/scopeblind-coding.yml'},token:string,fetchImpl:typeof fetch=fetch):Promise<RepositoryDiscovery>{
  need(REPO.test(input.repository)&&token.length>0,'setup_repository_and_github_login_required');
  if(input.pull_number!==undefined)need(Number.isSafeInteger(input.pull_number)&&input.pull_number>0,'setup_invalid_pull_number');
  const path=`/repos/${input.repository.split('/').map(encodeURIComponent).join('/')}`;
@@ -49,7 +49,7 @@ export async function discoverRepository(input:{repository:string;base_branch?:s
   github(`${path}/commits/${head}/check-runs?per_page=100&filter=latest`,token,fetchImpl),
   github(`${path}/branches/${encodeURIComponent(base)}/protection`,token,fetchImpl),
   github(`${path}/rules/branches/${encodeURIComponent(base)}`,token,fetchImpl),
-  github(`${path}/contents/${WORKFLOW_PATH}?ref=${encodeURIComponent(base)}`,token,fetchImpl),
+  github(`${path}/contents/${input.workflow_path??WORKFLOW_PATH}?ref=${encodeURIComponent(base)}`,token,fetchImpl),
  ]);
  need(runs.status===200&&Number.isSafeInteger(runs.body.total_count)&&runs.body.total_count>=0&&runs.body.total_count<=100&&Array.isArray(runs.body.check_runs)&&runs.body.check_runs.length===runs.body.total_count,'setup_checks_incomplete');
  const checks:RepositoryReadiness['checks']=[];
@@ -60,7 +60,7 @@ export async function discoverRepository(input:{repository:string;base_branch?:s
  if(protection.status===200){const status=protection.body.required_status_checks;if(status){need(Array.isArray(status.contexts)&&Array.isArray(status.checks),'setup_invalid_branch_protection');for(const c of status.checks)add(c.context,c.app_id);for(const context of status.contexts)if(!status.checks.some((c:any)=>c.context===context))add(context,null);}}
  if(rules.status===200){need(Array.isArray(rules.body)&&rules.body.length<=100,'setup_rules_incomplete');for(const rule of rules.body)if(rule.type==='required_status_checks'){need(Array.isArray(rule.parameters?.required_status_checks),'setup_invalid_repository_rules');for(const c of rule.parameters.required_status_checks)add(c.context,c.integration_id);}}
  let workflowSha:string|undefined,workflowHash:string|undefined;
- if(workflow.status===200){need(workflow.body.type==='file'&&workflow.body.path===WORKFLOW_PATH&&REPOSITORY_SHA.test(workflow.body.sha)&&workflow.body.encoding==='base64'&&typeof workflow.body.content==='string'&&workflow.body.content.length<=100000,'setup_invalid_workflow_response');workflowSha=workflow.body.sha;workflowHash=await sha256(Buffer.from(workflow.body.content,'base64').toString('utf8'));}
+ if(workflow.status===200){need(workflow.body.type==='file'&&workflow.body.path===(input.workflow_path??WORKFLOW_PATH)&&REPOSITORY_SHA.test(workflow.body.sha)&&workflow.body.encoding==='base64'&&typeof workflow.body.content==='string'&&workflow.body.content.length<=100000,'setup_invalid_workflow_response');workflowSha=workflow.body.sha;workflowHash=await sha256(Buffer.from(workflow.body.content,'base64').toString('utf8'));}
  const warnings:string[]=[];
  if(!checks.length)warnings.push('No check runs were observed on this commit. Run the repository’s existing CI or repeat setup with --pull NUMBER; do not invent a check name or provider.');
  if(protection.status!==200||rules.status!==200)warnings.push('Some repository protection requirements could not be read. This does not mean the branch is unprotected; review its rules in GitHub.');
@@ -180,6 +180,7 @@ async function artifactPin(url:string,pin:string|undefined,fetchImpl:typeof fetc
 }
 
 export async function runRepositoryCommand(args:string[],dependencies:{fetchImpl?:typeof fetch;env?:NodeJS.ProcessEnv;stdout?:(text:string)=>void}={}):Promise<void>{
+ if(['connect','connection-job','coding-ready'].includes(args[0]))return (await import('./repository-connect.js')).runRepositoryConnect(args,dependencies);
  if(!['setup','ready'].includes(args[0]))return runRepositoryReceiver(args);
  const {readFile,writeFile,mkdir,stat}=await import('node:fs/promises'),{resolve,join}=await import('node:path');
  const options=new Map<string,string>();const allowed=args[0]==='setup'?['--repository','--owner-key','--authority-key','--endpoint','--base','--pull','--key-file','--output','--receiver-url','--receiver-sha256']:['--connection','--key-file','--pull','--output'];

@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://veritasacta.com/schemas/receipt-v2.json",
+  "title": "Veritas Acta Receipt v2",
+  "description": "Ed25519-signed, JCS-canonicalized decision receipt for machine access control. Produced by @scopeblind/protect-mcp and verifiable with @veritasacta/verify.",
+  "type": "object",
+  "required": ["payload", "signature"],
+  "properties": {
+    "payload": {
+      "type": "object",
+      "description": "The canonical payload (JCS-ordered) that was signed.",
+      "required": ["v", "tool", "decision", "reason_code", "policy_digest", "request_id", "timestamp", "mode"],
+      "properties": {
+        "v": {
+          "type": "integer",
+          "enum": [1, 2],
+          "description": "Schema version. v2 adds tier, credential_ref, policy_engine."
+        },
+        "tool": {
+          "type": "string",
+          "description": "Name of the MCP tool that was called (e.g., 'read_file', 'deploy')."
+        },
+        "decision": {
+          "type": "string",
+          "enum": ["allow", "deny"],
+          "description": "The access decision made by the gateway."
+        },
+        "reason_code": {
+          "type": "string",
+          "description": "Why this decision was made.",
+          "examples": [
+            "policy_allow",
+            "policy_block",
+            "rate_limit_exceeded",
+            "observe_mode",
+            "default_allow",
+            "tier_insufficient",
+            "credential_error",
+            "external_pdp_deny",
+            "external_pdp_allow"
+          ]
+        },
+        "policy_digest": {
+          "type": "string",
+          "description": "SHA-256 hex digest of the canonicalized policy file. 'none' if no policy loaded."
+        },
+        "policy_engine": {
+          "type": "string",
+          "enum": ["built-in", "external", "hybrid"],
+          "description": "Which policy engine made the decision (v2)."
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Unique identifier for this request (12-char UUID prefix)."
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Unix timestamp in milliseconds when the decision was made."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["shadow", "enforce"],
+          "description": "Operating mode of the gateway at decision time."
+        },
+        "rate_limit_remaining": {
+          "type": "integer",
+          "description": "Remaining rate limit budget after this request (if rate limit is configured)."
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["unknown", "signed-known", "evidenced", "privileged"],
+          "description": "Trust tier of the agent at decision time (v2)."
+        },
+        "credential_ref": {
+          "type": "string",
+          "description": "Credential label used for this request. Never the actual secret value."
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "required": ["alg", "kid", "sig"],
+      "properties": {
+        "alg": {
+          "type": "string",
+          "const": "EdDSA",
+          "description": "Signing algorithm. Always Ed25519."
+        },
+        "kid": {
+          "type": "string",
+          "description": "Key identifier of the signing key."
+        },
+        "sig": {
+          "type": "string",
+          "description": "Hex-encoded Ed25519 signature over the JCS-canonicalized payload."
+        },
+        "pub": {
+          "type": "string",
+          "description": "Hex-encoded Ed25519 public key (optional, for self-contained verification)."
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional metadata not covered by the signature.",
+      "properties": {
+        "issuer": {
+          "type": "string",
+          "description": "Identifier of the gateway that issued this receipt."
+        },
+        "format": {
+          "type": "string",
+          "description": "Receipt format identifier.",
+          "examples": ["protect-mcp-decision-v2", "passport-battle-v1"]
+        }
+      }
+    }
+  }
+}

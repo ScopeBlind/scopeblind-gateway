@@ -902,6 +902,250 @@ declare const DECISION_ACTIONS: readonly ["decision_inbox", "decision_subscribe"
 
 declare const AGENT_REQUEST_ACTIONS: readonly ["agent_request_create", "agent_request_get", "agent_request_accept", "agent_request_revoke", "agent_request_reconnect", "agent_handoff_get", "agent_handoff_create", "agent_handoff_claim", "agent_handoff_revoke"];
 
+/** Durable client/project context. Membership and preparation authority never replace exact PR approvals. */
+
+declare const REPOSITORY_WORKSPACE_ACTIONS: readonly ["repository_workspace_create", "repository_workspace_get", "repository_workspace_list", "repository_workspace_inbox", "repository_workspace_invite", "repository_workspace_join", "repository_workspace_member_update", "repository_workspace_recovery_enroll", "repository_workspace_recover", "repository_workspace_assign", "repository_workspace_claim", "repository_workspace_task_get", "repository_workspace_mandate", "repository_workspace_adopt", "repository_workspace_mandate_revoke", "repository_workspace_agent_get", "repository_workspace_draft", "repository_workspace_draft_decide"];
+type RepositoryWorkspaceAction = typeof REPOSITORY_WORKSPACE_ACTIONS[number];
+type WorkspaceRole = 'owner' | 'reviewer' | 'observer';
+interface RepositoryWorkspace {
+    type: 'scopeblind.repository.workspace.v1';
+    id: string;
+    title: string;
+    client_name: string;
+    repository: string;
+    base_branch: string;
+    receiver_key: string;
+    authority_key: string;
+    owner_member_id: string;
+    owner_key: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface WorkspaceInvitation {
+    type: 'scopeblind.repository.workspace-invitation.v1';
+    id: string;
+    workspace_id: string;
+    workspace_digest: string;
+    member_id: string;
+    role: 'reviewer' | 'observer';
+    display_name: string;
+    issuer_key: string;
+    secret_hash: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface WorkspaceMemberClaim {
+    type: 'scopeblind.repository.workspace-member-claim.v1';
+    workspace_id: string;
+    invitation_digest: string;
+    member_id: string;
+    member_key: string;
+    issued_at: string;
+}
+interface WorkspaceMemberUpdate {
+    type: 'scopeblind.repository.workspace-member-update.v1';
+    id: string;
+    workspace_id: string;
+    member_id: string;
+    expected_revision: number;
+    role: 'reviewer' | 'observer';
+    status: 'active' | 'revoked';
+    issuer_key: string;
+    issued_at: string;
+}
+interface WorkspaceRecovery {
+    type: 'scopeblind.repository.workspace-recovery.v1';
+    id: string;
+    workspace_id: string;
+    member_id: string;
+    member_key: string;
+    recovery_key: string;
+    expected_revision: number;
+    issued_at: string;
+    expires_at: string;
+    previous_recovery_digest?: string;
+}
+interface WorkspaceRotation {
+    type: 'scopeblind.repository.workspace-key-rotation.v1';
+    id: string;
+    workspace_id: string;
+    member_id: string;
+    previous_key: string;
+    new_key: string;
+    recovery_digest: string;
+    expected_revision: number;
+    issued_at: string;
+}
+interface WorkspaceRotationProof {
+    recovery: Signed<WorkspaceRecovery>;
+    rotation: Signed<WorkspaceRotation>;
+    confirmation: Signed<WorkspaceRotation>;
+}
+interface WorkspaceMember {
+    member_id: string;
+    display_name: string;
+    role: WorkspaceRole;
+    status: 'active' | 'revoked';
+    current_key: string;
+    revision: number;
+    invitation: Signed<WorkspaceInvitation> | null;
+    claim: Signed<WorkspaceMemberClaim> | null;
+    recovery: Signed<WorkspaceRecovery> | null;
+    rotations: WorkspaceRotationProof[];
+    updates: Signed<WorkspaceMemberUpdate>[];
+}
+interface WorkspaceTaskAssignment {
+    type: 'scopeblind.repository.workspace-task-assignment.v1';
+    workspace_id: string;
+    workspace_digest: string;
+    task_id: string;
+    task_digest: string;
+    owner_member_id: string;
+    owner_key: string;
+    owner_member_revision: number;
+    reviewer_member_id: string;
+    reviewer_key: string;
+    reviewer_member_revision: number;
+    review_brief_digest: string;
+    source_draft_digest?: string;
+    issued_at: string;
+    expires_at: string;
+}
+type WorkspaceAgentPermission = 'prepare_review' | 'read_task' | 'report_criteria' | 'request_revision';
+interface WorkspacePreparationMandate {
+    type: 'scopeblind.repository.preparation-mandate.v1';
+    id: string;
+    workspace_id: string;
+    workspace_digest: string;
+    mode: 'prepare_review';
+    owner_member_id: string;
+    owner_key: string;
+    owner_member_revision: number;
+    reviewer_member_id: string;
+    reviewer_key: string;
+    reviewer_member_revision: number;
+    agent_key: string;
+    repository: string;
+    base_branch: string;
+    allowed_paths: string[];
+    required_checks: Array<{
+        name: string;
+        app_id: number;
+    }>;
+    permissions: WorkspaceAgentPermission[];
+    max_requests: number;
+    max_open_requests: number;
+    issued_at: string;
+    expires_at: string;
+}
+interface WorkspaceMandateRevocation {
+    type: 'scopeblind.repository.preparation-revocation.v1';
+    mandate_id: string;
+    mandate_digest: string;
+    workspace_id: string;
+    principal_key: string;
+    issued_at: string;
+}
+interface WorkspaceMandateView {
+    mandate: Signed<WorkspacePreparationMandate>;
+    adoption: Signed<WorkspacePreparationMandate> | null;
+    revocation: Signed<WorkspaceMandateRevocation> | null;
+    status: 'awaiting_reviewer' | 'active' | 'expired' | 'revoked' | 'membership_changed' | 'exhausted';
+    used_requests: number;
+    open_requests: number;
+}
+interface WorkspaceReviewDraft {
+    type: 'scopeblind.repository.workspace-review-draft.v1';
+    id: string;
+    workspace_id: string;
+    mandate_digest: string;
+    agent_key: string;
+    repository: string;
+    pull_number: number;
+    title: string;
+    content: RepositoryReviewContent;
+    allowed_paths: string[];
+    required_checks: Array<{
+        name: string;
+        app_id: number;
+    }>;
+    suggested_preview_url?: string;
+    observed_head_sha?: string;
+    source?: {
+        task_id: string;
+        task_digest: string;
+        basis_digest: string;
+        packet_digest: string;
+        feedback_digest: string;
+    };
+    issued_at: string;
+}
+interface WorkspaceDraftDecision {
+    type: 'scopeblind.repository.workspace-draft-decision.v1';
+    workspace_id: string;
+    draft_digest: string;
+    owner_key: string;
+    decision: 'adopt' | 'reject';
+    task_id?: string;
+    task_digest?: string;
+    note: string;
+    issued_at: string;
+}
+interface WorkspaceDraftView {
+    draft: Signed<WorkspaceReviewDraft>;
+    decision: Signed<WorkspaceDraftDecision> | null;
+}
+interface RepositoryWorkspaceState {
+    type: 'scopeblind.repository.workspace-state.v1';
+    workspace: Signed<RepositoryWorkspace>;
+    members: WorkspaceMember[];
+    invitations: Signed<WorkspaceInvitation>[];
+    assignments: Signed<WorkspaceTaskAssignment>[];
+    mandates: WorkspaceMandateView[];
+    drafts: WorkspaceDraftView[];
+    viewer: {
+        key: string;
+        member_id: string | null;
+        role: WorkspaceRole | null;
+        capabilities: string[];
+    };
+    observed_at: string;
+}
+interface WorkspaceAttentionItem {
+    id: string;
+    workspace_id: string;
+    task_id: string | null;
+    title: string;
+    state: string;
+    who_waits: string;
+    action: 'review_draft' | 'join_review' | 'inspect' | 'review_change' | 'accept_result' | 'read_feedback' | 'reconcile' | 'replace_review' | 'adopt_mandate';
+    target_digest: string;
+    task_digest?: string;
+    proposal_digest?: string;
+    can_act: boolean;
+    disabled_reason: string | null;
+    href: string;
+    updated_at: string;
+}
+interface RepositoryWorkspaceInbox {
+    type: 'scopeblind.repository.workspace-inbox.v1';
+    viewer_key: string;
+    items: WorkspaceAttentionItem[];
+    has_more: boolean;
+    observed_at: string;
+}
+interface RepositoryWorkspaceAgentState {
+    type: 'scopeblind.repository.workspace-agent-state.v1';
+    workspace: Signed<RepositoryWorkspace>;
+    mandate: WorkspaceMandateView;
+    members: WorkspaceMember[];
+    drafts: WorkspaceDraftView[];
+    observed_at: string;
+}
+/** Verifies signatures and membership history. Live state remains a service observation, never an effect grant. */
+declare function verifyRepositoryWorkspaceState(value: unknown, authorityKey: string, viewerKey?: string): Promise<boolean>;
+declare function verifyRepositoryWorkspaceAgentState(value: unknown, authorityKey: string, agentKey?: string): Promise<boolean>;
+
 /** Real repository tasks. Browser/Worker/Node contract; no credentials or I/O. */
 
 declare const REPOSITORY_ACTIONS: readonly ["repository_create", "repository_get", "repository_claim", "repository_propose", "repository_approve", "repository_cancel", "repository_begin", "repository_outcome", "repository_accept", "repository_export"];
@@ -1049,10 +1293,244 @@ declare function verifyRepositoryEvidence(value: unknown, pin?: string | {
     limitations: string[];
 }>;
 
+declare const REPOSITORY_REVIEW_ACTIONS: readonly ["repository_review_get", "repository_review_packet", "repository_review_feedback", "repository_review_recommendation", "repository_review_export"];
+type RepositoryReviewAction = typeof REPOSITORY_REVIEW_ACTIONS[number];
+interface RepositoryReviewContent {
+    brief: string;
+    success_criteria: Array<{
+        id: string;
+        text: string;
+    }>;
+    preview_policy?: {
+        environment: string;
+        check: {
+            name: string;
+            app_id: number;
+        };
+        allowed_origins: string[];
+        required: boolean;
+    };
+}
+interface RepositoryReviewBrief extends RepositoryReviewContent {
+    type: 'scopeblind.repository.review-brief.v1';
+    task_id: string;
+    task_digest: string;
+    owner_key: string;
+    issued_at: string;
+    expires_at: string;
+}
+/** The receiver attests to API metadata, not to the bytes served by this mutable URL. */
+interface RepositoryDeploymentObservation {
+    deployment_id: number;
+    status_id: number;
+    sha: string;
+    environment: string;
+    state: 'success';
+    environment_url: string;
+    deployment_creator_id: number;
+    status_creator_id: number;
+    created_at: string;
+    updated_at: string;
+    check: {
+        id: number;
+        name: string;
+        app_id: number;
+        head_sha: string;
+        conclusion: 'success';
+    };
+}
+/** Separate GitHub Actions artifact metadata. No assertion binds this artifact's bytes to a preview URL. */
+interface RepositoryArtifactObservation {
+    id: number;
+    name: string;
+    sha256: string;
+    workflow_run_id: number;
+    head_sha: string;
+    expires_at: string;
+}
+type RepositoryReviewPreview = {
+    status: 'not_requested' | 'missing' | 'pending' | 'failed' | 'unavailable' | 'ambiguous';
+    reason: string;
+} | {
+    status: 'available';
+    deployment: RepositoryDeploymentObservation;
+    artifact?: RepositoryArtifactObservation;
+};
+interface RepositoryReviewPacket {
+    type: 'scopeblind.repository.review-packet.v1';
+    task_id: string;
+    task_digest: string;
+    brief_digest: string;
+    proposal_digest: string;
+    base_sha: string;
+    head_sha: string;
+    merge_sha: string;
+    preview: RepositoryReviewPreview;
+    observed_at: string;
+    expires_at: string;
+}
+/** Signed together with the ordinary v1 approval; neither signature may be substituted for the other. */
+interface RepositoryReviewDecision {
+    type: 'scopeblind.repository.review-decision.v1';
+    task_id: string;
+    task_digest: string;
+    brief_digest: string;
+    packet_digest: string;
+    proposal_digest: string;
+    approval_digest: string;
+    principal_key: string;
+    role: 'owner' | 'reviewer';
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositoryReviewFeedback {
+    type: 'scopeblind.repository.review-feedback.v1';
+    id: string;
+    task_id: string;
+    task_digest: string;
+    basis_digest: string;
+    packet_digest: string;
+    requester_key: string;
+    mandate_digest?: string;
+    criterion_ids: string[];
+    message: string;
+    requested_changes: string;
+    issued_at: string;
+}
+type RepositoryCriterionEvidence = {
+    kind: 'check';
+    id: number;
+} | {
+    kind: 'file';
+    path: string;
+} | {
+    kind: 'deployment';
+    id: number;
+} | {
+    kind: 'artifact';
+    sha256: string;
+};
+interface RepositoryReviewRecommendation {
+    type: 'scopeblind.repository.review-recommendation.v1';
+    id: string;
+    task_id: string;
+    task_digest: string;
+    packet_digest: string;
+    proposal_digest: string;
+    brief_digest: string;
+    agent_key: string;
+    mandate_digest: string;
+    recommendation: 'ready_for_human_review' | 'changes_recommended' | 'insufficient_evidence';
+    criteria: Array<{
+        criterion_id: string;
+        verdict: 'met' | 'not_met' | 'unknown';
+        evidence_refs: RepositoryCriterionEvidence[];
+        explanation: string;
+    }>;
+    source: {
+        kind: 'agent';
+        model?: string;
+    };
+    observed_at: string;
+}
+interface RepositoryReviewAgentUse {
+    type: 'scopeblind.repository.review-agent-use.v1';
+    task_id: string;
+    task_digest: string;
+    record_digest: string;
+    permission: 'report_criteria' | 'request_revision';
+    mandate: Signed<WorkspacePreparationMandate>;
+    adoption: Signed<WorkspacePreparationMandate>;
+    assignment: Signed<WorkspaceTaskAssignment>;
+    checked_at: string;
+}
+interface RepositoryReviewState {
+    type: 'scopeblind.repository.review-state.v1';
+    task_id: string;
+    task_digest: string;
+    origin_digest?: string;
+    coding_origin_digest?: string;
+    brief: Signed<RepositoryReviewBrief>;
+    packet: Signed<RepositoryReviewPacket> | null;
+    decisions: Array<Signed<RepositoryReviewDecision>>;
+    feedback: Array<Signed<RepositoryReviewFeedback>>;
+    recommendations: Array<Signed<RepositoryReviewRecommendation>>;
+    history: Array<{
+        state: Signed<RepositoryState>;
+        packet: Signed<RepositoryReviewPacket>;
+        decisions: Array<Signed<RepositoryReviewDecision>>;
+    }>;
+    agent_uses: Array<Signed<RepositoryReviewAgentUse>>;
+    observed_at: string;
+}
+/** Owner-local import: observed choices only; importing does not authorize a preview or a task. */
+interface RepositoryPreviewDiscovery {
+    type: 'scopeblind.repository.preview-discovery.v1';
+    repository: string;
+    pull_number: number;
+    head_sha: string;
+    owner_key: string;
+    receiver_key: string;
+    authority_key: string;
+    candidates: Array<{
+        environment: string;
+        origin: string;
+        environment_url: string;
+        deployment_id: number;
+        status_id: number;
+    }>;
+    checks: Array<{
+        name: string;
+        app_id: number;
+        id: number;
+    }>;
+    status: 'observed' | 'unavailable';
+    observed_at: string;
+    expires_at: string;
+}
+
 /** Companion records for repository v1 tasks. None widens a v1 human/receiver role. */
 
 declare const REPOSITORY_COLLABORATION_ACTIONS: readonly ["repository_connection_save", "repository_connection_get", "repository_readiness_record", "repository_participants_bind", "repository_collaboration_get", "repository_collaboration_export", "repository_preview_record", "repository_agent_grant", "repository_agent_revoke", "repository_agent_get", "repository_revision_request", "repository_revision_create", "repository_demo_info", "repository_demo_create", "repository_demo_get", "repository_demo_activate", "repository_demo_enqueue", "repository_demo_poll", "repository_demo_complete"];
 type RepositoryCollaborationAction = typeof REPOSITORY_COLLABORATION_ACTIONS[number];
+interface RepositoryConnection {
+    type: 'scopeblind.repository.connection.v1';
+    id: string;
+    endpoint: string;
+    repository: string;
+    base_branch: string;
+    owner_key: string;
+    receiver_key: string;
+    authority_key: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositoryReadiness {
+    type: 'scopeblind.repository.readiness.v1';
+    connection_digest: string;
+    repository: string;
+    base_branch: string;
+    owner_key: string;
+    receiver_key: string;
+    authority_key: string;
+    checks: Array<{
+        name: string;
+        app_id: number;
+        app_name?: string;
+    }>;
+    base_sha: string;
+    check_head_sha: string;
+    required_checks?: Array<{
+        name: string;
+        app_id: number | null;
+    }>;
+    protection: 'observed' | 'unavailable';
+    runtime: 'local' | 'github_actions';
+    workflow: 'not_checked' | 'missing' | 'matching' | 'different' | 'unavailable';
+    workflow_sha?: string;
+    observed_at: string;
+    expires_at: string;
+}
 interface RepositoryParticipants {
     type: 'scopeblind.repository.participants.v1';
     task_id: string;
@@ -1187,6 +1665,655 @@ interface RepositoryDemoState {
     observed_at: string;
 }
 
+/** Guided installation is a connection, never a task approval or a standing effect grant. */
+
+declare const REPOSITORY_SETUP_ACTIONS: readonly ["repository_setup_info", "repository_setup_create", "repository_setup_get", "repository_setup_oauth", "repository_setup_enroll", "repository_setup_confirm", "repository_setup_ready", "repository_setup_coding_ready", "repository_setup_refresh", "repository_setup_renew", "repository_setup_revoke", "repository_setup_dispatch", "repository_setup_job_get", "repository_setup_job_complete"];
+type RepositorySetupAction = typeof REPOSITORY_SETUP_ACTIONS[number];
+declare const REPOSITORY_GUIDED_WORKFLOW = ".github/workflows/scopeblind-connection.yml";
+declare const REPOSITORY_SETUP_TTL: number;
+declare const REPOSITORY_CODING_IMAGE = "node@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752";
+interface RepositorySetupRequest {
+    type: 'scopeblind.repository.setup-request.v1';
+    id: string;
+    owner_key: string;
+    authority_key: string;
+    repository: string;
+    pull_number: number;
+    mode: 'github_app' | 'owner_local';
+    secret_hash: string;
+    state_hash: string;
+    pkce_challenge: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositorySetupInfo {
+    type: 'scopeblind.repository.setup-info.v1';
+    authority_key: string;
+    endpoint: string;
+    observed_at: string;
+    app: {
+        available: boolean;
+        slug: string | null;
+        client_id: string | null;
+        callback_url: string;
+        install_url: string | null;
+    };
+    receiver: {
+        version: string;
+        url: string;
+        sha256: string | null;
+    };
+    coding_image: string;
+}
+/** This is a service observation of authenticated GitHub API responses, not a GitHub signature. */
+interface RepositorySetupGitHub {
+    type: 'scopeblind.repository.setup-github.v1';
+    setup_digest: string;
+    app_id: number;
+    installation_id: number;
+    user_id: number;
+    login: string;
+    repository_id: number;
+    repository: string;
+    default_branch: string;
+    permissions: {
+        admin: boolean;
+        push: boolean;
+    };
+    repository_selection: 'selected';
+    observed_at: string;
+}
+/** Read-only preparation before a guest joins; no merge readiness or preview bytes are claimed. */
+interface RepositorySetupInspection {
+    type: 'scopeblind.repository.setup-inspection.v1';
+    setup_digest: string;
+    owner_key: string;
+    receiver_key: string;
+    repository: string;
+    repository_id: number;
+    pull_number: number;
+    title: string;
+    url: string;
+    base_branch: string;
+    head_branch: string;
+    base_sha: string;
+    head_sha: string;
+    draft: boolean;
+    mergeable: boolean | null;
+    files: Array<{
+        path: string;
+        previous_path?: string;
+        status: 'added' | 'modified' | 'removed' | 'renamed';
+        additions: number;
+        deletions: number;
+        patch?: string;
+        patch_truncated?: true;
+    }>;
+    checks: Array<{
+        id: number;
+        name: string;
+        app_id: number;
+        head_sha: string;
+        status: 'queued' | 'in_progress' | 'completed';
+        conclusion: string | null;
+    }>;
+    preview: Signed<RepositoryPreviewDiscovery> | null;
+    observed_at: string;
+    expires_at: string;
+}
+interface RepositorySetupInstallation {
+    workflow_path: typeof REPOSITORY_GUIDED_WORKFLOW;
+    workflow: string;
+    workflow_sha256: string;
+    receiver_url: string;
+    receiver_sha256: string;
+    secret_name: 'SCOPEBLIND_GUIDED_RECEIVER_KEY';
+    variable_name: 'SCOPEBLIND_GUIDED_CONNECTION';
+}
+interface RepositorySetupEnrollment {
+    type: 'scopeblind.repository.setup-enrollment.v1';
+    setup_id: string;
+    setup_digest: string;
+    receiver_key: string;
+    connection: RepositoryConnection;
+    readiness: Signed<RepositoryReadiness>;
+    inspection: Signed<RepositorySetupInspection>;
+    installation: RepositorySetupInstallation;
+    coding?: RepositorySetupCoding;
+    replaces?: RepositoryGuidedReceiverConfig;
+    issued_at: string;
+}
+interface RepositoryCodingConnectionConfig {
+    type: 'scopeblind.repository.coding-config.v1';
+    endpoint: string;
+    authority_key: string;
+    worker_key: string;
+    repository: string;
+    base_branch: string;
+    runtime: 'node22-static-v1';
+    test_command: string[];
+    build_command: string[];
+    preview_directory: string;
+    docker_image: string;
+}
+interface RepositorySetupCoding {
+    config: RepositoryCodingConnectionConfig;
+    workflow: string;
+    workflow_sha256: string;
+    artifact_url: string;
+    artifact_sha256: string;
+}
+interface RepositorySetupCodingReady {
+    type: 'scopeblind.repository.setup-coding-ready.v1';
+    setup_id: string;
+    setup_digest: string;
+    connection_digest: string;
+    coding_digest: string;
+    worker_key: string;
+    challenge_id: string;
+    run_id: number;
+    run_attempt: number;
+    workflow_ref: string;
+    workflow_sha: string;
+    observed_at: string;
+    expires_at: string;
+}
+/** An explicit owner signature authorizes only these reviewed installation bytes and public pins. */
+interface RepositorySetupAuthorization {
+    type: 'scopeblind.repository.setup-authorization.v1';
+    setup_id: string;
+    setup_digest: string;
+    enrollment_digest: string;
+    connection_digest: string;
+    owner_key: string;
+    repository_id: number;
+    workflow_path: typeof REPOSITORY_GUIDED_WORKFLOW;
+    workflow_sha256: string;
+    receiver_url: string;
+    receiver_sha256: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositorySetupRenewal {
+    type: 'scopeblind.repository.setup-renewal.v1';
+    id: string;
+    setup_id: string;
+    authorization_digest: string;
+    owner_key: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositorySetupChallenge {
+    id: string;
+    audience: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositorySetupReady {
+    type: 'scopeblind.repository.setup-ready.v1';
+    setup_id: string;
+    setup_digest: string;
+    connection_digest: string;
+    authorization_digest: string;
+    challenge_id: string;
+    receiver_key: string;
+    readiness: Signed<RepositoryReadiness>;
+    inspection: Signed<RepositorySetupInspection> | null;
+    run_id: number;
+    run_attempt: number;
+    workflow_ref: string;
+    workflow_sha: string;
+    observed_at: string;
+}
+interface RepositorySetupWorkflowProof {
+    repository_id: number;
+    run_id: number;
+    run_attempt: number;
+    workflow_ref: string;
+    workflow_sha: string;
+    token_digest: string;
+    verified_at: string;
+}
+type RepositorySetupStatus = 'awaiting_github' | 'awaiting_receiver' | 'awaiting_confirmation' | 'awaiting_workflow' | 'ready' | 'expired' | 'revoked' | 'superseded' | 'replacement_pending' | 'installation_expired';
+interface RepositorySetupState {
+    type: 'scopeblind.repository.setup-state.v1';
+    request: Signed<RepositorySetupRequest>;
+    github: Signed<RepositorySetupGitHub> | null;
+    enrollment: Signed<RepositorySetupEnrollment> | null;
+    connection: Signed<RepositoryConnection> | null;
+    authorization: Signed<RepositorySetupAuthorization> | null;
+    installation_renewal?: Signed<RepositorySetupRenewal> | null;
+    challenge: RepositorySetupChallenge | null;
+    ready: Signed<RepositorySetupReady> | null;
+    workflow_proof: RepositorySetupWorkflowProof | null;
+    initial_ready?: {
+        ready: Signed<RepositorySetupReady>;
+        workflow_proof: RepositorySetupWorkflowProof;
+    } | null;
+    coding_ready?: {
+        ready: Signed<RepositorySetupCodingReady>;
+        workflow_proof: RepositorySetupWorkflowProof;
+    } | null;
+    superseded_by?: string | null;
+    blocking_jobs?: boolean;
+    status: RepositorySetupStatus;
+    dispatch: 'none' | 'requested' | 'unconfigured' | 'unavailable';
+    observed_at: string;
+}
+interface RepositorySetupJob {
+    type: 'scopeblind.repository.setup-job.v1';
+    id: string;
+    setup_id: string;
+    connection_digest: string;
+    owner_key: string;
+    receiver_key: string;
+    requested_by: string;
+    operation: 'ready' | 'inspect' | 'execute' | 'reconcile';
+    task_id: string | null;
+    challenge: RepositorySetupChallenge | null;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositorySetupJobState {
+    type: 'scopeblind.repository.setup-job-state.v1';
+    job: Signed<RepositorySetupJob>;
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    run_id: number | null;
+    error: string | null;
+    observed_at: string;
+}
+interface RepositorySetupTaskBinding {
+    type: 'scopeblind.repository.setup-task-binding.v1';
+    task_id: string;
+    task_digest: string;
+    assignment: Signed<WorkspaceTaskAssignment>;
+    active: boolean;
+    observed_at: string;
+}
+interface RepositoryGuidedReceiverConfig {
+    type: 'scopeblind.repository.guided-receiver-config.v1';
+    endpoint: string;
+    authority_key: string;
+    connection: Signed<RepositoryConnection>;
+    authorization: Signed<RepositorySetupAuthorization>;
+}
+declare function repositorySetupArtifactUrl(v: unknown): v is string;
+declare function validRepositorySetupRequest(v: unknown): v is RepositorySetupRequest;
+declare function validRepositorySetupInspection(v: unknown, request: Signed<RepositorySetupRequest>, receiverKey: string): v is RepositorySetupInspection;
+declare function validRepositorySetupAuthorization(v: unknown): v is RepositorySetupAuthorization;
+declare function validRepositorySetupRenewal(v: unknown): v is RepositorySetupRenewal;
+declare function validRepositoryCodingConnectionConfig(v: unknown): v is RepositoryCodingConnectionConfig;
+declare function verifyRepositorySetupEnrollment(value: unknown, request: Signed<RepositorySetupRequest>, expectedEndpoint?: string): Promise<boolean>;
+declare function verifyRepositorySetupReplacement(value: unknown, next: RepositoryConnection): Promise<boolean>;
+declare function verifyRepositorySetupState(value: unknown, authorityKey: string, ownerKey?: string, expectedEndpoint?: string): Promise<boolean>;
+
+/** Offline verification of optional collaboration records around immutable v1 tasks. */
+
+interface RepositoryCollaborationEvidence {
+    type: 'scopeblind.repository.collaboration-evidence.v1';
+    repository: RepositoryEvidence;
+    collaboration: Signed<RepositoryCollaboration>;
+    demo?: Signed<RepositoryDemoState>;
+    parent?: RepositoryEvidence;
+    parent_request?: Signed<RepositoryRevisionRequest>;
+    parent_agent_grant?: Signed<RepositoryAgentGrant>;
+}
+declare function verifyRepositoryCollaborationEvidence(input: unknown, pins?: Parameters<typeof verifyRepositoryEvidence>[1]): Promise<{
+    valid: boolean;
+    accepted: boolean;
+    authorityPinned: boolean;
+    previewVerified: boolean;
+    revisionLinked: boolean;
+    errors: string[];
+    limitations: string[];
+}>;
+
+interface RepositoryReviewOrigin {
+    draft: Signed<WorkspaceReviewDraft>;
+    assignment: Signed<WorkspaceTaskAssignment>;
+    parent_assignment: Signed<WorkspaceTaskAssignment>;
+    parent: Omit<RepositoryReviewEvidence, 'origin'>;
+    preparation: {
+        mandate: Signed<WorkspacePreparationMandate>;
+        adoption: Signed<WorkspacePreparationMandate>;
+    };
+}
+interface RepositoryCodingOrigin {
+    job: RepositoryCodingEvidence;
+    assignment: Signed<WorkspaceTaskAssignment>;
+}
+interface RepositoryReviewEvidence {
+    type: 'scopeblind.repository.review-evidence.v1';
+    repository: RepositoryEvidence | RepositoryCollaborationEvidence;
+    review: Signed<RepositoryReviewState>;
+    origin?: RepositoryReviewOrigin;
+    coding_origin?: RepositoryCodingOrigin;
+}
+type RepositoryReviewPins = string | {
+    authority_key: string;
+    owner_key?: string;
+    reviewer_key?: string;
+    receiver_key?: string;
+};
+/** Historical signatures remain checkable after expiry. This function never reports an assessment as code correctness. */
+declare function verifyRepositoryReviewEvidence(value: unknown, pins?: RepositoryReviewPins): Promise<{
+    valid: boolean;
+    errors: string[];
+    originVerified: boolean;
+    codingOriginVerified: boolean;
+    accepted: boolean;
+    authorityPinned: boolean;
+    packetVerified: boolean;
+    previewAvailable: boolean;
+    decisionsVerified: boolean;
+    limitations: string[];
+}>;
+
+/** Explicit code-edit authority. Preparation grants never authorize these operations. */
+
+declare const REPOSITORY_CODING_ACTIONS: readonly ["repository_coding_info", "repository_coding_mandate", "repository_coding_adopt", "repository_coding_revoke", "repository_coding_start", "repository_coding_get", "repository_coding_list", "repository_coding_cancel", "repository_coding_reconcile", "repository_coding_poll", "repository_coding_heartbeat", "repository_coding_model", "repository_coding_publish", "repository_coding_preview", "repository_coding_complete"];
+type RepositoryCodingAction = typeof REPOSITORY_CODING_ACTIONS[number];
+interface RepositoryCodingSource {
+    task_id: string;
+    task_digest: string;
+    basis_digest: string;
+    packet_digest: string;
+    feedback_digest: string;
+}
+interface RepositoryCodingMandate {
+    type: 'scopeblind.repository.coding-mandate.v1';
+    id: string;
+    workspace_id: string;
+    workspace_digest: string;
+    mode: 'edit_code';
+    owner_member_id: string;
+    owner_key: string;
+    owner_member_revision: number;
+    reviewer_member_id: string;
+    reviewer_key: string;
+    reviewer_member_revision: number;
+    worker_key: string;
+    repository: string;
+    base_branch: string;
+    allowed_paths: string[];
+    required_checks: Array<{
+        name: string;
+        app_id: number;
+    }>;
+    runtime: 'node22-static-v1';
+    docker_image: string;
+    test_command: string[];
+    build_command: string[];
+    preview_directory: string;
+    max_jobs: number;
+    max_attempts: number;
+    max_model_calls: number;
+    max_tokens: number;
+    max_seconds: number;
+    max_changed_files: number;
+    max_changed_bytes: number;
+    permissions: ['read_source', 'edit_code', 'run_tests', 'open_pull_request', 'publish_preview'];
+    issued_at: string;
+    expires_at: string;
+}
+/** Historical installed connections may be refreshed; this record grants no work authority. */
+interface RepositoryCodingRefreshableConnection {
+    setup_id: string;
+    worker_key: string;
+}
+interface RepositoryCodingRequest {
+    type: 'scopeblind.repository.coding-request.v1';
+    id: string;
+    workspace_id: string;
+    mandate_digest: string;
+    source: RepositoryCodingSource;
+    owner_key: string;
+    issued_at: string;
+}
+interface RepositoryCodingStop {
+    type: 'scopeblind.repository.coding-stop.v1';
+    id: string;
+    workspace_id: string;
+    mandate_digest: string;
+    job_id?: string;
+    principal_key: string;
+    issued_at: string;
+}
+type RepositoryCodingStatus = 'queued' | 'running' | 'testing' | 'publishing' | 'pr_ready' | 'failed' | 'cancelled' | 'unknown' | 'expired';
+interface RepositoryCodingFile {
+    path: string;
+    before_sha: string | null;
+    content: string | null;
+}
+interface RepositoryCodingTest {
+    command_digest: string;
+    exit_code: number;
+    output_sha256: string;
+    duration_ms: number;
+}
+interface RepositoryCodingPlan {
+    type: 'scopeblind.repository.coding-plan.v1';
+    job_id: string;
+    request_digest: string;
+    mandate_digest: string;
+    source_head_sha: string;
+    source_base_sha: string;
+    branch: string;
+    commit_sha: string;
+    tree_sha: string;
+    files: Array<{
+        path: string;
+        before_sha: string | null;
+        after_sha: string | null;
+        bytes: number;
+    }>;
+    tests: RepositoryCodingTest;
+    build: RepositoryCodingTest;
+    preview_digest: string;
+    model_calls: number;
+    reserved_tokens: number;
+    issued_at: string;
+}
+interface RepositoryCodingPublication {
+    type: 'scopeblind.repository.coding-publication.v1';
+    job_id: string;
+    plan_digest: string;
+    mandate_digest: string;
+    request_digest: string;
+    worker_key: string;
+    lease_id: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositoryCodingResult {
+    type: 'scopeblind.repository.coding-result.v1';
+    job_id: string;
+    plan_digest: string;
+    publication_digest: string;
+    repository: string;
+    branch: string;
+    head_sha: string;
+    pull_number: number;
+    pull_url: string;
+    preview_url: string;
+    preview_digest: string;
+    deployment_id: number;
+    deployment_status_id: number;
+    deployment_environment: 'ScopeBlind coding preview';
+    check: {
+        id: number;
+        name: 'ScopeBlind isolated coding checks';
+        app_id: 15368;
+        head_sha: string;
+        conclusion: 'success';
+    };
+    observed_at: string;
+}
+interface RepositoryCodingJob {
+    type: 'scopeblind.repository.coding-job.v1';
+    request: Signed<RepositoryCodingRequest>;
+    mandate: Signed<RepositoryCodingMandate>;
+    adoption: Signed<RepositoryCodingMandate>;
+    workspace: Signed<RepositoryWorkspaceState>;
+    parent: RepositoryReviewEvidence;
+    status: RepositoryCodingStatus;
+    attempts: number;
+    model_calls: number;
+    reserved_tokens: number;
+    lease_id: string | null;
+    lease_expires_at: string | null;
+    started_at: string | null;
+    plan: Signed<RepositoryCodingPlan> | null;
+    publication: Signed<RepositoryCodingPublication> | null;
+    result: Signed<RepositoryCodingResult> | null;
+    stop: Signed<RepositoryCodingStop> | null;
+    error: string | null;
+    observed_at: string;
+}
+interface RepositoryCodingMandateView {
+    mandate: Signed<RepositoryCodingMandate>;
+    adoption: Signed<RepositoryCodingMandate> | null;
+    revocation: Signed<RepositoryCodingStop> | null;
+    status: 'awaiting_reviewer' | 'active' | 'expired' | 'revoked' | 'membership_changed' | 'exhausted';
+    used_jobs: number;
+}
+interface RepositoryCodingEvidence {
+    type: 'scopeblind.repository.coding-evidence.v1';
+    job: Signed<RepositoryCodingJob>;
+}
+interface RepositoryCodingModelContext {
+    files: Array<{
+        path: string;
+        content: string;
+    }>;
+    history: Array<{
+        action: unknown;
+        result: string;
+    }>;
+}
+type RepositoryCodingModelAction = {
+    action: 'write_file';
+    path: string;
+    content: string;
+} | {
+    action: 'delete_file';
+    path: string;
+} | {
+    action: 'run_tests' | 'finish';
+};
+declare const CODING_PERMISSIONS: readonly ["read_source", "edit_code", "run_tests", "open_pull_request", "publish_preview"];
+declare function validRepositoryCodingRefreshableConnections(v: unknown): v is RepositoryCodingRefreshableConnection[];
+declare function codingSafePath(path: unknown): path is string;
+declare function codingCommand(v: unknown): v is string[];
+declare function validRepositoryCodingSource(v: unknown): v is RepositoryCodingSource;
+declare function validRepositoryCodingMandate(v: unknown): v is RepositoryCodingMandate;
+declare function validRepositoryCodingRequest(v: unknown): v is RepositoryCodingRequest;
+declare function validRepositoryCodingStop(v: unknown): v is RepositoryCodingStop;
+declare function validRepositoryCodingPlan(v: unknown, m: RepositoryCodingMandate): v is RepositoryCodingPlan;
+declare function codingScopeWithin(paths: string[], m: RepositoryCodingMandate): boolean;
+declare function validRepositoryCodingResult(v: unknown): v is RepositoryCodingResult;
+
+/** Project-scoped human devices. Device signatures never become principal signatures. */
+
+declare const REPOSITORY_DEVICE_DOMAIN = "scopeblind.repository.device-authorization.v1\n";
+declare const REPOSITORY_DEVICE_ACTIONS: readonly ["repository_device_link_request", "repository_device_link_status", "repository_device_authorize", "repository_device_confirm", "repository_device_list", "repository_device_revoke"];
+type RepositoryDeviceAction = typeof REPOSITORY_DEVICE_ACTIONS[number];
+declare const REPOSITORY_DEVICE_PERMISSIONS: readonly ["read", "claim", "review", "feedback", "accept"];
+type RepositoryDevicePermission = typeof REPOSITORY_DEVICE_PERMISSIONS[number];
+declare const REPOSITORY_DEVICE_LINK_MS: number;
+declare const REPOSITORY_DEVICE_MAX_MS: number;
+interface RepositoryDeviceLink {
+    type: 'scopeblind.repository.device-link.v1';
+    id: string;
+    workspace_id: string;
+    device_key: string;
+    name: string;
+    secret_hash: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositoryDeviceAuthorization {
+    type: 'scopeblind.repository.device-authorization.v1';
+    id: string;
+    link_id: string;
+    workspace_id: string;
+    workspace_digest: string;
+    member_id: string;
+    member_revision: number;
+    principal_key: string;
+    device_key: string;
+    device_name: string;
+    actions: RepositoryDevicePermission[];
+    authority_key: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositoryDeviceConfirmation {
+    type: 'scopeblind.repository.device-confirmation.v1';
+    authorization_digest: string;
+    workspace_id: string;
+    device_key: string;
+    issued_at: string;
+}
+interface RepositoryDeviceUse {
+    type: 'scopeblind.repository.device-use.v1';
+    authorization_digest: string;
+    workspace_id: string;
+    workspace_digest: string;
+    member_id: string;
+    member_revision: number;
+    principal_key: string;
+    device_key: string;
+    task_id: string;
+    task_digest: string;
+    payload_digest: string;
+    action: RepositoryDevicePermission;
+    recorded_at: string;
+}
+type RepositoryDeviceStatus = 'pending' | 'active' | 'expired' | 'revoked' | 'membership_changed';
+interface RepositoryDeviceView {
+    authorization: Signed<RepositoryDeviceAuthorization>;
+    status: RepositoryDeviceStatus;
+    confirmation: Signed<RepositoryDeviceConfirmation> | null;
+    revoked_at?: string;
+}
+interface RepositoryDeviceLinkState {
+    type: 'scopeblind.repository.device-link-state.v1';
+    link: Signed<RepositoryDeviceLink>;
+    status: 'pending' | 'authorized' | 'expired';
+    device: RepositoryDeviceView | null;
+    observed_at: string;
+}
+interface RepositoryDeviceListState {
+    type: 'scopeblind.repository.device-list.v1';
+    workspace_id: string;
+    viewer_key: string;
+    devices: RepositoryDeviceView[];
+    has_more: boolean;
+    observed_at: string;
+}
+interface RepositoryHumanContext {
+    authorityKey: string;
+    task?: Signed<RepositoryTask>;
+    requireRecordedUse?: boolean;
+}
+declare function validRepositoryDeviceLink(v: unknown): v is RepositoryDeviceLink;
+declare function validRepositoryDeviceAuthorization(v: unknown): v is RepositoryDeviceAuthorization;
+declare function validRepositoryDeviceConfirmation(v: unknown): v is RepositoryDeviceConfirmation;
+declare function verifyRepositoryDeviceAuthorization(value: unknown): Promise<boolean>;
+declare function repositoryDevicePreimage(payloadDigest: string, authorizationDigest: string): string;
+declare function repositoryHumanPrincipal(value: Signed<unknown>): string;
+declare function sameRepositoryHumanIntent(left: Signed<unknown>, right: Signed<unknown>): boolean;
+declare function repositoryDevicePermission(action: string): RepositoryDevicePermission | null;
+/** Only these human statements may carry project-device authority. */
+declare function repositoryHumanPermission(value: Signed<unknown>): {
+    action: RepositoryDevicePermission;
+    at: string;
+} | null;
+declare function validRepositoryHumanEnvelope(value: unknown): value is Signed<unknown>;
+/** Offline historical authority check. Live acceptance must also atomically check revocation/membership. */
+declare function verifyRepositoryHuman<T>(value: Signed<T>, principal: string, context: RepositoryHumanContext): Promise<boolean>;
+
 /** Explicit, room-bound human device delegation. Raw signature verification stays separate. */
 
 declare const DEVICE_ACTIONS: readonly ["inspect", "decision_inbox", "negotiation_get", "decide", "accept", "negotiation_mandate", "negotiation_approve"];
@@ -1236,6 +2363,15 @@ interface Signed<T> {
     authorization?: Signed<DeviceAuthorization>;
     authorization_signature?: string;
     authorization_use?: Signed<DeviceUse>;
+    repository_authorization?: Signed<RepositoryDeviceAuthorization>;
+    repository_authorization_signature?: string;
+    repository_authorization_use?: Signed<RepositoryDeviceUse>;
+}
+interface SigningIdentity {
+    publicKey: string;
+    privateKey: CryptoKey;
+    deviceAuthorization?: Signed<DeviceAuthorization>;
+    repositoryDeviceAuthorization?: Signed<RepositoryDeviceAuthorization>;
 }
 interface Agreement {
     type: 'scopeblind.coordination.agreement.v1';
@@ -1437,7 +2573,7 @@ interface GrantView {
     binding?: Signed<GuestBinding>;
     revoked: boolean;
 }
-type RpcAction = 'create' | 'invite' | 'claim' | 'revoke' | 'admit' | 'execute' | 'outcome' | 'decide' | 'revise' | 'finalize' | 'accept' | 'pause' | 'actor_token' | 'inspect' | 'deliver' | 'fixtures_update' | 'restart' | 'live_start' | 'live_tick' | 'live_retry' | 'pair_create' | 'pair_revoke' | 'pair_claim' | 'brief_draft' | RehearsalAction | 'rehearsal_invite' | 'rehearsal_claim' | 'rehearsal_revoke' | 'rehearsal_adopt' | 'rehearsal_draft' | 'rehearsal_case_review' | NegotiationAction | 'negotiation_share' | 'negotiation_invitation_rotate' | 'result_share' | DeviceAction | RepositoryAction | RepositoryCollaborationAction | typeof AGENT_REQUEST_ACTIONS[number] | typeof DECISION_ACTIONS[number];
+type RpcAction = 'create' | 'invite' | 'claim' | 'revoke' | 'admit' | 'execute' | 'outcome' | 'decide' | 'revise' | 'finalize' | 'accept' | 'pause' | 'actor_token' | 'inspect' | 'deliver' | 'fixtures_update' | 'restart' | 'live_start' | 'live_tick' | 'live_retry' | 'pair_create' | 'pair_revoke' | 'pair_claim' | 'brief_draft' | RehearsalAction | 'rehearsal_invite' | 'rehearsal_claim' | 'rehearsal_revoke' | 'rehearsal_adopt' | 'rehearsal_draft' | 'rehearsal_case_review' | NegotiationAction | 'negotiation_share' | 'negotiation_invitation_rotate' | 'result_share' | DeviceAction | RepositoryDeviceAction | RepositoryCodingAction | RepositorySetupAction | RepositoryAction | RepositoryCollaborationAction | RepositoryWorkspaceAction | RepositoryReviewAction | typeof AGENT_REQUEST_ACTIONS[number] | typeof DECISION_ACTIONS[number];
 interface RpcRequest {
     type: 'scopeblind.coordination.request.v1';
     action: RpcAction;
@@ -4757,25 +5893,103 @@ declare function verifyPublicSnapshot(value: unknown, authorityKey: string): Pro
 
 declare function verifyOwnerAgreement(agreement: Signed<Agreement>, negotiation?: NegotiationExport, depth?: number): Promise<boolean>;
 
-/** Offline verification of optional collaboration records around immutable v1 tasks. */
-
-interface RepositoryCollaborationEvidence {
-    type: 'scopeblind.repository.collaboration-evidence.v1';
-    repository: RepositoryEvidence;
-    collaboration: Signed<RepositoryCollaboration>;
-    demo?: Signed<RepositoryDemoState>;
-    parent?: RepositoryEvidence;
-    parent_request?: Signed<RepositoryRevisionRequest>;
-    parent_agent_grant?: Signed<RepositoryAgentGrant>;
-}
-declare function verifyRepositoryCollaborationEvidence(input: unknown, pins?: Parameters<typeof verifyRepositoryEvidence>[1]): Promise<{
+declare function verifyRepositoryCodingEvidence(value: unknown, authorityKey?: string): Promise<{
     valid: boolean;
-    accepted: boolean;
-    authorityPinned: boolean;
-    previewVerified: boolean;
-    revisionLinked: boolean;
     errors: string[];
+    published: boolean;
+    authorityPinned: boolean;
     limitations: string[];
 }>;
 
-export { type ActaEnvelope, type ActaSignature, type ActionReceipt, type AdmissionResult, type AgentId, type AgentManifest, type ApprovalAssertion, type ApprovalChallenge, type ApprovalNotification, type ApprovalResult, type ArenaPayload, type ArenaReceipt, type AttestationDocument, type AttestationPayload, type AttestationProvider, type AttestationReceipt, type AttestationResult, type AuditBundle, type AuditBundleOptions, type BenchmarkPayload, type BenchmarkReceipt, type BuilderId, type C2PAAssertion, type C2PAIngredient, type C2PAManifest, type C2PAOptions, type CCRConnectorConfig, type CCRSessionContext, CONNECTOR_PILOTS, type CalibrationScore, type CedarEvalOptions, type CedarEvalRequest, type CedarPolicySet, type CedarSchema, type CedarSchemaResult, type CommittedFieldOpening, type CommittedSignResult, type ComplianceReport, ConfidentialGate, type ConfidentialGateConfig, type ConfidentialInferenceConfig, type ConnectorAction, type ConnectorEnvVar, type ConnectorPilot, type ConnectorPilotId, CoordinationClient, type CoordinationConfig, CoordinationError, type CoordinationPayment, type CoordinationPaymentResult, type CredentialConfig, type DecisionContext, type DecisionLog, type DelegationReceipt, type DeviceAuthorization, type DevicePermission, type DeviceUse, type DirectController, type DisclosureMode, EGRESS_SUMMARY_FIELDS, type Ed25519PublicKey, type EvidenceAttestation, type EvidenceAttestationInput, type EvidenceIssuer, type EvidenceReceipt, type EvidenceReceiptBase, type EvidenceSummary, type EvidenceSummaryEntry, type EvidenceType, type ExternalDecision, type ExternalPDPConfig, type GateSigner, type HFDatasetMetadata, type HFReceiptRow, type HookEventName, type HookInput, type HookResponse, type HumanContext, type InstalledConnectorPilot, type IssuerType, type JsonRpcRequest, type JsonRpcResponse, type LeaseCompatibility, type MandateApproval, type MandateController, type MandateProposal, type MandateRegistry, type MandateTransition, type ManifestBuilder, type ManifestCapabilities, type ManifestConfig, type ManifestIdentity, type ManifestPresentation, type ManifestSignature, type ManifestStatus, type McpToolDescription, type MinimalDisclosure, type NegotiationExport, type NegotiationMandate, type NegotiationProposal, type NegotiationReport, type NegotiationVerification, type NotificationConfig, POLICY_PACKS, type PassportTokenClaims, type PayloadDigest, type PlanReceipt, type PolicyDiff, type PolicyEngineMode, type PolicyPack, type PolicySnapshot, type PredictionReceipt, type PredictionResolution, type PropagatorConfig, type ProtectConfig, ProtectGateway, type ProtectPolicy, type PublicSnapshot, type RateLimit, ReceiptPropagator, type ReceiptShape, type ReceiptVerification, type RedactedResult, type RedactionSalt, type RegistryCheck, type RehearsalExport, type RehearsalVerification, type RekorAnchor, type RekorVerification, type RepositoryAcceptance, type RepositoryApproval, type RepositoryClaim, type RepositoryCollaborationEvidence, type RepositoryEvidence, type RepositoryExecution, type RepositoryOutcome, type RepositoryProposal, type RepositoryState, type RepositoryTask, type RestraintPayload, type RestraintReceipt, type SHA256Hash, type SafetyTranscript, type Sandbox, type SandboxConfig, type SandboxReceipt, type SandboxResult, type SandboxToolCall, type SchemaGeneratorConfig, ScopeBlindBridge, type SelectiveDisclosurePackageV0, type SelectiveDisclosureVerification, type SelfTestCase, type SelfTestReport, type SigningConfig, type SimulationResult, type SimulationSummary, type SnapshotReceipt, type SnapshotVerification, type SwarmContext, type TierOverrides, type TimingMetrics, type ToolPolicy, type TrustTier, type WebAuthnController, type WorkPayload, type WorkReceipt, anchorToRekor, approvePolicyProposalWithDirectSignature, approvePolicyProposalWithWebAuthn, assertEgressSafe, buildDecisionContext, checkRateLimit, collectSignedReceipts, computeCalibration, computeSbIssuerKid, confidentialInference, connectorDirectory, connectorDoctor, connectorPilotIds, coordinationConfigFromArgs, createApprovalChallenge, createApprovalReceiptPayload, createAttestationField, createAuditBundle, createC2PAManifest, createDirectControllerApproval, createDisclosurePackage, createEvidenceAttestation, createLogAnchorField, createPolicyProposal, createReceiptChannel, createReceiptEnvelope, createSandbox, createSelectiveDisclosurePackage, createWebAuthnPolicyChallenge, describePolicyDiff, destroySandbox, discloseField, ed25519ToDIDKey, evaluateCedar, evaluateTier, exportC2PAManifestJSON, exportJSONL, exportMandateDisciplineRecord, formatReportMarkdown, formatSimulation, forwardReceipt, generateC2PACommand, generateCedarSchema, generateDatasetCard, generateHFMetadata, generateReport, generateSafetyTranscript, generateSchemaStub, getConnectorPilot, getPolicyPack, getScopeBlindBridge, getSignerInfo, getToolPolicy, hashReceipt, hashResponseBody, humanPrincipal, initSigning, initializeMandateRegistry, inspectEgress, isAgentId, isCedarAvailable, isDisclosureMode, isEvidenceType, isManifestStatus, isSigningEnabled, listCredentialLabels, loadCedarPolicies, loadGateSigner, loadMandateRegistry, loadPolicy, mandatePaths, manifestToVC, meetsMinTier, parseLogFile, parseNotificationConfigFromEnv, parseRateLimit, policyPackIds, policySetFromSource, publicMandateStatus, queryExternalPDP, readInstalledConnectorPilots, receiptHash, receiptIdentity, receiptToVP, receiptsToHFRows, redactFields, refreshManagedMandate, repositorySnapshotDigest, resolveCredential, revealField, runEgressSelfCheck, runEvaluatorSelfTest, runInSandbox, sendApprovalNotification, signCommittedDecision, signDecision, simulate, snapshotFromDirectory, toCredentialRequestOptions, toEgressSummary, toManifoldFormat, toMetaculusFormat, validateCoordinationConfig, validateCoordinationPayment, validateCredentials, validateEvidenceReceipt, validateManifest, verifyActaC2PAAssertions, verifyAllCommitments, verifyApprovalAssertion, verifyCommitment, verifyDeviceAuthorization, verifyEvidenceAttestation, verifyHuman, verifyMandateLifecycleExport, verifyMandateRegistry, verifyNegotiationEvidence, verifyOwnerAgreement, verifyPublicSnapshot, verifyReceipt, verifyRehearsalEvidence, verifyRekorAnchor, verifyRepositoryCollaborationEvidence, verifyRepositoryEvidence, verifySelectiveDisclosurePackage, writeConnectorPilots };
+declare const REPOSITORY_PREVIEW_MAX_BYTES: number;
+declare const REPOSITORY_PREVIEW_MAX_FILES = 64;
+interface RepositoryPreviewFile {
+    path: string;
+    content_base64: string;
+    sha256: string;
+}
+interface RepositoryPreviewBundle {
+    files: RepositoryPreviewFile[];
+    sha256: string;
+}
+interface RepositoryPreviewEntry {
+    path: string;
+    sha256: string;
+    bytes: number;
+}
+declare const PREVIEW_TYPES: Record<string, string>;
+declare function repositoryPreviewPath(path: unknown): path is string;
+declare function validateRepositoryPreviewBundle(value: unknown): Promise<{
+    digest: string;
+    entries: RepositoryPreviewEntry[];
+    files: Array<{
+        path: string;
+        bytes: Uint8Array;
+        sha256: string;
+    }>;
+}>;
+
+interface RepositoryCodingConfig {
+    type: 'scopeblind.repository.coding-config.v1';
+    endpoint: string;
+    authority_key: string;
+    worker_key: string;
+    repository: string;
+    base_branch: string;
+    runtime: 'node22-static-v1';
+    test_command: string[];
+    build_command: string[];
+    preview_directory: string;
+    docker_image: string;
+}
+interface CodingSandbox {
+    run(command: string[], timeout: number): Promise<{
+        exit_code: number;
+        output: string;
+        duration_ms: number;
+    }>;
+    close(): Promise<void>;
+}
+type DockerExecute = (file: string, args: string[], options: {
+    timeout: number;
+    maxBuffer: number;
+    env: {
+        PATH: string | undefined;
+    };
+}) => Promise<{
+    stdout: string;
+    stderr: string;
+}>;
+declare class DockerCodingSandbox implements CodingSandbox {
+    readonly directory: string;
+    readonly image: string;
+    private dockerExecute;
+    private containers;
+    private closed;
+    constructor(directory: string, image: string, dockerExecute?: DockerExecute);
+    run(command: string[], timeout: number): Promise<{
+        exit_code: number;
+        output: string;
+        duration_ms: number;
+    }>;
+    private remove;
+    close(): Promise<void>;
+}
+declare class RepositoryCodingRunner {
+    readonly config: RepositoryCodingConfig;
+    private identity;
+    private githubToken;
+    private fetcher;
+    private sandboxFactory;
+    private publicationUntil;
+    private stopped;
+    constructor(config: RepositoryCodingConfig, identity: SigningIdentity, githubToken: string, fetcher?: typeof fetch, sandboxFactory?: (dir: string) => CodingSandbox);
+    private rpc;
+    private github;
+    private checked;
+    private readback;
+    private result;
+    runOne(jobIdFilter?: string): Promise<boolean>;
+}
+
+export { type ActaEnvelope, type ActaSignature, type ActionReceipt, type AdmissionResult, type AgentId, type AgentManifest, type ApprovalAssertion, type ApprovalChallenge, type ApprovalNotification, type ApprovalResult, type ArenaPayload, type ArenaReceipt, type AttestationDocument, type AttestationPayload, type AttestationProvider, type AttestationReceipt, type AttestationResult, type AuditBundle, type AuditBundleOptions, type BenchmarkPayload, type BenchmarkReceipt, type BuilderId, type C2PAAssertion, type C2PAIngredient, type C2PAManifest, type C2PAOptions, type CCRConnectorConfig, type CCRSessionContext, CODING_PERMISSIONS, CONNECTOR_PILOTS, type CalibrationScore, type CedarEvalOptions, type CedarEvalRequest, type CedarPolicySet, type CedarSchema, type CedarSchemaResult, type CodingSandbox, type CommittedFieldOpening, type CommittedSignResult, type ComplianceReport, ConfidentialGate, type ConfidentialGateConfig, type ConfidentialInferenceConfig, type ConnectorAction, type ConnectorEnvVar, type ConnectorPilot, type ConnectorPilotId, CoordinationClient, type CoordinationConfig, CoordinationError, type CoordinationPayment, type CoordinationPaymentResult, type CredentialConfig, type DecisionContext, type DecisionLog, type DelegationReceipt, type DeviceAuthorization, type DevicePermission, type DeviceUse, type DirectController, type DisclosureMode, DockerCodingSandbox, EGRESS_SUMMARY_FIELDS, type Ed25519PublicKey, type EvidenceAttestation, type EvidenceAttestationInput, type EvidenceIssuer, type EvidenceReceipt, type EvidenceReceiptBase, type EvidenceSummary, type EvidenceSummaryEntry, type EvidenceType, type ExternalDecision, type ExternalPDPConfig, type GateSigner, type HFDatasetMetadata, type HFReceiptRow, type HookEventName, type HookInput, type HookResponse, type HumanContext, type InstalledConnectorPilot, type IssuerType, type JsonRpcRequest, type JsonRpcResponse, type LeaseCompatibility, type MandateApproval, type MandateController, type MandateProposal, type MandateRegistry, type MandateTransition, type ManifestBuilder, type ManifestCapabilities, type ManifestConfig, type ManifestIdentity, type ManifestPresentation, type ManifestSignature, type ManifestStatus, type McpToolDescription, type MinimalDisclosure, type NegotiationExport, type NegotiationMandate, type NegotiationProposal, type NegotiationReport, type NegotiationVerification, type NotificationConfig, POLICY_PACKS, PREVIEW_TYPES, type PassportTokenClaims, type PayloadDigest, type PlanReceipt, type PolicyDiff, type PolicyEngineMode, type PolicyPack, type PolicySnapshot, type PredictionReceipt, type PredictionResolution, type PropagatorConfig, type ProtectConfig, ProtectGateway, type ProtectPolicy, type PublicSnapshot, REPOSITORY_CODING_ACTIONS, REPOSITORY_CODING_IMAGE, REPOSITORY_DEVICE_ACTIONS, REPOSITORY_DEVICE_DOMAIN, REPOSITORY_DEVICE_LINK_MS, REPOSITORY_DEVICE_MAX_MS, REPOSITORY_DEVICE_PERMISSIONS, REPOSITORY_GUIDED_WORKFLOW, REPOSITORY_PREVIEW_MAX_BYTES, REPOSITORY_PREVIEW_MAX_FILES, REPOSITORY_SETUP_ACTIONS, REPOSITORY_SETUP_TTL, type RateLimit, ReceiptPropagator, type ReceiptShape, type ReceiptVerification, type RedactedResult, type RedactionSalt, type RegistryCheck, type RehearsalExport, type RehearsalVerification, type RekorAnchor, type RekorVerification, type RepositoryAcceptance, type RepositoryApproval, type RepositoryClaim, type RepositoryCodingAction, type RepositoryCodingConfig, type RepositoryCodingConnectionConfig, type RepositoryCodingEvidence, type RepositoryCodingFile, type RepositoryCodingJob, type RepositoryCodingMandate, type RepositoryCodingMandateView, type RepositoryCodingModelAction, type RepositoryCodingModelContext, type RepositoryCodingPlan, type RepositoryCodingPublication, type RepositoryCodingRefreshableConnection, type RepositoryCodingRequest, type RepositoryCodingResult, RepositoryCodingRunner, type RepositoryCodingSource, type RepositoryCodingStatus, type RepositoryCodingStop, type RepositoryCodingTest, type RepositoryCollaborationEvidence, type RepositoryDeviceAction, type RepositoryDeviceAuthorization, type RepositoryDeviceConfirmation, type RepositoryDeviceLink, type RepositoryDeviceLinkState, type RepositoryDeviceListState, type RepositoryDevicePermission, type RepositoryDeviceStatus, type RepositoryDeviceUse, type RepositoryDeviceView, type RepositoryEvidence, type RepositoryExecution, type RepositoryGuidedReceiverConfig, type RepositoryHumanContext, type RepositoryOutcome, type RepositoryPreviewBundle, type RepositoryPreviewEntry, type RepositoryPreviewFile, type RepositoryProposal, type RepositoryReviewBrief, type RepositoryReviewContent, type RepositoryReviewDecision, type RepositoryReviewEvidence, type RepositoryReviewFeedback, type RepositoryReviewPacket, type RepositoryReviewRecommendation, type RepositoryReviewState, type RepositorySetupAction, type RepositorySetupAuthorization, type RepositorySetupChallenge, type RepositorySetupCoding, type RepositorySetupCodingReady, type RepositorySetupEnrollment, type RepositorySetupGitHub, type RepositorySetupInfo, type RepositorySetupInspection, type RepositorySetupInstallation, type RepositorySetupJob, type RepositorySetupJobState, type RepositorySetupReady, type RepositorySetupRenewal, type RepositorySetupRequest, type RepositorySetupState, type RepositorySetupStatus, type RepositorySetupTaskBinding, type RepositorySetupWorkflowProof, type RepositoryState, type RepositoryTask, type RepositoryWorkspace, type RepositoryWorkspaceAgentState, type RepositoryWorkspaceInbox, type RepositoryWorkspaceState, type RestraintPayload, type RestraintReceipt, type SHA256Hash, type SafetyTranscript, type Sandbox, type SandboxConfig, type SandboxReceipt, type SandboxResult, type SandboxToolCall, type SchemaGeneratorConfig, ScopeBlindBridge, type SelectiveDisclosurePackageV0, type SelectiveDisclosureVerification, type SelfTestCase, type SelfTestReport, type SigningConfig, type SimulationResult, type SimulationSummary, type SnapshotReceipt, type SnapshotVerification, type SwarmContext, type TierOverrides, type TimingMetrics, type ToolPolicy, type TrustTier, type WebAuthnController, type WorkPayload, type WorkReceipt, type WorkspaceMember, type WorkspacePreparationMandate, type WorkspaceReviewDraft, type WorkspaceTaskAssignment, anchorToRekor, approvePolicyProposalWithDirectSignature, approvePolicyProposalWithWebAuthn, assertEgressSafe, buildDecisionContext, checkRateLimit, codingCommand, codingSafePath, codingScopeWithin, collectSignedReceipts, computeCalibration, computeSbIssuerKid, confidentialInference, connectorDirectory, connectorDoctor, connectorPilotIds, coordinationConfigFromArgs, createApprovalChallenge, createApprovalReceiptPayload, createAttestationField, createAuditBundle, createC2PAManifest, createDirectControllerApproval, createDisclosurePackage, createEvidenceAttestation, createLogAnchorField, createPolicyProposal, createReceiptChannel, createReceiptEnvelope, createSandbox, createSelectiveDisclosurePackage, createWebAuthnPolicyChallenge, describePolicyDiff, destroySandbox, discloseField, ed25519ToDIDKey, evaluateCedar, evaluateTier, exportC2PAManifestJSON, exportJSONL, exportMandateDisciplineRecord, formatReportMarkdown, formatSimulation, forwardReceipt, generateC2PACommand, generateCedarSchema, generateDatasetCard, generateHFMetadata, generateReport, generateSafetyTranscript, generateSchemaStub, getConnectorPilot, getPolicyPack, getScopeBlindBridge, getSignerInfo, getToolPolicy, hashReceipt, hashResponseBody, humanPrincipal, initSigning, initializeMandateRegistry, inspectEgress, isAgentId, isCedarAvailable, isDisclosureMode, isEvidenceType, isManifestStatus, isSigningEnabled, listCredentialLabels, loadCedarPolicies, loadGateSigner, loadMandateRegistry, loadPolicy, mandatePaths, manifestToVC, meetsMinTier, parseLogFile, parseNotificationConfigFromEnv, parseRateLimit, policyPackIds, policySetFromSource, publicMandateStatus, queryExternalPDP, readInstalledConnectorPilots, receiptHash, receiptIdentity, receiptToVP, receiptsToHFRows, redactFields, refreshManagedMandate, repositoryDevicePermission, repositoryDevicePreimage, repositoryHumanPermission, repositoryHumanPrincipal, repositoryPreviewPath, repositorySetupArtifactUrl, repositorySnapshotDigest, resolveCredential, revealField, runEgressSelfCheck, runEvaluatorSelfTest, runInSandbox, sameRepositoryHumanIntent, sendApprovalNotification, signCommittedDecision, signDecision, simulate, snapshotFromDirectory, toCredentialRequestOptions, toEgressSummary, toManifoldFormat, toMetaculusFormat, validRepositoryCodingConnectionConfig, validRepositoryCodingMandate, validRepositoryCodingPlan, validRepositoryCodingRefreshableConnections, validRepositoryCodingRequest, validRepositoryCodingResult, validRepositoryCodingSource, validRepositoryCodingStop, validRepositoryDeviceAuthorization, validRepositoryDeviceConfirmation, validRepositoryDeviceLink, validRepositoryHumanEnvelope, validRepositorySetupAuthorization, validRepositorySetupInspection, validRepositorySetupRenewal, validRepositorySetupRequest, validateCoordinationConfig, validateCoordinationPayment, validateCredentials, validateEvidenceReceipt, validateManifest, validateRepositoryPreviewBundle, verifyActaC2PAAssertions, verifyAllCommitments, verifyApprovalAssertion, verifyCommitment, verifyDeviceAuthorization, verifyEvidenceAttestation, verifyHuman, verifyMandateLifecycleExport, verifyMandateRegistry, verifyNegotiationEvidence, verifyOwnerAgreement, verifyPublicSnapshot, verifyReceipt, verifyRehearsalEvidence, verifyRekorAnchor, verifyRepositoryCodingEvidence, verifyRepositoryCollaborationEvidence, verifyRepositoryDeviceAuthorization, verifyRepositoryEvidence, verifyRepositoryHuman, verifyRepositoryReviewEvidence, verifyRepositorySetupEnrollment, verifyRepositorySetupReplacement, verifyRepositorySetupState, verifyRepositoryWorkspaceAgentState, verifyRepositoryWorkspaceState, verifySelectiveDisclosurePackage, writeConnectorPilots };

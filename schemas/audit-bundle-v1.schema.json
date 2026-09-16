@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://veritasacta.com/schemas/audit-bundle-v1.json",
+  "title": "Veritas Acta Audit Bundle v1",
+  "description": "Self-contained audit bundle with embedded receipts and public keys for offline verification.",
+  "type": "object",
+  "required": ["version", "receipts", "keys"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Bundle format version."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the bundle was created."
+    },
+    "issuer": {
+      "type": "string",
+      "description": "Identifier of the gateway or system that created this bundle."
+    },
+    "receipts": {
+      "type": "array",
+      "description": "Array of signed receipt envelopes.",
+      "items": {
+        "$ref": "receipt-v2.schema.json"
+      }
+    },
+    "keys": {
+      "type": "object",
+      "description": "Map of key IDs to public keys for self-contained verification.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["alg", "pub"],
+        "properties": {
+          "alg": {
+            "type": "string",
+            "const": "EdDSA"
+          },
+          "pub": {
+            "type": "string",
+            "description": "Hex-encoded Ed25519 public key."
+          },
+          "issuer": {
+            "type": "string",
+            "description": "Issuer identifier associated with this key."
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Optional summary statistics.",
+      "properties": {
+        "total_receipts": { "type": "integer" },
+        "allow_count": { "type": "integer" },
+        "deny_count": { "type": "integer" },
+        "time_range": {
+          "type": "object",
+          "properties": {
+            "first": { "type": "integer" },
+            "last": { "type": "integer" }
+          }
+        }
+      }
+    }
+  }
+}

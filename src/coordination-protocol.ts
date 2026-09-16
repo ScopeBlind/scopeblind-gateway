@@ -1,8 +1,8 @@
 /** Browser/Worker/Node shared contract. No storage, secrets, or Node imports. */
 export const COORDINATION_DOMAIN = 'scopeblind.coordination.v1\n';
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
-export interface Signed<T> { payload: T; signer: string; digest: string; signature: string; authorization?: Signed<import('./coordination-devices').DeviceAuthorization>; authorization_signature?: string; authorization_use?: Signed<import('./coordination-devices').DeviceUse> }
-export interface SigningIdentity { publicKey: string; privateKey: CryptoKey; deviceAuthorization?: Signed<import('./coordination-devices').DeviceAuthorization> }
+export interface Signed<T> { payload: T; signer: string; digest: string; signature: string; authorization?: Signed<import('./coordination-devices').DeviceAuthorization>; authorization_signature?: string; authorization_use?: Signed<import('./coordination-devices').DeviceUse>; repository_authorization?: Signed<import('./coordination-repository-devices').RepositoryDeviceAuthorization>; repository_authorization_signature?: string; repository_authorization_use?: Signed<import('./coordination-repository-devices').RepositoryDeviceUse> }
+export interface SigningIdentity { publicKey: string; privateKey: CryptoKey; deviceAuthorization?: Signed<import('./coordination-devices').DeviceAuthorization>; repositoryDeviceAuthorization?: Signed<import('./coordination-repository-devices').RepositoryDeviceAuthorization> }
 export interface Agreement {
   type: 'scopeblind.coordination.agreement.v1'; id: string; version: 1; title: string;
   owner_key: string; registrar_key: string; currency: 'USD'; budget_minor: number;
@@ -92,6 +92,9 @@ export type RpcAction = 'create' | 'invite' | 'claim' | 'revoke' | 'admit' | 'ex
   | import('./coordination-rehearsal').RehearsalAction | 'rehearsal_invite' | 'rehearsal_claim' | 'rehearsal_revoke' | 'rehearsal_adopt' | 'rehearsal_draft' | 'rehearsal_case_review'
   | import('./coordination-negotiation').NegotiationAction | 'negotiation_share' | 'negotiation_invitation_rotate' | 'result_share'
   | import('./coordination-devices').DeviceAction
+  | import('./coordination-repository-devices').RepositoryDeviceAction
+  | import('./coordination-repository-coding').RepositoryCodingAction
+  | import('./coordination-repository-connection').RepositorySetupAction
   | import('./coordination-repository').RepositoryAction
   | import('./coordination-repository-collaboration').RepositoryCollaborationAction
   | import('./coordination-repository-workspace').RepositoryWorkspaceAction
@@ -176,6 +179,7 @@ export async function importIdentity(pkcs8Hex: string, publicKey: string): Promi
   return identity;
 }
 export async function sign<T>(payload: T, identity: SigningIdentity): Promise<Signed<T>> {
+  if(identity.deviceAuthorization&&identity.repositoryDeviceAuthorization)throw new Error('A signature cannot combine room and project device authority');
   const preimage = COORDINATION_DOMAIN + canonical(payload);
   const signature = await crypto.subtle.sign('Ed25519', identity.privateKey, new TextEncoder().encode(preimage));
   const envelope:Signed<T>={ payload, signer: identity.publicKey, digest: await sha256(preimage), signature: bytesToHex(new Uint8Array(signature)) };
@@ -183,6 +187,11 @@ export async function sign<T>(payload: T, identity: SigningIdentity): Promise<Si
     envelope.authorization=identity.deviceAuthorization;
     const binding='scopeblind.coordination.device-authorization.v1\n'+envelope.digest+'\n'+identity.deviceAuthorization.digest;
     envelope.authorization_signature=bytesToHex(new Uint8Array(await crypto.subtle.sign('Ed25519',identity.privateKey,new TextEncoder().encode(binding))));
+  }
+  if(identity.repositoryDeviceAuthorization){
+    envelope.repository_authorization=identity.repositoryDeviceAuthorization;
+    const binding='scopeblind.repository.device-authorization.v1\n'+envelope.digest+'\n'+identity.repositoryDeviceAuthorization.digest;
+    envelope.repository_authorization_signature=bytesToHex(new Uint8Array(await crypto.subtle.sign('Ed25519',identity.privateKey,new TextEncoder().encode(binding))));
   }
   return envelope;
 }

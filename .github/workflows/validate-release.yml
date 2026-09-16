@@ -1,0 +1,60 @@
+name: Validate release candidate
+on:
+  push:
+    branches:
+      - 'codex/release-*'
+permissions:
+  contents: read
+concurrency:
+  group: release-validation-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.22.3'
+      - name: Use the reviewed npm toolchain
+        run: npm install --global npm@11.19.1
+      - name: Install locked dependencies
+        shell: bash
+        run: |
+          mkdir -p release-validation
+          set -o pipefail
+          npm ci 2>&1 | tee release-validation/npm-ci.log
+      - name: Build and test the complete package
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee release-validation/npm-test.log
+      - name: Verify the real isolated Docker runtime
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:docker 2>&1 | tee release-validation/docker.log
+      - name: Pack the checked source
+        run: |
+          npm pack --json > packed.json
+          node -e "const fs=require('node:fs'),crypto=require('node:crypto'),p=require('./packed.json')[0];fs.writeFileSync('release-validation/SHA256SUMS',crypto.createHash('sha256').update(fs.readFileSync(p.filename)).digest('hex')+'  '+p.filename+'\n');"
+      - name: Verify a clean installation
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/release-install-check.mjs 2>&1 | tee release-validation/clean-install.log
+      - name: Preserve validation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-validation-${{ github.sha }}
+          path: |
+            protect-mcp-*.tgz
+            packed.json
+            release-validation/
+          if-no-files-found: warn
+          retention-days: 30

@@ -8,7 +8,7 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-5KKNSXNI.mjs";
+} from "./chunk-TAOHHOM3.mjs";
 import {
   POLICY_PACKS,
   getPolicyPack,
@@ -17,7 +17,7 @@ import {
 import {
   ProtectGateway,
   validateCredentials
-} from "./chunk-6DMPXIYJ.mjs";
+} from "./chunk-BQK6J5FY.mjs";
 import {
   approvePolicyProposalWithDirectSignature,
   createDirectControllerApproval,
@@ -30,7 +30,7 @@ import {
   publicMandateStatus,
   snapshotFromDirectory,
   verifyMandateRegistry
-} from "./chunk-6WSDNYAH.mjs";
+} from "./chunk-66IKCPUU.mjs";
 import {
   RecordReporter,
   buildActionReadback,
@@ -38,11 +38,11 @@ import {
 } from "./chunk-MZOD6A6U.mjs";
 import {
   loadPolicy
-} from "./chunk-GADWK3VN.mjs";
+} from "./chunk-5MQK42SD.mjs";
 import {
   initSigning,
   signDecision
-} from "./chunk-VBLTBTAJ.mjs";
+} from "./chunk-GLPAPBKX.mjs";
 import {
   buildPolicyBundle,
   digestCedarDir,
@@ -53,13 +53,13 @@ import {
   runEvaluatorSelfTest,
   shortPolicyLabel,
   verifyPolicyBundle
-} from "./chunk-LVMGH3VC.mjs";
+} from "./chunk-YNNVGCWP.mjs";
 import {
   canonicalize,
   chainLink,
   verifyReceipt
-} from "./chunk-6JTYFG2X.mjs";
-import "./chunk-VS4TVKA7.mjs";
+} from "./chunk-SRLE63GU.mjs";
+import "./chunk-O3K3FPBT.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/cli.ts
@@ -4815,7 +4815,7 @@ ${dim("Allow a tool: npx protect-mcp policy allow <ToolName>  \xB7  Block one: p
 async function handleEgressCheck(argv) {
   const { readFileSync, existsSync, writeFileSync } = await import("fs");
   const { join } = await import("path");
-  const { inspectEgress, toEgressSummary, runEgressSelfCheck } = await import("./egress-guard-LKLYOG6H.mjs");
+  const { inspectEgress, toEgressSummary, runEgressSelfCheck } = await import("./egress-guard-PBKENJZ4.mjs");
   let dir = process.cwd();
   const di = argv.indexOf("--dir");
   if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
@@ -4888,23 +4888,23 @@ async function main() {
     return;
   }
   if (args[0] === "repository") {
-    await (await import("./repository-setup-VUKDSWIZ.mjs")).runRepositoryCommand(args.slice(1));
+    await (await import("./repository-setup-GCF4YFYP.mjs")).runRepositoryCommand(args.slice(1));
     return;
   }
   if (args[0] === "coordination" && args[1] === "agent") {
-    await (await import("./coordination-agent-server-UQYITQSK.mjs")).runCoordinationAgent(args.slice(2));
+    await (await import("./coordination-agent-server-6JFUWXKA.mjs")).runCoordinationAgent(args.slice(2));
     return;
   }
   if (args[0] === "coordination" && args[1] === "pair") {
-    await (await import("./coordination-pair-cli-MS5PDAIY.mjs")).runCoordinationPair(args.slice(2));
+    await (await import("./coordination-pair-cli-AXGNGFOU.mjs")).runCoordinationPair(args.slice(2));
     return;
   }
   if (args[0] === "coordination" && args[1] === "setup") {
-    (await import("./coordination-pair-cli-MS5PDAIY.mjs")).runCoordinationSetup(args.slice(2));
+    (await import("./coordination-pair-cli-AXGNGFOU.mjs")).runCoordinationSetup(args.slice(2));
     return;
   }
   if (args[0] === "coordination") {
-    await (await import("./coordination-server-74MJWBWQ.mjs")).runCoordinationServer(args.slice(1));
+    await (await import("./coordination-server-QUDL42CC.mjs")).runCoordinationServer(args.slice(1));
     return;
   }
   if (args[0] === "serve") {
@@ -4980,12 +4980,12 @@ async function main() {
     return;
   }
   if (args[0] === "onboard") {
-    const { handleOnboard } = await import("./onboard-C5EVX5AW.mjs");
+    const { handleOnboard } = await import("./onboard-BK7L3XYP.mjs");
     await handleOnboard(args.slice(1));
     return;
   }
   if (args[0] === "offboard") {
-    const { handleOffboard } = await import("./onboard-C5EVX5AW.mjs");
+    const { handleOffboard } = await import("./onboard-BK7L3XYP.mjs");
     await handleOffboard(args.slice(1));
     return;
   }
@@ -5046,7 +5046,7 @@ async function main() {
     return;
   }
   if (args[0] === "coverage") {
-    const { handleCoverage } = await import("./coverage-PSS3KII6.mjs");
+    const { handleCoverage } = await import("./coverage-L4PY7W4A.mjs");
     await handleCoverage(args.slice(1));
     process.exit(process.exitCode || 0);
   }
@@ -5221,7 +5221,7 @@ async function main() {
   if (useHttp) {
     const portIdx = args.indexOf("--port");
     const httpPort = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 3e3;
-    const { startHttpTransport } = await import("./http-transport-NCFAXV7C.mjs");
+    const { startHttpTransport } = await import("./http-transport-HWPJ6ETZ.mjs");
     startHttpTransport({ port: httpPort, config, serverCommand: childCommand, cedarPolicySet: cedarPolicySet ?? void 0 });
     return;
   }
@@ -5429,7 +5429,7 @@ async function handleReport(args) {
       dir = args[++i];
     }
   }
-  const { generateReport, formatReportMarkdown } = await import("./report-AMDAI6ZB.mjs");
+  const { generateReport, formatReportMarkdown } = await import("./report-2LYNAMV2.mjs");
   const { join } = await import("path");
   const logPath = join(dir, ".protect-mcp-log.jsonl");
   const receiptPath = join(dir, ".protect-mcp-receipts.jsonl");

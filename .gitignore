@@ -1,3 +1,6 @@
 node_modules/
 .wrangler/
 .dev.vars
+*.tgz
+packed.json
+.protect-mcp-log.jsonl

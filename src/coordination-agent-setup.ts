@@ -1,7 +1,7 @@
 /** Shared, credential-free setup instructions for the browser and installed CLI. */
 export type AgentClient = 'claude-code' | 'codex' | 'json';
 export type AgentPurpose = 'execution' | 'rehearsal' | 'negotiation';
-export const AGENT_PACKAGE_URL = 'protect-mcp@0.23.0';
+export const AGENT_PACKAGE_URL = 'protect-mcp@0.24.0';
 export const AGENT_CLIENTS = [
   { id: 'claude-code', label: 'Claude Code' },
   { id: 'codex', label: 'Codex CLI' },

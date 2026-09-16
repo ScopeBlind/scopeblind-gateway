@@ -1,0 +1,19 @@
+{
+  "name": "ScopeBlind Repository Connection",
+  "url": "https://scopeblind.com",
+  "public": true,
+  "redirect_url": "https://scopeblind.com/standard",
+  "callback_urls": ["https://scopeblind.com/standard"],
+  "setup_url": "https://scopeblind.com/standard",
+  "setup_on_update": true,
+  "request_oauth_on_install": false,
+  "default_permissions": {
+    "metadata": "read",
+    "contents": "read",
+    "pull_requests": "read",
+    "checks": "read",
+    "deployments": "read",
+    "actions": "write"
+  },
+  "default_events": []
+}

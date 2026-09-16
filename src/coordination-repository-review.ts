@@ -48,7 +48,7 @@ export interface RepositoryReviewAgentUse {
  assignment:Signed<import('./coordination-repository-workspace.js').WorkspaceTaskAssignment>;checked_at:string;
 }
 export interface RepositoryReviewState {
- type:'scopeblind.repository.review-state.v1';task_id:string;task_digest:string;origin_digest?:string;brief:Signed<RepositoryReviewBrief>;
+ type:'scopeblind.repository.review-state.v1';task_id:string;task_digest:string;origin_digest?:string;coding_origin_digest?:string;brief:Signed<RepositoryReviewBrief>;
  packet:Signed<RepositoryReviewPacket>|null;decisions:Array<Signed<RepositoryReviewDecision>>;
  feedback:Array<Signed<RepositoryReviewFeedback>>;recommendations:Array<Signed<RepositoryReviewRecommendation>>;
  history:Array<{state:Signed<RepositoryState>;packet:Signed<RepositoryReviewPacket>;decisions:Array<Signed<RepositoryReviewDecision>>}>;agent_uses:Array<Signed<RepositoryReviewAgentUse>>;observed_at:string;

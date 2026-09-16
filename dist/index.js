@@ -9,14 +9,14 @@ var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
 var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+  for (var name2 in all)
+    __defProp(target, name2, { get: all[name2], enumerable: true });
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    for (let key4 of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key4) && key4 !== except)
+        __defProp(to, key4, { get: () => from[key4], enumerable: !(desc = __getOwnPropDesc(from, key4)) || desc.enumerable });
   }
   return to;
 };
@@ -48,30 +48,30 @@ var require_util = __commonJS({
       }
       util2.assertNever = assertNever;
       util2.arrayToEnum = (items) => {
-        const obj = {};
+        const obj4 = {};
         for (const item of items) {
-          obj[item] = item;
+          obj4[item] = item;
         }
-        return obj;
+        return obj4;
       };
-      util2.getValidEnumValues = (obj) => {
-        const validKeys = util2.objectKeys(obj).filter((k) => typeof obj[obj[k]] !== "number");
+      util2.getValidEnumValues = (obj4) => {
+        const validKeys = util2.objectKeys(obj4).filter((k) => typeof obj4[obj4[k]] !== "number");
         const filtered = {};
         for (const k of validKeys) {
-          filtered[k] = obj[k];
+          filtered[k] = obj4[k];
         }
         return util2.objectValues(filtered);
       };
-      util2.objectValues = (obj) => {
-        return util2.objectKeys(obj).map(function(e) {
-          return obj[e];
+      util2.objectValues = (obj4) => {
+        return util2.objectKeys(obj4).map(function(e) {
+          return obj4[e];
         });
       };
-      util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object4) => {
+      util2.objectKeys = typeof Object.keys === "function" ? (obj4) => Object.keys(obj4) : (object7) => {
         const keys2 = [];
-        for (const key in object4) {
-          if (Object.prototype.hasOwnProperty.call(object4, key)) {
-            keys2.push(key);
+        for (const key4 in object7) {
+          if (Object.prototype.hasOwnProperty.call(object7, key4)) {
+            keys2.push(key4);
           }
         }
         return keys2;
@@ -197,8 +197,8 @@ var require_ZodError = __commonJS({
       "not_multiple_of",
       "not_finite"
     ]);
-    var quotelessJson = (obj) => {
-      const json = JSON.stringify(obj, null, 2);
+    var quotelessJson = (obj4) => {
+      const json = JSON.stringify(obj4, null, 2);
       return json.replace(/"([^"]+)":/g, "$1:");
     };
     exports2.quotelessJson = quotelessJson;
@@ -505,46 +505,46 @@ var require_parseUtil = __commonJS({
         if (this.value !== "aborted")
           this.value = "aborted";
       }
-      static mergeArray(status, results) {
+      static mergeArray(status2, results) {
         const arrayValue = [];
         for (const s of results) {
           if (s.status === "aborted")
             return exports2.INVALID;
           if (s.status === "dirty")
-            status.dirty();
+            status2.dirty();
           arrayValue.push(s.value);
         }
-        return { status: status.value, value: arrayValue };
+        return { status: status2.value, value: arrayValue };
       }
-      static async mergeObjectAsync(status, pairs) {
+      static async mergeObjectAsync(status2, pairs) {
         const syncPairs = [];
         for (const pair of pairs) {
-          const key = await pair.key;
+          const key4 = await pair.key;
           const value = await pair.value;
           syncPairs.push({
-            key,
+            key: key4,
             value
           });
         }
-        return _ParseStatus.mergeObjectSync(status, syncPairs);
+        return _ParseStatus.mergeObjectSync(status2, syncPairs);
       }
-      static mergeObjectSync(status, pairs) {
+      static mergeObjectSync(status2, pairs) {
         const finalObject = {};
         for (const pair of pairs) {
-          const { key, value } = pair;
-          if (key.status === "aborted")
+          const { key: key4, value } = pair;
+          if (key4.status === "aborted")
             return exports2.INVALID;
           if (value.status === "aborted")
             return exports2.INVALID;
-          if (key.status === "dirty")
-            status.dirty();
+          if (key4.status === "dirty")
+            status2.dirty();
           if (value.status === "dirty")
-            status.dirty();
-          if (key.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
-            finalObject[key.value] = value.value;
+            status2.dirty();
+          if (key4.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
+            finalObject[key4.value] = value.value;
           }
         }
-        return { status: status.value, value: finalObject };
+        return { status: status2.value, value: finalObject };
       }
     };
     exports2.ParseStatus = ParseStatus;
@@ -603,12 +603,12 @@ var require_types = __commonJS({
     var parseUtil_js_1 = require_parseUtil();
     var util_js_1 = require_util();
     var ParseInputLazyPath = class {
-      constructor(parent, value, path, key) {
+      constructor(parent, value, path, key4) {
         this._cachedPath = [];
         this.parent = parent;
         this.data = value;
         this._path = path;
-        this._key = key;
+        this._key = key4;
       }
       get path() {
         if (!this._cachedPath.length) {
@@ -1044,7 +1044,7 @@ var require_types = __commonJS({
           });
           return parseUtil_js_1.INVALID;
         }
-        const status = new parseUtil_js_1.ParseStatus();
+        const status2 = new parseUtil_js_1.ParseStatus();
         let ctx = void 0;
         for (const check of this._def.checks) {
           if (check.kind === "min") {
@@ -1058,7 +1058,7 @@ var require_types = __commonJS({
                 exact: false,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "max") {
             if (input.data.length > check.value) {
@@ -1071,7 +1071,7 @@ var require_types = __commonJS({
                 exact: false,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "length") {
             const tooBig = input.data.length > check.value;
@@ -1097,7 +1097,7 @@ var require_types = __commonJS({
                   message: check.message
                 });
               }
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "email") {
             if (!emailRegex.test(input.data)) {
@@ -1107,7 +1107,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "emoji") {
             if (!emojiRegex) {
@@ -1120,7 +1120,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "uuid") {
             if (!uuidRegex.test(input.data)) {
@@ -1130,7 +1130,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "nanoid") {
             if (!nanoidRegex.test(input.data)) {
@@ -1140,7 +1140,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "cuid") {
             if (!cuidRegex.test(input.data)) {
@@ -1150,7 +1150,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "cuid2") {
             if (!cuid2Regex.test(input.data)) {
@@ -1160,7 +1160,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "ulid") {
             if (!ulidRegex.test(input.data)) {
@@ -1170,7 +1170,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "url") {
             try {
@@ -1182,7 +1182,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "regex") {
             check.regex.lastIndex = 0;
@@ -1194,7 +1194,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "trim") {
             input.data = input.data.trim();
@@ -1206,7 +1206,7 @@ var require_types = __commonJS({
                 validation: { includes: check.value, position: check.position },
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "toLowerCase") {
             input.data = input.data.toLowerCase();
@@ -1220,7 +1220,7 @@ var require_types = __commonJS({
                 validation: { startsWith: check.value },
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "endsWith") {
             if (!input.data.endsWith(check.value)) {
@@ -1230,7 +1230,7 @@ var require_types = __commonJS({
                 validation: { endsWith: check.value },
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "datetime") {
             const regex = datetimeRegex(check);
@@ -1241,7 +1241,7 @@ var require_types = __commonJS({
                 validation: "datetime",
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "date") {
             const regex = dateRegex;
@@ -1252,7 +1252,7 @@ var require_types = __commonJS({
                 validation: "date",
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "time") {
             const regex = timeRegex(check);
@@ -1263,7 +1263,7 @@ var require_types = __commonJS({
                 validation: "time",
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "duration") {
             if (!durationRegex.test(input.data)) {
@@ -1273,7 +1273,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "ip") {
             if (!isValidIP(input.data, check.version)) {
@@ -1283,7 +1283,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "jwt") {
             if (!isValidJWT(input.data, check.alg)) {
@@ -1293,7 +1293,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "cidr") {
             if (!isValidCidr(input.data, check.version)) {
@@ -1303,7 +1303,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "base64") {
             if (!base64Regex.test(input.data)) {
@@ -1313,7 +1313,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "base64url") {
             if (!base64urlRegex.test(input.data)) {
@@ -1323,13 +1323,13 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.invalid_string,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else {
             util_js_1.util.assertNever(check);
           }
         }
-        return { status: status.value, value: input.data };
+        return { status: status2.value, value: input.data };
       }
       _regex(regex, validation, message) {
         return this.refinement((data) => regex.test(data), {
@@ -1606,7 +1606,7 @@ var require_types = __commonJS({
           return parseUtil_js_1.INVALID;
         }
         let ctx = void 0;
-        const status = new parseUtil_js_1.ParseStatus();
+        const status2 = new parseUtil_js_1.ParseStatus();
         for (const check of this._def.checks) {
           if (check.kind === "int") {
             if (!util_js_1.util.isInteger(input.data)) {
@@ -1617,7 +1617,7 @@ var require_types = __commonJS({
                 received: "float",
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "min") {
             const tooSmall = check.inclusive ? input.data < check.value : input.data <= check.value;
@@ -1631,7 +1631,7 @@ var require_types = __commonJS({
                 exact: false,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "max") {
             const tooBig = check.inclusive ? input.data > check.value : input.data >= check.value;
@@ -1645,7 +1645,7 @@ var require_types = __commonJS({
                 exact: false,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "multipleOf") {
             if (floatSafeRemainder(input.data, check.value) !== 0) {
@@ -1655,7 +1655,7 @@ var require_types = __commonJS({
                 multipleOf: check.value,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "finite") {
             if (!Number.isFinite(input.data)) {
@@ -1664,13 +1664,13 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.not_finite,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else {
             util_js_1.util.assertNever(check);
           }
         }
-        return { status: status.value, value: input.data };
+        return { status: status2.value, value: input.data };
       }
       gte(value, message) {
         return this.setLimit("min", value, true, errorUtil_js_1.errorUtil.toString(message));
@@ -1836,7 +1836,7 @@ var require_types = __commonJS({
           return this._getInvalidInput(input);
         }
         let ctx = void 0;
-        const status = new parseUtil_js_1.ParseStatus();
+        const status2 = new parseUtil_js_1.ParseStatus();
         for (const check of this._def.checks) {
           if (check.kind === "min") {
             const tooSmall = check.inclusive ? input.data < check.value : input.data <= check.value;
@@ -1849,7 +1849,7 @@ var require_types = __commonJS({
                 inclusive: check.inclusive,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "max") {
             const tooBig = check.inclusive ? input.data > check.value : input.data >= check.value;
@@ -1862,7 +1862,7 @@ var require_types = __commonJS({
                 inclusive: check.inclusive,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "multipleOf") {
             if (input.data % check.value !== BigInt(0)) {
@@ -1872,13 +1872,13 @@ var require_types = __commonJS({
                 multipleOf: check.value,
                 message: check.message
               });
-              status.dirty();
+              status2.dirty();
             }
           } else {
             util_js_1.util.assertNever(check);
           }
         }
-        return { status: status.value, value: input.data };
+        return { status: status2.value, value: input.data };
       }
       _getInvalidInput(input) {
         const ctx = this._getOrReturnCtx(input);
@@ -2038,7 +2038,7 @@ var require_types = __commonJS({
           });
           return parseUtil_js_1.INVALID;
         }
-        const status = new parseUtil_js_1.ParseStatus();
+        const status2 = new parseUtil_js_1.ParseStatus();
         let ctx = void 0;
         for (const check of this._def.checks) {
           if (check.kind === "min") {
@@ -2052,7 +2052,7 @@ var require_types = __commonJS({
                 minimum: check.value,
                 type: "date"
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (check.kind === "max") {
             if (input.data.getTime() > check.value) {
@@ -2065,14 +2065,14 @@ var require_types = __commonJS({
                 maximum: check.value,
                 type: "date"
               });
-              status.dirty();
+              status2.dirty();
             }
           } else {
             util_js_1.util.assertNever(check);
           }
         }
         return {
-          status: status.value,
+          status: status2.value,
           value: new Date(input.data.getTime())
         };
       }
@@ -2266,7 +2266,7 @@ var require_types = __commonJS({
     };
     var ZodArray = class _ZodArray extends ZodType {
       _parse(input) {
-        const { ctx, status } = this._processInputParams(input);
+        const { ctx, status: status2 } = this._processInputParams(input);
         const def = this._def;
         if (ctx.parsedType !== util_js_1.ZodParsedType.array) {
           (0, parseUtil_js_1.addIssueToContext)(ctx, {
@@ -2289,7 +2289,7 @@ var require_types = __commonJS({
               exact: true,
               message: def.exactLength.message
             });
-            status.dirty();
+            status2.dirty();
           }
         }
         if (def.minLength !== null) {
@@ -2302,7 +2302,7 @@ var require_types = __commonJS({
               exact: false,
               message: def.minLength.message
             });
-            status.dirty();
+            status2.dirty();
           }
         }
         if (def.maxLength !== null) {
@@ -2315,20 +2315,20 @@ var require_types = __commonJS({
               exact: false,
               message: def.maxLength.message
             });
-            status.dirty();
+            status2.dirty();
           }
         }
         if (ctx.common.async) {
           return Promise.all([...ctx.data].map((item, i) => {
             return def.type._parseAsync(new ParseInputLazyPath(ctx, item, ctx.path, i));
           })).then((result2) => {
-            return parseUtil_js_1.ParseStatus.mergeArray(status, result2);
+            return parseUtil_js_1.ParseStatus.mergeArray(status2, result2);
           });
         }
         const result = [...ctx.data].map((item, i) => {
           return def.type._parseSync(new ParseInputLazyPath(ctx, item, ctx.path, i));
         });
-        return parseUtil_js_1.ParseStatus.mergeArray(status, result);
+        return parseUtil_js_1.ParseStatus.mergeArray(status2, result);
       }
       get element() {
         return this._def.type;
@@ -2369,9 +2369,9 @@ var require_types = __commonJS({
     function deepPartialify(schema) {
       if (schema instanceof ZodObject) {
         const newShape = {};
-        for (const key in schema.shape) {
-          const fieldSchema = schema.shape[key];
-          newShape[key] = ZodOptional.create(deepPartialify(fieldSchema));
+        for (const key4 in schema.shape) {
+          const fieldSchema = schema.shape[key4];
+          newShape[key4] = ZodOptional.create(deepPartialify(fieldSchema));
         }
         return new ZodObject({
           ...schema._def,
@@ -2402,9 +2402,9 @@ var require_types = __commonJS({
       _getCached() {
         if (this._cached !== null)
           return this._cached;
-        const shape3 = this._def.shape();
-        const keys2 = util_js_1.util.objectKeys(shape3);
-        this._cached = { shape: shape3, keys: keys2 };
+        const shape7 = this._def.shape();
+        const keys2 = util_js_1.util.objectKeys(shape7);
+        this._cached = { shape: shape7, keys: keys2 };
         return this._cached;
       }
       _parse(input) {
@@ -2418,33 +2418,33 @@ var require_types = __commonJS({
           });
           return parseUtil_js_1.INVALID;
         }
-        const { status, ctx } = this._processInputParams(input);
-        const { shape: shape3, keys: shapeKeys } = this._getCached();
+        const { status: status2, ctx } = this._processInputParams(input);
+        const { shape: shape7, keys: shapeKeys } = this._getCached();
         const extraKeys = [];
         if (!(this._def.catchall instanceof ZodNever && this._def.unknownKeys === "strip")) {
-          for (const key in ctx.data) {
-            if (!shapeKeys.includes(key)) {
-              extraKeys.push(key);
+          for (const key4 in ctx.data) {
+            if (!shapeKeys.includes(key4)) {
+              extraKeys.push(key4);
             }
           }
         }
         const pairs = [];
-        for (const key of shapeKeys) {
-          const keyValidator = shape3[key];
-          const value = ctx.data[key];
+        for (const key4 of shapeKeys) {
+          const keyValidator = shape7[key4];
+          const value = ctx.data[key4];
           pairs.push({
-            key: { status: "valid", value: key },
-            value: keyValidator._parse(new ParseInputLazyPath(ctx, value, ctx.path, key)),
-            alwaysSet: key in ctx.data
+            key: { status: "valid", value: key4 },
+            value: keyValidator._parse(new ParseInputLazyPath(ctx, value, ctx.path, key4)),
+            alwaysSet: key4 in ctx.data
           });
         }
         if (this._def.catchall instanceof ZodNever) {
           const unknownKeys = this._def.unknownKeys;
           if (unknownKeys === "passthrough") {
-            for (const key of extraKeys) {
+            for (const key4 of extraKeys) {
               pairs.push({
-                key: { status: "valid", value: key },
-                value: { status: "valid", value: ctx.data[key] }
+                key: { status: "valid", value: key4 },
+                value: { status: "valid", value: ctx.data[key4] }
               });
             }
           } else if (unknownKeys === "strict") {
@@ -2453,7 +2453,7 @@ var require_types = __commonJS({
                 code: ZodError_js_1.ZodIssueCode.unrecognized_keys,
                 keys: extraKeys
               });
-              status.dirty();
+              status2.dirty();
             }
           } else if (unknownKeys === "strip") {
           } else {
@@ -2461,15 +2461,15 @@ var require_types = __commonJS({
           }
         } else {
           const catchall = this._def.catchall;
-          for (const key of extraKeys) {
-            const value = ctx.data[key];
+          for (const key4 of extraKeys) {
+            const value = ctx.data[key4];
             pairs.push({
-              key: { status: "valid", value: key },
+              key: { status: "valid", value: key4 },
               value: catchall._parse(
-                new ParseInputLazyPath(ctx, value, ctx.path, key)
+                new ParseInputLazyPath(ctx, value, ctx.path, key4)
                 //, ctx.child(key), value, getParsedType(value)
               ),
-              alwaysSet: key in ctx.data
+              alwaysSet: key4 in ctx.data
             });
           }
         }
@@ -2477,20 +2477,20 @@ var require_types = __commonJS({
           return Promise.resolve().then(async () => {
             const syncPairs = [];
             for (const pair of pairs) {
-              const key = await pair.key;
+              const key4 = await pair.key;
               const value = await pair.value;
               syncPairs.push({
-                key,
+                key: key4,
                 value,
                 alwaysSet: pair.alwaysSet
               });
             }
             return syncPairs;
           }).then((syncPairs) => {
-            return parseUtil_js_1.ParseStatus.mergeObjectSync(status, syncPairs);
+            return parseUtil_js_1.ParseStatus.mergeObjectSync(status2, syncPairs);
           });
         } else {
-          return parseUtil_js_1.ParseStatus.mergeObjectSync(status, pairs);
+          return parseUtil_js_1.ParseStatus.mergeObjectSync(status2, pairs);
         }
       }
       get shape() {
@@ -2605,8 +2605,8 @@ var require_types = __commonJS({
       //   }) as any;
       //   return merged;
       // }
-      setKey(key, schema) {
-        return this.augment({ [key]: schema });
+      setKey(key4, schema) {
+        return this.augment({ [key4]: schema });
       }
       // merge<Incoming extends AnyZodObject>(
       //   merging: Incoming
@@ -2636,27 +2636,27 @@ var require_types = __commonJS({
         });
       }
       pick(mask) {
-        const shape3 = {};
-        for (const key of util_js_1.util.objectKeys(mask)) {
-          if (mask[key] && this.shape[key]) {
-            shape3[key] = this.shape[key];
+        const shape7 = {};
+        for (const key4 of util_js_1.util.objectKeys(mask)) {
+          if (mask[key4] && this.shape[key4]) {
+            shape7[key4] = this.shape[key4];
           }
         }
         return new _ZodObject({
           ...this._def,
-          shape: () => shape3
+          shape: () => shape7
         });
       }
       omit(mask) {
-        const shape3 = {};
-        for (const key of util_js_1.util.objectKeys(this.shape)) {
-          if (!mask[key]) {
-            shape3[key] = this.shape[key];
+        const shape7 = {};
+        for (const key4 of util_js_1.util.objectKeys(this.shape)) {
+          if (!mask[key4]) {
+            shape7[key4] = this.shape[key4];
           }
         }
         return new _ZodObject({
           ...this._def,
-          shape: () => shape3
+          shape: () => shape7
         });
       }
       /**
@@ -2667,12 +2667,12 @@ var require_types = __commonJS({
       }
       partial(mask) {
         const newShape = {};
-        for (const key of util_js_1.util.objectKeys(this.shape)) {
-          const fieldSchema = this.shape[key];
-          if (mask && !mask[key]) {
-            newShape[key] = fieldSchema;
+        for (const key4 of util_js_1.util.objectKeys(this.shape)) {
+          const fieldSchema = this.shape[key4];
+          if (mask && !mask[key4]) {
+            newShape[key4] = fieldSchema;
           } else {
-            newShape[key] = fieldSchema.optional();
+            newShape[key4] = fieldSchema.optional();
           }
         }
         return new _ZodObject({
@@ -2682,16 +2682,16 @@ var require_types = __commonJS({
       }
       required(mask) {
         const newShape = {};
-        for (const key of util_js_1.util.objectKeys(this.shape)) {
-          if (mask && !mask[key]) {
-            newShape[key] = this.shape[key];
+        for (const key4 of util_js_1.util.objectKeys(this.shape)) {
+          if (mask && !mask[key4]) {
+            newShape[key4] = this.shape[key4];
           } else {
-            const fieldSchema = this.shape[key];
+            const fieldSchema = this.shape[key4];
             let newField = fieldSchema;
             while (newField instanceof ZodOptional) {
               newField = newField._def.innerType;
             }
-            newShape[key] = newField;
+            newShape[key4] = newField;
           }
         }
         return new _ZodObject({
@@ -2704,27 +2704,27 @@ var require_types = __commonJS({
       }
     };
     exports2.ZodObject = ZodObject;
-    ZodObject.create = (shape3, params) => {
+    ZodObject.create = (shape7, params) => {
       return new ZodObject({
-        shape: () => shape3,
+        shape: () => shape7,
         unknownKeys: "strip",
         catchall: ZodNever.create(),
         typeName: ZodFirstPartyTypeKind.ZodObject,
         ...processCreateParams(params)
       });
     };
-    ZodObject.strictCreate = (shape3, params) => {
+    ZodObject.strictCreate = (shape7, params) => {
       return new ZodObject({
-        shape: () => shape3,
+        shape: () => shape7,
         unknownKeys: "strict",
         catchall: ZodNever.create(),
         typeName: ZodFirstPartyTypeKind.ZodObject,
         ...processCreateParams(params)
       });
     };
-    ZodObject.lazycreate = (shape3, params) => {
+    ZodObject.lazycreate = (shape7, params) => {
       return new ZodObject({
-        shape: shape3,
+        shape: shape7,
         unknownKeys: "strip",
         catchall: ZodNever.create(),
         typeName: ZodFirstPartyTypeKind.ZodObject,
@@ -2938,14 +2938,14 @@ var require_types = __commonJS({
         return { valid: true, data: a };
       } else if (aType === util_js_1.ZodParsedType.object && bType === util_js_1.ZodParsedType.object) {
         const bKeys = util_js_1.util.objectKeys(b);
-        const sharedKeys = util_js_1.util.objectKeys(a).filter((key) => bKeys.indexOf(key) !== -1);
+        const sharedKeys = util_js_1.util.objectKeys(a).filter((key4) => bKeys.indexOf(key4) !== -1);
         const newObj = { ...a, ...b };
-        for (const key of sharedKeys) {
-          const sharedValue = mergeValues(a[key], b[key]);
+        for (const key4 of sharedKeys) {
+          const sharedValue = mergeValues(a[key4], b[key4]);
           if (!sharedValue.valid) {
             return { valid: false };
           }
-          newObj[key] = sharedValue.data;
+          newObj[key4] = sharedValue.data;
         }
         return { valid: true, data: newObj };
       } else if (aType === util_js_1.ZodParsedType.array && bType === util_js_1.ZodParsedType.array) {
@@ -2971,7 +2971,7 @@ var require_types = __commonJS({
     }
     var ZodIntersection = class extends ZodType {
       _parse(input) {
-        const { status, ctx } = this._processInputParams(input);
+        const { status: status2, ctx } = this._processInputParams(input);
         const handleParsed = (parsedLeft, parsedRight) => {
           if ((0, parseUtil_js_1.isAborted)(parsedLeft) || (0, parseUtil_js_1.isAborted)(parsedRight)) {
             return parseUtil_js_1.INVALID;
@@ -2984,9 +2984,9 @@ var require_types = __commonJS({
             return parseUtil_js_1.INVALID;
           }
           if ((0, parseUtil_js_1.isDirty)(parsedLeft) || (0, parseUtil_js_1.isDirty)(parsedRight)) {
-            status.dirty();
+            status2.dirty();
           }
-          return { status: status.value, value: merged.data };
+          return { status: status2.value, value: merged.data };
         };
         if (ctx.common.async) {
           return Promise.all([
@@ -3025,7 +3025,7 @@ var require_types = __commonJS({
     };
     var ZodTuple = class _ZodTuple extends ZodType {
       _parse(input) {
-        const { status, ctx } = this._processInputParams(input);
+        const { status: status2, ctx } = this._processInputParams(input);
         if (ctx.parsedType !== util_js_1.ZodParsedType.array) {
           (0, parseUtil_js_1.addIssueToContext)(ctx, {
             code: ZodError_js_1.ZodIssueCode.invalid_type,
@@ -3053,7 +3053,7 @@ var require_types = __commonJS({
             exact: false,
             type: "array"
           });
-          status.dirty();
+          status2.dirty();
         }
         const items = [...ctx.data].map((item, itemIndex) => {
           const schema = this._def.items[itemIndex] || this._def.rest;
@@ -3063,10 +3063,10 @@ var require_types = __commonJS({
         }).filter((x) => !!x);
         if (ctx.common.async) {
           return Promise.all(items).then((results) => {
-            return parseUtil_js_1.ParseStatus.mergeArray(status, results);
+            return parseUtil_js_1.ParseStatus.mergeArray(status2, results);
           });
         } else {
-          return parseUtil_js_1.ParseStatus.mergeArray(status, items);
+          return parseUtil_js_1.ParseStatus.mergeArray(status2, items);
         }
       }
       get items() {
@@ -3099,7 +3099,7 @@ var require_types = __commonJS({
         return this._def.valueType;
       }
       _parse(input) {
-        const { status, ctx } = this._processInputParams(input);
+        const { status: status2, ctx } = this._processInputParams(input);
         if (ctx.parsedType !== util_js_1.ZodParsedType.object) {
           (0, parseUtil_js_1.addIssueToContext)(ctx, {
             code: ZodError_js_1.ZodIssueCode.invalid_type,
@@ -3111,17 +3111,17 @@ var require_types = __commonJS({
         const pairs = [];
         const keyType = this._def.keyType;
         const valueType = this._def.valueType;
-        for (const key in ctx.data) {
+        for (const key4 in ctx.data) {
           pairs.push({
-            key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, key)),
-            value: valueType._parse(new ParseInputLazyPath(ctx, ctx.data[key], ctx.path, key)),
-            alwaysSet: key in ctx.data
+            key: keyType._parse(new ParseInputLazyPath(ctx, key4, ctx.path, key4)),
+            value: valueType._parse(new ParseInputLazyPath(ctx, ctx.data[key4], ctx.path, key4)),
+            alwaysSet: key4 in ctx.data
           });
         }
         if (ctx.common.async) {
-          return parseUtil_js_1.ParseStatus.mergeObjectAsync(status, pairs);
+          return parseUtil_js_1.ParseStatus.mergeObjectAsync(status2, pairs);
         } else {
-          return parseUtil_js_1.ParseStatus.mergeObjectSync(status, pairs);
+          return parseUtil_js_1.ParseStatus.mergeObjectSync(status2, pairs);
         }
       }
       get element() {
@@ -3153,7 +3153,7 @@ var require_types = __commonJS({
         return this._def.valueType;
       }
       _parse(input) {
-        const { status, ctx } = this._processInputParams(input);
+        const { status: status2, ctx } = this._processInputParams(input);
         if (ctx.parsedType !== util_js_1.ZodParsedType.map) {
           (0, parseUtil_js_1.addIssueToContext)(ctx, {
             code: ZodError_js_1.ZodIssueCode.invalid_type,
@@ -3164,9 +3164,9 @@ var require_types = __commonJS({
         }
         const keyType = this._def.keyType;
         const valueType = this._def.valueType;
-        const pairs = [...ctx.data.entries()].map(([key, value], index) => {
+        const pairs = [...ctx.data.entries()].map(([key4, value], index) => {
           return {
-            key: keyType._parse(new ParseInputLazyPath(ctx, key, ctx.path, [index, "key"])),
+            key: keyType._parse(new ParseInputLazyPath(ctx, key4, ctx.path, [index, "key"])),
             value: valueType._parse(new ParseInputLazyPath(ctx, value, ctx.path, [index, "value"]))
           };
         });
@@ -3174,32 +3174,32 @@ var require_types = __commonJS({
           const finalMap = /* @__PURE__ */ new Map();
           return Promise.resolve().then(async () => {
             for (const pair of pairs) {
-              const key = await pair.key;
+              const key4 = await pair.key;
               const value = await pair.value;
-              if (key.status === "aborted" || value.status === "aborted") {
+              if (key4.status === "aborted" || value.status === "aborted") {
                 return parseUtil_js_1.INVALID;
               }
-              if (key.status === "dirty" || value.status === "dirty") {
-                status.dirty();
+              if (key4.status === "dirty" || value.status === "dirty") {
+                status2.dirty();
               }
-              finalMap.set(key.value, value.value);
+              finalMap.set(key4.value, value.value);
             }
-            return { status: status.value, value: finalMap };
+            return { status: status2.value, value: finalMap };
           });
         } else {
           const finalMap = /* @__PURE__ */ new Map();
           for (const pair of pairs) {
-            const key = pair.key;
+            const key4 = pair.key;
             const value = pair.value;
-            if (key.status === "aborted" || value.status === "aborted") {
+            if (key4.status === "aborted" || value.status === "aborted") {
               return parseUtil_js_1.INVALID;
             }
-            if (key.status === "dirty" || value.status === "dirty") {
-              status.dirty();
+            if (key4.status === "dirty" || value.status === "dirty") {
+              status2.dirty();
             }
-            finalMap.set(key.value, value.value);
+            finalMap.set(key4.value, value.value);
           }
-          return { status: status.value, value: finalMap };
+          return { status: status2.value, value: finalMap };
         }
       }
     };
@@ -3214,7 +3214,7 @@ var require_types = __commonJS({
     };
     var ZodSet = class _ZodSet extends ZodType {
       _parse(input) {
-        const { status, ctx } = this._processInputParams(input);
+        const { status: status2, ctx } = this._processInputParams(input);
         if (ctx.parsedType !== util_js_1.ZodParsedType.set) {
           (0, parseUtil_js_1.addIssueToContext)(ctx, {
             code: ZodError_js_1.ZodIssueCode.invalid_type,
@@ -3234,7 +3234,7 @@ var require_types = __commonJS({
               exact: false,
               message: def.minSize.message
             });
-            status.dirty();
+            status2.dirty();
           }
         }
         if (def.maxSize !== null) {
@@ -3247,7 +3247,7 @@ var require_types = __commonJS({
               exact: false,
               message: def.maxSize.message
             });
-            status.dirty();
+            status2.dirty();
           }
         }
         const valueType = this._def.valueType;
@@ -3257,10 +3257,10 @@ var require_types = __commonJS({
             if (element.status === "aborted")
               return parseUtil_js_1.INVALID;
             if (element.status === "dirty")
-              status.dirty();
+              status2.dirty();
             parsedSet.add(element.value);
           }
-          return { status: status.value, value: parsedSet };
+          return { status: status2.value, value: parsedSet };
         }
         const elements = [...ctx.data.values()].map((item, i) => valueType._parse(new ParseInputLazyPath(ctx, item, ctx.path, i)));
         if (ctx.common.async) {
@@ -3598,15 +3598,15 @@ var require_types = __commonJS({
         return this._def.schema._def.typeName === ZodFirstPartyTypeKind.ZodEffects ? this._def.schema.sourceType() : this._def.schema;
       }
       _parse(input) {
-        const { status, ctx } = this._processInputParams(input);
+        const { status: status2, ctx } = this._processInputParams(input);
         const effect = this._def.effect || null;
         const checkCtx = {
           addIssue: (arg) => {
             (0, parseUtil_js_1.addIssueToContext)(ctx, arg);
             if (arg.fatal) {
-              status.abort();
+              status2.abort();
             } else {
-              status.dirty();
+              status2.dirty();
             }
           },
           get path() {
@@ -3618,7 +3618,7 @@ var require_types = __commonJS({
           const processed = effect.transform(ctx.data, checkCtx);
           if (ctx.common.async) {
             return Promise.resolve(processed).then(async (processed2) => {
-              if (status.value === "aborted")
+              if (status2.value === "aborted")
                 return parseUtil_js_1.INVALID;
               const result = await this._def.schema._parseAsync({
                 data: processed2,
@@ -3629,12 +3629,12 @@ var require_types = __commonJS({
                 return parseUtil_js_1.INVALID;
               if (result.status === "dirty")
                 return (0, parseUtil_js_1.DIRTY)(result.value);
-              if (status.value === "dirty")
+              if (status2.value === "dirty")
                 return (0, parseUtil_js_1.DIRTY)(result.value);
               return result;
             });
           } else {
-            if (status.value === "aborted")
+            if (status2.value === "aborted")
               return parseUtil_js_1.INVALID;
             const result = this._def.schema._parseSync({
               data: processed,
@@ -3645,7 +3645,7 @@ var require_types = __commonJS({
               return parseUtil_js_1.INVALID;
             if (result.status === "dirty")
               return (0, parseUtil_js_1.DIRTY)(result.value);
-            if (status.value === "dirty")
+            if (status2.value === "dirty")
               return (0, parseUtil_js_1.DIRTY)(result.value);
             return result;
           }
@@ -3670,17 +3670,17 @@ var require_types = __commonJS({
             if (inner.status === "aborted")
               return parseUtil_js_1.INVALID;
             if (inner.status === "dirty")
-              status.dirty();
+              status2.dirty();
             executeRefinement(inner.value);
-            return { status: status.value, value: inner.value };
+            return { status: status2.value, value: inner.value };
           } else {
             return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((inner) => {
               if (inner.status === "aborted")
                 return parseUtil_js_1.INVALID;
               if (inner.status === "dirty")
-                status.dirty();
+                status2.dirty();
               return executeRefinement(inner.value).then(() => {
-                return { status: status.value, value: inner.value };
+                return { status: status2.value, value: inner.value };
               });
             });
           }
@@ -3698,13 +3698,13 @@ var require_types = __commonJS({
             if (result instanceof Promise) {
               throw new Error(`Asynchronous transform encountered during synchronous parse operation. Use .parseAsync instead.`);
             }
-            return { status: status.value, value: result };
+            return { status: status2.value, value: result };
           } else {
             return this._def.schema._parseAsync({ data: ctx.data, path: ctx.path, parent: ctx }).then((base) => {
               if (!(0, parseUtil_js_1.isValid)(base))
                 return parseUtil_js_1.INVALID;
               return Promise.resolve(effect.transform(base.value, checkCtx)).then((result) => ({
-                status: status.value,
+                status: status2.value,
                 value: result
               }));
             });
@@ -3891,7 +3891,7 @@ var require_types = __commonJS({
     exports2.ZodBranded = ZodBranded;
     var ZodPipeline = class _ZodPipeline extends ZodType {
       _parse(input) {
-        const { status, ctx } = this._processInputParams(input);
+        const { status: status2, ctx } = this._processInputParams(input);
         if (ctx.common.async) {
           const handleAsync = async () => {
             const inResult = await this._def.in._parseAsync({
@@ -3902,7 +3902,7 @@ var require_types = __commonJS({
             if (inResult.status === "aborted")
               return parseUtil_js_1.INVALID;
             if (inResult.status === "dirty") {
-              status.dirty();
+              status2.dirty();
               return (0, parseUtil_js_1.DIRTY)(inResult.value);
             } else {
               return this._def.out._parseAsync({
@@ -3922,7 +3922,7 @@ var require_types = __commonJS({
           if (inResult.status === "aborted")
             return parseUtil_js_1.INVALID;
           if (inResult.status === "dirty") {
-            status.dirty();
+            status2.dirty();
             return {
               status: "dirty",
               value: inResult.value
@@ -4214,7 +4214,7 @@ var require_core = __commonJS({
     exports2.NEVER = Object.freeze({
       status: "aborted"
     });
-    function $constructor(name, initializer, params) {
+    function $constructor(name2, initializer, params) {
       function init(inst, def) {
         if (!inst._zod) {
           Object.defineProperty(inst, "_zod", {
@@ -4226,10 +4226,10 @@ var require_core = __commonJS({
             enumerable: false
           });
         }
-        if (inst._zod.traits.has(name)) {
+        if (inst._zod.traits.has(name2)) {
           return;
         }
-        inst._zod.traits.add(name);
+        inst._zod.traits.add(name2);
         initializer(inst, def);
         const proto = _.prototype;
         const keys2 = Object.keys(proto);
@@ -4243,7 +4243,7 @@ var require_core = __commonJS({
       const Parent = params?.Parent ?? Object;
       class Definition extends Parent {
       }
-      Object.defineProperty(Definition, "name", { value: name });
+      Object.defineProperty(Definition, "name", { value: name2 });
       function _(def) {
         var _a;
         const inst = params?.Parent ? new Definition() : this;
@@ -4259,10 +4259,10 @@ var require_core = __commonJS({
         value: (inst) => {
           if (params?.Parent && inst instanceof params.Parent)
             return true;
-          return inst?._zod?.traits?.has(name);
+          return inst?._zod?.traits?.has(name2);
         }
       });
-      Object.defineProperty(_, "name", { value: name });
+      Object.defineProperty(_, "name", { value: name2 });
       return _;
     }
     exports2.$brand = /* @__PURE__ */ Symbol("zod_brand");
@@ -4273,8 +4273,8 @@ var require_core = __commonJS({
     };
     exports2.$ZodAsyncError = $ZodAsyncError;
     var $ZodEncodeError = class extends Error {
-      constructor(name) {
-        super(`Encountered unidirectional transform during encode: ${name}`);
+      constructor(name2) {
+        super(`Encountered unidirectional transform during encode: ${name2}`);
         this.name = "ZodEncodeError";
       }
     };
@@ -4411,9 +4411,9 @@ var require_util2 = __commonJS({
       return valInt % stepInt / 10 ** decCount;
     }
     var EVALUATING = /* @__PURE__ */ Symbol("evaluating");
-    function defineLazy(object4, key, getter) {
+    function defineLazy(object7, key4, getter) {
       let value = void 0;
-      Object.defineProperty(object4, key, {
+      Object.defineProperty(object7, key4, {
         get() {
           if (value === EVALUATING) {
             return void 0;
@@ -4425,7 +4425,7 @@ var require_util2 = __commonJS({
           return value;
         },
         set(v) {
-          Object.defineProperty(object4, key, {
+          Object.defineProperty(object7, key4, {
             value: v
             // configurable: true,
           });
@@ -4433,8 +4433,8 @@ var require_util2 = __commonJS({
         configurable: true
       });
     }
-    function objectClone(obj) {
-      return Object.create(Object.getPrototypeOf(obj), Object.getOwnPropertyDescriptors(obj));
+    function objectClone(obj4) {
+      return Object.create(Object.getPrototypeOf(obj4), Object.getOwnPropertyDescriptors(obj4));
     }
     function assignProp(target, prop, value) {
       Object.defineProperty(target, prop, {
@@ -4455,14 +4455,14 @@ var require_util2 = __commonJS({
     function cloneDef(schema) {
       return mergeDefs(schema._zod.def);
     }
-    function getElementAtPath(obj, path) {
+    function getElementAtPath(obj4, path) {
       if (!path)
-        return obj;
-      return path.reduce((acc, key) => acc?.[key], obj);
+        return obj4;
+      return path.reduce((acc, key4) => acc?.[key4], obj4);
     }
     function promiseAllObject(promisesObj) {
       const keys2 = Object.keys(promisesObj);
-      const promises = keys2.map((key) => promisesObj[key]);
+      const promises = keys2.map((key4) => promisesObj[key4]);
       return Promise.all(promises).then((results) => {
         const resolvedObj = {};
         for (let i = 0; i < keys2.length; i++) {
@@ -4527,8 +4527,8 @@ var require_util2 = __commonJS({
     }
     function numKeys(data) {
       let keyCount = 0;
-      for (const key in data) {
-        if (Object.prototype.hasOwnProperty.call(data, key)) {
+      for (const key4 in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key4)) {
           keyCount++;
         }
       }
@@ -4646,9 +4646,9 @@ var require_util2 = __commonJS({
         return `"${value}"`;
       return `${value}`;
     }
-    function optionalKeys(shape3) {
-      return Object.keys(shape3).filter((k) => {
-        return shape3[k]._zod.optin === "optional" && shape3[k]._zod.optout === "optional";
+    function optionalKeys(shape7) {
+      return Object.keys(shape7).filter((k) => {
+        return shape7[k]._zod.optin === "optional" && shape7[k]._zod.optout === "optional";
       });
     }
     exports2.NUMBER_FORMAT_RANGES = {
@@ -4664,21 +4664,21 @@ var require_util2 = __commonJS({
     };
     function pick(schema, mask) {
       const currDef = schema._zod.def;
-      const checks = currDef.checks;
-      const hasChecks = checks && checks.length > 0;
+      const checks2 = currDef.checks;
+      const hasChecks = checks2 && checks2.length > 0;
       if (hasChecks) {
         throw new Error(".pick() cannot be used on object schemas containing refinements");
       }
       const def = mergeDefs(schema._zod.def, {
         get shape() {
           const newShape = {};
-          for (const key in mask) {
-            if (!(key in currDef.shape)) {
-              throw new Error(`Unrecognized key: "${key}"`);
+          for (const key4 in mask) {
+            if (!(key4 in currDef.shape)) {
+              throw new Error(`Unrecognized key: "${key4}"`);
             }
-            if (!mask[key])
+            if (!mask[key4])
               continue;
-            newShape[key] = currDef.shape[key];
+            newShape[key4] = currDef.shape[key4];
           }
           assignProp(this, "shape", newShape);
           return newShape;
@@ -4689,21 +4689,21 @@ var require_util2 = __commonJS({
     }
     function omit(schema, mask) {
       const currDef = schema._zod.def;
-      const checks = currDef.checks;
-      const hasChecks = checks && checks.length > 0;
+      const checks2 = currDef.checks;
+      const hasChecks = checks2 && checks2.length > 0;
       if (hasChecks) {
         throw new Error(".omit() cannot be used on object schemas containing refinements");
       }
       const def = mergeDefs(schema._zod.def, {
         get shape() {
           const newShape = { ...schema._zod.def.shape };
-          for (const key in mask) {
-            if (!(key in currDef.shape)) {
-              throw new Error(`Unrecognized key: "${key}"`);
+          for (const key4 in mask) {
+            if (!(key4 in currDef.shape)) {
+              throw new Error(`Unrecognized key: "${key4}"`);
             }
-            if (!mask[key])
+            if (!mask[key4])
               continue;
-            delete newShape[key];
+            delete newShape[key4];
           }
           assignProp(this, "shape", newShape);
           return newShape;
@@ -4712,36 +4712,36 @@ var require_util2 = __commonJS({
       });
       return clone(schema, def);
     }
-    function extend(schema, shape3) {
-      if (!isPlainObject(shape3)) {
+    function extend(schema, shape7) {
+      if (!isPlainObject(shape7)) {
         throw new Error("Invalid input to extend: expected a plain object");
       }
-      const checks = schema._zod.def.checks;
-      const hasChecks = checks && checks.length > 0;
+      const checks2 = schema._zod.def.checks;
+      const hasChecks = checks2 && checks2.length > 0;
       if (hasChecks) {
         const existingShape = schema._zod.def.shape;
-        for (const key in shape3) {
-          if (Object.getOwnPropertyDescriptor(existingShape, key) !== void 0) {
+        for (const key4 in shape7) {
+          if (Object.getOwnPropertyDescriptor(existingShape, key4) !== void 0) {
             throw new Error("Cannot overwrite keys on object schemas containing refinements. Use `.safeExtend()` instead.");
           }
         }
       }
       const def = mergeDefs(schema._zod.def, {
         get shape() {
-          const _shape = { ...schema._zod.def.shape, ...shape3 };
+          const _shape = { ...schema._zod.def.shape, ...shape7 };
           assignProp(this, "shape", _shape);
           return _shape;
         }
       });
       return clone(schema, def);
     }
-    function safeExtend(schema, shape3) {
-      if (!isPlainObject(shape3)) {
+    function safeExtend(schema, shape7) {
+      if (!isPlainObject(shape7)) {
         throw new Error("Invalid input to safeExtend: expected a plain object");
       }
       const def = mergeDefs(schema._zod.def, {
         get shape() {
-          const _shape = { ...schema._zod.def.shape, ...shape3 };
+          const _shape = { ...schema._zod.def.shape, ...shape7 };
           assignProp(this, "shape", _shape);
           return _shape;
         }
@@ -4765,37 +4765,37 @@ var require_util2 = __commonJS({
     }
     function partial(Class2, schema, mask) {
       const currDef = schema._zod.def;
-      const checks = currDef.checks;
-      const hasChecks = checks && checks.length > 0;
+      const checks2 = currDef.checks;
+      const hasChecks = checks2 && checks2.length > 0;
       if (hasChecks) {
         throw new Error(".partial() cannot be used on object schemas containing refinements");
       }
       const def = mergeDefs(schema._zod.def, {
         get shape() {
           const oldShape = schema._zod.def.shape;
-          const shape3 = { ...oldShape };
+          const shape7 = { ...oldShape };
           if (mask) {
-            for (const key in mask) {
-              if (!(key in oldShape)) {
-                throw new Error(`Unrecognized key: "${key}"`);
+            for (const key4 in mask) {
+              if (!(key4 in oldShape)) {
+                throw new Error(`Unrecognized key: "${key4}"`);
               }
-              if (!mask[key])
+              if (!mask[key4])
                 continue;
-              shape3[key] = Class2 ? new Class2({
+              shape7[key4] = Class2 ? new Class2({
                 type: "optional",
-                innerType: oldShape[key]
-              }) : oldShape[key];
+                innerType: oldShape[key4]
+              }) : oldShape[key4];
             }
           } else {
-            for (const key in oldShape) {
-              shape3[key] = Class2 ? new Class2({
+            for (const key4 in oldShape) {
+              shape7[key4] = Class2 ? new Class2({
                 type: "optional",
-                innerType: oldShape[key]
-              }) : oldShape[key];
+                innerType: oldShape[key4]
+              }) : oldShape[key4];
             }
           }
-          assignProp(this, "shape", shape3);
-          return shape3;
+          assignProp(this, "shape", shape7);
+          return shape7;
         },
         checks: []
       });
@@ -4805,29 +4805,29 @@ var require_util2 = __commonJS({
       const def = mergeDefs(schema._zod.def, {
         get shape() {
           const oldShape = schema._zod.def.shape;
-          const shape3 = { ...oldShape };
+          const shape7 = { ...oldShape };
           if (mask) {
-            for (const key in mask) {
-              if (!(key in shape3)) {
-                throw new Error(`Unrecognized key: "${key}"`);
+            for (const key4 in mask) {
+              if (!(key4 in shape7)) {
+                throw new Error(`Unrecognized key: "${key4}"`);
               }
-              if (!mask[key])
+              if (!mask[key4])
                 continue;
-              shape3[key] = new Class2({
+              shape7[key4] = new Class2({
                 type: "nonoptional",
-                innerType: oldShape[key]
+                innerType: oldShape[key4]
               });
             }
           } else {
-            for (const key in oldShape) {
-              shape3[key] = new Class2({
+            for (const key4 in oldShape) {
+              shape7[key4] = new Class2({
                 type: "nonoptional",
-                innerType: oldShape[key]
+                innerType: oldShape[key4]
               });
             }
           }
-          assignProp(this, "shape", shape3);
-          return shape3;
+          assignProp(this, "shape", shape7);
+          return shape7;
         }
       });
       return clone(schema, def);
@@ -4895,9 +4895,9 @@ var require_util2 = __commonJS({
           if (Array.isArray(data)) {
             return "array";
           }
-          const obj = data;
-          if (obj && Object.getPrototypeOf(obj) !== Object.prototype && "constructor" in obj && obj.constructor) {
-            return obj.constructor.name;
+          const obj4 = data;
+          if (obj4 && Object.getPrototypeOf(obj4) !== Object.prototype && "constructor" in obj4 && obj4.constructor) {
+            return obj4.constructor.name;
           }
         }
       }
@@ -4915,8 +4915,8 @@ var require_util2 = __commonJS({
       }
       return { ...iss };
     }
-    function cleanEnum(obj) {
-      return Object.entries(obj).filter(([k, _]) => {
+    function cleanEnum(obj4) {
+      return Object.entries(obj4).filter(([k, _]) => {
         return Number.isNaN(Number.parseInt(k, 10));
       }).map((el) => el[1]);
     }
@@ -4943,8 +4943,8 @@ var require_util2 = __commonJS({
     function uint8ArrayToBase64url(bytes) {
       return uint8ArrayToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
     }
-    function hexToUint8Array(hex3) {
-      const cleanHex = hex3.replace(/^0x/, "");
+    function hexToUint8Array(hex5) {
+      const cleanHex = hex5.replace(/^0x/, "");
       if (cleanHex.length % 2 !== 0) {
         throw new Error("Invalid hex string length");
       }
@@ -5314,7 +5314,7 @@ var require_regexes = __commonJS({
     exports2.sha384_hex = exports2.sha256_base64url = exports2.sha256_base64 = exports2.sha256_hex = exports2.sha1_base64url = exports2.sha1_base64 = exports2.sha1_hex = exports2.md5_base64url = exports2.md5_base64 = exports2.md5_hex = exports2.hex = exports2.uppercase = exports2.lowercase = exports2.undefined = exports2.null = exports2.boolean = exports2.number = exports2.integer = exports2.bigint = exports2.string = exports2.date = exports2.e164 = exports2.domain = exports2.hostname = exports2.base64url = exports2.base64 = exports2.cidrv6 = exports2.cidrv4 = exports2.mac = exports2.ipv6 = exports2.ipv4 = exports2.browserEmail = exports2.idnEmail = exports2.unicodeEmail = exports2.rfc5322Email = exports2.html5Email = exports2.email = exports2.uuid7 = exports2.uuid6 = exports2.uuid4 = exports2.uuid = exports2.guid = exports2.extendedDuration = exports2.duration = exports2.nanoid = exports2.ksuid = exports2.xid = exports2.ulid = exports2.cuid2 = exports2.cuid = void 0;
     exports2.sha512_base64url = exports2.sha512_base64 = exports2.sha512_hex = exports2.sha384_base64url = exports2.sha384_base64 = void 0;
     exports2.emoji = emoji;
-    exports2.time = time5;
+    exports2.time = time6;
     exports2.datetime = datetime;
     var util = __importStar(require_util2());
     exports2.cuid = /^[cC][^\s-]{8,}$/;
@@ -5366,17 +5366,17 @@ var require_regexes = __commonJS({
       const regex = typeof args.precision === "number" ? args.precision === -1 ? `${hhmm}` : args.precision === 0 ? `${hhmm}:[0-5]\\d` : `${hhmm}:[0-5]\\d\\.\\d{${args.precision}}` : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
       return regex;
     }
-    function time5(args) {
+    function time6(args) {
       return new RegExp(`^${timeSource(args)}$`);
     }
     function datetime(args) {
-      const time6 = timeSource({ precision: args.precision });
+      const time7 = timeSource({ precision: args.precision });
       const opts = ["Z"];
       if (args.local)
         opts.push("");
       if (args.offset)
         opts.push(`([+-](?:[01]\\d|2[0-3]):[0-5]\\d)`);
-      const timeRegex = `${time6}(?:${opts.join("|")})`;
+      const timeRegex = `${time7}(?:${opts.join("|")})`;
       return new RegExp(`^${dateSource}T(?:${timeRegex})$`);
     }
     var string = (params) => {
@@ -6028,19 +6028,19 @@ var require_doc = __commonJS({
           arg(this, { execution: "async" });
           return;
         }
-        const content = arg;
-        const lines = content.split("\n").filter((x) => x);
+        const content2 = arg;
+        const lines = content2.split("\n").filter((x) => x);
         const minIndent = Math.min(...lines.map((x) => x.length - x.trimStart().length));
         const dedented = lines.map((x) => x.slice(minIndent)).map((x) => " ".repeat(this.indent * 2) + x);
-        for (const line of dedented) {
-          this.content.push(line);
+        for (const line3 of dedented) {
+          this.content.push(line3);
         }
       }
       compile() {
         const F = Function;
         const args = this?.args;
-        const content = this?.content ?? [``];
-        const lines = [...content.map((x) => `  ${x}`)];
+        const content2 = this?.content ?? [``];
+        const lines = [...content2.map((x) => `  ${x}`)];
         return new F(...args, lines.join("\n"));
       }
     };
@@ -6099,7 +6099,7 @@ var require_schemas = __commonJS({
     exports2.isValidBase64 = isValidBase64;
     exports2.isValidBase64URL = isValidBase64URL;
     exports2.isValidJWT = isValidJWT;
-    var checks = __importStar(require_checks());
+    var checks2 = __importStar(require_checks());
     var core = __importStar(require_core());
     var doc_js_1 = require_doc();
     var parse_js_1 = require_parse();
@@ -6112,25 +6112,25 @@ var require_schemas = __commonJS({
       inst._zod.def = def;
       inst._zod.bag = inst._zod.bag || {};
       inst._zod.version = versions_js_1.version;
-      const checks2 = [...inst._zod.def.checks ?? []];
+      const checks3 = [...inst._zod.def.checks ?? []];
       if (inst._zod.traits.has("$ZodCheck")) {
-        checks2.unshift(inst);
+        checks3.unshift(inst);
       }
-      for (const ch of checks2) {
+      for (const ch of checks3) {
         for (const fn of ch._zod.onattach) {
           fn(inst);
         }
       }
-      if (checks2.length === 0) {
+      if (checks3.length === 0) {
         (_a = inst._zod).deferred ?? (_a.deferred = []);
         inst._zod.deferred?.push(() => {
           inst._zod.run = inst._zod.parse;
         });
       } else {
-        const runChecks = (payload, checks3, ctx) => {
+        const runChecks = (payload, checks4, ctx) => {
           let isAborted = util.aborted(payload);
           let asyncResult;
-          for (const ch of checks3) {
+          for (const ch of checks4) {
             if (ch._zod.def.when) {
               const shouldRun = ch._zod.def.when(payload);
               if (!shouldRun)
@@ -6172,7 +6172,7 @@ var require_schemas = __commonJS({
             canary.aborted = true;
             return canary;
           }
-          const checkResult = runChecks(payload, checks2, ctx);
+          const checkResult = runChecks(payload, checks3, ctx);
           if (checkResult instanceof Promise) {
             if (ctx.async === false)
               throw new core.$ZodAsyncError();
@@ -6197,9 +6197,9 @@ var require_schemas = __commonJS({
           if (result instanceof Promise) {
             if (ctx.async === false)
               throw new core.$ZodAsyncError();
-            return result.then((result2) => runChecks(result2, checks2, ctx));
+            return result.then((result2) => runChecks(result2, checks3, ctx));
           }
-          return runChecks(result, checks2, ctx);
+          return runChecks(result, checks3, ctx);
         };
       }
       util.defineLazy(inst, "~standard", () => ({
@@ -6240,7 +6240,7 @@ var require_schemas = __commonJS({
       };
     });
     exports2.$ZodStringFormat = core.$constructor("$ZodStringFormat", (inst, def) => {
-      checks.$ZodCheckStringFormat.init(inst, def);
+      checks2.$ZodCheckStringFormat.init(inst, def);
       exports2.$ZodString.init(inst, def);
     });
     exports2.$ZodGUID = core.$constructor("$ZodGUID", (inst, def) => {
@@ -6554,7 +6554,7 @@ var require_schemas = __commonJS({
       };
     });
     exports2.$ZodNumberFormat = core.$constructor("$ZodNumberFormat", (inst, def) => {
-      checks.$ZodCheckNumberFormat.init(inst, def);
+      checks2.$ZodCheckNumberFormat.init(inst, def);
       exports2.$ZodNumber.init(inst, def);
     });
     exports2.$ZodBoolean = core.$constructor("$ZodBoolean", (inst, def) => {
@@ -6599,7 +6599,7 @@ var require_schemas = __commonJS({
       };
     });
     exports2.$ZodBigIntFormat = core.$constructor("$ZodBigIntFormat", (inst, def) => {
-      checks.$ZodCheckBigIntFormat.init(inst, def);
+      checks2.$ZodCheckBigIntFormat.init(inst, def);
       exports2.$ZodBigInt.init(inst, def);
     });
     exports2.$ZodSymbol = core.$constructor("$ZodSymbol", (inst, def) => {
@@ -6751,19 +6751,19 @@ var require_schemas = __commonJS({
         return payload;
       };
     });
-    function handlePropertyResult(result, final, key, input, isOptionalOut) {
+    function handlePropertyResult(result, final, key4, input, isOptionalOut) {
       if (result.issues.length) {
-        if (isOptionalOut && !(key in input)) {
+        if (isOptionalOut && !(key4 in input)) {
           return;
         }
-        final.issues.push(...util.prefixIssues(key, result.issues));
+        final.issues.push(...util.prefixIssues(key4, result.issues));
       }
       if (result.value === void 0) {
-        if (key in input) {
-          final.value[key] = void 0;
+        if (key4 in input) {
+          final.value[key4] = void 0;
         }
       } else {
-        final.value[key] = result.value;
+        final.value[key4] = result.value;
       }
     }
     function normalizeDef(def) {
@@ -6788,18 +6788,18 @@ var require_schemas = __commonJS({
       const _catchall = def.catchall._zod;
       const t = _catchall.def.type;
       const isOptionalOut = _catchall.optout === "optional";
-      for (const key in input) {
-        if (keySet.has(key))
+      for (const key4 in input) {
+        if (keySet.has(key4))
           continue;
         if (t === "never") {
-          unrecognized.push(key);
+          unrecognized.push(key4);
           continue;
         }
-        const r = _catchall.run({ value: input[key], issues: [] }, ctx);
+        const r = _catchall.run({ value: input[key4], issues: [] }, ctx);
         if (r instanceof Promise) {
-          proms.push(r.then((r2) => handlePropertyResult(r2, payload, key, input, isOptionalOut)));
+          proms.push(r.then((r2) => handlePropertyResult(r2, payload, key4, input, isOptionalOut)));
         } else {
-          handlePropertyResult(r, payload, key, input, isOptionalOut);
+          handlePropertyResult(r, payload, key4, input, isOptionalOut);
         }
       }
       if (unrecognized.length) {
@@ -6833,14 +6833,14 @@ var require_schemas = __commonJS({
       }
       const _normalized = util.cached(() => normalizeDef(def));
       util.defineLazy(inst._zod, "propValues", () => {
-        const shape3 = def.shape;
+        const shape7 = def.shape;
         const propValues = {};
-        for (const key in shape3) {
-          const field = shape3[key]._zod;
+        for (const key4 in shape7) {
+          const field = shape7[key4]._zod;
           if (field.values) {
-            propValues[key] ?? (propValues[key] = /* @__PURE__ */ new Set());
+            propValues[key4] ?? (propValues[key4] = /* @__PURE__ */ new Set());
             for (const v of field.values)
-              propValues[key].add(v);
+              propValues[key4].add(v);
           }
         }
         return propValues;
@@ -6862,15 +6862,15 @@ var require_schemas = __commonJS({
         }
         payload.value = {};
         const proms = [];
-        const shape3 = value.shape;
-        for (const key of value.keys) {
-          const el = shape3[key];
+        const shape7 = value.shape;
+        for (const key4 of value.keys) {
+          const el = shape7[key4];
           const isOptionalOut = el._zod.optout === "optional";
-          const r = el._zod.run({ value: input[key], issues: [] }, ctx);
+          const r = el._zod.run({ value: input[key4], issues: [] }, ctx);
           if (r instanceof Promise) {
-            proms.push(r.then((r2) => handlePropertyResult(r2, payload, key, input, isOptionalOut)));
+            proms.push(r.then((r2) => handlePropertyResult(r2, payload, key4, input, isOptionalOut)));
           } else {
-            handlePropertyResult(r, payload, key, input, isOptionalOut);
+            handlePropertyResult(r, payload, key4, input, isOptionalOut);
           }
         }
         if (!catchall) {
@@ -6883,61 +6883,61 @@ var require_schemas = __commonJS({
       exports2.$ZodObject.init(inst, def);
       const superParse = inst._zod.parse;
       const _normalized = util.cached(() => normalizeDef(def));
-      const generateFastpass = (shape3) => {
+      const generateFastpass = (shape7) => {
         const doc = new doc_js_1.Doc(["shape", "payload", "ctx"]);
         const normalized = _normalized.value;
-        const parseStr = (key) => {
-          const k = util.esc(key);
+        const parseStr = (key4) => {
+          const k = util.esc(key4);
           return `shape[${k}]._zod.run({ value: input[${k}], issues: [] }, ctx)`;
         };
         doc.write(`const input = payload.value;`);
         const ids = /* @__PURE__ */ Object.create(null);
         let counter = 0;
-        for (const key of normalized.keys) {
-          ids[key] = `key_${counter++}`;
+        for (const key4 of normalized.keys) {
+          ids[key4] = `key_${counter++}`;
         }
         doc.write(`const newResult = {};`);
-        for (const key of normalized.keys) {
-          const id4 = ids[key];
-          const k = util.esc(key);
-          const schema = shape3[key];
+        for (const key4 of normalized.keys) {
+          const id9 = ids[key4];
+          const k = util.esc(key4);
+          const schema = shape7[key4];
           const isOptionalOut = schema?._zod?.optout === "optional";
-          doc.write(`const ${id4} = ${parseStr(key)};`);
+          doc.write(`const ${id9} = ${parseStr(key4)};`);
           if (isOptionalOut) {
             doc.write(`
-        if (${id4}.issues.length) {
+        if (${id9}.issues.length) {
           if (${k} in input) {
-            payload.issues = payload.issues.concat(${id4}.issues.map(iss => ({
+            payload.issues = payload.issues.concat(${id9}.issues.map(iss => ({
               ...iss,
               path: iss.path ? [${k}, ...iss.path] : [${k}]
             })));
           }
         }
         
-        if (${id4}.value === undefined) {
+        if (${id9}.value === undefined) {
           if (${k} in input) {
             newResult[${k}] = undefined;
           }
         } else {
-          newResult[${k}] = ${id4}.value;
+          newResult[${k}] = ${id9}.value;
         }
         
       `);
           } else {
             doc.write(`
-        if (${id4}.issues.length) {
-          payload.issues = payload.issues.concat(${id4}.issues.map(iss => ({
+        if (${id9}.issues.length) {
+          payload.issues = payload.issues.concat(${id9}.issues.map(iss => ({
             ...iss,
             path: iss.path ? [${k}, ...iss.path] : [${k}]
           })));
         }
         
-        if (${id4}.value === undefined) {
+        if (${id9}.value === undefined) {
           if (${k} in input) {
             newResult[${k}] = undefined;
           }
         } else {
-          newResult[${k}] = ${id4}.value;
+          newResult[${k}] = ${id9}.value;
         }
         
       `);
@@ -6946,7 +6946,7 @@ var require_schemas = __commonJS({
         doc.write(`payload.value = newResult;`);
         doc.write(`return payload;`);
         const fn = doc.compile();
-        return (payload, ctx) => fn(shape3, payload, ctx);
+        return (payload, ctx) => fn(shape7, payload, ctx);
       };
       let fastpass;
       const isObject = util.isObject;
@@ -7188,17 +7188,17 @@ var require_schemas = __commonJS({
       }
       if (util.isPlainObject(a) && util.isPlainObject(b)) {
         const bKeys = Object.keys(b);
-        const sharedKeys = Object.keys(a).filter((key) => bKeys.indexOf(key) !== -1);
+        const sharedKeys = Object.keys(a).filter((key4) => bKeys.indexOf(key4) !== -1);
         const newObj = { ...a, ...b };
-        for (const key of sharedKeys) {
-          const sharedValue = mergeValues(a[key], b[key]);
+        for (const key4 of sharedKeys) {
+          const sharedValue = mergeValues(a[key4], b[key4]);
           if (!sharedValue.valid) {
             return {
               valid: false,
-              mergeErrorPath: [key, ...sharedValue.mergeErrorPath]
+              mergeErrorPath: [key4, ...sharedValue.mergeErrorPath]
             };
           }
-          newObj[key] = sharedValue.data;
+          newObj[key4] = sharedValue.data;
         }
         return { valid: true, data: newObj };
       }
@@ -7354,30 +7354,30 @@ var require_schemas = __commonJS({
         if (values) {
           payload.value = {};
           const recordKeys = /* @__PURE__ */ new Set();
-          for (const key of values) {
-            if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
-              recordKeys.add(typeof key === "number" ? key.toString() : key);
-              const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+          for (const key4 of values) {
+            if (typeof key4 === "string" || typeof key4 === "number" || typeof key4 === "symbol") {
+              recordKeys.add(typeof key4 === "number" ? key4.toString() : key4);
+              const result = def.valueType._zod.run({ value: input[key4], issues: [] }, ctx);
               if (result instanceof Promise) {
                 proms.push(result.then((result2) => {
                   if (result2.issues.length) {
-                    payload.issues.push(...util.prefixIssues(key, result2.issues));
+                    payload.issues.push(...util.prefixIssues(key4, result2.issues));
                   }
-                  payload.value[key] = result2.value;
+                  payload.value[key4] = result2.value;
                 }));
               } else {
                 if (result.issues.length) {
-                  payload.issues.push(...util.prefixIssues(key, result.issues));
+                  payload.issues.push(...util.prefixIssues(key4, result.issues));
                 }
-                payload.value[key] = result.value;
+                payload.value[key4] = result.value;
               }
             }
           }
           let unrecognized;
-          for (const key in input) {
-            if (!recordKeys.has(key)) {
+          for (const key4 in input) {
+            if (!recordKeys.has(key4)) {
               unrecognized = unrecognized ?? [];
-              unrecognized.push(key);
+              unrecognized.push(key4);
             }
           }
           if (unrecognized && unrecognized.length > 0) {
@@ -7390,16 +7390,16 @@ var require_schemas = __commonJS({
           }
         } else {
           payload.value = {};
-          for (const key of Reflect.ownKeys(input)) {
-            if (key === "__proto__")
+          for (const key4 of Reflect.ownKeys(input)) {
+            if (key4 === "__proto__")
               continue;
-            let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+            let keyResult = def.keyType._zod.run({ value: key4, issues: [] }, ctx);
             if (keyResult instanceof Promise) {
               throw new Error("Async schemas not supported in object keys currently");
             }
-            const checkNumericKey = typeof key === "string" && regexes.number.test(key) && keyResult.issues.length;
+            const checkNumericKey = typeof key4 === "string" && regexes.number.test(key4) && keyResult.issues.length;
             if (checkNumericKey) {
-              const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
+              const retryResult = def.keyType._zod.run({ value: Number(key4), issues: [] }, ctx);
               if (retryResult instanceof Promise) {
                 throw new Error("Async schemas not supported in object keys currently");
               }
@@ -7409,30 +7409,30 @@ var require_schemas = __commonJS({
             }
             if (keyResult.issues.length) {
               if (def.mode === "loose") {
-                payload.value[key] = input[key];
+                payload.value[key4] = input[key4];
               } else {
                 payload.issues.push({
                   code: "invalid_key",
                   origin: "record",
                   issues: keyResult.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())),
-                  input: key,
-                  path: [key],
+                  input: key4,
+                  path: [key4],
                   inst
                 });
               }
               continue;
             }
-            const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+            const result = def.valueType._zod.run({ value: input[key4], issues: [] }, ctx);
             if (result instanceof Promise) {
               proms.push(result.then((result2) => {
                 if (result2.issues.length) {
-                  payload.issues.push(...util.prefixIssues(key, result2.issues));
+                  payload.issues.push(...util.prefixIssues(key4, result2.issues));
                 }
                 payload.value[keyResult.value] = result2.value;
               }));
             } else {
               if (result.issues.length) {
-                payload.issues.push(...util.prefixIssues(key, result.issues));
+                payload.issues.push(...util.prefixIssues(key4, result.issues));
               }
               payload.value[keyResult.value] = result.value;
             }
@@ -7459,15 +7459,15 @@ var require_schemas = __commonJS({
         }
         const proms = [];
         payload.value = /* @__PURE__ */ new Map();
-        for (const [key, value] of input) {
-          const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+        for (const [key4, value] of input) {
+          const keyResult = def.keyType._zod.run({ value: key4, issues: [] }, ctx);
           const valueResult = def.valueType._zod.run({ value, issues: [] }, ctx);
           if (keyResult instanceof Promise || valueResult instanceof Promise) {
             proms.push(Promise.all([keyResult, valueResult]).then(([keyResult2, valueResult2]) => {
-              handleMapResult(keyResult2, valueResult2, payload, key, input, inst, ctx);
+              handleMapResult(keyResult2, valueResult2, payload, key4, input, inst, ctx);
             }));
           } else {
-            handleMapResult(keyResult, valueResult, payload, key, input, inst, ctx);
+            handleMapResult(keyResult, valueResult, payload, key4, input, inst, ctx);
           }
         }
         if (proms.length)
@@ -7475,10 +7475,10 @@ var require_schemas = __commonJS({
         return payload;
       };
     });
-    function handleMapResult(keyResult, valueResult, final, key, input, inst, ctx) {
+    function handleMapResult(keyResult, valueResult, final, key4, input, inst, ctx) {
       if (keyResult.issues.length) {
-        if (util.propertyKeyTypes.has(typeof key)) {
-          final.issues.push(...util.prefixIssues(key, keyResult.issues));
+        if (util.propertyKeyTypes.has(typeof key4)) {
+          final.issues.push(...util.prefixIssues(key4, keyResult.issues));
         } else {
           final.issues.push({
             code: "invalid_key",
@@ -7490,15 +7490,15 @@ var require_schemas = __commonJS({
         }
       }
       if (valueResult.issues.length) {
-        if (util.propertyKeyTypes.has(typeof key)) {
-          final.issues.push(...util.prefixIssues(key, valueResult.issues));
+        if (util.propertyKeyTypes.has(typeof key4)) {
+          final.issues.push(...util.prefixIssues(key4, valueResult.issues));
         } else {
           final.issues.push({
             origin: "map",
             code: "invalid_element",
             input,
             inst,
-            key,
+            key: key4,
             issues: valueResult.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config()))
           });
         }
@@ -8047,7 +8047,7 @@ var require_schemas = __commonJS({
       };
     });
     exports2.$ZodCustom = core.$constructor("$ZodCustom", (inst, def) => {
-      checks.$ZodCheck.init(inst, def);
+      checks2.$ZodCheck.init(inst, def);
       exports2.$ZodType.init(inst, def);
       inst._zod.parse = (payload, _) => {
         return payload;
@@ -11989,11 +11989,11 @@ var require_lt = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = default_1;
     var util = __importStar(require_util2());
-    var capitalizeFirstCharacter = (text4) => {
-      return text4.charAt(0).toUpperCase() + text4.slice(1);
+    var capitalizeFirstCharacter = (text7) => {
+      return text7.charAt(0).toUpperCase() + text7.slice(1);
     };
-    function getUnitTypeFromNumber(number) {
-      const abs = Math.abs(number);
+    function getUnitTypeFromNumber(number2) {
+      const abs = Math.abs(number2);
       const last = abs % 10;
       const last2 = abs % 100;
       if (last2 >= 11 && last2 <= 19 || last === 0)
@@ -15741,7 +15741,7 @@ var require_api = __commonJS({
     exports2.meta = meta;
     exports2._stringbool = _stringbool;
     exports2._stringFormat = _stringFormat;
-    var checks = __importStar(require_checks());
+    var checks2 = __importStar(require_checks());
     var registries = __importStar(require_registries());
     var schemas = __importStar(require_schemas());
     var util = __importStar(require_util2());
@@ -16228,7 +16228,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _lt(value, params) {
-      return new checks.$ZodCheckLessThan({
+      return new checks2.$ZodCheckLessThan({
         check: "less_than",
         ...util.normalizeParams(params),
         value,
@@ -16237,7 +16237,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _lte(value, params) {
-      return new checks.$ZodCheckLessThan({
+      return new checks2.$ZodCheckLessThan({
         check: "less_than",
         ...util.normalizeParams(params),
         value,
@@ -16246,7 +16246,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _gt(value, params) {
-      return new checks.$ZodCheckGreaterThan({
+      return new checks2.$ZodCheckGreaterThan({
         check: "greater_than",
         ...util.normalizeParams(params),
         value,
@@ -16255,7 +16255,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _gte(value, params) {
-      return new checks.$ZodCheckGreaterThan({
+      return new checks2.$ZodCheckGreaterThan({
         check: "greater_than",
         ...util.normalizeParams(params),
         value,
@@ -16280,7 +16280,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _multipleOf(value, params) {
-      return new checks.$ZodCheckMultipleOf({
+      return new checks2.$ZodCheckMultipleOf({
         check: "multiple_of",
         ...util.normalizeParams(params),
         value
@@ -16288,7 +16288,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _maxSize(maximum, params) {
-      return new checks.$ZodCheckMaxSize({
+      return new checks2.$ZodCheckMaxSize({
         check: "max_size",
         ...util.normalizeParams(params),
         maximum
@@ -16296,7 +16296,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _minSize(minimum, params) {
-      return new checks.$ZodCheckMinSize({
+      return new checks2.$ZodCheckMinSize({
         check: "min_size",
         ...util.normalizeParams(params),
         minimum
@@ -16304,7 +16304,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _size(size, params) {
-      return new checks.$ZodCheckSizeEquals({
+      return new checks2.$ZodCheckSizeEquals({
         check: "size_equals",
         ...util.normalizeParams(params),
         size
@@ -16312,7 +16312,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _maxLength(maximum, params) {
-      const ch = new checks.$ZodCheckMaxLength({
+      const ch = new checks2.$ZodCheckMaxLength({
         check: "max_length",
         ...util.normalizeParams(params),
         maximum
@@ -16321,7 +16321,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _minLength(minimum, params) {
-      return new checks.$ZodCheckMinLength({
+      return new checks2.$ZodCheckMinLength({
         check: "min_length",
         ...util.normalizeParams(params),
         minimum
@@ -16329,7 +16329,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _length(length, params) {
-      return new checks.$ZodCheckLengthEquals({
+      return new checks2.$ZodCheckLengthEquals({
         check: "length_equals",
         ...util.normalizeParams(params),
         length
@@ -16337,7 +16337,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _regex(pattern, params) {
-      return new checks.$ZodCheckRegex({
+      return new checks2.$ZodCheckRegex({
         check: "string_format",
         format: "regex",
         ...util.normalizeParams(params),
@@ -16346,7 +16346,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _lowercase(params) {
-      return new checks.$ZodCheckLowerCase({
+      return new checks2.$ZodCheckLowerCase({
         check: "string_format",
         format: "lowercase",
         ...util.normalizeParams(params)
@@ -16354,7 +16354,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _uppercase(params) {
-      return new checks.$ZodCheckUpperCase({
+      return new checks2.$ZodCheckUpperCase({
         check: "string_format",
         format: "uppercase",
         ...util.normalizeParams(params)
@@ -16362,7 +16362,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _includes(includes, params) {
-      return new checks.$ZodCheckIncludes({
+      return new checks2.$ZodCheckIncludes({
         check: "string_format",
         format: "includes",
         ...util.normalizeParams(params),
@@ -16371,7 +16371,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _startsWith(prefix, params) {
-      return new checks.$ZodCheckStartsWith({
+      return new checks2.$ZodCheckStartsWith({
         check: "string_format",
         format: "starts_with",
         ...util.normalizeParams(params),
@@ -16380,7 +16380,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _endsWith(suffix, params) {
-      return new checks.$ZodCheckEndsWith({
+      return new checks2.$ZodCheckEndsWith({
         check: "string_format",
         format: "ends_with",
         ...util.normalizeParams(params),
@@ -16389,7 +16389,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _property(property, schema, params) {
-      return new checks.$ZodCheckProperty({
+      return new checks2.$ZodCheckProperty({
         check: "property",
         property,
         schema,
@@ -16398,7 +16398,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _mime(types, params) {
-      return new checks.$ZodCheckMimeType({
+      return new checks2.$ZodCheckMimeType({
         check: "mime_type",
         mime: types,
         ...util.normalizeParams(params)
@@ -16406,7 +16406,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _overwrite(tx) {
-      return new checks.$ZodCheckOverwrite({
+      return new checks2.$ZodCheckOverwrite({
         check: "overwrite",
         tx
       });
@@ -16681,7 +16681,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function _check(fn, params) {
-      const ch = new checks.$ZodCheck({
+      const ch = new checks2.$ZodCheck({
         check: "custom",
         ...util.normalizeParams(params)
       });
@@ -16690,7 +16690,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function describe(description) {
-      const ch = new checks.$ZodCheck({ check: "describe" });
+      const ch = new checks2.$ZodCheck({ check: "describe" });
       ch._zod.onattach = [
         (inst) => {
           const existing = registries.globalRegistry.get(inst) ?? {};
@@ -16703,7 +16703,7 @@ var require_api = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function meta(metadata) {
-      const ch = new checks.$ZodCheck({ check: "meta" });
+      const ch = new checks2.$ZodCheck({ check: "meta" });
       ch._zod.onattach = [
         (inst) => {
           const existing = registries.globalRegistry.get(inst) ?? {};
@@ -16877,26 +16877,26 @@ var require_to_json_schema = __commonJS({
         throw new Error("Unprocessed schema. This is a bug in Zod.");
       const idToSchema = /* @__PURE__ */ new Map();
       for (const entry of ctx.seen.entries()) {
-        const id4 = ctx.metadataRegistry.get(entry[0])?.id;
-        if (id4) {
-          const existing = idToSchema.get(id4);
+        const id9 = ctx.metadataRegistry.get(entry[0])?.id;
+        if (id9) {
+          const existing = idToSchema.get(id9);
           if (existing && existing !== entry[0]) {
-            throw new Error(`Duplicate schema id "${id4}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`);
+            throw new Error(`Duplicate schema id "${id9}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`);
           }
-          idToSchema.set(id4, entry[0]);
+          idToSchema.set(id9, entry[0]);
         }
       }
       const makeURI = (entry) => {
         const defsSegment = ctx.target === "draft-2020-12" ? "$defs" : "definitions";
         if (ctx.external) {
           const externalId = ctx.external.registry.get(entry[0])?.id;
-          const uriGenerator = ctx.external.uri ?? ((id5) => id5);
+          const uriGenerator = ctx.external.uri ?? ((id10) => id10);
           if (externalId) {
             return { ref: uriGenerator(externalId) };
           }
-          const id4 = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
-          entry[1].defId = id4;
-          return { defId: id4, ref: `${uriGenerator("__shared")}#/${defsSegment}/${id4}` };
+          const id9 = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
+          entry[1].defId = id9;
+          return { defId: id9, ref: `${uriGenerator("__shared")}#/${defsSegment}/${id9}` };
         }
         if (entry[1] === root) {
           return { ref: "#" };
@@ -16916,8 +16916,8 @@ var require_to_json_schema = __commonJS({
         if (defId)
           seen.defId = defId;
         const schema2 = seen.schema;
-        for (const key in schema2) {
-          delete schema2[key];
+        for (const key4 in schema2) {
+          delete schema2[key4];
         }
         schema2.$ref = ref;
       };
@@ -16944,8 +16944,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
             continue;
           }
         }
-        const id4 = ctx.metadataRegistry.get(entry[0])?.id;
-        if (id4) {
+        const id9 = ctx.metadataRegistry.get(entry[0])?.id;
+        if (id9) {
           extractToDef(entry);
           continue;
         }
@@ -16986,20 +16986,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
           Object.assign(schema2, _cached);
           const isParentRef = zodSchema._zod.parent === ref;
           if (isParentRef) {
-            for (const key in schema2) {
-              if (key === "$ref" || key === "allOf")
+            for (const key4 in schema2) {
+              if (key4 === "$ref" || key4 === "allOf")
                 continue;
-              if (!(key in _cached)) {
-                delete schema2[key];
+              if (!(key4 in _cached)) {
+                delete schema2[key4];
               }
             }
           }
           if (refSchema.$ref && refSeen.def) {
-            for (const key in schema2) {
-              if (key === "$ref" || key === "allOf")
+            for (const key4 in schema2) {
+              if (key4 === "$ref" || key4 === "allOf")
                 continue;
-              if (key in refSeen.def && JSON.stringify(schema2[key]) === JSON.stringify(refSeen.def[key])) {
-                delete schema2[key];
+              if (key4 in refSeen.def && JSON.stringify(schema2[key4]) === JSON.stringify(refSeen.def[key4])) {
+                delete schema2[key4];
               }
             }
           }
@@ -17011,11 +17011,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
           if (parentSeen?.schema.$ref) {
             schema2.$ref = parentSeen.schema.$ref;
             if (parentSeen.def) {
-              for (const key in schema2) {
-                if (key === "$ref" || key === "allOf")
+              for (const key4 in schema2) {
+                if (key4 === "$ref" || key4 === "allOf")
                   continue;
-                if (key in parentSeen.def && JSON.stringify(schema2[key]) === JSON.stringify(parentSeen.def[key])) {
-                  delete schema2[key];
+                if (key4 in parentSeen.def && JSON.stringify(schema2[key4]) === JSON.stringify(parentSeen.def[key4])) {
+                  delete schema2[key4];
                 }
               }
             }
@@ -17041,10 +17041,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
       } else {
       }
       if (ctx.external?.uri) {
-        const id4 = ctx.external.registry.get(schema)?.id;
-        if (!id4)
+        const id9 = ctx.external.registry.get(schema)?.id;
+        if (!id9)
           throw new Error("Schema is missing an `id` property");
-        result.$id = ctx.external.uri(id4);
+        result.$id = ctx.external.uri(id9);
       }
       Object.assign(result, root.def ?? root.schema);
       const defs = ctx.external?.defs ?? {};
@@ -17109,8 +17109,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
         return isTransforming(def.in, ctx) || isTransforming(def.out, ctx);
       }
       if (def.type === "object") {
-        for (const key in def.shape) {
-          if (isTransforming(def.shape[key], ctx))
+        for (const key4 in def.shape) {
+          if (isTransforming(def.shape[key4], ctx))
             return true;
         }
         return false;
@@ -17442,16 +17442,16 @@ var require_json_schema_processors = __commonJS({
       const def = schema._zod.def;
       json.type = "object";
       json.properties = {};
-      const shape3 = def.shape;
-      for (const key in shape3) {
-        json.properties[key] = (0, to_json_schema_js_1.process)(shape3[key], ctx, {
+      const shape7 = def.shape;
+      for (const key4 in shape7) {
+        json.properties[key4] = (0, to_json_schema_js_1.process)(shape7[key4], ctx, {
           ...params,
-          path: [...params.path, "properties", key]
+          path: [...params.path, "properties", key4]
         });
       }
-      const allKeys = new Set(Object.keys(shape3));
-      const requiredKeys = new Set([...allKeys].filter((key) => {
-        const v = def.shape[key]._zod;
+      const allKeys = new Set(Object.keys(shape7));
+      const requiredKeys = new Set([...allKeys].filter((key4) => {
+        const v = def.shape[key4]._zod;
         if (ctx.io === "input") {
           return v.optin === void 0;
         } else {
@@ -17731,9 +17731,9 @@ var require_json_schema_processors = __commonJS({
         };
         ctx2.external = external;
         for (const entry of registry._idmap.entries()) {
-          const [key, schema] = entry;
+          const [key4, schema] = entry;
           (0, to_json_schema_js_1.extractDefs)(ctx2, schema);
-          schemas[key] = (0, to_json_schema_js_1.finalize)(ctx2, schema);
+          schemas[key4] = (0, to_json_schema_js_1.finalize)(ctx2, schema);
         }
         if (Object.keys(defs).length > 0) {
           const defsSegment = ctx2.target === "draft-2020-12" ? "$defs" : "definitions";
@@ -18012,9 +18012,9 @@ var require_schemas2 = __commonJS({
     exports2.jwt = jwt;
     exports2.stringFormat = stringFormat;
     exports2.hostname = hostname;
-    exports2.hex = hex3;
-    exports2.hash = hash;
-    exports2.number = number;
+    exports2.hex = hex5;
+    exports2.hash = hash2;
+    exports2.number = number2;
     exports2.int = int;
     exports2.float32 = float32;
     exports2.float64 = float64;
@@ -18034,7 +18034,7 @@ var require_schemas2 = __commonJS({
     exports2.date = date;
     exports2.array = array;
     exports2.keyof = keyof;
-    exports2.object = object4;
+    exports2.object = object7;
     exports2.strictObject = strictObject;
     exports2.looseObject = looseObject;
     exports2.extend = extend;
@@ -18099,12 +18099,12 @@ var require_schemas2 = __commonJS({
       inst.safeParse = (data, params) => parse.safeParse(inst, data, params);
       inst.parseAsync = async (data, params) => parse.parseAsync(inst, data, params, { callee: inst.parseAsync });
       inst.safeParseAsync = async (data, params) => parse.safeParseAsync(inst, data, params);
-      inst.check = (...checks) => {
+      inst.check = (...checks2) => {
         return inst.clone({
           ...def,
           checks: [
             ...def.checks ?? [],
-            ...checks.map((ch) => typeof ch === "function" ? { _zod: { check: ch, def: { check: "custom" }, onattach: [] } } : ch)
+            ...checks2.map((ch) => typeof ch === "function" ? { _zod: { check: ch, def: { check: "custom" }, onattach: [] } } : ch)
           ]
         }, { parent: true });
       };
@@ -18322,11 +18322,11 @@ var require_schemas2 = __commonJS({
       return core._stringFormat(exports2.ZodMiniCustomStringFormat, "hostname", core.regexes.hostname, _params);
     }
     // @__NO_SIDE_EFFECTS__
-    function hex3(_params) {
+    function hex5(_params) {
       return core._stringFormat(exports2.ZodMiniCustomStringFormat, "hex", core.regexes.hex, _params);
     }
     // @__NO_SIDE_EFFECTS__
-    function hash(alg, params) {
+    function hash2(alg, params) {
       const enc = params?.enc ?? "hex";
       const format = `${alg}_${enc}`;
       const regex = core.regexes[format];
@@ -18339,7 +18339,7 @@ var require_schemas2 = __commonJS({
       exports2.ZodMiniType.init(inst, def);
     });
     // @__NO_SIDE_EFFECTS__
-    function number(params) {
+    function number2(params) {
       return core._number(exports2.ZodMiniNumber, params);
     }
     exports2.ZodMiniNumberFormat = core.$constructor("ZodMiniNumberFormat", (inst, def) => {
@@ -18472,8 +18472,8 @@ var require_schemas2 = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function keyof(schema) {
-      const shape3 = schema._zod.def.shape;
-      return /* @__PURE__ */ _enum(Object.keys(shape3));
+      const shape7 = schema._zod.def.shape;
+      return /* @__PURE__ */ _enum(Object.keys(shape7));
     }
     exports2.ZodMiniObject = core.$constructor("ZodMiniObject", (inst, def) => {
       core.$ZodObject.init(inst, def);
@@ -18481,43 +18481,43 @@ var require_schemas2 = __commonJS({
       util.defineLazy(inst, "shape", () => def.shape);
     });
     // @__NO_SIDE_EFFECTS__
-    function object4(shape3, params) {
+    function object7(shape7, params) {
       const def = {
         type: "object",
-        shape: shape3 ?? {},
+        shape: shape7 ?? {},
         ...util.normalizeParams(params)
       };
       return new exports2.ZodMiniObject(def);
     }
     // @__NO_SIDE_EFFECTS__
-    function strictObject(shape3, params) {
+    function strictObject(shape7, params) {
       return new exports2.ZodMiniObject({
         type: "object",
-        shape: shape3,
+        shape: shape7,
         catchall: /* @__PURE__ */ never(),
         ...util.normalizeParams(params)
       });
     }
     // @__NO_SIDE_EFFECTS__
-    function looseObject(shape3, params) {
+    function looseObject(shape7, params) {
       return new exports2.ZodMiniObject({
         type: "object",
-        shape: shape3,
+        shape: shape7,
         catchall: /* @__PURE__ */ unknown(),
         ...util.normalizeParams(params)
       });
     }
     // @__NO_SIDE_EFFECTS__
-    function extend(schema, shape3) {
-      return util.extend(schema, shape3);
+    function extend(schema, shape7) {
+      return util.extend(schema, shape7);
     }
     // @__NO_SIDE_EFFECTS__
-    function safeExtend(schema, shape3) {
-      return util.safeExtend(schema, shape3);
+    function safeExtend(schema, shape7) {
+      return util.safeExtend(schema, shape7);
     }
     // @__NO_SIDE_EFFECTS__
-    function merge(schema, shape3) {
-      return util.extend(schema, shape3);
+    function merge(schema, shape7) {
+      return util.extend(schema, shape7);
     }
     // @__NO_SIDE_EFFECTS__
     function pick(schema, mask) {
@@ -18947,7 +18947,7 @@ var require_schemas2 = __commonJS({
     // @__NO_SIDE_EFFECTS__
     function json() {
       const jsonSchema = /* @__PURE__ */ _lazy(() => {
-        return /* @__PURE__ */ union([/* @__PURE__ */ string(), /* @__PURE__ */ number(), /* @__PURE__ */ boolean(), /* @__PURE__ */ _null(), /* @__PURE__ */ array(jsonSchema), /* @__PURE__ */ record(/* @__PURE__ */ string(), jsonSchema)]);
+        return /* @__PURE__ */ union([/* @__PURE__ */ string(), /* @__PURE__ */ number2(), /* @__PURE__ */ boolean(), /* @__PURE__ */ _null(), /* @__PURE__ */ array(jsonSchema), /* @__PURE__ */ record(/* @__PURE__ */ string(), jsonSchema)]);
       });
       return jsonSchema;
     }
@@ -19101,7 +19101,7 @@ var require_iso = __commonJS({
     exports2.ZodMiniISODuration = exports2.ZodMiniISOTime = exports2.ZodMiniISODate = exports2.ZodMiniISODateTime = void 0;
     exports2.datetime = datetime;
     exports2.date = date;
-    exports2.time = time5;
+    exports2.time = time6;
     exports2.duration = duration;
     var core = __importStar(require_core2());
     var schemas = __importStar(require_schemas2());
@@ -19126,7 +19126,7 @@ var require_iso = __commonJS({
       schemas.ZodMiniStringFormat.init(inst, def);
     });
     // @__NO_SIDE_EFFECTS__
-    function time5(params) {
+    function time6(params) {
       return core._isoTime(exports2.ZodMiniISOTime, params);
     }
     exports2.ZodMiniISODuration = core.$constructor("ZodMiniISODuration", (inst, def) => {
@@ -19173,7 +19173,7 @@ var require_coerce = __commonJS({
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.string = string;
-    exports2.number = number;
+    exports2.number = number2;
     exports2.boolean = boolean;
     exports2.bigint = bigint;
     exports2.date = date;
@@ -19184,7 +19184,7 @@ var require_coerce = __commonJS({
       return core._coercedString(schemas.ZodMiniString, params);
     }
     // @__NO_SIDE_EFFECTS__
-    function number(params) {
+    function number2(params) {
       return core._coercedNumber(schemas.ZodMiniNumber, params);
     }
     // @__NO_SIDE_EFFECTS__
@@ -19401,16 +19401,16 @@ var require_zod_compat = __commonJS({
       const schema = s;
       return !!schema._zod;
     }
-    function objectFromShape(shape3) {
-      const values = Object.values(shape3);
+    function objectFromShape(shape7) {
+      const values = Object.values(shape7);
       if (values.length === 0)
         return z4mini.object({});
       const allV4 = values.every(isZ4Schema);
       const allV3 = values.every((s) => !isZ4Schema(s));
       if (allV4)
-        return z4mini.object(shape3);
+        return z4mini.object(shape7);
       if (allV3)
-        return z3rt.object(shape3);
+        return z3rt.object(shape7);
       throw new Error("Mixed Zod versions detected in object shape.");
     }
     function safeParse(schema, data) {
@@ -19674,7 +19674,7 @@ var require_iso2 = __commonJS({
     exports2.ZodISODuration = exports2.ZodISOTime = exports2.ZodISODate = exports2.ZodISODateTime = void 0;
     exports2.datetime = datetime;
     exports2.date = date;
-    exports2.time = time5;
+    exports2.time = time6;
     exports2.duration = duration;
     var core = __importStar(require_core2());
     var schemas = __importStar(require_schemas3());
@@ -19696,7 +19696,7 @@ var require_iso2 = __commonJS({
       core.$ZodISOTime.init(inst, def);
       schemas.ZodStringFormat.init(inst, def);
     });
-    function time5(params) {
+    function time6(params) {
       return core._isoTime(exports2.ZodISOTime, params);
     }
     exports2.ZodISODuration = core.$constructor("ZodISODuration", (inst, def) => {
@@ -19897,9 +19897,9 @@ var require_schemas3 = __commonJS({
     exports2.jwt = jwt;
     exports2.stringFormat = stringFormat;
     exports2.hostname = hostname;
-    exports2.hex = hex3;
-    exports2.hash = hash;
-    exports2.number = number;
+    exports2.hex = hex5;
+    exports2.hash = hash2;
+    exports2.number = number2;
     exports2.int = int;
     exports2.float32 = float32;
     exports2.float64 = float64;
@@ -19919,7 +19919,7 @@ var require_schemas3 = __commonJS({
     exports2.date = date;
     exports2.array = array;
     exports2.keyof = keyof;
-    exports2.object = object4;
+    exports2.object = object7;
     exports2.strictObject = strictObject;
     exports2.looseObject = looseObject;
     exports2.union = union;
@@ -19968,7 +19968,7 @@ var require_schemas3 = __commonJS({
     var index_js_1 = require_core2();
     var processors = __importStar(require_json_schema_processors());
     var to_json_schema_js_1 = require_to_json_schema();
-    var checks = __importStar(require_checks3());
+    var checks2 = __importStar(require_checks3());
     var iso = __importStar(require_iso2());
     var parse = __importStar(require_parse3());
     exports2.ZodType = core.$constructor("ZodType", (inst, def) => {
@@ -19983,11 +19983,11 @@ var require_schemas3 = __commonJS({
       inst.def = def;
       inst.type = def.type;
       Object.defineProperty(inst, "_def", { value: def });
-      inst.check = (...checks2) => {
+      inst.check = (...checks3) => {
         return inst.clone(index_js_1.util.mergeDefs(def, {
           checks: [
             ...def.checks ?? [],
-            ...checks2.map((ch) => typeof ch === "function" ? { _zod: { check: ch, def: { check: "custom" }, onattach: [] } } : ch)
+            ...checks3.map((ch) => typeof ch === "function" ? { _zod: { check: ch, def: { check: "custom" }, onattach: [] } } : ch)
           ]
         }), {
           parent: true
@@ -20015,7 +20015,7 @@ var require_schemas3 = __commonJS({
       inst.safeDecodeAsync = async (data, params) => parse.safeDecodeAsync(inst, data, params);
       inst.refine = (check2, params) => inst.check(refine(check2, params));
       inst.superRefine = (refinement) => inst.check(superRefine(refinement));
-      inst.overwrite = (fn) => inst.check(checks.overwrite(fn));
+      inst.overwrite = (fn) => inst.check(checks2.overwrite(fn));
       inst.optional = () => optional(inst);
       inst.exactOptional = () => exactOptional(inst);
       inst.nullable = () => nullable(inst);
@@ -20062,21 +20062,21 @@ var require_schemas3 = __commonJS({
       inst.format = bag.format ?? null;
       inst.minLength = bag.minimum ?? null;
       inst.maxLength = bag.maximum ?? null;
-      inst.regex = (...args) => inst.check(checks.regex(...args));
-      inst.includes = (...args) => inst.check(checks.includes(...args));
-      inst.startsWith = (...args) => inst.check(checks.startsWith(...args));
-      inst.endsWith = (...args) => inst.check(checks.endsWith(...args));
-      inst.min = (...args) => inst.check(checks.minLength(...args));
-      inst.max = (...args) => inst.check(checks.maxLength(...args));
-      inst.length = (...args) => inst.check(checks.length(...args));
-      inst.nonempty = (...args) => inst.check(checks.minLength(1, ...args));
-      inst.lowercase = (params) => inst.check(checks.lowercase(params));
-      inst.uppercase = (params) => inst.check(checks.uppercase(params));
-      inst.trim = () => inst.check(checks.trim());
-      inst.normalize = (...args) => inst.check(checks.normalize(...args));
-      inst.toLowerCase = () => inst.check(checks.toLowerCase());
-      inst.toUpperCase = () => inst.check(checks.toUpperCase());
-      inst.slugify = () => inst.check(checks.slugify());
+      inst.regex = (...args) => inst.check(checks2.regex(...args));
+      inst.includes = (...args) => inst.check(checks2.includes(...args));
+      inst.startsWith = (...args) => inst.check(checks2.startsWith(...args));
+      inst.endsWith = (...args) => inst.check(checks2.endsWith(...args));
+      inst.min = (...args) => inst.check(checks2.minLength(...args));
+      inst.max = (...args) => inst.check(checks2.maxLength(...args));
+      inst.length = (...args) => inst.check(checks2.length(...args));
+      inst.nonempty = (...args) => inst.check(checks2.minLength(1, ...args));
+      inst.lowercase = (params) => inst.check(checks2.lowercase(params));
+      inst.uppercase = (params) => inst.check(checks2.uppercase(params));
+      inst.trim = () => inst.check(checks2.trim());
+      inst.normalize = (...args) => inst.check(checks2.normalize(...args));
+      inst.toLowerCase = () => inst.check(checks2.toLowerCase());
+      inst.toUpperCase = () => inst.check(checks2.toUpperCase());
+      inst.slugify = () => inst.check(checks2.slugify());
     });
     exports2.ZodString = core.$constructor("ZodString", (inst, def) => {
       core.$ZodString.init(inst, def);
@@ -20282,10 +20282,10 @@ var require_schemas3 = __commonJS({
     function hostname(_params) {
       return core._stringFormat(exports2.ZodCustomStringFormat, "hostname", core.regexes.hostname, _params);
     }
-    function hex3(_params) {
+    function hex5(_params) {
       return core._stringFormat(exports2.ZodCustomStringFormat, "hex", core.regexes.hex, _params);
     }
-    function hash(alg, params) {
+    function hash2(alg, params) {
       const enc = params?.enc ?? "hex";
       const format = `${alg}_${enc}`;
       const regex = core.regexes[format];
@@ -20297,20 +20297,20 @@ var require_schemas3 = __commonJS({
       core.$ZodNumber.init(inst, def);
       exports2.ZodType.init(inst, def);
       inst._zod.processJSONSchema = (ctx, json2, params) => processors.numberProcessor(inst, ctx, json2, params);
-      inst.gt = (value, params) => inst.check(checks.gt(value, params));
-      inst.gte = (value, params) => inst.check(checks.gte(value, params));
-      inst.min = (value, params) => inst.check(checks.gte(value, params));
-      inst.lt = (value, params) => inst.check(checks.lt(value, params));
-      inst.lte = (value, params) => inst.check(checks.lte(value, params));
-      inst.max = (value, params) => inst.check(checks.lte(value, params));
+      inst.gt = (value, params) => inst.check(checks2.gt(value, params));
+      inst.gte = (value, params) => inst.check(checks2.gte(value, params));
+      inst.min = (value, params) => inst.check(checks2.gte(value, params));
+      inst.lt = (value, params) => inst.check(checks2.lt(value, params));
+      inst.lte = (value, params) => inst.check(checks2.lte(value, params));
+      inst.max = (value, params) => inst.check(checks2.lte(value, params));
       inst.int = (params) => inst.check(int(params));
       inst.safe = (params) => inst.check(int(params));
-      inst.positive = (params) => inst.check(checks.gt(0, params));
-      inst.nonnegative = (params) => inst.check(checks.gte(0, params));
-      inst.negative = (params) => inst.check(checks.lt(0, params));
-      inst.nonpositive = (params) => inst.check(checks.lte(0, params));
-      inst.multipleOf = (value, params) => inst.check(checks.multipleOf(value, params));
-      inst.step = (value, params) => inst.check(checks.multipleOf(value, params));
+      inst.positive = (params) => inst.check(checks2.gt(0, params));
+      inst.nonnegative = (params) => inst.check(checks2.gte(0, params));
+      inst.negative = (params) => inst.check(checks2.lt(0, params));
+      inst.nonpositive = (params) => inst.check(checks2.lte(0, params));
+      inst.multipleOf = (value, params) => inst.check(checks2.multipleOf(value, params));
+      inst.step = (value, params) => inst.check(checks2.multipleOf(value, params));
       inst.finite = () => inst;
       const bag = inst._zod.bag;
       inst.minValue = Math.max(bag.minimum ?? Number.NEGATIVE_INFINITY, bag.exclusiveMinimum ?? Number.NEGATIVE_INFINITY) ?? null;
@@ -20319,7 +20319,7 @@ var require_schemas3 = __commonJS({
       inst.isFinite = true;
       inst.format = bag.format ?? null;
     });
-    function number(params) {
+    function number2(params) {
       return core._number(exports2.ZodNumber, params);
     }
     exports2.ZodNumberFormat = core.$constructor("ZodNumberFormat", (inst, def) => {
@@ -20353,19 +20353,19 @@ var require_schemas3 = __commonJS({
       core.$ZodBigInt.init(inst, def);
       exports2.ZodType.init(inst, def);
       inst._zod.processJSONSchema = (ctx, json2, params) => processors.bigintProcessor(inst, ctx, json2, params);
-      inst.gte = (value, params) => inst.check(checks.gte(value, params));
-      inst.min = (value, params) => inst.check(checks.gte(value, params));
-      inst.gt = (value, params) => inst.check(checks.gt(value, params));
-      inst.gte = (value, params) => inst.check(checks.gte(value, params));
-      inst.min = (value, params) => inst.check(checks.gte(value, params));
-      inst.lt = (value, params) => inst.check(checks.lt(value, params));
-      inst.lte = (value, params) => inst.check(checks.lte(value, params));
-      inst.max = (value, params) => inst.check(checks.lte(value, params));
-      inst.positive = (params) => inst.check(checks.gt(BigInt(0), params));
-      inst.negative = (params) => inst.check(checks.lt(BigInt(0), params));
-      inst.nonpositive = (params) => inst.check(checks.lte(BigInt(0), params));
-      inst.nonnegative = (params) => inst.check(checks.gte(BigInt(0), params));
-      inst.multipleOf = (value, params) => inst.check(checks.multipleOf(value, params));
+      inst.gte = (value, params) => inst.check(checks2.gte(value, params));
+      inst.min = (value, params) => inst.check(checks2.gte(value, params));
+      inst.gt = (value, params) => inst.check(checks2.gt(value, params));
+      inst.gte = (value, params) => inst.check(checks2.gte(value, params));
+      inst.min = (value, params) => inst.check(checks2.gte(value, params));
+      inst.lt = (value, params) => inst.check(checks2.lt(value, params));
+      inst.lte = (value, params) => inst.check(checks2.lte(value, params));
+      inst.max = (value, params) => inst.check(checks2.lte(value, params));
+      inst.positive = (params) => inst.check(checks2.gt(BigInt(0), params));
+      inst.negative = (params) => inst.check(checks2.lt(BigInt(0), params));
+      inst.nonpositive = (params) => inst.check(checks2.lte(BigInt(0), params));
+      inst.nonnegative = (params) => inst.check(checks2.gte(BigInt(0), params));
+      inst.multipleOf = (value, params) => inst.check(checks2.multipleOf(value, params));
       const bag = inst._zod.bag;
       inst.minValue = bag.minimum ?? null;
       inst.maxValue = bag.maximum ?? null;
@@ -20444,8 +20444,8 @@ var require_schemas3 = __commonJS({
       core.$ZodDate.init(inst, def);
       exports2.ZodType.init(inst, def);
       inst._zod.processJSONSchema = (ctx, json2, params) => processors.dateProcessor(inst, ctx, json2, params);
-      inst.min = (value, params) => inst.check(checks.gte(value, params));
-      inst.max = (value, params) => inst.check(checks.lte(value, params));
+      inst.min = (value, params) => inst.check(checks2.gte(value, params));
+      inst.max = (value, params) => inst.check(checks2.lte(value, params));
       const c = inst._zod.bag;
       inst.minDate = c.minimum ? new Date(c.minimum) : null;
       inst.maxDate = c.maximum ? new Date(c.maximum) : null;
@@ -20458,18 +20458,18 @@ var require_schemas3 = __commonJS({
       exports2.ZodType.init(inst, def);
       inst._zod.processJSONSchema = (ctx, json2, params) => processors.arrayProcessor(inst, ctx, json2, params);
       inst.element = def.element;
-      inst.min = (minLength, params) => inst.check(checks.minLength(minLength, params));
-      inst.nonempty = (params) => inst.check(checks.minLength(1, params));
-      inst.max = (maxLength, params) => inst.check(checks.maxLength(maxLength, params));
-      inst.length = (len, params) => inst.check(checks.length(len, params));
+      inst.min = (minLength, params) => inst.check(checks2.minLength(minLength, params));
+      inst.nonempty = (params) => inst.check(checks2.minLength(1, params));
+      inst.max = (maxLength, params) => inst.check(checks2.maxLength(maxLength, params));
+      inst.length = (len, params) => inst.check(checks2.length(len, params));
       inst.unwrap = () => inst.element;
     });
     function array(element, params) {
       return core._array(exports2.ZodArray, element, params);
     }
     function keyof(schema) {
-      const shape3 = schema._zod.def.shape;
-      return _enum(Object.keys(shape3));
+      const shape7 = schema._zod.def.shape;
+      return _enum(Object.keys(shape7));
     }
     exports2.ZodObject = core.$constructor("ZodObject", (inst, def) => {
       core.$ZodObjectJIT.init(inst, def);
@@ -20496,26 +20496,26 @@ var require_schemas3 = __commonJS({
       inst.partial = (...args) => index_js_1.util.partial(exports2.ZodOptional, inst, args[0]);
       inst.required = (...args) => index_js_1.util.required(exports2.ZodNonOptional, inst, args[0]);
     });
-    function object4(shape3, params) {
+    function object7(shape7, params) {
       const def = {
         type: "object",
-        shape: shape3 ?? {},
+        shape: shape7 ?? {},
         ...index_js_1.util.normalizeParams(params)
       };
       return new exports2.ZodObject(def);
     }
-    function strictObject(shape3, params) {
+    function strictObject(shape7, params) {
       return new exports2.ZodObject({
         type: "object",
-        shape: shape3,
+        shape: shape7,
         catchall: never(),
         ...index_js_1.util.normalizeParams(params)
       });
     }
-    function looseObject(shape3, params) {
+    function looseObject(shape7, params) {
       return new exports2.ZodObject({
         type: "object",
-        shape: shape3,
+        shape: shape7,
         catchall: unknown(),
         ...index_js_1.util.normalizeParams(params)
       });
@@ -21042,7 +21042,7 @@ var require_schemas3 = __commonJS({
     exports2.stringbool = stringbool;
     function json(params) {
       const jsonSchema = lazy(() => {
-        return union([string(params), number(), boolean(), _null(), array(jsonSchema), record(string(), jsonSchema)]);
+        return union([string(params), number2(), boolean(), _null(), array(jsonSchema), record(string(), jsonSchema)]);
       });
       return jsonSchema;
     }
@@ -21258,11 +21258,11 @@ var require_from_json_schema = __commonJS({
       }
       const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
       if (path[0] === defsKey) {
-        const key = path[1];
-        if (!key || !ctx.defs[key]) {
+        const key4 = path[1];
+        if (!key4 || !ctx.defs[key4]) {
           throw new Error(`Reference not found: ${ref}`);
         }
-        return ctx.defs[key];
+        return ctx.defs[key4];
       }
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -21445,21 +21445,21 @@ var require_from_json_schema = __commonJS({
           break;
         }
         case "object": {
-          const shape3 = {};
+          const shape7 = {};
           const properties = schema.properties || {};
           const requiredSet = new Set(schema.required || []);
-          for (const [key, propSchema] of Object.entries(properties)) {
+          for (const [key4, propSchema] of Object.entries(properties)) {
             const propZodSchema = convertSchema(propSchema, ctx);
-            shape3[key] = requiredSet.has(key) ? propZodSchema : propZodSchema.optional();
+            shape7[key4] = requiredSet.has(key4) ? propZodSchema : propZodSchema.optional();
           }
           if (schema.propertyNames) {
             const keySchema = convertSchema(schema.propertyNames, ctx);
             const valueSchema = schema.additionalProperties && typeof schema.additionalProperties === "object" ? convertSchema(schema.additionalProperties, ctx) : z.any();
-            if (Object.keys(shape3).length === 0) {
+            if (Object.keys(shape7).length === 0) {
               zodSchema = z.record(keySchema, valueSchema);
               break;
             }
-            const objectSchema2 = z.object(shape3).passthrough();
+            const objectSchema2 = z.object(shape7).passthrough();
             const recordSchema = z.looseRecord(keySchema, valueSchema);
             zodSchema = z.intersection(objectSchema2, recordSchema);
             break;
@@ -21474,8 +21474,8 @@ var require_from_json_schema = __commonJS({
               looseRecords.push(z.looseRecord(keySchema, patternValue));
             }
             const schemasToIntersect = [];
-            if (Object.keys(shape3).length > 0) {
-              schemasToIntersect.push(z.object(shape3).passthrough());
+            if (Object.keys(shape7).length > 0) {
+              schemasToIntersect.push(z.object(shape7).passthrough());
             }
             schemasToIntersect.push(...looseRecords);
             if (schemasToIntersect.length === 0) {
@@ -21491,7 +21491,7 @@ var require_from_json_schema = __commonJS({
             }
             break;
           }
-          const objectSchema = z.object(shape3);
+          const objectSchema = z.object(shape7);
           if (schema.additionalProperties === false) {
             zodSchema = objectSchema.strict();
           } else if (typeof schema.additionalProperties === "object") {
@@ -21594,20 +21594,20 @@ var require_from_json_schema = __commonJS({
       }
       const extraMeta = {};
       const coreMetadataKeys = ["$id", "id", "$comment", "$anchor", "$vocabulary", "$dynamicRef", "$dynamicAnchor"];
-      for (const key of coreMetadataKeys) {
-        if (key in schema) {
-          extraMeta[key] = schema[key];
+      for (const key4 of coreMetadataKeys) {
+        if (key4 in schema) {
+          extraMeta[key4] = schema[key4];
         }
       }
       const contentMetadataKeys = ["contentEncoding", "contentMediaType", "contentSchema"];
-      for (const key of contentMetadataKeys) {
-        if (key in schema) {
-          extraMeta[key] = schema[key];
+      for (const key4 of contentMetadataKeys) {
+        if (key4 in schema) {
+          extraMeta[key4] = schema[key4];
         }
       }
-      for (const key of Object.keys(schema)) {
-        if (!RECOGNIZED_KEYS.has(key)) {
-          extraMeta[key] = schema[key];
+      for (const key4 of Object.keys(schema)) {
+        if (!RECOGNIZED_KEYS.has(key4)) {
+          extraMeta[key4] = schema[key4];
         }
       }
       if (Object.keys(extraMeta).length > 0) {
@@ -21667,7 +21667,7 @@ var require_coerce2 = __commonJS({
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.string = string;
-    exports2.number = number;
+    exports2.number = number2;
     exports2.boolean = boolean;
     exports2.bigint = bigint;
     exports2.date = date;
@@ -21676,7 +21676,7 @@ var require_coerce2 = __commonJS({
     function string(params) {
       return core._coercedString(schemas.ZodString, params);
     }
-    function number(params) {
+    function number2(params) {
       return core._coercedNumber(schemas.ZodNumber, params);
     }
     function boolean(params) {
@@ -23478,8 +23478,8 @@ var require_interfaces = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.isTerminal = isTerminal;
-    function isTerminal(status) {
-      return status === "completed" || status === "failed" || status === "cancelled";
+    function isTerminal(status2) {
+      return status2 === "completed" || status2 === "failed" || status2 === "cancelled";
     }
   }
 });
@@ -23554,11 +23554,11 @@ var require_Refs = __commonJS({
         flags: { hasReferencedOpenAiAnyType: false },
         currentPath,
         propertyPath: void 0,
-        seen: new Map(Object.entries(_options.definitions).map(([name, def]) => [
+        seen: new Map(Object.entries(_options.definitions).map(([name2, def]) => [
           def._def,
           {
             def: def._def,
-            path: [..._options.basePath, _options.definitionPath, name],
+            path: [..._options.basePath, _options.definitionPath, name2],
             // Resolution of references will be forced even though seen, so it's ok that the schema is undefined here for now.
             jsonSchema: void 0
           }
@@ -23575,20 +23575,20 @@ var require_errorMessages = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.setResponseValueAndErrors = exports2.addErrorMessage = void 0;
-    function addErrorMessage(res, key, errorMessage, refs) {
+    function addErrorMessage(res, key4, errorMessage, refs) {
       if (!refs?.errorMessages)
         return;
       if (errorMessage) {
         res.errorMessage = {
           ...res.errorMessage,
-          [key]: errorMessage
+          [key4]: errorMessage
         };
       }
     }
     exports2.addErrorMessage = addErrorMessage;
-    function setResponseValueAndErrors(res, key, value, errorMessage, refs) {
-      res[key] = value;
-      addErrorMessage(res, key, errorMessage, refs);
+    function setResponseValueAndErrors(res, key4, value, errorMessage, refs) {
+      res[key4] = value;
+      addErrorMessage(res, key4, errorMessage, refs);
     }
     exports2.setResponseValueAndErrors = setResponseValueAndErrors;
   }
@@ -24318,11 +24318,11 @@ var require_record = __commonJS({
         return {
           type: "object",
           required: def.keyType._def.values,
-          properties: def.keyType._def.values.reduce((acc, key) => ({
+          properties: def.keyType._def.values.reduce((acc, key4) => ({
             ...acc,
-            [key]: (0, parseDef_js_1.parseDef)(def.valueType._def, {
+            [key4]: (0, parseDef_js_1.parseDef)(def.valueType._def, {
               ...refs,
-              currentPath: [...refs.currentPath, "properties", key]
+              currentPath: [...refs.currentPath, "properties", key4]
             }) ?? (0, any_js_1.parseAnyDef)(refs)
           }), {}),
           additionalProperties: refs.rejectedAdditionalProperties
@@ -24407,11 +24407,11 @@ var require_nativeEnum = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.parseNativeEnumDef = void 0;
     function parseNativeEnumDef(def) {
-      const object4 = def.values;
-      const actualKeys = Object.keys(def.values).filter((key) => {
-        return typeof object4[object4[key]] !== "number";
+      const object7 = def.values;
+      const actualKeys = Object.keys(def.values).filter((key4) => {
+        return typeof object7[object7[key4]] !== "number";
       });
-      const actualValues = actualKeys.map((key) => object4[key]);
+      const actualValues = actualKeys.map((key4) => object7[key4]);
       const parsedTypes = Array.from(new Set(actualValues.map((values) => typeof values)));
       return {
         type: parsedTypes.length === 1 ? parsedTypes[0] === "string" ? "string" : "number" : ["string", "number"],
@@ -24650,9 +24650,9 @@ var require_object = __commonJS({
         properties: {}
       };
       const required = [];
-      const shape3 = def.shape();
-      for (const propName in shape3) {
-        let propDef = shape3[propName];
+      const shape7 = def.shape();
+      for (const propName in shape7) {
+        let propDef = shape7[propName];
         if (propDef === void 0 || propDef._def === void 0) {
           continue;
         }
@@ -25100,17 +25100,17 @@ var require_zodToJsonSchema = __commonJS({
     var any_js_1 = require_any();
     var zodToJsonSchema = (schema, options) => {
       const refs = (0, Refs_js_1.getRefs)(options);
-      let definitions = typeof options === "object" && options.definitions ? Object.entries(options.definitions).reduce((acc, [name2, schema2]) => ({
+      let definitions = typeof options === "object" && options.definitions ? Object.entries(options.definitions).reduce((acc, [name3, schema2]) => ({
         ...acc,
-        [name2]: (0, parseDef_js_1.parseDef)(schema2._def, {
+        [name3]: (0, parseDef_js_1.parseDef)(schema2._def, {
           ...refs,
-          currentPath: [...refs.basePath, refs.definitionPath, name2]
+          currentPath: [...refs.basePath, refs.definitionPath, name3]
         }, true) ?? (0, any_js_1.parseAnyDef)(refs)
       }), {}) : void 0;
-      const name = typeof options === "string" ? options : options?.nameStrategy === "title" ? void 0 : options?.name;
-      const main = (0, parseDef_js_1.parseDef)(schema._def, name === void 0 ? refs : {
+      const name2 = typeof options === "string" ? options : options?.nameStrategy === "title" ? void 0 : options?.name;
+      const main = (0, parseDef_js_1.parseDef)(schema._def, name2 === void 0 ? refs : {
         ...refs,
-        currentPath: [...refs.basePath, refs.definitionPath, name]
+        currentPath: [...refs.basePath, refs.definitionPath, name2]
       }, false) ?? (0, any_js_1.parseAnyDef)(refs);
       const title = typeof options === "object" && options.name !== void 0 && options.nameStrategy === "title" ? options.name : void 0;
       if (title !== void 0) {
@@ -25134,18 +25134,18 @@ var require_zodToJsonSchema = __commonJS({
           };
         }
       }
-      const combined = name === void 0 ? definitions ? {
+      const combined = name2 === void 0 ? definitions ? {
         ...main,
         [refs.definitionPath]: definitions
       } : main : {
         $ref: [
           ...refs.$refStrategy === "relative" ? [] : refs.basePath,
           refs.definitionPath,
-          name
+          name2
         ].join("/"),
         [refs.definitionPath]: {
           ...definitions,
-          [name]: main
+          [name2]: main
         }
       };
       if (refs.target === "jsonSchema7") {
@@ -25286,8 +25286,8 @@ var require_zod_json_schema_compat = __commonJS({
       });
     }
     function getMethodLiteral(schema) {
-      const shape3 = (0, zod_compat_js_1.getObjectShape)(schema);
-      const methodSchema = shape3?.method;
+      const shape7 = (0, zod_compat_js_1.getObjectShape)(schema);
+      const methodSchema = shape7?.method;
       if (!methodSchema) {
         throw new Error("Schema is missing a method literal");
       }
@@ -26207,8 +26207,8 @@ var require_protocol = __commonJS({
             }
             return task;
           },
-          storeTaskResult: async (taskId, status, result) => {
-            await taskStore.storeTaskResult(taskId, status, result, sessionId);
+          storeTaskResult: async (taskId, status2, result) => {
+            await taskStore.storeTaskResult(taskId, status2, result, sessionId);
             const task = await taskStore.getTask(taskId, sessionId);
             if (task) {
               const notification = types_js_1.TaskStatusNotificationSchema.parse({
@@ -26224,15 +26224,15 @@ var require_protocol = __commonJS({
           getTaskResult: (taskId) => {
             return taskStore.getTaskResult(taskId, sessionId);
           },
-          updateTaskStatus: async (taskId, status, statusMessage) => {
+          updateTaskStatus: async (taskId, status2, statusMessage) => {
             const task = await taskStore.getTask(taskId, sessionId);
             if (!task) {
               throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Task "${taskId}" not found - it may have been cleaned up`);
             }
             if ((0, interfaces_js_1.isTerminal)(task.status)) {
-              throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Cannot update task "${taskId}" from terminal status "${task.status}" to "${status}". Terminal states (completed, failed, cancelled) cannot transition to other states.`);
+              throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Cannot update task "${taskId}" from terminal status "${task.status}" to "${status2}". Terminal states (completed, failed, cancelled) cannot transition to other states.`);
             }
-            await taskStore.updateTaskStatus(taskId, status, statusMessage, sessionId);
+            await taskStore.updateTaskStatus(taskId, status2, statusMessage, sessionId);
             const updatedTask = await taskStore.getTask(taskId, sessionId);
             if (updatedTask) {
               const notification = types_js_1.TaskStatusNotificationSchema.parse({
@@ -26257,8 +26257,8 @@ var require_protocol = __commonJS({
     }
     function mergeCapabilities(base, additional) {
       const result = { ...base };
-      for (const key in additional) {
-        const k = key;
+      for (const key4 in additional) {
+        const k = key4;
         const addValue = additional[k];
         if (addValue === void 0)
           continue;
@@ -26410,15 +26410,15 @@ var require_code = __commonJS({
       return JSON.stringify(x).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
     }
     exports2.safeStringify = safeStringify;
-    function getProperty(key) {
-      return typeof key == "string" && exports2.IDENTIFIER.test(key) ? new _Code(`.${key}`) : _`[${key}]`;
+    function getProperty(key4) {
+      return typeof key4 == "string" && exports2.IDENTIFIER.test(key4) ? new _Code(`.${key4}`) : _`[${key4}]`;
     }
     exports2.getProperty = getProperty;
-    function getEsmExportName(key) {
-      if (typeof key == "string" && exports2.IDENTIFIER.test(key)) {
-        return new _Code(`${key}`);
+    function getEsmExportName(key4) {
+      if (typeof key4 == "string" && exports2.IDENTIFIER.test(key4)) {
+        return new _Code(`${key4}`);
       }
-      throw new Error(`CodeGen: invalid export name: ${key}, use explicit $id name mapping`);
+      throw new Error(`CodeGen: invalid export name: ${key4}, use explicit $id name mapping`);
     }
     exports2.getEsmExportName = getEsmExportName;
     function regexpCode(rx) {
@@ -26436,9 +26436,9 @@ var require_scope = __commonJS({
     exports2.ValueScope = exports2.ValueScopeName = exports2.Scope = exports2.varKinds = exports2.UsedValueState = void 0;
     var code_1 = require_code();
     var ValueError = class extends Error {
-      constructor(name) {
-        super(`CodeGen: "code" for ${name} not defined`);
-        this.value = name.value;
+      constructor(name2) {
+        super(`CodeGen: "code" for ${name2} not defined`);
+        this.value = name2.value;
       }
     };
     var UsedValueState;
@@ -26487,13 +26487,13 @@ var require_scope = __commonJS({
       }
     };
     exports2.ValueScopeName = ValueScopeName;
-    var line = (0, code_1._)`\n`;
+    var line3 = (0, code_1._)`\n`;
     var ValueScope = class extends Scope {
       constructor(opts) {
         super(opts);
         this._values = {};
         this._scope = opts.scope;
-        this.opts = { ...opts, _n: opts.lines ? line : code_1.nil };
+        this.opts = { ...opts, _n: opts.lines ? line3 : code_1.nil };
       }
       get() {
         return this._scope;
@@ -26505,8 +26505,8 @@ var require_scope = __commonJS({
         var _a;
         if (value.ref === void 0)
           throw new Error("CodeGen: ref must be passed in value");
-        const name = this.toName(nameOrPrefix);
-        const { prefix } = name;
+        const name2 = this.toName(nameOrPrefix);
+        const { prefix } = name2;
         const valueKey = (_a = value.key) !== null && _a !== void 0 ? _a : value.ref;
         let vs = this._values[prefix];
         if (vs) {
@@ -26516,12 +26516,12 @@ var require_scope = __commonJS({
         } else {
           vs = this._values[prefix] = /* @__PURE__ */ new Map();
         }
-        vs.set(valueKey, name);
+        vs.set(valueKey, name2);
         const s = this._scope[prefix] || (this._scope[prefix] = []);
         const itemIndex = s.length;
         s[itemIndex] = value.ref;
-        name.setValue(value, { property: prefix, itemIndex });
-        return name;
+        name2.setValue(value, { property: prefix, itemIndex });
+        return name2;
       }
       getValue(prefix, keyOrRef) {
         const vs = this._values[prefix];
@@ -26530,17 +26530,17 @@ var require_scope = __commonJS({
         return vs.get(keyOrRef);
       }
       scopeRefs(scopeName, values = this._values) {
-        return this._reduceValues(values, (name) => {
-          if (name.scopePath === void 0)
-            throw new Error(`CodeGen: name "${name}" has no value`);
-          return (0, code_1._)`${scopeName}${name.scopePath}`;
+        return this._reduceValues(values, (name2) => {
+          if (name2.scopePath === void 0)
+            throw new Error(`CodeGen: name "${name2}" has no value`);
+          return (0, code_1._)`${scopeName}${name2.scopePath}`;
         });
       }
       scopeCode(values = this._values, usedValues, getCode) {
-        return this._reduceValues(values, (name) => {
-          if (name.value === void 0)
-            throw new Error(`CodeGen: name "${name}" has no value`);
-          return name.value.code;
+        return this._reduceValues(values, (name2) => {
+          if (name2.value === void 0)
+            throw new Error(`CodeGen: name "${name2}" has no value`);
+          return name2.value.code;
         }, usedValues, getCode);
       }
       _reduceValues(values, valueCode, usedValues = {}, getCode) {
@@ -26550,20 +26550,20 @@ var require_scope = __commonJS({
           if (!vs)
             continue;
           const nameSet = usedValues[prefix] = usedValues[prefix] || /* @__PURE__ */ new Map();
-          vs.forEach((name) => {
-            if (nameSet.has(name))
+          vs.forEach((name2) => {
+            if (nameSet.has(name2))
               return;
-            nameSet.set(name, UsedValueState.Started);
-            let c = valueCode(name);
+            nameSet.set(name2, UsedValueState.Started);
+            let c = valueCode(name2);
             if (c) {
               const def = this.opts.es5 ? exports2.varKinds.var : exports2.varKinds.const;
-              code2 = (0, code_1._)`${code2}${def} ${name} = ${c};${this.opts._n}`;
-            } else if (c = getCode === null || getCode === void 0 ? void 0 : getCode(name)) {
+              code2 = (0, code_1._)`${code2}${def} ${name2} = ${c};${this.opts._n}`;
+            } else if (c = getCode === null || getCode === void 0 ? void 0 : getCode(name2)) {
               code2 = (0, code_1._)`${code2}${c}${this.opts._n}`;
             } else {
-              throw new ValueError(name);
+              throw new ValueError(name2);
             }
-            nameSet.set(name, UsedValueState.Completed);
+            nameSet.set(name2, UsedValueState.Completed);
           });
         }
         return code2;
@@ -26640,10 +26640,10 @@ var require_codegen = __commonJS({
       }
     };
     var Def = class extends Node {
-      constructor(varKind, name, rhs) {
+      constructor(varKind, name2, rhs) {
         super();
         this.varKind = varKind;
-        this.name = name;
+        this.name = name2;
         this.rhs = rhs;
       }
       render({ es5, _n }) {
@@ -26863,17 +26863,17 @@ var require_codegen = __commonJS({
       }
     };
     var ForRange = class extends For {
-      constructor(varKind, name, from, to) {
+      constructor(varKind, name2, from, to) {
         super();
         this.varKind = varKind;
-        this.name = name;
+        this.name = name2;
         this.from = from;
         this.to = to;
       }
       render(opts) {
         const varKind = opts.es5 ? scope_1.varKinds.var : this.varKind;
-        const { name, from, to } = this;
-        return `for(${varKind} ${name}=${from}; ${name}<${to}; ${name}++)` + super.render(opts);
+        const { name: name2, from, to } = this;
+        return `for(${varKind} ${name2}=${from}; ${name2}<${to}; ${name2}++)` + super.render(opts);
       }
       get names() {
         const names = addExprNames(super.names, this.from);
@@ -26881,11 +26881,11 @@ var require_codegen = __commonJS({
       }
     };
     var ForIter = class extends For {
-      constructor(loop, varKind, name, iterable) {
+      constructor(loop, varKind, name2, iterable) {
         super();
         this.loop = loop;
         this.varKind = varKind;
-        this.name = name;
+        this.name = name2;
         this.iterable = iterable;
       }
       render(opts) {
@@ -26902,9 +26902,9 @@ var require_codegen = __commonJS({
       }
     };
     var Func = class extends BlockNode {
-      constructor(name, args, async) {
+      constructor(name2, args, async) {
         super();
-        this.name = name;
+        this.name = name2;
         this.args = args;
         this.async = async;
       }
@@ -26991,10 +26991,10 @@ var require_codegen = __commonJS({
       }
       // reserves unique name in the external scope and assigns value to it
       scopeValue(prefixOrName, value) {
-        const name = this._extScope.value(prefixOrName, value);
-        const vs = this._values[name.prefix] || (this._values[name.prefix] = /* @__PURE__ */ new Set());
-        vs.add(name);
-        return name;
+        const name2 = this._extScope.value(prefixOrName, value);
+        const vs = this._values[name2.prefix] || (this._values[name2.prefix] = /* @__PURE__ */ new Set());
+        vs.add(name2);
+        return name2;
       }
       getScopeValue(prefix, keyOrRef) {
         return this._extScope.getValue(prefix, keyOrRef);
@@ -27008,11 +27008,11 @@ var require_codegen = __commonJS({
         return this._extScope.scopeCode(this._values);
       }
       _def(varKind, nameOrPrefix, rhs, constant) {
-        const name = this._scope.toName(nameOrPrefix);
+        const name2 = this._scope.toName(nameOrPrefix);
         if (rhs !== void 0 && constant)
-          this._constants[name.str] = rhs;
-        this._leafNode(new Def(varKind, name, rhs));
-        return name;
+          this._constants[name2.str] = rhs;
+        this._leafNode(new Def(varKind, name2, rhs));
+        return name2;
       }
       // `const` declaration (`var` in es5 mode)
       const(nameOrPrefix, rhs, _constant) {
@@ -27045,11 +27045,11 @@ var require_codegen = __commonJS({
       // returns code for object literal for the passed argument list of key-value pairs
       object(...keyValues) {
         const code2 = ["{"];
-        for (const [key, value] of keyValues) {
+        for (const [key4, value] of keyValues) {
           if (code2.length > 1)
             code2.push(",");
-          code2.push(key);
-          if (key !== value || this.opts.es5) {
+          code2.push(key4);
+          if (key4 !== value || this.opts.es5) {
             code2.push(":");
             (0, code_1.addCodeArg)(code2, value);
           }
@@ -27093,29 +27093,29 @@ var require_codegen = __commonJS({
       }
       // `for` statement for a range of values
       forRange(nameOrPrefix, from, to, forBody, varKind = this.opts.es5 ? scope_1.varKinds.var : scope_1.varKinds.let) {
-        const name = this._scope.toName(nameOrPrefix);
-        return this._for(new ForRange(varKind, name, from, to), () => forBody(name));
+        const name2 = this._scope.toName(nameOrPrefix);
+        return this._for(new ForRange(varKind, name2, from, to), () => forBody(name2));
       }
       // `for-of` statement (in es5 mode replace with a normal for loop)
       forOf(nameOrPrefix, iterable, forBody, varKind = scope_1.varKinds.const) {
-        const name = this._scope.toName(nameOrPrefix);
+        const name2 = this._scope.toName(nameOrPrefix);
         if (this.opts.es5) {
           const arr = iterable instanceof code_1.Name ? iterable : this.var("_arr", iterable);
           return this.forRange("_i", 0, (0, code_1._)`${arr}.length`, (i) => {
-            this.var(name, (0, code_1._)`${arr}[${i}]`);
-            forBody(name);
+            this.var(name2, (0, code_1._)`${arr}[${i}]`);
+            forBody(name2);
           });
         }
-        return this._for(new ForIter("of", varKind, name, iterable), () => forBody(name));
+        return this._for(new ForIter("of", varKind, name2, iterable), () => forBody(name2));
       }
       // `for-in` statement.
       // With option `ownProperties` replaced with a `for-of` loop for object keys
-      forIn(nameOrPrefix, obj, forBody, varKind = this.opts.es5 ? scope_1.varKinds.var : scope_1.varKinds.const) {
+      forIn(nameOrPrefix, obj4, forBody, varKind = this.opts.es5 ? scope_1.varKinds.var : scope_1.varKinds.const) {
         if (this.opts.ownProperties) {
-          return this.forOf(nameOrPrefix, (0, code_1._)`Object.keys(${obj})`, forBody);
+          return this.forOf(nameOrPrefix, (0, code_1._)`Object.keys(${obj4})`, forBody);
         }
-        const name = this._scope.toName(nameOrPrefix);
-        return this._for(new ForIter("in", varKind, name, obj), () => forBody(name));
+        const name2 = this._scope.toName(nameOrPrefix);
+        return this._for(new ForIter("in", varKind, name2, obj4), () => forBody(name2));
       }
       // end `for` loop
       endFor() {
@@ -27180,8 +27180,8 @@ var require_codegen = __commonJS({
         return this;
       }
       // `function` heading (or definition if funcBody is passed)
-      func(name, args = code_1.nil, async, funcBody) {
-        this._blockNode(new Func(name, args, async));
+      func(name2, args = code_1.nil, async, funcBody) {
+        this._blockNode(new Func(name2, args, async));
         if (funcBody)
           this.code(funcBody).endFunc();
         return this;
@@ -27302,10 +27302,10 @@ var require_util3 = __commonJS({
     var codegen_1 = require_codegen();
     var code_1 = require_code();
     function toHash(arr) {
-      const hash = {};
+      const hash2 = {};
       for (const item of arr)
-        hash[item] = true;
-      return hash;
+        hash2[item] = true;
+      return hash2;
     }
     exports2.toHash = toHash;
     function alwaysValidSchema(it, schema) {
@@ -27324,17 +27324,17 @@ var require_util3 = __commonJS({
       if (typeof schema === "boolean")
         return;
       const rules = self.RULES.keywords;
-      for (const key in schema) {
-        if (!rules[key])
-          checkStrictMode(it, `unknown keyword: "${key}"`);
+      for (const key4 in schema) {
+        if (!rules[key4])
+          checkStrictMode(it, `unknown keyword: "${key4}"`);
       }
     }
     exports2.checkUnknownRules = checkUnknownRules;
     function schemaHasRules(schema, rules) {
       if (typeof schema == "boolean")
         return !schema;
-      for (const key in schema)
-        if (rules[key])
+      for (const key4 in schema)
+        if (rules[key4])
           return true;
       return false;
     }
@@ -27342,8 +27342,8 @@ var require_util3 = __commonJS({
     function schemaHasRulesButRef(schema, RULES2) {
       if (typeof schema == "boolean")
         return !schema;
-      for (const key in schema)
-        if (key !== "$ref" && RULES2.all[key])
+      for (const key4 in schema)
+        if (key4 !== "$ref" && RULES2.all[key4])
           return true;
       return false;
     }
@@ -27921,8 +27921,8 @@ var require_defaults = __commonJS({
     function assignDefaults(it, ty) {
       const { properties, items } = it.schema;
       if (ty === "object" && properties) {
-        for (const key in properties) {
-          assignDefault(it, key, properties[key].default);
+        for (const key4 in properties) {
+          assignDefault(it, key4, properties[key4].default);
         }
       } else if (ty === "array" && Array.isArray(items)) {
         items.forEach((sch, i) => assignDefault(it, i, sch.default));
@@ -28306,8 +28306,8 @@ var require_fast_deep_equal = __commonJS({
         for (i = length; i-- !== 0; )
           if (!Object.prototype.hasOwnProperty.call(b, keys2[i])) return false;
         for (i = length; i-- !== 0; ) {
-          var key = keys2[i];
-          if (!equal(a[key], b[key])) return false;
+          var key4 = keys2[i];
+          if (!equal(a[key4], b[key4])) return false;
         }
         return true;
       }
@@ -28379,20 +28379,20 @@ var require_json_schema_traverse = __commonJS({
     function _traverse(opts, pre, post, schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex) {
       if (schema && typeof schema == "object" && !Array.isArray(schema)) {
         pre(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
-        for (var key in schema) {
-          var sch = schema[key];
+        for (var key4 in schema) {
+          var sch = schema[key4];
           if (Array.isArray(sch)) {
-            if (key in traverse.arrayKeywords) {
+            if (key4 in traverse.arrayKeywords) {
               for (var i = 0; i < sch.length; i++)
-                _traverse(opts, pre, post, sch[i], jsonPtr + "/" + key + "/" + i, rootSchema, jsonPtr, key, schema, i);
+                _traverse(opts, pre, post, sch[i], jsonPtr + "/" + key4 + "/" + i, rootSchema, jsonPtr, key4, schema, i);
             }
-          } else if (key in traverse.propsKeywords) {
+          } else if (key4 in traverse.propsKeywords) {
             if (sch && typeof sch == "object") {
               for (var prop in sch)
-                _traverse(opts, pre, post, sch[prop], jsonPtr + "/" + key + "/" + escapeJsonPtr(prop), rootSchema, jsonPtr, key, schema, prop);
+                _traverse(opts, pre, post, sch[prop], jsonPtr + "/" + key4 + "/" + escapeJsonPtr(prop), rootSchema, jsonPtr, key4, schema, prop);
             }
-          } else if (key in traverse.keywords || opts.allKeys && !(key in traverse.skipKeywords)) {
-            _traverse(opts, pre, post, sch, jsonPtr + "/" + key, rootSchema, jsonPtr, key, schema);
+          } else if (key4 in traverse.keywords || opts.allKeys && !(key4 in traverse.skipKeywords)) {
+            _traverse(opts, pre, post, sch, jsonPtr + "/" + key4, rootSchema, jsonPtr, key4, schema);
           }
         }
         post(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
@@ -28449,10 +28449,10 @@ var require_resolve = __commonJS({
       "$dynamicAnchor"
     ]);
     function hasRef(schema) {
-      for (const key in schema) {
-        if (REF_KEYWORDS.has(key))
+      for (const key4 in schema) {
+        if (REF_KEYWORDS.has(key4))
           return true;
-        const sch = schema[key];
+        const sch = schema[key4];
         if (Array.isArray(sch) && sch.some(hasRef))
           return true;
         if (typeof sch == "object" && hasRef(sch))
@@ -28462,24 +28462,24 @@ var require_resolve = __commonJS({
     }
     function countKeys(schema) {
       let count = 0;
-      for (const key in schema) {
-        if (key === "$ref")
+      for (const key4 in schema) {
+        if (key4 === "$ref")
           return Infinity;
         count++;
-        if (SIMPLE_INLINED.has(key))
+        if (SIMPLE_INLINED.has(key4))
           continue;
-        if (typeof schema[key] == "object") {
-          (0, util_1.eachItem)(schema[key], (sch) => count += countKeys(sch));
+        if (typeof schema[key4] == "object") {
+          (0, util_1.eachItem)(schema[key4], (sch) => count += countKeys(sch));
         }
         if (count === Infinity)
           return Infinity;
       }
       return count;
     }
-    function getFullPath(resolver, id4 = "", normalize2) {
+    function getFullPath(resolver, id9 = "", normalize2) {
       if (normalize2 !== false)
-        id4 = normalizeId(id4);
-      const p = resolver.parse(id4);
+        id9 = normalizeId(id9);
+      const p = resolver.parse(id9);
       return _getFullPath(resolver, p);
     }
     exports2.getFullPath = getFullPath;
@@ -28489,13 +28489,13 @@ var require_resolve = __commonJS({
     }
     exports2._getFullPath = _getFullPath;
     var TRAILING_SLASH_HASH = /#\/?$/;
-    function normalizeId(id4) {
-      return id4 ? id4.replace(TRAILING_SLASH_HASH, "") : "";
+    function normalizeId(id9) {
+      return id9 ? id9.replace(TRAILING_SLASH_HASH, "") : "";
     }
     exports2.normalizeId = normalizeId;
-    function resolveUrl(resolver, baseId, id4) {
-      id4 = normalizeId(id4);
-      return resolver.resolve(baseId, id4);
+    function resolveUrl(resolver, baseId, id9) {
+      id9 = normalizeId(id9);
+      return resolver.resolve(baseId, id9);
     }
     exports2.resolveUrl = resolveUrl;
     var ANCHOR = /^[a-z_][-a-z0-9._]*$/i;
@@ -28658,8 +28658,8 @@ var require_validate = __commonJS({
     function schemaCxtHasRules({ schema, self }) {
       if (typeof schema == "boolean")
         return !schema;
-      for (const key in schema)
-        if (self.RULES.all[key])
+      for (const key4 in schema)
+        if (self.RULES.all[key4])
           return true;
       return false;
     }
@@ -28935,11 +28935,11 @@ var require_validate = __commonJS({
         if (!this.allErrors)
           this.gen.if(cond);
       }
-      setParams(obj, assign) {
+      setParams(obj4, assign) {
         if (assign)
-          Object.assign(this.params, obj);
+          Object.assign(this.params, obj4);
         else
-          this.params = obj;
+          this.params = obj4;
       }
       block$data(valid, codeBlock, $dataValid = codegen_1.nil) {
         this.gen.block(() => {
@@ -29265,8 +29265,8 @@ var require_compile = __commonJS({
       if (Object.keys(root.schema).length > 0 && refPath === baseId) {
         return getJsonPointer.call(this, p, root);
       }
-      const id4 = (0, resolve_1.normalizeId)(refPath);
-      const schOrRef = this.refs[id4] || this.schemas[id4];
+      const id9 = (0, resolve_1.normalizeId)(refPath);
+      const schOrRef = this.refs[id9] || this.schemas[id9];
       if (typeof schOrRef == "string") {
         const sch = resolveSchema.call(this, root, schOrRef);
         if (typeof (sch === null || sch === void 0 ? void 0 : sch.schema) !== "object")
@@ -29277,7 +29277,7 @@ var require_compile = __commonJS({
         return;
       if (!schOrRef.validate)
         compileSchema.call(this, schOrRef);
-      if (id4 === (0, resolve_1.normalizeId)(ref)) {
+      if (id9 === (0, resolve_1.normalizeId)(ref)) {
         const { schema } = schOrRef;
         const { schemaId } = this.opts;
         const schId = schema[schemaId];
@@ -29593,9 +29593,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex3 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex3)) {
-            const normalizedHex = hex3.toUpperCase();
+          const hex5 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex5)) {
+            const normalizedHex = hex5.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (decodeUnreserved && isUnreserved(decoded)) {
               output += decoded;
@@ -29615,9 +29615,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex3 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex3)) {
-            const normalizedHex = hex3.toUpperCase();
+          const hex5 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex5)) {
+            const normalizedHex = hex5.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (decoded !== "." && isUnreserved(decoded)) {
               output += decoded;
@@ -29657,9 +29657,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex3 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex3)) {
-            output += "%" + hex3.toUpperCase();
+          const hex5 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex5)) {
+            output += "%" + hex5.toUpperCase();
             i += 2;
             continue;
           }
@@ -29695,9 +29695,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex3 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex3)) {
-            output += "%" + hex3.toUpperCase();
+          const hex5 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex5)) {
+            output += "%" + hex5.toUpperCase();
             i += 2;
             continue;
           }
@@ -29742,9 +29742,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex3 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex3)) {
-            const normalizedHex = hex3.toUpperCase();
+          const hex5 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex5)) {
+            const normalizedHex = hex5.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (isUnreserved(decoded)) {
               output += decoded;
@@ -29782,9 +29782,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex3 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex3)) {
-            output += "%" + hex3.toUpperCase();
+          const hex5 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex5)) {
+            output += "%" + hex5.toUpperCase();
             i += 2;
             continue;
           }
@@ -29863,10 +29863,10 @@ var require_schemes = __commonJS({
         "urn:uuid"
       ]
     );
-    function isValidSchemeName(name) {
+    function isValidSchemeName(name2) {
       return supportedSchemeNames.indexOf(
         /** @type {*} */
-        name
+        name2
       ) !== -1;
     }
     function wsIsSecure(wsComponent) {
@@ -30115,49 +30115,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative, options, skipNormalization) {
+    function resolveComponent(base, relative2, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse(serialize(base, options), options);
-        relative = parse(serialize(relative, options), options);
+        relative2 = parse(serialize(relative2, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative.scheme) {
-        target.scheme = relative.scheme;
-        target.userinfo = relative.userinfo;
-        target.host = relative.host;
-        target.port = relative.port;
-        target.path = removeDotSegments(relative.path || "");
-        target.query = relative.query;
+      if (!options.tolerant && relative2.scheme) {
+        target.scheme = relative2.scheme;
+        target.userinfo = relative2.userinfo;
+        target.host = relative2.host;
+        target.port = relative2.port;
+        target.path = removeDotSegments(relative2.path || "");
+        target.query = relative2.query;
       } else {
-        if (relative.userinfo !== void 0 || relative.host !== void 0 || relative.port !== void 0) {
-          target.userinfo = relative.userinfo;
-          target.host = relative.host;
-          target.port = relative.port;
-          target.path = removeDotSegments(relative.path || "");
-          target.query = relative.query;
+        if (relative2.userinfo !== void 0 || relative2.host !== void 0 || relative2.port !== void 0) {
+          target.userinfo = relative2.userinfo;
+          target.host = relative2.host;
+          target.port = relative2.port;
+          target.path = removeDotSegments(relative2.path || "");
+          target.query = relative2.query;
         } else {
-          if (!relative.path) {
+          if (!relative2.path) {
             target.path = base.path;
-            if (relative.query !== void 0) {
-              target.query = relative.query;
+            if (relative2.query !== void 0) {
+              target.query = relative2.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative.path[0] === "/") {
-              target.path = removeDotSegments(relative.path);
+            if (relative2.path[0] === "/") {
+              target.path = removeDotSegments(relative2.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative.path;
+                target.path = "/" + relative2.path;
               } else if (!base.path) {
-                target.path = relative.path;
+                target.path = relative2.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative2.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative.query;
+            target.query = relative2.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -30165,7 +30165,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative.fragment;
+      target.fragment = relative2.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -30697,29 +30697,29 @@ var require_core3 = __commonJS({
         }
       }
       // Adds schema to the instance
-      addSchema(schema, key, _meta, _validateSchema = this.opts.validateSchema) {
+      addSchema(schema, key4, _meta, _validateSchema = this.opts.validateSchema) {
         if (Array.isArray(schema)) {
           for (const sch of schema)
             this.addSchema(sch, void 0, _meta, _validateSchema);
           return this;
         }
-        let id4;
+        let id9;
         if (typeof schema === "object") {
           const { schemaId } = this.opts;
-          id4 = schema[schemaId];
-          if (id4 !== void 0 && typeof id4 != "string") {
+          id9 = schema[schemaId];
+          if (id9 !== void 0 && typeof id9 != "string") {
             throw new Error(`schema ${schemaId} must be string`);
           }
         }
-        key = (0, resolve_1.normalizeId)(key || id4);
-        this._checkUnique(key);
-        this.schemas[key] = this._addSchema(schema, _meta, key, _validateSchema, true);
+        key4 = (0, resolve_1.normalizeId)(key4 || id9);
+        this._checkUnique(key4);
+        this.schemas[key4] = this._addSchema(schema, _meta, key4, _validateSchema, true);
         return this;
       }
       // Add schema that will be used to validate other schemas
       // options in META_IGNORE_OPTIONS are alway set to false
-      addMetaSchema(schema, key, _validateSchema = this.opts.validateSchema) {
-        this.addSchema(schema, key, true, _validateSchema);
+      addMetaSchema(schema, key4, _validateSchema = this.opts.validateSchema) {
+        this.addSchema(schema, key4, true, _validateSchema);
         return this;
       }
       //  Validate schema against its meta-schema
@@ -30790,11 +30790,11 @@ var require_core3 = __commonJS({
           case "object": {
             const cacheKey = schemaKeyRef;
             this._cache.delete(cacheKey);
-            let id4 = schemaKeyRef[this.opts.schemaId];
-            if (id4) {
-              id4 = (0, resolve_1.normalizeId)(id4);
-              delete this.schemas[id4];
-              delete this.refs[id4];
+            let id9 = schemaKeyRef[this.opts.schemaId];
+            if (id9) {
+              id9 = (0, resolve_1.normalizeId)(id9);
+              delete this.schemas[id9];
+              delete this.refs[id9];
             }
             return this;
           }
@@ -30856,16 +30856,16 @@ var require_core3 = __commonJS({
         return this;
       }
       // Add format
-      addFormat(name, format) {
+      addFormat(name2, format) {
         if (typeof format == "string")
           format = new RegExp(format);
-        this.formats[name] = format;
+        this.formats[name2] = format;
         return this;
       }
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text4, msg) => text4 + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text7, msg) => text7 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -30875,14 +30875,14 @@ var require_core3 = __commonJS({
           let keywords = metaSchema;
           for (const seg of segments)
             keywords = keywords[seg];
-          for (const key in rules) {
-            const rule = rules[key];
+          for (const key4 in rules) {
+            const rule = rules[key4];
             if (typeof rule != "object")
               continue;
             const { $data } = rule.definition;
-            const schema = keywords[key];
+            const schema = keywords[key4];
             if ($data && schema)
-              keywords[key] = schemaOrData(schema);
+              keywords[key4] = schemaOrData(schema);
           }
         }
         return metaSchema;
@@ -30901,10 +30901,10 @@ var require_core3 = __commonJS({
         }
       }
       _addSchema(schema, meta, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
-        let id4;
+        let id9;
         const { schemaId } = this.opts;
         if (typeof schema == "object") {
-          id4 = schema[schemaId];
+          id9 = schema[schemaId];
         } else {
           if (this.opts.jtd)
             throw new Error("schema must be object");
@@ -30914,7 +30914,7 @@ var require_core3 = __commonJS({
         let sch = this._cache.get(schema);
         if (sch !== void 0)
           return sch;
-        baseId = (0, resolve_1.normalizeId)(id4 || baseId);
+        baseId = (0, resolve_1.normalizeId)(id9 || baseId);
         const localRefs = resolve_1.getSchemaRefs.call(this, schema, baseId);
         sch = new compile_1.SchemaEnv({ schema, schemaId, meta, baseId, localRefs });
         this._cache.set(sch.schema, sch);
@@ -30927,9 +30927,9 @@ var require_core3 = __commonJS({
           this.validateSchema(schema, true);
         return sch;
       }
-      _checkUnique(id4) {
-        if (this.schemas[id4] || this.refs[id4]) {
-          throw new Error(`schema with key or id "${id4}" already exists`);
+      _checkUnique(id9) {
+        if (this.schemas[id9] || this.refs[id9]) {
+          throw new Error(`schema with key or id "${id9}" already exists`);
         }
       }
       _compileSchemaEnv(sch) {
@@ -30955,10 +30955,10 @@ var require_core3 = __commonJS({
     Ajv.MissingRefError = ref_error_1.default;
     exports2.default = Ajv;
     function checkOptions(checkOpts, options, msg, log = "error") {
-      for (const key in checkOpts) {
-        const opt = key;
+      for (const key4 in checkOpts) {
+        const opt = key4;
         if (opt in options)
-          this.logger[log](`${msg}: option ${key}. ${checkOpts[opt]}`);
+          this.logger[log](`${msg}: option ${key4}. ${checkOpts[opt]}`);
       }
     }
     function getSchEnv(keyRef) {
@@ -30972,14 +30972,14 @@ var require_core3 = __commonJS({
       if (Array.isArray(optsSchemas))
         this.addSchema(optsSchemas);
       else
-        for (const key in optsSchemas)
-          this.addSchema(optsSchemas[key], key);
+        for (const key4 in optsSchemas)
+          this.addSchema(optsSchemas[key4], key4);
     }
     function addInitialFormats() {
-      for (const name in this.opts.formats) {
-        const format = this.opts.formats[name];
+      for (const name2 in this.opts.formats) {
+        const format = this.opts.formats[name2];
         if (format)
-          this.addFormat(name, format);
+          this.addFormat(name2, format);
       }
     }
     function addInitialKeywords(defs) {
@@ -31058,13 +31058,13 @@ var require_core3 = __commonJS({
       RULES2.all[keyword] = rule;
       (_a = definition.implements) === null || _a === void 0 ? void 0 : _a.forEach((kwd) => this.addKeyword(kwd));
     }
-    function addBeforeRule(ruleGroup, rule, before) {
-      const i = ruleGroup.rules.findIndex((_rule) => _rule.keyword === before);
+    function addBeforeRule(ruleGroup, rule, before3) {
+      const i = ruleGroup.rules.findIndex((_rule) => _rule.keyword === before3);
       if (i >= 0) {
         ruleGroup.rules.splice(i, 0, rule);
       } else {
         ruleGroup.rules.push(rule);
-        this.logger.warn(`rule ${before} is not defined`);
+        this.logger.warn(`rule ${before3} is not defined`);
       }
     }
     function keywordMetaschema(def) {
@@ -32021,11 +32021,11 @@ var require_dependencies = __commonJS({
     function splitDependencies({ schema }) {
       const propertyDeps = {};
       const schemaDeps = {};
-      for (const key in schema) {
-        if (key === "__proto__")
+      for (const key4 in schema) {
+        if (key4 === "__proto__")
           continue;
-        const deps = Array.isArray(schema[key]) ? propertyDeps : schemaDeps;
-        deps[key] = schema[key];
+        const deps = Array.isArray(schema[key4]) ? propertyDeps : schemaDeps;
+        deps[key4] = schema[key4];
       }
       return [propertyDeps, schemaDeps];
     }
@@ -32102,13 +32102,13 @@ var require_propertyNames = __commonJS({
         if ((0, util_1.alwaysValidSchema)(it, schema))
           return;
         const valid = gen.name("valid");
-        gen.forIn("key", data, (key) => {
-          cxt.setParams({ propertyName: key });
+        gen.forIn("key", data, (key4) => {
+          cxt.setParams({ propertyName: key4 });
           cxt.subschema({
             keyword: "propertyNames",
-            data: key,
+            data: key4,
             dataTypes: ["string"],
-            propertyName: key,
+            propertyName: key4,
             compositeRule: true
           }, valid);
           gen.if((0, codegen_1.not)(valid), () => {
@@ -32157,38 +32157,38 @@ var require_additionalProperties = __commonJS({
         checkAdditionalProperties();
         cxt.ok((0, codegen_1._)`${errsCount} === ${names_1.default.errors}`);
         function checkAdditionalProperties() {
-          gen.forIn("key", data, (key) => {
+          gen.forIn("key", data, (key4) => {
             if (!props.length && !patProps.length)
-              additionalPropertyCode(key);
+              additionalPropertyCode(key4);
             else
-              gen.if(isAdditional(key), () => additionalPropertyCode(key));
+              gen.if(isAdditional(key4), () => additionalPropertyCode(key4));
           });
         }
-        function isAdditional(key) {
+        function isAdditional(key4) {
           let definedProp;
           if (props.length > 8) {
             const propsSchema = (0, util_1.schemaRefOrVal)(it, parentSchema.properties, "properties");
-            definedProp = (0, code_1.isOwnProperty)(gen, propsSchema, key);
+            definedProp = (0, code_1.isOwnProperty)(gen, propsSchema, key4);
           } else if (props.length) {
-            definedProp = (0, codegen_1.or)(...props.map((p) => (0, codegen_1._)`${key} === ${p}`));
+            definedProp = (0, codegen_1.or)(...props.map((p) => (0, codegen_1._)`${key4} === ${p}`));
           } else {
             definedProp = codegen_1.nil;
           }
           if (patProps.length) {
-            definedProp = (0, codegen_1.or)(definedProp, ...patProps.map((p) => (0, codegen_1._)`${(0, code_1.usePattern)(cxt, p)}.test(${key})`));
+            definedProp = (0, codegen_1.or)(definedProp, ...patProps.map((p) => (0, codegen_1._)`${(0, code_1.usePattern)(cxt, p)}.test(${key4})`));
           }
           return (0, codegen_1.not)(definedProp);
         }
-        function deleteAdditional(key) {
-          gen.code((0, codegen_1._)`delete ${data}[${key}]`);
+        function deleteAdditional(key4) {
+          gen.code((0, codegen_1._)`delete ${data}[${key4}]`);
         }
-        function additionalPropertyCode(key) {
+        function additionalPropertyCode(key4) {
           if (opts.removeAdditional === "all" || opts.removeAdditional && schema === false) {
-            deleteAdditional(key);
+            deleteAdditional(key4);
             return;
           }
           if (schema === false) {
-            cxt.setParams({ additionalProperty: key });
+            cxt.setParams({ additionalProperty: key4 });
             cxt.error();
             if (!allErrors)
               gen.break();
@@ -32197,22 +32197,22 @@ var require_additionalProperties = __commonJS({
           if (typeof schema == "object" && !(0, util_1.alwaysValidSchema)(it, schema)) {
             const valid = gen.name("valid");
             if (opts.removeAdditional === "failing") {
-              applyAdditionalSchema(key, valid, false);
+              applyAdditionalSchema(key4, valid, false);
               gen.if((0, codegen_1.not)(valid), () => {
                 cxt.reset();
-                deleteAdditional(key);
+                deleteAdditional(key4);
               });
             } else {
-              applyAdditionalSchema(key, valid);
+              applyAdditionalSchema(key4, valid);
               if (!allErrors)
                 gen.if((0, codegen_1.not)(valid), () => gen.break());
             }
           }
         }
-        function applyAdditionalSchema(key, valid, errors) {
+        function applyAdditionalSchema(key4, valid, errors) {
           const subschema = {
             keyword: "additionalProperties",
-            dataProp: key,
+            dataProp: key4,
             dataPropType: util_1.Type.Str
           };
           if (errors === false) {
@@ -32337,19 +32337,19 @@ var require_patternProperties = __commonJS({
           }
         }
         function validateProperties(pat) {
-          gen.forIn("key", data, (key) => {
-            gen.if((0, codegen_1._)`${(0, code_1.usePattern)(cxt, pat)}.test(${key})`, () => {
+          gen.forIn("key", data, (key4) => {
+            gen.if((0, codegen_1._)`${(0, code_1.usePattern)(cxt, pat)}.test(${key4})`, () => {
               const alwaysValid = alwaysValidPatterns.includes(pat);
               if (!alwaysValid) {
                 cxt.subschema({
                   keyword: "patternProperties",
                   schemaProp: pat,
-                  dataProp: key,
+                  dataProp: key4,
                   dataPropType: util_2.Type.Str
                 }, valid);
               }
               if (it.opts.unevaluated && props !== true) {
-                gen.assign((0, codegen_1._)`${props}[${key}]`, true);
+                gen.assign((0, codegen_1._)`${props}[${key4}]`, true);
               } else if (!alwaysValid && !it.allErrors) {
                 gen.if((0, codegen_1.not)(valid), () => gen.break());
               }
@@ -33219,7 +33219,7 @@ var require_formats = __commonJS({
     }
     var TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
     function getTime(strictTimeZone) {
-      return function time5(str2) {
+      return function time6(str2) {
         const matches = TIME.exec(str2);
         if (!matches)
           return false;
@@ -33265,10 +33265,10 @@ var require_formats = __commonJS({
     }
     var DATE_TIME_SEPARATOR = /t|\s/i;
     function getDateTime(strictTimeZone) {
-      const time5 = getTime(strictTimeZone);
+      const time6 = getTime(strictTimeZone);
       return function date_time(str2) {
         const dateTime = str2.split(DATE_TIME_SEPARATOR);
-        return dateTime.length === 2 && date(dateTime[0]) && time5(dateTime[1]);
+        return dateTime.length === 2 && date(dateTime[0]) && time6(dateTime[1]);
       };
     }
     function compareDateTime(dt1, dt2) {
@@ -33419,11 +33419,11 @@ var require_dist = __commonJS({
         (0, limit_1.default)(ajv);
       return ajv;
     };
-    formatsPlugin.get = (name, mode = "full") => {
+    formatsPlugin.get = (name2, mode = "full") => {
       const formats = mode === "fast" ? formats_1.fastFormats : formats_1.fullFormats;
-      const f = formats[name];
+      const f = formats[name2];
       if (!f)
-        throw new Error(`Unknown format "${name}"`);
+        throw new Error(`Unknown format "${name2}"`);
       return f;
     };
     function addFormats(ajv, list, fs, exportName) {
@@ -33612,7 +33612,7 @@ var require_server = __commonJS({
           if (hasPreviousToolUse) {
             const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
             const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
-            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id4) => toolResultIds.has(id4))) {
+            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id9) => toolResultIds.has(id9))) {
               throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
             }
           }
@@ -33855,8 +33855,8 @@ var require_server2 = __commonJS({
        * Override request handler registration to enforce server-side validation for tools/call.
        */
       setRequestHandler(requestSchema, handler) {
-        const shape3 = (0, zod_compat_js_1.getObjectShape)(requestSchema);
-        const methodSchema = shape3?.method;
+        const shape7 = (0, zod_compat_js_1.getObjectShape)(requestSchema);
+        const methodSchema = shape7?.method;
         if (!methodSchema) {
           throw new Error("Schema is missing a method literal");
         }
@@ -34068,7 +34068,7 @@ var require_server2 = __commonJS({
           if (hasPreviousToolUse) {
             const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
             const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
-            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id4) => toolResultIds.has(id4))) {
+            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id9) => toolResultIds.has(id9))) {
               throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
             }
           }
@@ -34271,11 +34271,11 @@ var require_uriTemplate = __commonJS({
             const operator = this.getOperator(expr);
             const exploded = expr.includes("*");
             const names = this.getNames(expr);
-            const name = names[0];
-            for (const name2 of names) {
-              _UriTemplate.validateLength(name2, MAX_VARIABLE_LENGTH, "Variable name");
+            const name2 = names[0];
+            for (const name3 of names) {
+              _UriTemplate.validateLength(name3, MAX_VARIABLE_LENGTH, "Variable name");
             }
-            parts.push({ name, operator, names, exploded });
+            parts.push({ name: name2, operator, names, exploded });
             i = end + 1;
           } else {
             currentText += template[i];
@@ -34293,7 +34293,7 @@ var require_uriTemplate = __commonJS({
       }
       getNames(expr) {
         const operator = this.getOperator(expr);
-        return expr.slice(operator.length).split(",").map((name) => name.replace("*", "").trim()).filter((name) => name.length > 0);
+        return expr.slice(operator.length).split(",").map((name2) => name2.replace("*", "").trim()).filter((name2) => name2.length > 0);
       }
       encodeValue(value, operator) {
         _UriTemplate.validateLength(value, MAX_VARIABLE_LENGTH, "Variable value");
@@ -34304,12 +34304,12 @@ var require_uriTemplate = __commonJS({
       }
       expandPart(part, variables) {
         if (part.operator === "?" || part.operator === "&") {
-          const pairs = part.names.map((name) => {
-            const value2 = variables[name];
+          const pairs = part.names.map((name2) => {
+            const value2 = variables[name2];
             if (value2 === void 0)
               return "";
             const encoded2 = Array.isArray(value2) ? value2.map((v) => this.encodeValue(v, part.operator)).join(",") : this.encodeValue(value2.toString(), part.operator);
-            return `${name}=${encoded2}`;
+            return `${name2}=${encoded2}`;
           }).filter((pair) => pair.length > 0);
           if (pairs.length === 0)
             return "";
@@ -34317,7 +34317,7 @@ var require_uriTemplate = __commonJS({
           return separator + pairs.join("&");
         }
         if (part.names.length > 1) {
-          const values2 = part.names.map((name) => variables[name]).filter((v) => v !== void 0);
+          const values2 = part.names.map((name2) => variables[name2]).filter((v) => v !== void 0);
           if (values2.length === 0)
             return "";
           return values2.map((v) => Array.isArray(v) ? v[0] : v).join(",");
@@ -34369,22 +34369,22 @@ var require_uriTemplate = __commonJS({
       }
       partToRegExp(part) {
         const patterns = [];
-        for (const name2 of part.names) {
-          _UriTemplate.validateLength(name2, MAX_VARIABLE_LENGTH, "Variable name");
+        for (const name3 of part.names) {
+          _UriTemplate.validateLength(name3, MAX_VARIABLE_LENGTH, "Variable name");
         }
         if (part.operator === "?" || part.operator === "&") {
           for (let i = 0; i < part.names.length; i++) {
-            const name2 = part.names[i];
+            const name3 = part.names[i];
             const prefix = i === 0 ? "\\" + part.operator : "&";
             patterns.push({
-              pattern: prefix + this.escapeRegExp(name2) + "=([^&]+)",
-              name: name2
+              pattern: prefix + this.escapeRegExp(name3) + "=([^&]+)",
+              name: name3
             });
           }
           return patterns;
         }
         let pattern;
-        const name = part.name;
+        const name2 = part.name;
         switch (part.operator) {
           case "":
             pattern = part.exploded ? "([^/,]+(?:,[^/,]+)*)" : "([^/,]+)";
@@ -34402,7 +34402,7 @@ var require_uriTemplate = __commonJS({
           default:
             pattern = "([^/]+)";
         }
-        patterns.push({ pattern, name });
+        patterns.push({ pattern, name: name2 });
         return patterns;
       }
       match(uri) {
@@ -34414,9 +34414,9 @@ var require_uriTemplate = __commonJS({
             pattern += this.escapeRegExp(part);
           } else {
             const patterns = this.partToRegExp(part);
-            for (const { pattern: partPattern, name } of patterns) {
+            for (const { pattern: partPattern, name: name2 } of patterns) {
               pattern += partPattern;
-              names.push({ name, exploded: part.exploded });
+              names.push({ name: name2, exploded: part.exploded });
             }
           }
         }
@@ -34428,9 +34428,9 @@ var require_uriTemplate = __commonJS({
           return null;
         const result = {};
         for (let i = 0; i < names.length; i++) {
-          const { name, exploded } = names[i];
+          const { name: name2, exploded } = names[i];
           const value = match[i + 1];
-          const cleanName = name.replace("*", "");
+          const cleanName = name2.replace("*", "");
           if (exploded && value.includes(",")) {
             result[cleanName] = value.split(",");
           } else {
@@ -34453,34 +34453,34 @@ var require_toolNameValidation = __commonJS({
     exports2.issueToolNameWarning = issueToolNameWarning;
     exports2.validateAndWarnToolName = validateAndWarnToolName;
     var TOOL_NAME_REGEX = /^[A-Za-z0-9._-]{1,128}$/;
-    function validateToolName(name) {
+    function validateToolName(name2) {
       const warnings = [];
-      if (name.length === 0) {
+      if (name2.length === 0) {
         return {
           isValid: false,
           warnings: ["Tool name cannot be empty"]
         };
       }
-      if (name.length > 128) {
+      if (name2.length > 128) {
         return {
           isValid: false,
-          warnings: [`Tool name exceeds maximum length of 128 characters (current: ${name.length})`]
+          warnings: [`Tool name exceeds maximum length of 128 characters (current: ${name2.length})`]
         };
       }
-      if (name.includes(" ")) {
+      if (name2.includes(" ")) {
         warnings.push("Tool name contains spaces, which may cause parsing issues");
       }
-      if (name.includes(",")) {
+      if (name2.includes(",")) {
         warnings.push("Tool name contains commas, which may cause parsing issues");
       }
-      if (name.startsWith("-") || name.endsWith("-")) {
+      if (name2.startsWith("-") || name2.endsWith("-")) {
         warnings.push("Tool name starts or ends with a dash, which may cause parsing issues in some contexts");
       }
-      if (name.startsWith(".") || name.endsWith(".")) {
+      if (name2.startsWith(".") || name2.endsWith(".")) {
         warnings.push("Tool name starts or ends with a dot, which may cause parsing issues in some contexts");
       }
-      if (!TOOL_NAME_REGEX.test(name)) {
-        const invalidChars = name.split("").filter((char) => !/[A-Za-z0-9._-]/.test(char)).filter((char, index, arr) => arr.indexOf(char) === index);
+      if (!TOOL_NAME_REGEX.test(name2)) {
+        const invalidChars = name2.split("").filter((char) => !/[A-Za-z0-9._-]/.test(char)).filter((char, index, arr) => arr.indexOf(char) === index);
         warnings.push(`Tool name contains invalid characters: ${invalidChars.map((c) => `"${c}"`).join(", ")}`, "Allowed characters are: A-Z, a-z, 0-9, underscore (_), dash (-), and dot (.)");
         return {
           isValid: false,
@@ -34492,9 +34492,9 @@ var require_toolNameValidation = __commonJS({
         warnings
       };
     }
-    function issueToolNameWarning(name, warnings) {
+    function issueToolNameWarning(name2, warnings) {
       if (warnings.length > 0) {
-        console.warn(`Tool name validation warning for "${name}":`);
+        console.warn(`Tool name validation warning for "${name2}":`);
         for (const warning of warnings) {
           console.warn(`  - ${warning}`);
         }
@@ -34503,9 +34503,9 @@ var require_toolNameValidation = __commonJS({
         console.warn("See SEP: Specify Format for Tool Names (https://github.com/modelcontextprotocol/modelcontextprotocol/issues/986) for more details.");
       }
     }
-    function validateAndWarnToolName(name) {
-      const result = validateToolName(name);
-      issueToolNameWarning(name, result.warnings);
+    function validateAndWarnToolName(name2) {
+      const result = validateToolName(name2);
+      issueToolNameWarning(name2, result.warnings);
       return result.isValid;
     }
   }
@@ -34521,13 +34521,13 @@ var require_mcp_server = __commonJS({
       constructor(_mcpServer) {
         this._mcpServer = _mcpServer;
       }
-      registerToolTask(name, config, handler) {
+      registerToolTask(name2, config, handler) {
         const execution = { taskSupport: "required", ...config.execution };
         if (execution.taskSupport === "forbidden") {
-          throw new Error(`Cannot register task-based tool '${name}' with taskSupport 'forbidden'. Use registerTool() instead.`);
+          throw new Error(`Cannot register task-based tool '${name2}' with taskSupport 'forbidden'. Use registerTool() instead.`);
         }
         const mcpServerInternal = this._mcpServer;
-        return mcpServerInternal._createRegisteredTool(name, config.title, config.description, config.inputSchema, config.outputSchema, config.annotations, execution, config._meta, handler);
+        return mcpServerInternal._createRegisteredTool(name2, config.title, config.description, config.inputSchema, config.outputSchema, config.annotations, execution, config._meta, handler);
       }
     };
     exports2.ExperimentalMcpServerTasks = ExperimentalMcpServerTasks;
@@ -34645,14 +34645,14 @@ var require_mcp = __commonJS({
           }
         });
         this.server.setRequestHandler(types_js_1.ListToolsRequestSchema, () => ({
-          tools: Object.entries(this._registeredTools).filter(([, tool]) => tool.enabled).map(([name, tool]) => {
+          tools: Object.entries(this._registeredTools).filter(([, tool]) => tool.enabled).map(([name2, tool]) => {
             const toolDefinition = {
-              name,
+              name: name2,
               title: tool.title,
               description: tool.description,
               inputSchema: (() => {
-                const obj = (0, zod_compat_js_1.normalizeObjectSchema)(tool.inputSchema);
-                return obj ? (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj, {
+                const obj4 = (0, zod_compat_js_1.normalizeObjectSchema)(tool.inputSchema);
+                return obj4 ? (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj4, {
                   strictUnions: true,
                   pipeStrategy: "input"
                 }) : EMPTY_OBJECT_JSON_SCHEMA;
@@ -34662,9 +34662,9 @@ var require_mcp = __commonJS({
               _meta: tool._meta
             };
             if (tool.outputSchema) {
-              const obj = (0, zod_compat_js_1.normalizeObjectSchema)(tool.outputSchema);
-              if (obj) {
-                toolDefinition.outputSchema = (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj, {
+              const obj4 = (0, zod_compat_js_1.normalizeObjectSchema)(tool.outputSchema);
+              if (obj4) {
+                toolDefinition.outputSchema = (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj4, {
                   strictUnions: true,
                   pipeStrategy: "output"
                 });
@@ -34919,8 +34919,8 @@ var require_mcp = __commonJS({
           return { resources: [...resources, ...templateResources] };
         });
         this.server.setRequestHandler(types_js_1.ListResourceTemplatesRequestSchema, async () => {
-          const resourceTemplates = Object.entries(this._registeredResourceTemplates).map(([name, template]) => ({
-            name,
+          const resourceTemplates = Object.entries(this._registeredResourceTemplates).map(([name2, template]) => ({
+            name: name2,
             uriTemplate: template.resourceTemplate.uriTemplate.toString(),
             ...template.metadata
           }));
@@ -34957,9 +34957,9 @@ var require_mcp = __commonJS({
           }
         });
         this.server.setRequestHandler(types_js_1.ListPromptsRequestSchema, () => ({
-          prompts: Object.entries(this._registeredPrompts).filter(([, prompt]) => prompt.enabled).map(([name, prompt]) => {
+          prompts: Object.entries(this._registeredPrompts).filter(([, prompt]) => prompt.enabled).map(([name2, prompt]) => {
             return {
-              name,
+              name: name2,
               title: prompt.title,
               description: prompt.description,
               arguments: prompt.argsSchema ? promptArgumentsFromSchema(prompt.argsSchema) : void 0
@@ -34992,7 +34992,7 @@ var require_mcp = __commonJS({
         });
         this._promptHandlersInitialized = true;
       }
-      resource(name, uriOrTemplate, ...rest) {
+      resource(name2, uriOrTemplate, ...rest) {
         let metadata;
         if (typeof rest[0] === "object") {
           metadata = rest.shift();
@@ -35002,42 +35002,42 @@ var require_mcp = __commonJS({
           if (this._registeredResources[uriOrTemplate]) {
             throw new Error(`Resource ${uriOrTemplate} is already registered`);
           }
-          const registeredResource = this._createRegisteredResource(name, void 0, uriOrTemplate, metadata, readCallback);
+          const registeredResource = this._createRegisteredResource(name2, void 0, uriOrTemplate, metadata, readCallback);
           this.setResourceRequestHandlers();
           this.sendResourceListChanged();
           return registeredResource;
         } else {
-          if (this._registeredResourceTemplates[name]) {
-            throw new Error(`Resource template ${name} is already registered`);
+          if (this._registeredResourceTemplates[name2]) {
+            throw new Error(`Resource template ${name2} is already registered`);
           }
-          const registeredResourceTemplate = this._createRegisteredResourceTemplate(name, void 0, uriOrTemplate, metadata, readCallback);
+          const registeredResourceTemplate = this._createRegisteredResourceTemplate(name2, void 0, uriOrTemplate, metadata, readCallback);
           this.setResourceRequestHandlers();
           this.sendResourceListChanged();
           return registeredResourceTemplate;
         }
       }
-      registerResource(name, uriOrTemplate, config, readCallback) {
+      registerResource(name2, uriOrTemplate, config, readCallback) {
         if (typeof uriOrTemplate === "string") {
           if (this._registeredResources[uriOrTemplate]) {
             throw new Error(`Resource ${uriOrTemplate} is already registered`);
           }
-          const registeredResource = this._createRegisteredResource(name, config.title, uriOrTemplate, config, readCallback);
+          const registeredResource = this._createRegisteredResource(name2, config.title, uriOrTemplate, config, readCallback);
           this.setResourceRequestHandlers();
           this.sendResourceListChanged();
           return registeredResource;
         } else {
-          if (this._registeredResourceTemplates[name]) {
-            throw new Error(`Resource template ${name} is already registered`);
+          if (this._registeredResourceTemplates[name2]) {
+            throw new Error(`Resource template ${name2} is already registered`);
           }
-          const registeredResourceTemplate = this._createRegisteredResourceTemplate(name, config.title, uriOrTemplate, config, readCallback);
+          const registeredResourceTemplate = this._createRegisteredResourceTemplate(name2, config.title, uriOrTemplate, config, readCallback);
           this.setResourceRequestHandlers();
           this.sendResourceListChanged();
           return registeredResourceTemplate;
         }
       }
-      _createRegisteredResource(name, title, uri, metadata, readCallback) {
+      _createRegisteredResource(name2, title, uri, metadata, readCallback) {
         const registeredResource = {
-          name,
+          name: name2,
           title,
           metadata,
           readCallback,
@@ -35067,7 +35067,7 @@ var require_mcp = __commonJS({
         this._registeredResources[uri] = registeredResource;
         return registeredResource;
       }
-      _createRegisteredResourceTemplate(name, title, template, metadata, readCallback) {
+      _createRegisteredResourceTemplate(name2, title, template, metadata, readCallback) {
         const registeredResourceTemplate = {
           resourceTemplate: template,
           title,
@@ -35078,8 +35078,8 @@ var require_mcp = __commonJS({
           enable: () => registeredResourceTemplate.update({ enabled: true }),
           remove: () => registeredResourceTemplate.update({ name: null }),
           update: (updates) => {
-            if (typeof updates.name !== "undefined" && updates.name !== name) {
-              delete this._registeredResourceTemplates[name];
+            if (typeof updates.name !== "undefined" && updates.name !== name2) {
+              delete this._registeredResourceTemplates[name2];
               if (updates.name)
                 this._registeredResourceTemplates[updates.name] = registeredResourceTemplate;
             }
@@ -35096,7 +35096,7 @@ var require_mcp = __commonJS({
             this.sendResourceListChanged();
           }
         };
-        this._registeredResourceTemplates[name] = registeredResourceTemplate;
+        this._registeredResourceTemplates[name2] = registeredResourceTemplate;
         const variableNames = template.uriTemplate.variableNames;
         const hasCompleter = Array.isArray(variableNames) && variableNames.some((v) => !!template.completeCallback(v));
         if (hasCompleter) {
@@ -35104,7 +35104,7 @@ var require_mcp = __commonJS({
         }
         return registeredResourceTemplate;
       }
-      _createRegisteredPrompt(name, title, description, argsSchema, callback) {
+      _createRegisteredPrompt(name2, title, description, argsSchema, callback) {
         const registeredPrompt = {
           title,
           description,
@@ -35115,8 +35115,8 @@ var require_mcp = __commonJS({
           enable: () => registeredPrompt.update({ enabled: true }),
           remove: () => registeredPrompt.update({ name: null }),
           update: (updates) => {
-            if (typeof updates.name !== "undefined" && updates.name !== name) {
-              delete this._registeredPrompts[name];
+            if (typeof updates.name !== "undefined" && updates.name !== name2) {
+              delete this._registeredPrompts[name2];
               if (updates.name)
                 this._registeredPrompts[updates.name] = registeredPrompt;
             }
@@ -35133,7 +35133,7 @@ var require_mcp = __commonJS({
             this.sendPromptListChanged();
           }
         };
-        this._registeredPrompts[name] = registeredPrompt;
+        this._registeredPrompts[name2] = registeredPrompt;
         if (argsSchema) {
           const hasCompletable = Object.values(argsSchema).some((field) => {
             const inner = field instanceof zod_1.ZodOptional ? field._def?.innerType : field;
@@ -35145,8 +35145,8 @@ var require_mcp = __commonJS({
         }
         return registeredPrompt;
       }
-      _createRegisteredTool(name, title, description, inputSchema, outputSchema, annotations, execution, _meta, handler) {
-        (0, toolNameValidation_js_1.validateAndWarnToolName)(name);
+      _createRegisteredTool(name2, title, description, inputSchema, outputSchema, annotations, execution, _meta, handler) {
+        (0, toolNameValidation_js_1.validateAndWarnToolName)(name2);
         const registeredTool = {
           title,
           description,
@@ -35161,11 +35161,11 @@ var require_mcp = __commonJS({
           enable: () => registeredTool.update({ enabled: true }),
           remove: () => registeredTool.update({ name: null }),
           update: (updates) => {
-            if (typeof updates.name !== "undefined" && updates.name !== name) {
+            if (typeof updates.name !== "undefined" && updates.name !== name2) {
               if (typeof updates.name === "string") {
                 (0, toolNameValidation_js_1.validateAndWarnToolName)(updates.name);
               }
-              delete this._registeredTools[name];
+              delete this._registeredTools[name2];
               if (updates.name)
                 this._registeredTools[updates.name] = registeredTool;
             }
@@ -35188,7 +35188,7 @@ var require_mcp = __commonJS({
             this.sendToolListChanged();
           }
         };
-        this._registeredTools[name] = registeredTool;
+        this._registeredTools[name2] = registeredTool;
         this.setToolRequestHandlers();
         this.sendToolListChanged();
         return registeredTool;
@@ -35196,9 +35196,9 @@ var require_mcp = __commonJS({
       /**
        * tool() implementation. Parses arguments passed to overrides defined above.
        */
-      tool(name, ...rest) {
-        if (this._registeredTools[name]) {
-          throw new Error(`Tool ${name} is already registered`);
+      tool(name2, ...rest) {
+        if (this._registeredTools[name2]) {
+          throw new Error(`Tool ${name2} is already registered`);
         }
         let description;
         let inputSchema;
@@ -35216,27 +35216,27 @@ var require_mcp = __commonJS({
             }
           } else if (typeof firstArg === "object" && firstArg !== null) {
             if (Object.values(firstArg).some((v) => typeof v === "object" && v !== null)) {
-              throw new Error(`Tool ${name} expected a Zod schema or ToolAnnotations, but received an unrecognized object`);
+              throw new Error(`Tool ${name2} expected a Zod schema or ToolAnnotations, but received an unrecognized object`);
             }
             annotations = rest.shift();
           }
         }
         const callback = rest[0];
-        return this._createRegisteredTool(name, void 0, description, inputSchema, outputSchema, annotations, { taskSupport: "forbidden" }, void 0, callback);
+        return this._createRegisteredTool(name2, void 0, description, inputSchema, outputSchema, annotations, { taskSupport: "forbidden" }, void 0, callback);
       }
       /**
        * Registers a tool with a config object and callback.
        */
-      registerTool(name, config, cb) {
-        if (this._registeredTools[name]) {
-          throw new Error(`Tool ${name} is already registered`);
+      registerTool(name2, config, cb) {
+        if (this._registeredTools[name2]) {
+          throw new Error(`Tool ${name2} is already registered`);
         }
         const { title, description, inputSchema, outputSchema, annotations, _meta } = config;
-        return this._createRegisteredTool(name, title, description, inputSchema, outputSchema, annotations, { taskSupport: "forbidden" }, _meta, cb);
+        return this._createRegisteredTool(name2, title, description, inputSchema, outputSchema, annotations, { taskSupport: "forbidden" }, _meta, cb);
       }
-      prompt(name, ...rest) {
-        if (this._registeredPrompts[name]) {
-          throw new Error(`Prompt ${name} is already registered`);
+      prompt(name2, ...rest) {
+        if (this._registeredPrompts[name2]) {
+          throw new Error(`Prompt ${name2} is already registered`);
         }
         let description;
         if (typeof rest[0] === "string") {
@@ -35247,7 +35247,7 @@ var require_mcp = __commonJS({
           argsSchema = rest.shift();
         }
         const cb = rest[0];
-        const registeredPrompt = this._createRegisteredPrompt(name, void 0, description, argsSchema, cb);
+        const registeredPrompt = this._createRegisteredPrompt(name2, void 0, description, argsSchema, cb);
         this.setPromptRequestHandlers();
         this.sendPromptListChanged();
         return registeredPrompt;
@@ -35255,12 +35255,12 @@ var require_mcp = __commonJS({
       /**
        * Registers a prompt with a config object and callback.
        */
-      registerPrompt(name, config, cb) {
-        if (this._registeredPrompts[name]) {
-          throw new Error(`Prompt ${name} is already registered`);
+      registerPrompt(name2, config, cb) {
+        if (this._registeredPrompts[name2]) {
+          throw new Error(`Prompt ${name2} is already registered`);
         }
         const { title, description, argsSchema } = config;
-        const registeredPrompt = this._createRegisteredPrompt(name, title, description, argsSchema, cb);
+        const registeredPrompt = this._createRegisteredPrompt(name2, title, description, argsSchema, cb);
         this.setPromptRequestHandlers();
         this.sendPromptListChanged();
         return registeredPrompt;
@@ -35340,20 +35340,20 @@ var require_mcp = __commonJS({
     function isZodTypeLike(value) {
       return value !== null && typeof value === "object" && "parse" in value && typeof value.parse === "function" && "safeParse" in value && typeof value.safeParse === "function";
     }
-    function isZodSchemaInstance(obj) {
-      return "_def" in obj || "_zod" in obj || isZodTypeLike(obj);
+    function isZodSchemaInstance(obj4) {
+      return "_def" in obj4 || "_zod" in obj4 || isZodTypeLike(obj4);
     }
-    function isZodRawShapeCompat(obj) {
-      if (typeof obj !== "object" || obj === null) {
+    function isZodRawShapeCompat(obj4) {
+      if (typeof obj4 !== "object" || obj4 === null) {
         return false;
       }
-      if (isZodSchemaInstance(obj)) {
+      if (isZodSchemaInstance(obj4)) {
         return false;
       }
-      if (Object.keys(obj).length === 0) {
+      if (Object.keys(obj4).length === 0) {
         return true;
       }
-      return Object.values(obj).some(isZodTypeLike);
+      return Object.values(obj4).some(isZodTypeLike);
     }
     function getZodSchemaObject(schema) {
       if (!schema) {
@@ -35368,22 +35368,22 @@ var require_mcp = __commonJS({
       return schema;
     }
     function promptArgumentsFromSchema(schema) {
-      const shape3 = (0, zod_compat_js_1.getObjectShape)(schema);
-      if (!shape3)
+      const shape7 = (0, zod_compat_js_1.getObjectShape)(schema);
+      if (!shape7)
         return [];
-      return Object.entries(shape3).map(([name, field]) => {
+      return Object.entries(shape7).map(([name2, field]) => {
         const description = (0, zod_compat_js_1.getSchemaDescription)(field);
         const isOptional = (0, zod_compat_js_1.isSchemaOptional)(field);
         return {
-          name,
+          name: name2,
           description,
           required: !isOptional
         };
       });
     }
     function getMethodValue(schema) {
-      const shape3 = (0, zod_compat_js_1.getObjectShape)(schema);
-      const methodSchema = shape3?.method;
+      const shape7 = (0, zod_compat_js_1.getObjectShape)(schema);
+      const methodSchema = shape7?.method;
       if (!methodSchema) {
         throw new Error("Schema is missing a method literal");
       }
@@ -35415,14 +35415,30 @@ var require_mcp = __commonJS({
 var index_exports = {};
 __export(index_exports, {
   BUILTIN_PATTERNS: () => BUILTIN_PATTERNS,
+  CODING_PERMISSIONS: () => CODING_PERMISSIONS,
   CONNECTOR_PILOTS: () => CONNECTOR_PILOTS,
   ConfidentialGate: () => ConfidentialGate,
   CoordinationClient: () => CoordinationClient,
   CoordinationError: () => CoordinationError,
+  DockerCodingSandbox: () => DockerCodingSandbox,
   EGRESS_SUMMARY_FIELDS: () => EGRESS_SUMMARY_FIELDS,
   POLICY_PACKS: () => POLICY_PACKS,
+  PREVIEW_TYPES: () => PREVIEW_TYPES,
   ProtectGateway: () => ProtectGateway,
+  REPOSITORY_CODING_ACTIONS: () => REPOSITORY_CODING_ACTIONS,
+  REPOSITORY_CODING_IMAGE: () => REPOSITORY_CODING_IMAGE,
+  REPOSITORY_DEVICE_ACTIONS: () => REPOSITORY_DEVICE_ACTIONS,
+  REPOSITORY_DEVICE_DOMAIN: () => REPOSITORY_DEVICE_DOMAIN,
+  REPOSITORY_DEVICE_LINK_MS: () => REPOSITORY_DEVICE_LINK_MS,
+  REPOSITORY_DEVICE_MAX_MS: () => REPOSITORY_DEVICE_MAX_MS,
+  REPOSITORY_DEVICE_PERMISSIONS: () => REPOSITORY_DEVICE_PERMISSIONS,
+  REPOSITORY_GUIDED_WORKFLOW: () => REPOSITORY_GUIDED_WORKFLOW,
+  REPOSITORY_PREVIEW_MAX_BYTES: () => REPOSITORY_PREVIEW_MAX_BYTES,
+  REPOSITORY_PREVIEW_MAX_FILES: () => REPOSITORY_PREVIEW_MAX_FILES,
+  REPOSITORY_SETUP_ACTIONS: () => REPOSITORY_SETUP_ACTIONS,
+  REPOSITORY_SETUP_TTL: () => REPOSITORY_SETUP_TTL,
   ReceiptPropagator: () => ReceiptPropagator,
+  RepositoryCodingRunner: () => RepositoryCodingRunner,
   ScopeBlindBridge: () => ScopeBlindBridge,
   anchorToRekor: () => anchorToRekor,
   approvePolicyProposalWithDirectSignature: () => approvePolicyProposalWithDirectSignature,
@@ -35430,6 +35446,9 @@ __export(index_exports, {
   assertEgressSafe: () => assertEgressSafe,
   buildDecisionContext: () => buildDecisionContext,
   checkRateLimit: () => checkRateLimit,
+  codingCommand: () => codingCommand,
+  codingSafePath: () => codingSafePath,
+  codingScopeWithin: () => codingScopeWithin,
   collectSignedReceipts: () => collectSignedReceipts,
   computeCalibration: () => computeCalibration,
   computeSbIssuerKid: () => computeSbIssuerKid,
@@ -35515,12 +35534,19 @@ __export(index_exports, {
   receiptsToHFRows: () => receiptsToHFRows,
   redactFields: () => redactFields,
   refreshManagedMandate: () => refreshManagedMandate,
+  repositoryDevicePermission: () => repositoryDevicePermission,
+  repositoryDevicePreimage: () => repositoryDevicePreimage,
+  repositoryHumanPermission: () => repositoryHumanPermission,
+  repositoryHumanPrincipal: () => repositoryHumanPrincipal,
+  repositoryPreviewPath: () => repositoryPreviewPath,
+  repositorySetupArtifactUrl: () => repositorySetupArtifactUrl,
   repositorySnapshotDigest: () => repositorySnapshotDigest,
   resolveCredential: () => resolveCredential,
   revealField: () => revealField,
   runEgressSelfCheck: () => runEgressSelfCheck,
   runEvaluatorSelfTest: () => runEvaluatorSelfTest,
   runInSandbox: () => runInSandbox,
+  sameRepositoryHumanIntent: () => sameRepositoryHumanIntent,
   sendApprovalNotification: () => sendApprovalNotification,
   signCommittedDecision: () => signCommittedDecision,
   signDecision: () => signDecision,
@@ -35531,11 +35557,28 @@ __export(index_exports, {
   toEgressSummary: () => toEgressSummary,
   toManifoldFormat: () => toManifoldFormat,
   toMetaculusFormat: () => toMetaculusFormat,
+  validRepositoryCodingConnectionConfig: () => validRepositoryCodingConnectionConfig,
+  validRepositoryCodingMandate: () => validRepositoryCodingMandate,
+  validRepositoryCodingPlan: () => validRepositoryCodingPlan,
+  validRepositoryCodingRefreshableConnections: () => validRepositoryCodingRefreshableConnections,
+  validRepositoryCodingRequest: () => validRepositoryCodingRequest,
+  validRepositoryCodingResult: () => validRepositoryCodingResult,
+  validRepositoryCodingSource: () => validRepositoryCodingSource,
+  validRepositoryCodingStop: () => validRepositoryCodingStop,
+  validRepositoryDeviceAuthorization: () => validRepositoryDeviceAuthorization,
+  validRepositoryDeviceConfirmation: () => validRepositoryDeviceConfirmation,
+  validRepositoryDeviceLink: () => validRepositoryDeviceLink,
+  validRepositoryHumanEnvelope: () => validRepositoryHumanEnvelope,
+  validRepositorySetupAuthorization: () => validRepositorySetupAuthorization,
+  validRepositorySetupInspection: () => validRepositorySetupInspection,
+  validRepositorySetupRenewal: () => validRepositorySetupRenewal,
+  validRepositorySetupRequest: () => validRepositorySetupRequest,
   validateCoordinationConfig: () => validateCoordinationConfig,
   validateCoordinationPayment: () => validateCoordinationPayment,
   validateCredentials: () => validateCredentials,
   validateEvidenceReceipt: () => validateEvidenceReceipt,
   validateManifest: () => validateManifest,
+  validateRepositoryPreviewBundle: () => validateRepositoryPreviewBundle,
   verifyActaC2PAAssertions: () => verifyActaC2PAAssertions,
   verifyAllCommitments: () => verifyAllCommitments,
   verifyApprovalAssertion: () => verifyApprovalAssertion,
@@ -35551,8 +35594,17 @@ __export(index_exports, {
   verifyReceipt: () => verifyReceipt,
   verifyRehearsalEvidence: () => verifyRehearsalEvidence,
   verifyRekorAnchor: () => verifyRekorAnchor,
+  verifyRepositoryCodingEvidence: () => verifyRepositoryCodingEvidence,
   verifyRepositoryCollaborationEvidence: () => verifyRepositoryCollaborationEvidence,
+  verifyRepositoryDeviceAuthorization: () => verifyRepositoryDeviceAuthorization,
   verifyRepositoryEvidence: () => verifyRepositoryEvidence,
+  verifyRepositoryHuman: () => verifyRepositoryHuman,
+  verifyRepositoryReviewEvidence: () => verifyRepositoryReviewEvidence,
+  verifyRepositorySetupEnrollment: () => verifyRepositorySetupEnrollment,
+  verifyRepositorySetupReplacement: () => verifyRepositorySetupReplacement,
+  verifyRepositorySetupState: () => verifyRepositorySetupState,
+  verifyRepositoryWorkspaceAgentState: () => verifyRepositoryWorkspaceAgentState,
+  verifyRepositoryWorkspaceState: () => verifyRepositoryWorkspaceState,
   verifySelectiveDisclosurePackage: () => verifySelectiveDisclosurePackage,
   writeConnectorPilots: () => writeConnectorPilots
 });
@@ -35578,9 +35630,9 @@ function invoiceMatchesPurchaseOrder(invoice, fixtures) {
 function bytesToHex(bytes) {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
-function hexToBytes(hex3) {
-  if (!/^(?:[0-9a-f]{2})+$/i.test(hex3)) throw new Error("Invalid hexadecimal data");
-  return Uint8Array.from(hex3.match(/../g).map((x) => parseInt(x, 16)));
+function hexToBytes(hex5) {
+  if (!/^(?:[0-9a-f]{2})+$/i.test(hex5)) throw new Error("Invalid hexadecimal data");
+  return Uint8Array.from(hex5.match(/../g).map((x) => parseInt(x, 16)));
 }
 function validUnicode(value) {
   for (let i = 0; i < value.length; i++) {
@@ -35609,8 +35661,8 @@ function canonical(value) {
   }
   if (typeof value === "object") {
     if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new Error("Expected a plain JSON object");
-    const object4 = value;
-    return "{" + Object.keys(object4).sort().map((k) => canonical(k) + ":" + canonical(object4[k])).join(",") + "}";
+    const object7 = value;
+    return "{" + Object.keys(object7).sort().map((k) => canonical(k) + ":" + canonical(object7[k])).join(",") + "}";
   }
   throw new Error("Not a JSON value");
 }
@@ -35620,34 +35672,54 @@ async function sha256(value) {
 async function payloadHash(input) {
   return sha256(canonical(input));
 }
+async function sign(payload, identity) {
+  if (identity.deviceAuthorization && identity.repositoryDeviceAuthorization) throw new Error("A signature cannot combine room and project device authority");
+  const preimage = COORDINATION_DOMAIN + canonical(payload);
+  const signature = await crypto.subtle.sign("Ed25519", identity.privateKey, new TextEncoder().encode(preimage));
+  const envelope2 = { payload, signer: identity.publicKey, digest: await sha256(preimage), signature: bytesToHex(new Uint8Array(signature)) };
+  if (identity.deviceAuthorization) {
+    envelope2.authorization = identity.deviceAuthorization;
+    const binding = "scopeblind.coordination.device-authorization.v1\n" + envelope2.digest + "\n" + identity.deviceAuthorization.digest;
+    envelope2.authorization_signature = bytesToHex(new Uint8Array(await crypto.subtle.sign("Ed25519", identity.privateKey, new TextEncoder().encode(binding))));
+  }
+  if (identity.repositoryDeviceAuthorization) {
+    envelope2.repository_authorization = identity.repositoryDeviceAuthorization;
+    const binding = "scopeblind.repository.device-authorization.v1\n" + envelope2.digest + "\n" + identity.repositoryDeviceAuthorization.digest;
+    envelope2.repository_authorization_signature = bytesToHex(new Uint8Array(await crypto.subtle.sign("Ed25519", identity.privateKey, new TextEncoder().encode(binding))));
+  }
+  return envelope2;
+}
 async function verify(envelope2, expectedSigner) {
   try {
     if (!envelope2 || !/^[0-9a-f]{64}$/.test(envelope2.signer) || !/^[0-9a-f]{64}$/.test(envelope2.digest) || !/^[0-9a-f]{128}$/.test(envelope2.signature)) return false;
     if (expectedSigner && expectedSigner !== envelope2.signer) return false;
     const preimage = COORDINATION_DOMAIN + canonical(envelope2.payload);
     if (await sha256(preimage) !== envelope2.digest) return false;
-    const key = await crypto.subtle.importKey("raw", hexToBytes(envelope2.signer), { name: "Ed25519" }, false, ["verify"]);
-    return await crypto.subtle.verify("Ed25519", key, hexToBytes(envelope2.signature), new TextEncoder().encode(preimage));
+    const key4 = await crypto.subtle.importKey("raw", hexToBytes(envelope2.signer), { name: "Ed25519" }, false, ["verify"]);
+    return await crypto.subtle.verify("Ed25519", key4, hexToBytes(envelope2.signature), new TextEncoder().encode(preimage));
   } catch {
     return false;
   }
 }
+function makeRequest(action, room_id, body) {
+  return { type: "scopeblind.coordination.request.v1", action, room_id, body, issued_at: (/* @__PURE__ */ new Date()).toISOString(), nonce: crypto.randomUUID() };
+}
 
 // src/acta-envelope.ts
-function canonicalize(obj) {
-  if (Array.isArray(obj)) return "[" + Array.from(obj, canonicalize).join(",") + "]";
-  if (obj !== null && typeof obj === "object") {
-    if (Object.getPrototypeOf(obj) !== Object.prototype && Object.getPrototypeOf(obj) !== null) throw new Error("Expected a plain JSON object");
-    const record = obj;
-    return "{" + Object.keys(record).sort().map((key) => {
-      if (!/^[\x20-\x7E]*$/.test(key)) throw new Error(`Non-ASCII key "${key}" in receipt payload. Only ASCII keys are permitted.`);
-      return JSON.stringify(key) + ":" + canonicalize(record[key]);
+function canonicalize(obj4) {
+  if (Array.isArray(obj4)) return "[" + Array.from(obj4, canonicalize).join(",") + "]";
+  if (obj4 !== null && typeof obj4 === "object") {
+    if (Object.getPrototypeOf(obj4) !== Object.prototype && Object.getPrototypeOf(obj4) !== null) throw new Error("Expected a plain JSON object");
+    const record = obj4;
+    return "{" + Object.keys(record).sort().map((key4) => {
+      if (!/^[\x20-\x7E]*$/.test(key4)) throw new Error(`Non-ASCII key "${key4}" in receipt payload. Only ASCII keys are permitted.`);
+      return JSON.stringify(key4) + ":" + canonicalize(record[key4]);
     }).join(",") + "}";
   }
-  return canonical(obj);
+  return canonical(obj4);
 }
-function legacyCanonicalize(obj) {
-  return JSON.stringify(obj, (_key, value) => {
+function legacyCanonicalize(obj4) {
+  return JSON.stringify(obj4, (_key, value) => {
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const sorted = {};
       for (const k of Object.keys(value).sort()) {
@@ -35666,10 +35738,10 @@ function hasLegacyUnsafeKey(value) {
   if (Object.prototype.hasOwnProperty.call(value, "__proto__")) return true;
   return Object.values(value).some(hasLegacyUnsafeKey);
 }
-function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape3, allowLegacy) {
+function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape7, allowLegacy) {
   const jcs2 = canonicalize(payload);
   if (import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(jcs2), (0, import_utils.hexToBytes)(publicKeyHex))) {
-    return { valid: true, shape: shape3, hash: receiptHash(envelope2), canonicalization: "jcs" };
+    return { valid: true, shape: shape7, hash: receiptHash(envelope2), canonicalization: "jcs" };
   }
   if (!hasLegacyUnsafeKey(envelope2)) {
     const legacy = legacyCanonicalize(payload);
@@ -35677,7 +35749,7 @@ function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape3, all
       const legacyHash = (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(legacyCanonicalize(envelope2))));
       return {
         valid: allowLegacy,
-        shape: shape3,
+        shape: shape7,
         canonicalization: "legacy-numeric-key-order",
         legacy_signature_valid: true,
         legacy_hash: legacyHash,
@@ -35686,10 +35758,10 @@ function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape3, all
       };
     }
   }
-  return { valid: false, shape: shape3, error: "invalid_signature" };
+  return { valid: false, shape: shape7, error: "invalid_signature" };
 }
-function receiptHash(obj) {
-  return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
+function receiptHash(obj4) {
+  return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj4))));
 }
 function chainLink(receipt) {
   return "sha256:" + receiptHash(receipt);
@@ -35743,8 +35815,8 @@ function verifyReceipt(envelope2, publicKeyHex, options = {}) {
     if (typeof signature === "string") {
       const rest = /* @__PURE__ */ Object.create(null);
       for (const k of Object.keys(env)) if (k !== "signature") rest[k] = env[k];
-      const shape3 = env.v === 2 ? "legacy-v2" : "legacy-v1";
-      return verifyEncoding(rest, env, signature, publicKeyHex, shape3, options.allowLegacyNumericKeys === true);
+      const shape7 = env.v === 2 ? "legacy-v2" : "legacy-v1";
+      return verifyEncoding(rest, env, signature, publicKeyHex, shape7, options.allowLegacyNumericKeys === true);
     }
     return { valid: false, shape: null, error: "missing_signature" };
   } catch (err) {
@@ -35861,16 +35933,16 @@ function parseRateLimit(spec) {
   };
   return { count, windowMs: windowMs[unit] };
 }
-function checkRateLimit(key, limit, store) {
+function checkRateLimit(key4, limit, store) {
   const now = Date.now();
   const windowStart = now - limit.windowMs;
-  const timestamps = (store.get(key) || []).filter((t) => t > windowStart);
+  const timestamps = (store.get(key4) || []).filter((t) => t > windowStart);
   if (timestamps.length >= limit.count) {
-    store.set(key, timestamps);
+    store.set(key4, timestamps);
     return { allowed: false, remaining: 0 };
   }
   timestamps.push(now);
-  store.set(key, timestamps);
+  store.set(key4, timestamps);
   return { allowed: true, remaining: limit.count - timestamps.length };
 }
 
@@ -35947,8 +36019,8 @@ var EvidenceStore = class {
   save() {
     if (!this.dirty) return;
     const data = {};
-    for (const [id4, record] of this.agents) {
-      data[id4] = record;
+    for (const [id9, record] of this.agents) {
+      data[id9] = record;
     }
     try {
       (0, import_node_fs3.writeFileSync)(this.filePath, JSON.stringify({ v: 1, agents: data }, null, 2) + "\n");
@@ -35965,8 +36037,8 @@ var EvidenceStore = class {
       const raw = (0, import_node_fs3.readFileSync)(this.filePath, "utf-8");
       const parsed = JSON.parse(raw);
       if (parsed.agents && typeof parsed.agents === "object") {
-        for (const [id4, record] of Object.entries(parsed.agents)) {
-          this.agents.set(id4, record);
+        for (const [id9, record] of Object.entries(parsed.agents)) {
+          this.agents.set(id9, record);
         }
       }
     } catch {
@@ -35983,8 +36055,8 @@ var EvidenceStore = class {
    */
   allSummaries() {
     const result = [];
-    for (const [id4] of this.agents) {
-      result.push({ agent_id: id4, summary: this.getSummary(id4) });
+    for (const [id9] of this.agents) {
+      result.push({ agent_id: id9, summary: this.getSummary(id9) });
     }
     return result;
   }
@@ -36640,17 +36712,17 @@ function extractPolicyErrors(result) {
 async function isCedarAvailable() {
   return ensureCedarWasm();
 }
-function policySetFromSource(source, name = "inline") {
+function policySetFromSource(source, name2 = "inline") {
   const digest = digestCedarSource(source).policy_digest;
-  return { source, digest, fileCount: 1, files: [name] };
+  return { source, digest, fileCount: 1, files: [name2] };
 }
 async function runEvaluatorSelfTest() {
   const wasmAvailable = await isCedarAvailable();
   const cases = [];
-  const run = async (name, expected, policy, context) => {
+  const run = async (name2, expected, policy, context) => {
     const d = await evaluateCedar(policy, { tool: "Bash", tier: "unknown", context }, void 0, { failClosed: true });
     const actual = d.allowed ? "ALLOW" : "DENY";
-    cases.push({ name, expected, actual, pass: actual === expected, reason: d.reason });
+    cases.push({ name: name2, expected, actual, pass: actual === expected, reason: d.reason });
   };
   if (!wasmAvailable) {
     await run("engine unavailable denies", "DENY", policySetFromSource("permit(principal, action, resource);"), {});
@@ -36904,8 +36976,8 @@ function startStatusServer(config, receiptBuffer, approvalStore, approvalNonce) 
       } else if (path === "/receipts/latest") {
         handleReceiptLatest(res, receiptBuffer);
       } else if (path.startsWith("/receipts/")) {
-        const id4 = path.slice("/receipts/".length);
-        handleReceiptById(res, receiptBuffer, id4);
+        const id9 = path.slice("/receipts/".length);
+        handleReceiptById(res, receiptBuffer, id9);
       } else if (path === "/approve" && req.method === "POST") {
         handleApprove(req, res, approvalStore, approvalNonce);
       } else if (path === "/approvals" && req.method === "GET") {
@@ -36953,9 +37025,9 @@ function handleStatus(res, logDir) {
   const raw = (0, import_node_fs6.readFileSync)(logPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   const entries = [];
-  for (const line of lines) {
+  for (const line3 of lines) {
     try {
-      entries.push(JSON.parse(line));
+      entries.push(JSON.parse(line3));
     } catch {
     }
   }
@@ -36999,11 +37071,11 @@ function handleReceiptLatest(res, buffer) {
   res.writeHead(200);
   res.end(JSON.stringify(latest));
 }
-function handleReceiptById(res, buffer, id4) {
-  const receipt = buffer.getById(id4);
+function handleReceiptById(res, buffer, id9) {
+  const receipt = buffer.getById(id9);
   if (!receipt) {
     res.writeHead(404);
-    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id4 }));
+    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id9 }));
     return;
   }
   res.writeHead(200);
@@ -37064,9 +37136,9 @@ function handleListApprovals(res, approvalStore) {
   }
   const now = Date.now();
   const grants = [];
-  for (const [key, grant] of approvalStore) {
+  for (const [key4, grant] of approvalStore) {
     if (now < grant.expires_at) {
-      grants.push({ key, tool: grant.tool, mode: grant.mode, expires_in_seconds: Math.round((grant.expires_at - now) / 1e3) });
+      grants.push({ key: key4, tool: grant.tool, mode: grant.mode, expires_in_seconds: Math.round((grant.expires_at - now) / 1e3) });
     }
   }
   res.writeHead(200);
@@ -37101,8 +37173,8 @@ var DESTINATION_KEYS = [
 function stableStringify(value) {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
-  const obj = value;
-  return `{${Object.keys(obj).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(obj[key])}`).join(",")}}`;
+  const obj4 = value;
+  return `{${Object.keys(obj4).sort().map((key4) => `${JSON.stringify(key4)}:${stableStringify(obj4[key4])}`).join(",")}}`;
 }
 function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   if (depth > 4) return "[truncated-depth]";
@@ -37116,20 +37188,20 @@ function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
     return value.slice(0, 20).map((item, idx) => redact(item, [...path, String(idx)], redacted, disclosed, depth + 1));
   }
   const out = {};
-  for (const [key, child] of Object.entries(value)) {
-    const childPath = [...path, key];
-    if (SECRET_KEY_RE.test(key)) {
+  for (const [key4, child] of Object.entries(value)) {
+    const childPath = [...path, key4];
+    if (SECRET_KEY_RE.test(key4)) {
       redacted.push(childPath.join("."));
-      out[key] = "[redacted]";
+      out[key4] = "[redacted]";
       continue;
     }
-    out[key] = redact(child, childPath, redacted, disclosed, depth + 1);
+    out[key4] = redact(child, childPath, redacted, disclosed, depth + 1);
   }
   return out;
 }
 function firstStringValue(input, keys2) {
-  for (const key of keys2) {
-    const value = input[key];
+  for (const key4 of keys2) {
+    const value = input[key4];
     if (typeof value === "string" && value.trim()) return value.trim();
     if (typeof value === "number" || typeof value === "boolean") return String(value);
   }
@@ -37431,12 +37503,12 @@ var ProtectGateway = class {
       process.stderr.write(data);
     });
     const childReader = (0, import_node_readline.createInterface)({ input: this.child.stdout, crlfDelay: Infinity });
-    childReader.on("line", (line) => {
-      this.handleServerMessage(line);
+    childReader.on("line", (line3) => {
+      this.handleServerMessage(line3);
     });
     this.clientReader = (0, import_node_readline.createInterface)({ input: process.stdin, crlfDelay: Infinity });
-    this.clientReader.on("line", (line) => {
-      this.handleClientMessage(line);
+    this.clientReader.on("line", (line3) => {
+      this.handleClientMessage(line3);
     });
     this.child.on("exit", (code2, signal) => {
       if (verbose) this.log(`Child process exited (code=${code2}, signal=${signal})`);
@@ -37699,8 +37771,8 @@ var ProtectGateway = class {
     if (rateSpec) {
       try {
         const limit = parseRateLimit(rateSpec);
-        const key = `tool:${toolName}:${this.currentTier}`;
-        const { allowed, remaining } = checkRateLimit(key, limit, this.rateLimitStore);
+        const key4 = `tool:${toolName}:${this.currentTier}`;
+        const { allowed, remaining } = checkRateLimit(key4, limit, this.rateLimitStore);
         if (!allowed) {
           this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "rate_limit_exceeded", request_id: requestId, rate_limit_remaining: 0, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) {
@@ -37806,8 +37878,8 @@ var ProtectGateway = class {
       this.reporter.record(void 0, callLine);
     }
   }
-  makeErrorResponse(id4, code2, message) {
-    return { jsonrpc: "2.0", id: id4, error: { code: code2, message } };
+  makeErrorResponse(id9, code2, message) {
+    return { jsonrpc: "2.0", id: id9, error: { code: code2, message } };
   }
   sendToChild(message) {
     if (this.child?.stdin?.writable) this.child.stdin.write(message + "\n");
@@ -37880,8 +37952,8 @@ var ProtectGateway = class {
       process.stderr.write(data);
     });
     const childReader = (0, import_node_readline.createInterface)({ input: this.child.stdout, crlfDelay: Infinity });
-    childReader.on("line", (line) => {
-      this.handleServerMessage(line);
+    childReader.on("line", (line3) => {
+      this.handleServerMessage(line3);
     });
     this.child.on("exit", (code2, signal) => {
       if (verbose) this.log(`Child process exited (code=${code2}, signal=${signal})`);
@@ -37904,22 +37976,22 @@ var ProtectGateway = class {
       }
     }
     return new Promise((resolve2, reject) => {
-      const id4 = jsonRpc.id;
-      if (id4 === void 0 || id4 === null) {
+      const id9 = jsonRpc.id;
+      if (id9 === void 0 || id9 === null) {
         const modified2 = this.injectParamsCredentials(jsonRpc);
         this.sendToChild(JSON.stringify(modified2));
         resolve2(JSON.stringify({ jsonrpc: "2.0", result: {}, id: null }));
         return;
       }
       const timeout = setTimeout(() => {
-        this.pendingResponses.delete(id4);
+        this.pendingResponses.delete(id9);
         resolve2(JSON.stringify({
           jsonrpc: "2.0",
           error: { code: -32e3, message: "Request timeout (30s)" },
-          id: id4
+          id: id9
         }));
       }, REQUEST_TIMEOUT_MS);
-      this.pendingResponses.set(id4, { resolve: resolve2, timeout });
+      this.pendingResponses.set(id9, { resolve: resolve2, timeout });
       const modified = this.injectParamsCredentials(jsonRpc);
       this.sendToChild(JSON.stringify(modified));
     });
@@ -37998,13 +38070,13 @@ async function humanPermission(value, context = {}) {
 }
 async function verifyHuman(value, expectedPrincipal, context = {}) {
   try {
-    if (!value || !object(value) || Object.keys(value).some((key2) => !["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"].includes(key2))) return false;
+    if (!value || !object(value) || Object.keys(value).some((key5) => !["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"].includes(key5))) return false;
     if (!value.authorization) return !value.authorization_signature && !value.authorization_use && await verify(value, expectedPrincipal);
     const authorization = value.authorization, g = authorization.payload;
     if (context.authorityKey !== void 0 && g.authority_key !== context.authorityKey) return false;
     if (!await verify(value) || !await verifyDeviceAuthorization(authorization) || g.principal_key !== expectedPrincipal || g.device_key !== value.signer || typeof value.authorization_signature !== "string" || !/^[0-9a-f]{128}$/.test(value.authorization_signature)) return false;
-    const key = await crypto.subtle.importKey("raw", hexToBytes(value.signer), { name: "Ed25519" }, false, ["verify"]);
-    if (!await crypto.subtle.verify("Ed25519", key, hexToBytes(value.authorization_signature), new TextEncoder().encode(deviceAuthorizationPreimage(value.digest, authorization.digest)))) return false;
+    const key4 = await crypto.subtle.importKey("raw", hexToBytes(value.signer), { name: "Ed25519" }, false, ["verify"]);
+    if (!await crypto.subtle.verify("Ed25519", key4, hexToBytes(value.authorization_signature), new TextEncoder().encode(deviceAuthorizationPreimage(value.digest, authorization.digest)))) return false;
     const permission = await humanPermission(value, context);
     if (!permission || !g.actions.includes(permission.action) || time(permission.at) < time(g.issued_at) - 3e5 || time(permission.at) >= time(g.expires_at)) return false;
     const p = value.payload;
@@ -38046,7 +38118,7 @@ function parseRepairProposal(value, budget) {
 }
 function defaultRehearsalCases(fixtures) {
   const invoice = fixtures.invoices.find((i) => !i.duplicate_of);
-  const make = (id4, title, kind, requirement) => ({ id: `required-${id4}`, title, kind, invoice_id: invoice.invoice_id, expected: "invariant", requirement, required: true });
+  const make = (id9, title, kind, requirement) => ({ id: `required-${id9}`, title, kind, invoice_id: invoice.invoice_id, expected: "invariant", requirement, required: true });
   return [
     make("valid", "A legitimate payment can complete", "approved_invoice", "An exact, authorized invoice can be paid once. Required review must not prevent approved work from completing."),
     make("duplicate", "Submit the same invoice twice", "duplicate_invoice", "A second operation for an already-paid invoice must not create another payment."),
@@ -38060,8 +38132,8 @@ async function rehearsalDigest(value) {
   return sha256(canonical(value));
 }
 async function verifyRehearsalEvidence(bundle, pin) {
-  const checks = [];
-  const add = (label, ok) => checks.push({ label, ok: !!ok });
+  const checks2 = [];
+  const add = (label, ok) => checks2.push({ label, ok: !!ok });
   try {
     add("Recognized rehearsal evidence", bundle.type === "scopeblind.coordination.rehearsal-evidence.v1");
     const a = bundle.agreement.payload, r = bundle.report.payload;
@@ -38095,7 +38167,7 @@ async function verifyRehearsalEvidence(bundle, pin) {
   } catch {
     add("Complete, well-formed rehearsal evidence", false);
   }
-  return { valid: checks.every((x) => x.ok), checks, errors: checks.filter((x) => !x.ok).map((x) => x.label), limitations: [
+  return { valid: checks2.every((x) => x.ok), checks: checks2, errors: checks2.filter((x) => !x.ok).map((x) => x.label), limitations: [
     "These are concrete checks against isolated sample ledgers, not proof for every possible input or another deployment.",
     "The named ScopeBlind authority attests to observed gate behavior. Signatures establish integrity and key control, not independent observation or legal identity.",
     "Proposed changes grant no authority by themselves. A new sample task has its own ledger; earlier work and payments remain unchanged."
@@ -38157,8 +38229,8 @@ var exact2 = (v, required, optional = []) => !!v && typeof v === "object" && !Ar
 var same = (a, b) => canonical(a) === canonical(b);
 var keys = (s) => s.split(" ");
 var text = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max;
-async function signed(v, key) {
-  return exact2(v, keys("payload signer digest signature")) && HEX.test(key) && await verify(v, key);
+async function signed(v, key4) {
+  return exact2(v, keys("payload signer digest signature")) && HEX.test(key4) && await verify(v, key4);
 }
 function boundedAgreement(a) {
   return exact2(a, keys("type id version title owner_key registrar_key currency budget_minor approval_above_minor approval_ttl_seconds allowed_destinations issued_at"), keys("mode brief preferences assumptions require_po_match")) && a.type === "scopeblind.coordination.agreement.v1" && id2(a.id) && a.version === 1 && text(a.title, 200) && HEX.test(a.owner_key) && HEX.test(a.registrar_key) && a.currency === "USD" && integer(a.budget_minor, 1, 1e7) && integer(a.approval_above_minor, 0, a.budget_minor) && integer(a.approval_ttl_seconds, 30, 900) && Number.isFinite(time2(a.issued_at)) && Array.isArray(a.allowed_destinations) && a.allowed_destinations.length > 0 && a.allowed_destinations.length <= 100 && new Set(a.allowed_destinations).size === a.allowed_destinations.length && a.allowed_destinations.every((d) => text(d, 500)) && (a.mode === void 0 || ["guided", "live"].includes(a.mode)) && (a.require_po_match === void 0 || typeof a.require_po_match === "boolean") && (a.brief === void 0 || typeof a.brief === "string" && a.brief.length <= 1e4) && [a.preferences, a.assumptions].every((v) => v === void 0 || Array.isArray(v) && v.length <= 100 && v.every((t) => typeof t === "string" && t.length <= 2e3));
@@ -38213,8 +38285,8 @@ function observationConsistent(c, o, a, f) {
   return o.invariant_passed === invariant;
 }
 async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
-  const checks = [];
-  const add = (name, passed) => checks.push({ name, passed: !!passed });
+  const checks2 = [];
+  const add = (name2, passed) => checks2.push({ name: name2, passed: !!passed });
   try {
     if (depth > 4) throw new Error("Device agreement lineage exceeds supported depth");
     const e = value;
@@ -38224,7 +38296,7 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
     const authority = authorityKey ?? a.registrar_key;
     add("Owner signed the bounded source agreement and exact fixture snapshot", boundedAgreement(a) && boundedFixtures(e.fixtures) && await verifyOwnerAgreement(e.agreement, e.source_negotiation, depth + 1) && a.registrar_key === authority);
     add("Named authority signed a bounded session tied to this source", await signed(e.session, authority) && exact2(s, keys("type id room_id agreement_digest fixture_digest owner_key registrar_key invitation_digest created_at expires_at max_proposals"), ["parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]) && s.type === "scopeblind.coordination.negotiation-session.v1" && id2(s.id) && s.room_id === a.id && s.agreement_digest === e.agreement.digest && s.fixture_digest === await negotiationDigest(e.fixtures) && (s.parent_session_id === void 0 || id2(s.parent_session_id) && s.parent_session_id !== s.id) && s.parent_session_id === i.parent_session_id && s.source_operation_id === i.source_operation_id && (s.source_operation_id === void 0 ? s.source_invoice_id === void 0 && s.source_operation_digest === void 0 : id2(s.source_operation_id) && text(s.source_invoice_id, 60) && HEX.test(s.source_operation_digest ?? "") && e.fixtures.invoices.some((v) => !v.duplicate_of && v.invoice_id === s.source_invoice_id)) && s.owner_key === a.owner_key && s.registrar_key === authority && s.invitation_digest === e.invitation.digest && s.max_proposals === 3 && time2(s.created_at) >= time2(a.issued_at) - 3e5 && time2(s.expires_at) > time2(s.created_at) && time2(s.expires_at) <= time2(s.created_at) + 864e5);
-    const during = (at2) => time2(at2) >= time2(s.created_at) - 3e5 && time2(at2) < time2(s.expires_at);
+    const during = (at8) => time2(at8) >= time2(s.created_at) - 3e5 && time2(at8) < time2(s.expires_at);
     add("Owner invited one counterparty for this exact session", await signed(e.invitation, a.owner_key) && exact2(i, keys("type session_id room_id agreement_digest fixture_digest issuer registrar_key role token_hash max_claims expires_at"), ["parent_session_id", "source_operation_id"]) && i.type === "scopeblind.coordination.negotiation-invitation.v1" && i.session_id === s.id && i.room_id === a.id && i.agreement_digest === e.agreement.digest && i.fixture_digest === s.fixture_digest && i.issuer === a.owner_key && i.registrar_key === authority && i.role === "counterparty" && i.max_claims === 1 && HEX.test(i.token_hash) && i.expires_at === s.expires_at);
     const claim = b.claim.payload, partner = b.guest_key, principals = [a.owner_key, partner];
     add("Distinct counterparty signed its claim and the authority bound that claim", await signed(e.binding, authority) && await signed(b.claim, partner) && exact2(b, keys("type session_id room_id invitation_digest guest_key name issued_at expires_at claim")) && b.type === "scopeblind.coordination.negotiation-binding.v1" && b.session_id === s.id && b.room_id === a.id && b.invitation_digest === e.invitation.digest && HEX.test(partner) && partner !== a.owner_key && during(b.issued_at) && b.expires_at === s.expires_at && exact2(claim, keys("type session_id room_id guest_key name issued_at nonce")) && claim.type === "scopeblind.coordination.negotiation-claim.v1" && claim.session_id === s.id && claim.room_id === a.id && claim.guest_key === partner && text(claim.name, 60) && claim.name === b.name && id2(claim.nonce) && Math.abs(time2(claim.issued_at) - time2(b.issued_at)) <= 3e5);
@@ -38234,9 +38306,9 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
       const m = e.mandates[n].payload;
       add(`Principal ${n + 1} signed bounded negotiation-only authority`, await verifyHuman(e.mandates[n], principals[n], { requireRecordedUse: true, authorityKey: authority }) && exact2(m, keys("type session_id room_id principal_key version agreement_digest fixture_digest min_threshold_minor max_threshold_minor required_invoices private_brief_commitment agent_mode actions issued_at expires_at"), ["min_budget_minor", "max_budget_minor"]) && m.type === "scopeblind.coordination.negotiation-mandate.v1" && m.session_id === s.id && m.room_id === a.id && m.principal_key === principals[n] && m.agreement_digest === e.agreement.digest && m.fixture_digest === s.fixture_digest && integer(m.version, 1, 1e6) && (m.min_budget_minor === void 0 && m.max_budget_minor === void 0 || integer(m.min_budget_minor, 1, 1e7) && integer(m.max_budget_minor, m.min_budget_minor, 1e7)) && integer(m.min_threshold_minor, 0, mandateBudget(m, a.budget_minor).max) && integer(m.max_threshold_minor, m.min_threshold_minor, mandateBudget(m, a.budget_minor).max) && Array.isArray(m.required_invoices) && m.required_invoices.length <= 2 && new Set(m.required_invoices.map((r2) => r2.invoice_id)).size === m.required_invoices.length && m.required_invoices.every((r2) => exact2(r2, keys("invoice_id expected")) && ["allow", "ask"].includes(r2.expected) && e.fixtures.invoices.some((v) => v.invoice_id === r2.invoice_id && !v.duplicate_of)) && (s.source_invoice_id === void 0 || m.required_invoices.some((r2) => r2.invoice_id === s.source_invoice_id)) && HEX.test(m.private_brief_commitment) && ["hosted", "own", "manual"].includes(m.agent_mode) && same(m.actions, NEGOTIATION_AGENT_ACTIONS) && during(m.issued_at) && time2(m.expires_at) > time2(m.issued_at) && time2(m.expires_at) <= time2(s.expires_at));
     }
-    const validAt = (principal, at2) => {
+    const validAt = (principal, at8) => {
       const m = e.mandates.find((m2) => m2.payload.principal_key === principal)?.payload;
-      return !!m && during(at2) && time2(at2) >= time2(m.issued_at) - 3e5 && time2(at2) < time2(m.expires_at);
+      return !!m && during(at8) && time2(at8) >= time2(m.issued_at) - 3e5 && time2(at8) < time2(m.expires_at);
     };
     const agentBindings = e.agent_bindings ?? [];
     add("Installed agent bindings are bounded and independently scoped per principal", Array.isArray(agentBindings) && agentBindings.length <= 12 && new Set(agentBindings.map((v) => v.payload.pair_id)).size === agentBindings.length);
@@ -38264,7 +38336,7 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
       add("Authority recorded an exactly scoped principal recommendation", await signed(response, authority) && exact2(r2, keys("type session_id principal_key proposal_digest mandate_digest decision agent_mode issued_at"), ["agent_key"]) && r2.type === "scopeblind.coordination.negotiation-response.v1" && r2.session_id === s.id && !!p2 && !!mine && r2.mandate_digest === mine.digest && ["support", "no_agreement"].includes(r2.decision) && actorBound(r2) && time2(r2.issued_at) >= time2(p2.payload.issued_at) && (r2.decision !== "support" || negotiationPlanWithinMandate(mine.payload, p2.payload.approval_above_minor, p2.payload.budget_minor ?? a.budget_minor, a.budget_minor)));
     }
     const r = e.report.payload, selected = e.proposals.find((p2) => p2.digest === r.proposal_digest), p = selected.payload;
-    add("Named authority signed the exact comparison and full union of required cases", await signed(e.report, authority) && exact2(r, keys("type session_id room_id proposal_digest agreement_digest fixture_digest mandate_digests cases_digest runtime_revision adapter isolation issued_at before_approval_above_minor after_approval_above_minor results required_passed expectations_met mandates_met"), ["before_budget_minor", "after_budget_minor"]) && r.type === "scopeblind.coordination.negotiation-report.v1" && r.session_id === s.id && r.room_id === a.id && !!selected && r.agreement_digest === e.agreement.digest && r.fixture_digest === s.fixture_digest && same(r.mandate_digests, mandateDigests) && r.adapter === "coordination-d1-sandbox" && r.isolation === "separate-fixture-ledgers" && typeof r.runtime_revision === "string" && (r.runtime_revision === "development-unbound" || /^scopeblind\.invoice-rehearsal\.v1:[0-9a-f]{64}$/.test(r.runtime_revision)) && time2(r.issued_at) >= time2(p.issued_at) && principals.every((key) => validAt(key, r.issued_at)) && (p.budget_minor === void 0 ? r.before_budget_minor === void 0 && r.after_budget_minor === void 0 : r.before_budget_minor === a.budget_minor && r.after_budget_minor === p.budget_minor) && r.before_approval_above_minor === a.approval_above_minor && r.after_approval_above_minor === p.approval_above_minor && Array.isArray(r.results) && r.results.length <= 110 && r.results.every((x) => exact2(x, keys("case before after"))) && same(r.results.map((x) => x.case), mandateCases(e.mandates, e.fixtures)) && r.cases_digest === await negotiationDigest(mandateCases(e.mandates, e.fixtures)));
+    add("Named authority signed the exact comparison and full union of required cases", await signed(e.report, authority) && exact2(r, keys("type session_id room_id proposal_digest agreement_digest fixture_digest mandate_digests cases_digest runtime_revision adapter isolation issued_at before_approval_above_minor after_approval_above_minor results required_passed expectations_met mandates_met"), ["before_budget_minor", "after_budget_minor"]) && r.type === "scopeblind.coordination.negotiation-report.v1" && r.session_id === s.id && r.room_id === a.id && !!selected && r.agreement_digest === e.agreement.digest && r.fixture_digest === s.fixture_digest && same(r.mandate_digests, mandateDigests) && r.adapter === "coordination-d1-sandbox" && r.isolation === "separate-fixture-ledgers" && typeof r.runtime_revision === "string" && (r.runtime_revision === "development-unbound" || /^scopeblind\.invoice-rehearsal\.v1:[0-9a-f]{64}$/.test(r.runtime_revision)) && time2(r.issued_at) >= time2(p.issued_at) && principals.every((key4) => validAt(key4, r.issued_at)) && (p.budget_minor === void 0 ? r.before_budget_minor === void 0 && r.after_budget_minor === void 0 : r.before_budget_minor === a.budget_minor && r.after_budget_minor === p.budget_minor) && r.before_approval_above_minor === a.approval_above_minor && r.after_approval_above_minor === p.approval_above_minor && Array.isArray(r.results) && r.results.length <= 110 && r.results.every((x) => exact2(x, keys("case before after"))) && same(r.results.map((x) => x.case), mandateCases(e.mandates, e.fixtures)) && r.cases_digest === await negotiationDigest(mandateCases(e.mandates, e.fixtures)));
     add("Both gate traces and payment totals support every observation summary", r.results.every((x) => observationConsistent(x.case, x.before, a, e.fixtures) && observationConsistent(x.case, x.after, p.next_agreement, e.fixtures)));
     const rangeMet = e.mandates.every((m) => negotiationPlanWithinMandate(m.payload, p.approval_above_minor, p.budget_minor ?? a.budget_minor, a.budget_minor));
     add("Required cases, expectations and both mandates match the reported calculations", r.required_passed === r.results.every((x) => !x.case.required || x.after.matched) && r.expectations_met === r.results.every((x) => x.case.id.startsWith("sample-invoice-") || x.after.matched) && r.mandates_met === (rangeMet && r.results.filter((x) => x.case.id.startsWith("principal-")).every((x) => x.after.matched)));
@@ -38276,14 +38348,14 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
     if (e.reviewer_grant) add("Organizer signed the exact proposed reviewer grant", await verifyHuman(e.reviewer_grant, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(e.reviewer_grant.payload, p.reviewer_grant) && e.reviewer_grant.digest === p.reviewer_grant_digest);
     if (e.adoption) {
       const d = e.adoption.payload, next = e.adopted_agreement, g = e.reviewer_grant, binding = e.reviewer_binding, rb = binding.payload, claim2 = rb.claim.payload;
-      add("Both unexpired human approvals authorize adoption of this exact tested candidate", e.approvals.length === 2 && e.approvals.every((v) => v.payload.decision === "approve" && time2(d.issued_at) >= time2(v.payload.issued_at) - 3e5 && time2(d.issued_at) < time2(v.payload.expires_at)) && selected.digest === e.proposals.at(-1).digest && principals.every((key) => validAt(key, d.issued_at)) && r.required_passed && r.expectations_met && r.mandates_met && (e.approvals.every((v) => v.payload.selection_basis === "human-selected-tested-plan") || principals.every((key) => e.responses.some((v) => v.payload.principal_key === key && v.payload.proposal_digest === selected.digest && v.payload.decision === "support"))));
-      add("Authority recorded exact lineage into a new separately authorized sample task", await signed(e.adoption, authority) && exact2(d, keys("type session_id source_room_id room_id source_agreement_digest agreement_digest proposal_digest report_digest approval_digests issued_at scope")) && d.type === "scopeblind.coordination.negotiation-adoption.v1" && d.session_id === s.id && d.source_room_id === a.id && d.room_id === p.next_agreement.id && d.room_id !== a.id && d.source_agreement_digest === e.agreement.digest && d.agreement_digest === p.next_agreement_digest && d.proposal_digest === selected.digest && d.report_digest === e.report.digest && same(d.approval_digests, principals.map((key) => e.approvals.find((v) => v.payload.principal_key === key).digest)) && d.scope === "new-separate-sample-task" && await verifyHuman(next, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(next.payload, p.next_agreement) && next.digest === d.agreement_digest);
+      add("Both unexpired human approvals authorize adoption of this exact tested candidate", e.approvals.length === 2 && e.approvals.every((v) => v.payload.decision === "approve" && time2(d.issued_at) >= time2(v.payload.issued_at) - 3e5 && time2(d.issued_at) < time2(v.payload.expires_at)) && selected.digest === e.proposals.at(-1).digest && principals.every((key4) => validAt(key4, d.issued_at)) && r.required_passed && r.expectations_met && r.mandates_met && (e.approvals.every((v) => v.payload.selection_basis === "human-selected-tested-plan") || principals.every((key4) => e.responses.some((v) => v.payload.principal_key === key4 && v.payload.proposal_digest === selected.digest && v.payload.decision === "support"))));
+      add("Authority recorded exact lineage into a new separately authorized sample task", await signed(e.adoption, authority) && exact2(d, keys("type session_id source_room_id room_id source_agreement_digest agreement_digest proposal_digest report_digest approval_digests issued_at scope")) && d.type === "scopeblind.coordination.negotiation-adoption.v1" && d.session_id === s.id && d.source_room_id === a.id && d.room_id === p.next_agreement.id && d.room_id !== a.id && d.source_agreement_digest === e.agreement.digest && d.agreement_digest === p.next_agreement_digest && d.proposal_digest === selected.digest && d.report_digest === e.report.digest && same(d.approval_digests, principals.map((key4) => e.approvals.find((v) => v.payload.principal_key === key4).digest)) && d.scope === "new-separate-sample-task" && await verifyHuman(next, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(next.payload, p.next_agreement) && next.digest === d.agreement_digest);
       add("Partner independently claimed the fixed reviewer role in the new task", await signed(binding, authority) && await verifyHuman(rb.claim, partner, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === partner), requireRecordedUse: true, authorityKey: authority }) && exact2(rb, keys("type grant_id grant_digest room_id guest_key name issued_at expires_at claim")) && rb.type === "scopeblind.coordination.binding.v1" && rb.grant_id === g.payload.grant_id && rb.grant_digest === g.digest && rb.room_id === d.room_id && rb.guest_key === partner && rb.expires_at === g.payload.expires_at && time2(rb.issued_at) >= time2(d.issued_at) && time2(rb.issued_at) < time2(rb.expires_at) && exact2(claim2, keys("type grant_id room_id guest_key name issued_at nonce")) && claim2.type === "scopeblind.coordination.claim.v1" && claim2.grant_id === rb.grant_id && claim2.room_id === d.room_id && claim2.guest_key === partner && text(claim2.name, 60) && claim2.name === rb.name && id2(claim2.nonce) && time2(claim2.issued_at) >= time2(r.issued_at) - 3e5 && time2(claim2.issued_at) <= time2(rb.issued_at) + 3e5);
     } else add("No unbound adopted agreement or reviewer binding is present", !e.adopted_agreement && !e.reviewer_binding);
   } catch {
     add("Complete, well-formed negotiation evidence", false);
   }
-  return { valid: checks.length > 0 && checks.every((c) => c.passed), checks, limitations: [
+  return { valid: checks2.length > 0 && checks2.every((c) => c.passed), checks: checks2, limitations: [
     "Signatures establish record integrity and control of keys. Display names are not authenticated legal identities.",
     "The named service attests to gate traces and sample-ledger effects. These records do not independently prove execution or safety for every input or deployment.",
     "Private briefs are omitted; signed commitments do not reveal or validate their contents. Recommendations are separate from human approval and adoption.",
@@ -38305,9 +38377,9 @@ async function verifyOwnerAgreement(agreement, negotiation, depth = 0) {
 var integer2 = (n) => Number.isSafeInteger(n) && Number(n) >= 0;
 var timestamp = (s) => typeof s === "string" ? Date.parse(s) : NaN;
 async function verifyEvidence(value, expectedAuthority) {
-  const checks = [];
+  const checks2 = [];
   const check = (label, ok) => {
-    checks.push({ label, ok: ok === true });
+    checks2.push({ label, ok: ok === true });
   };
   let accepted = false;
   try {
@@ -38372,16 +38444,16 @@ async function verifyEvidence(value, expectedAuthority) {
     }
     for (const op of m.operations) {
       const label = `Operation ${op.operation_id}`;
-      const hash = await payloadHash(op.input);
-      check(`${label} \xB7 exact input and unique identity`, op.tool === "ledger.pay" && op.run_id === m.run_id && typeof op.operation_id === "string" && !ids.has(op.operation_id) && hash === op.payload_hash && integer2(op.input.amount_minor) && op.input.amount_minor > 0 && op.input.currency === a.currency && typeof op.input.invoice_id === "string");
+      const hash2 = await payloadHash(op.input);
+      check(`${label} \xB7 exact input and unique identity`, op.tool === "ledger.pay" && op.run_id === m.run_id && typeof op.operation_id === "string" && !ids.has(op.operation_id) && hash2 === op.payload_hash && integer2(op.input.amount_minor) && op.input.amount_minor > 0 && op.input.currency === a.currency && typeof op.input.invoice_id === "string");
       ids.add(op.operation_id);
       if (op.admission) {
         const p = op.admission.payload;
-        check(`${label} \xB7 signed gate decision`, p.type === "scopeblind.coordination.admission.v1" && await verify(op.admission, authority) && p.room_id === a.id && p.run_id === m.run_id && p.operation_id === op.operation_id && p.agreement_digest === b.agreement.digest && p.payload_hash === hash && await payloadHash(p.input) === hash && p.destination === op.input.destination && ["admitted", "held", "refused"].includes(p.decision));
+        check(`${label} \xB7 signed gate decision`, p.type === "scopeblind.coordination.admission.v1" && await verify(op.admission, authority) && p.room_id === a.id && p.run_id === m.run_id && p.operation_id === op.operation_id && p.agreement_digest === b.agreement.digest && p.payload_hash === hash2 && await payloadHash(p.input) === hash2 && p.destination === op.input.destination && ["admitted", "held", "refused"].includes(p.decision));
       }
       if (op.decision) {
         const p = op.decision.payload;
-        check(`${label} \xB7 recipient decision binds exact input`, p.type === "scopeblind.coordination.approval.v1" && await reviewer(op.decision, "decide") && p.operation_id === op.operation_id && p.payload_hash === hash && ["approve", "deny", "request_changes"].includes(p.decision) && timestamp(p.expires_at) > timestamp(p.issued_at) && timestamp(p.expires_at) - timestamp(p.issued_at) <= a.approval_ttl_seconds * 1e3);
+        check(`${label} \xB7 recipient decision binds exact input`, p.type === "scopeblind.coordination.approval.v1" && await reviewer(op.decision, "decide") && p.operation_id === op.operation_id && p.payload_hash === hash2 && ["approve", "deny", "request_changes"].includes(p.decision) && timestamp(p.expires_at) > timestamp(p.issued_at) && timestamp(p.expires_at) - timestamp(p.issued_at) <= a.approval_ttl_seconds * 1e3);
       }
       const invoice = m.fixtures?.invoices.find((i) => i.invoice_id === op.input.invoice_id);
       const needsApproval = op.input.amount_minor > a.approval_above_minor || a.require_po_match === true && (!invoice || !m.fixtures || !invoiceMatchesPurchaseOrder(invoice, m.fixtures));
@@ -38399,7 +38471,7 @@ async function verifyEvidence(value, expectedAuthority) {
       }
       if (op.receipt) {
         const p = op.receipt.payload;
-        check(`${label} \xB7 signed outcome binds exact input`, p.type === "scopeblind.coordination.outcome.v1" && await verify(op.receipt, authority) && p.room_id === a.id && p.run_id === m.run_id && p.operation_id === op.operation_id && p.payload_hash === hash && p.amount_minor === op.input.amount_minor && p.destination === op.input.destination && p.status === op.status);
+        check(`${label} \xB7 signed outcome binds exact input`, p.type === "scopeblind.coordination.outcome.v1" && await verify(op.receipt, authority) && p.room_id === a.id && p.run_id === m.run_id && p.operation_id === op.operation_id && p.payload_hash === hash2 && p.amount_minor === op.input.amount_minor && p.destination === op.input.destination && p.status === op.status);
       }
       if (op.status === "confirmed") {
         check(`${label} \xB7 sandbox destination confirmation`, op.receipt?.payload.status === "confirmed" && op.receipt.payload.observed_by === "sandbox-ledger" && !!op.receipt.payload.transaction_id);
@@ -38428,10 +38500,10 @@ async function verifyEvidence(value, expectedAuthority) {
   } catch (e) {
     check(e instanceof Error ? e.message : "Malformed evidence", false);
   }
-  const errors = checks.filter((x) => !x.ok).map((x) => x.label);
+  const errors = checks2.filter((x) => !x.ok).map((x) => x.label);
   return {
     valid: errors.length === 0,
-    checks,
+    checks: checks2,
     errors,
     accepted: accepted && errors.length === 0,
     authorityPinned: !!expectedAuthority && errors.length === 0,
@@ -38593,7 +38665,7 @@ function validateCoordinationPayment(payment) {
     throw new CoordinationError("invalid_input", "Payment requires invoice_id, a positive integer amount_minor, currency USD, and a sample destination.");
   }
   if (input.fixture_revision !== void 0 && (!Number.isSafeInteger(input.fixture_revision) || input.fixture_revision < 1)) throw new CoordinationError("invalid_input", "fixture_revision must be a positive integer from coordination.inspect.");
-  if (Object.keys(input).filter((key) => key !== "fixture_revision").sort().join(",") !== "amount_minor,currency,destination,invoice_id") {
+  if (Object.keys(input).filter((key4) => key4 !== "fixture_revision").sort().join(",") !== "amount_minor,currency,destination,invoice_id") {
     throw new CoordinationError("invalid_input", "Payment input contains unsupported fields.");
   }
 }
@@ -38611,11 +38683,11 @@ var CoordinationClient = class {
   }
   /** Acknowledge only a context that this adapter has already verified. Pairing and MCP initialization do not call this. */
   async acknowledgeInspection(response, action, contextDigest, signal) {
-    const key = `${action}:${contextDigest}`;
-    if (response.agent_inspection_supported !== true || this.#acknowledgedContexts.has(key)) return;
+    const key4 = `${action}:${contextDigest}`;
+    if (response.agent_inspection_supported !== true || this.#acknowledgedContexts.has(key4)) return;
     const acknowledgment = await this.#transport.post(action, { ...action === "negotiation_get" ? { session_id: this.#config.sessionId } : {}, observed_context_digest: contextDigest }, signal);
     if (typeof acknowledgment.agent_inspection_acknowledged !== "boolean") throw new CoordinationError("agent_inspection_unconfirmed", "The room could not confirm this inspection. Inspect again before continuing.");
-    this.#acknowledgedContexts.add(key);
+    this.#acknowledgedContexts.add(key4);
   }
   negotiationConfig() {
     if (this.purpose !== "negotiation" || !this.#config.sessionId || !this.#config.principalKey) throw new CoordinationError("tool_outside_grant", "Use a separate principal-authorized negotiation pairing for these tools.");
@@ -38629,7 +38701,7 @@ var CoordinationClient = class {
       throw new CoordinationError("invalid_negotiation", "The negotiation identity, source records, mandate, or signed candidate could not be verified. No approval or authority was granted.");
     };
     const keys2 = (value, allowed) => {
-      if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !allowed.includes(key))) invalid();
+      if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key4) => !allowed.includes(key4))) invalid();
     };
     const envelope2 = (value) => keys2(value, ["payload", "signer", "digest", "signature"]);
     const humanEnvelope = (value) => keys2(value, ["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"]);
@@ -38781,30 +38853,30 @@ var CoordinationClient = class {
   }
   async proposeCandidate(value) {
     const { sessionId, principalKey } = this.negotiationConfig();
-    if (!value || Object.keys(value).some((key) => !["id", "approval_above_minor", "budget_minor", "parent_digest"].includes(key)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.id) || !Number.isSafeInteger(value.approval_above_minor) || value.approval_above_minor < 0 || value.approval_above_minor > 1e7 || value.budget_minor !== void 0 && (!Number.isSafeInteger(value.budget_minor) || value.budget_minor < 1 || value.budget_minor > 1e7) || value.parent_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.parent_digest)) throw new CoordinationError("invalid_input", "Provide a stable candidate id, a threshold and optional total budget in USD cents, and the current parent_digest for a counterproposal. Private notes and additional powers are not accepted.");
+    if (!value || Object.keys(value).some((key4) => !["id", "approval_above_minor", "budget_minor", "parent_digest"].includes(key4)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.id) || !Number.isSafeInteger(value.approval_above_minor) || value.approval_above_minor < 0 || value.approval_above_minor > 1e7 || value.budget_minor !== void 0 && (!Number.isSafeInteger(value.budget_minor) || value.budget_minor < 1 || value.budget_minor > 1e7) || value.parent_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.parent_digest)) throw new CoordinationError("invalid_input", "Provide a stable candidate id, a threshold and optional total budget in USD cents, and the current parent_digest for a counterproposal. Private notes and additional powers are not accepted.");
     const proposal = { ...value };
-    const result = await this.inspectNegotiation(), before = result.negotiation;
-    if (before.runtime_changed) throw new CoordinationError("negotiation_runtime_changed", "This discussion belongs to an earlier runtime. Ask the people to start a fresh linked discussion; do not reuse its mandate.");
-    const existing = before.proposals.find((p) => p.payload.id === proposal.id);
+    const result = await this.inspectNegotiation(), before3 = result.negotiation;
+    if (before3.runtime_changed) throw new CoordinationError("negotiation_runtime_changed", "This discussion belongs to an earlier runtime. Ask the people to start a fresh linked discussion; do not reuse its mandate.");
+    const existing = before3.proposals.find((p) => p.payload.id === proposal.id);
     if (existing) {
-      if (existing.payload.principal_key !== principalKey || existing.payload.approval_above_minor !== proposal.approval_above_minor || (existing.payload.budget_minor ?? before.agreement.payload.budget_minor) !== (proposal.budget_minor ?? before.agreement.payload.budget_minor) || existing.payload.exploration !== void 0 || existing.payload.parent_digest !== proposal.parent_digest) throw new CoordinationError("negotiation_id_conflict", "This stable candidate id already names different terms. Inspect it before proposing anything else.");
+      if (existing.payload.principal_key !== principalKey || existing.payload.approval_above_minor !== proposal.approval_above_minor || (existing.payload.budget_minor ?? before3.agreement.payload.budget_minor) !== (proposal.budget_minor ?? before3.agreement.payload.budget_minor) || existing.payload.exploration !== void 0 || existing.payload.parent_digest !== proposal.parent_digest) throw new CoordinationError("negotiation_id_conflict", "This stable candidate id already names different terms. Inspect it before proposing anything else.");
       return result;
     }
-    const own = before.principals.find((p) => p.key === principalKey).mandate.payload;
-    if (Date.parse(own.expires_at) <= Date.now() || Date.parse(before.session.payload.expires_at) <= Date.now()) throw new CoordinationError("negotiation_expired", "This session or your signed mandate has expired. Ask your principal to review it.");
-    if (before.proposals.length >= NEGOTIATION_MAX_PROPOSALS) throw new CoordinationError("negotiation_round_limit", "The three-candidate limit has been reached. Stop and explain the remaining disagreement to your principal.");
-    if (["needs_decision", "agreed", "no_overlap", "round_limit", "failed", "cancelled", "adopted"].includes(before.status) || before.next_principal_key !== principalKey) throw new CoordinationError("negotiation_not_your_turn", "This session does not currently invite your agent to propose. Inspect its status; leave human decisions to the people.");
-    if (!negotiationPlanWithinMandate(own, proposal.approval_above_minor, proposal.budget_minor ?? before.agreement.payload.budget_minor, before.agreement.payload.budget_minor) || proposal.parent_digest !== before.proposals.at(-1)?.digest) throw new CoordinationError("invalid_candidate", "The candidate must fit your signed range and name the current parent candidate.");
+    const own = before3.principals.find((p) => p.key === principalKey).mandate.payload;
+    if (Date.parse(own.expires_at) <= Date.now() || Date.parse(before3.session.payload.expires_at) <= Date.now()) throw new CoordinationError("negotiation_expired", "This session or your signed mandate has expired. Ask your principal to review it.");
+    if (before3.proposals.length >= NEGOTIATION_MAX_PROPOSALS) throw new CoordinationError("negotiation_round_limit", "The three-candidate limit has been reached. Stop and explain the remaining disagreement to your principal.");
+    if (["needs_decision", "agreed", "no_overlap", "round_limit", "failed", "cancelled", "adopted"].includes(before3.status) || before3.next_principal_key !== principalKey) throw new CoordinationError("negotiation_not_your_turn", "This session does not currently invite your agent to propose. Inspect its status; leave human decisions to the people.");
+    if (!negotiationPlanWithinMandate(own, proposal.approval_above_minor, proposal.budget_minor ?? before3.agreement.payload.budget_minor, before3.agreement.payload.budget_minor) || proposal.parent_digest !== before3.proposals.at(-1)?.digest) throw new CoordinationError("invalid_candidate", "The candidate must fit your signed range and name the current parent candidate.");
     for (const requirement of own.required_invoices) {
-      const invoice = before.fixtures.invoices.find((invoice2) => invoice2.invoice_id === requirement.invoice_id);
-      const budget = proposal.budget_minor ?? before.agreement.payload.budget_minor;
-      const matching = !before.agreement.payload.require_po_match || before.fixtures.purchase_orders.some((po) => po.id === invoice.purchase_order_id && po.vendor === invoice.vendor && po.destination === invoice.destination && po.amount_minor === invoice.amount_minor && po.currency === "USD");
-      const expected = invoice.amount_minor > budget || !before.agreement.payload.allowed_destinations.includes(invoice.destination) ? "refuse" : !matching || invoice.amount_minor > proposal.approval_above_minor ? "ask" : "allow";
+      const invoice = before3.fixtures.invoices.find((invoice2) => invoice2.invoice_id === requirement.invoice_id);
+      const budget = proposal.budget_minor ?? before3.agreement.payload.budget_minor;
+      const matching = !before3.agreement.payload.require_po_match || before3.fixtures.purchase_orders.some((po) => po.id === invoice.purchase_order_id && po.vendor === invoice.vendor && po.destination === invoice.destination && po.amount_minor === invoice.amount_minor && po.currency === "USD");
+      const expected = invoice.amount_minor > budget || !before3.agreement.payload.allowed_destinations.includes(invoice.destination) ? "refuse" : !matching || invoice.amount_minor > proposal.approval_above_minor ? "ask" : "allow";
       if (expected !== requirement.expected) throw new CoordinationError("invalid_candidate", "The candidate does not meet your principal\u2019s required invoice decision.");
     }
     const response = await this.#transport.post("negotiation_propose", { session_id: sessionId, proposal });
     const checked = await this.negotiationResult(response), after = checked.negotiation;
-    if (!after.proposals.some((p) => p.payload.id === proposal.id && p.payload.principal_key === principalKey && p.payload.approval_above_minor === proposal.approval_above_minor && (p.payload.budget_minor ?? before.agreement.payload.budget_minor) === (proposal.budget_minor ?? before.agreement.payload.budget_minor) && p.payload.exploration === void 0 && p.payload.parent_digest === proposal.parent_digest)) throw new CoordinationError("invalid_negotiation", "The service did not record the exact candidate submitted. Inspect before retrying with the same id.");
+    if (!after.proposals.some((p) => p.payload.id === proposal.id && p.payload.principal_key === principalKey && p.payload.approval_above_minor === proposal.approval_above_minor && (p.payload.budget_minor ?? before3.agreement.payload.budget_minor) === (proposal.budget_minor ?? before3.agreement.payload.budget_minor) && p.payload.exploration === void 0 && p.payload.parent_digest === proposal.parent_digest)) throw new CoordinationError("invalid_negotiation", "The service did not record the exact candidate submitted. Inspect before retrying with the same id.");
     return checked;
   }
   async respondCandidate(value) {
@@ -38867,7 +38939,7 @@ var CoordinationClient = class {
   }
   async waitNegotiation(value, signal) {
     this.negotiationConfig();
-    if (!value || Object.keys(value).some((key) => !["after_digest", "timeout_ms"].includes(key)) || value.after_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.after_digest)) throw new CoordinationError("invalid_wait", "Use the state_digest from inspect_negotiation as after_digest, with an optional timeout_ms.");
+    if (!value || Object.keys(value).some((key4) => !["after_digest", "timeout_ms"].includes(key4)) || value.after_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.after_digest)) throw new CoordinationError("invalid_wait", "Use the state_digest from inspect_negotiation as after_digest, with an optional timeout_ms.");
     const timeoutMs = value.timeout_ms ?? 3e4;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1e3 || timeoutMs > 3e4) throw new CoordinationError("invalid_wait", "timeout_ms must be an integer from 1000 to 30000.");
     const abort = new AbortController(), cancel = () => abort.abort();
@@ -38977,10 +39049,10 @@ var CoordinationClient = class {
     } catch {
       throw new CoordinationError("invalid_input", "Provide only a stable id, review threshold in USD cents, and a rationale of at most 600 characters.");
     }
-    const before = await this.checkedRehearsal(await this.#transport.post("rehearsal_get", {}));
+    const before3 = await this.checkedRehearsal(await this.#transport.post("rehearsal_get", {}));
     let proposal;
     try {
-      proposal = parseRepairProposal(snapshot, before.agreement.payload.budget_minor);
+      proposal = parseRepairProposal(snapshot, before3.agreement.payload.budget_minor);
     } catch {
       throw new CoordinationError("invalid_input", "Propose only a review threshold within the source budget, a stable id, and a rationale of at most 600 characters.");
     }
@@ -39096,7 +39168,7 @@ var CoordinationClient = class {
   }
   /** Poll inside the tool, without model calls, for at most thirty seconds. */
   async wait(input, signal) {
-    if (!input || Object.keys(input).some((key) => !["after_cursor", "run_id", "timeout_ms"].includes(key)) || !Number.isSafeInteger(input.after_cursor) || input.after_cursor < 0 || input.run_id !== void 0 && (typeof input.run_id !== "string" || !/^run-[A-Za-z0-9_-]{8,100}$/.test(input.run_id))) {
+    if (!input || Object.keys(input).some((key4) => !["after_cursor", "run_id", "timeout_ms"].includes(key4)) || !Number.isSafeInteger(input.after_cursor) || input.after_cursor < 0 || input.run_id !== void 0 && (typeof input.run_id !== "string" || !/^run-[A-Za-z0-9_-]{8,100}$/.test(input.run_id))) {
       throw new CoordinationError("invalid_wait", "Pass after_cursor and optionally run_id from coordination.inspect.");
     }
     const timeoutMs = input.timeout_ms === void 0 ? 3e4 : input.timeout_ms;
@@ -39111,11 +39183,11 @@ var CoordinationClient = class {
       abort.abort();
     }, timeoutMs);
     let latest;
-    const response = (room, status) => {
+    const response = (room, status2) => {
       const operations = room.operations || [];
       const ready = operations.filter((op) => op.status === "admitted" || op.status === "held" && op.decision?.payload.decision === "approve" && Date.parse(op.decision.payload.expires_at) > Date.now()).map((op) => op.operation_id);
       return {
-        status,
+        status: status2,
         cursor: room.revision,
         run_id: room.run_id,
         paused: room.paused,
@@ -39127,7 +39199,7 @@ var CoordinationClient = class {
           unknown_outcomes: operations.filter((op) => op.status === "unknown").map((op) => op.operation_id)
         },
         events: (room.events || []).filter((event) => event.id > input.after_cursor).slice(-30),
-        next_steps: status === "waiting" ? ["No change was observed before the timeout. If the client session is still active, call coordination.wait again with this cursor; otherwise resume the session and inspect. This is bounded polling, not a push notification."] : ["Inspect the updated room. Retry approved operations with their existing IDs and exact input; unknown outcomes keep their reservations. A new run requires reviewing its revision instructions."],
+        next_steps: status2 === "waiting" ? ["No change was observed before the timeout. If the client session is still active, call coordination.wait again with this cursor; otherwise resume the session and inspect. This is bounded polling, not a push notification."] : ["Inspect the updated room. Retry approved operations with their existing IDs and exact input; unknown outcomes keep their reservations. A new run requires reviewing its revision instructions."],
         scope: "Authenticated service-reported state. A decision notification does not itself authorize execution; ledger.pay independently verifies each exact admission and outcome."
       };
     };
@@ -39155,19 +39227,19 @@ var CoordinationClient = class {
   }
   async deliver(runId) {
     if (typeof runId !== "string" || !/^run-[A-Za-z0-9_-]{8,100}$/.test(runId)) throw new CoordinationError("invalid_run", "Pass the exact run_id from coordination.inspect when delivering.");
-    const before = await this.room();
-    if (before.run_id !== runId) throw new CoordinationError("run_mismatch", "This attempt has changed. Inspect the revised instructions and work before delivering.");
-    const response = await this.#transport.post("deliver", { run_id: before.run_id });
+    const before3 = await this.room();
+    if (before3.run_id !== runId) throw new CoordinationError("run_mismatch", "This attempt has changed. Inspect the revised instructions and work before delivering.");
+    const response = await this.#transport.post("deliver", { run_id: before3.run_id });
     const room = response.room;
     const manifest = room?.manifest;
-    if (!manifest || !await verify(manifest, this.#config.authorityKey) || manifest.payload.type !== "scopeblind.coordination.manifest.v1" || manifest.payload.room_id !== this.#config.roomId || manifest.payload.run_id !== before.run_id || manifest.payload.agreement_digest !== before.agreement.digest) throw new CoordinationError("invalid_manifest", "The delivered result did not verify against this room and attempt. Inspect the room before retrying.");
+    if (!manifest || !await verify(manifest, this.#config.authorityKey) || manifest.payload.type !== "scopeblind.coordination.manifest.v1" || manifest.payload.room_id !== this.#config.roomId || manifest.payload.run_id !== before3.run_id || manifest.payload.agreement_digest !== before3.agreement.digest) throw new CoordinationError("invalid_manifest", "The delivered result did not verify against this room and attempt. Inspect the room before retrying.");
     return { manifest, manifest_signature_verified: true, next_step: "The recipient can accept this exact result or request changes in the shared room. Delivery does not imply their acceptance." };
   }
-  async checkAdmission(value, request, agreement, hash, fresh) {
+  async checkAdmission(value, request, agreement, hash2, fresh) {
     const envelope2 = value;
     if (!await verify(envelope2, this.#config.authorityKey)) throw new CoordinationError("invalid_admission", "Admission signature does not match the pinned authority. No execution was requested.");
     const a = envelope2.payload;
-    if (a.type !== "scopeblind.coordination.admission.v1" || a.room_id !== this.#config.roomId || a.run_id !== request.run_id || a.operation_id !== request.operation_id || a.agreement_digest !== agreement.digest || a.payload_hash !== hash || canonical(a.input) !== canonical(request.input) || a.destination !== request.input.destination || !["admitted", "held", "refused"].includes(a.decision)) {
+    if (a.type !== "scopeblind.coordination.admission.v1" || a.room_id !== this.#config.roomId || a.run_id !== request.run_id || a.operation_id !== request.operation_id || a.agreement_digest !== agreement.digest || a.payload_hash !== hash2 || canonical(a.input) !== canonical(request.input) || a.destination !== request.input.destination || !["admitted", "held", "refused"].includes(a.decision)) {
       throw new CoordinationError("invalid_admission", "Admission does not authorize these exact operation terms. No execution was requested.");
     }
     const issued = Date.parse(a.issued_at), expiry = Date.parse(a.expires_at);
@@ -39176,11 +39248,11 @@ var CoordinationClient = class {
     }
     return envelope2;
   }
-  async checkOutcome(value, request, hash) {
+  async checkOutcome(value, request, hash2) {
     const envelope2 = value;
     if (!await verify(envelope2, this.#config.authorityKey)) throw new CoordinationError("invalid_outcome", "Destination outcome signature does not match the pinned authority.");
     const o = envelope2.payload;
-    if (o.type !== "scopeblind.coordination.outcome.v1" || o.room_id !== this.#config.roomId || o.run_id !== request.run_id || o.operation_id !== request.operation_id || o.payload_hash !== hash || o.amount_minor !== request.input.amount_minor || o.destination !== request.input.destination || !["confirmed", "failed", "unknown"].includes(o.status) || o.observed_by !== "sandbox-ledger" && !(o.status === "unknown" && o.observed_by === "gateway-report") || !Number.isFinite(Date.parse(o.issued_at)) || Date.parse(o.issued_at) > Date.now() + 3e4 || o.status === "confirmed" && !o.transaction_id) {
+    if (o.type !== "scopeblind.coordination.outcome.v1" || o.room_id !== this.#config.roomId || o.run_id !== request.run_id || o.operation_id !== request.operation_id || o.payload_hash !== hash2 || o.amount_minor !== request.input.amount_minor || o.destination !== request.input.destination || !["confirmed", "failed", "unknown"].includes(o.status) || o.observed_by !== "sandbox-ledger" && !(o.status === "unknown" && o.observed_by === "gateway-report") || !Number.isFinite(Date.parse(o.issued_at)) || Date.parse(o.issued_at) > Date.now() + 3e4 || o.status === "confirmed" && !o.transaction_id) {
       throw new CoordinationError("invalid_outcome", "Destination outcome does not establish the result of these exact operation terms.");
     }
     return envelope2;
@@ -39191,13 +39263,13 @@ var CoordinationClient = class {
     const operationId = payment.operation_id;
     const room = await this.room();
     const request = { operation_id: operationId, run_id: room.run_id, tool: "ledger.pay", input };
-    const hash = await payloadHash(input);
+    const hash2 = await payloadHash(input);
     const response = await this.#transport.post("admit", { operation: request });
     const receipt = response.operation?.receipt;
-    const admission = await this.checkAdmission(response.admission, request, room.agreement, hash, !receipt);
+    const admission = await this.checkAdmission(response.admission, request, room.agreement, hash2, !receipt);
     if (response.decision !== admission.payload.decision) throw new CoordinationError("invalid_admission", "Admission response contradicts its signed decision. No execution was requested.");
     if (receipt) {
-      const outcome = await this.checkOutcome(receipt, request, hash);
+      const outcome = await this.checkOutcome(receipt, request, hash2);
       if (outcome.payload.status === "confirmed" && admission.payload.decision !== "admitted") {
         throw new CoordinationError("invalid_outcome", "A confirmed outcome contradicts the signed admission decision. No new execution was requested.");
       }
@@ -39205,14 +39277,14 @@ var CoordinationClient = class {
         return { operation_id: operationId, status: "unknown", reason: outcome.payload.note || "A gateway reported an unknown outcome. Authority remains reserved; no new execution was requested.", admission, outcome, replay: true };
       }
       if (outcome.payload.status !== "unknown") return { operation_id: operationId, status: outcome.payload.status, reason: outcome.payload.note || "Previously observed destination outcome.", admission, outcome, replay: true };
-      await this.checkAdmission(response.admission, request, room.agreement, hash, true);
+      await this.checkAdmission(response.admission, request, room.agreement, hash2, true);
     }
     if (admission.payload.decision !== "admitted") {
       return { operation_id: operationId, status: admission.payload.decision, reason: admission.payload.reason, admission };
     }
     try {
       const execution = await this.#transport.post("execute", { operation_id: operationId });
-      const outcome = await this.checkOutcome(execution.outcome, request, hash);
+      const outcome = await this.checkOutcome(execution.outcome, request, hash2);
       return { operation_id: operationId, status: outcome.payload.status, reason: outcome.payload.note || "Signed sample-ledger outcome.", admission, outcome, replay: execution.replay === true };
     } catch {
       return { operation_id: operationId, status: "unknown", reason: "Execution was requested, but its outcome could not be verified. Retain this operation_id and inspect or retry the same operation to reconcile; do not create a replacement payment.", admission };
@@ -39349,9 +39421,9 @@ function jcs(value) {
   if (typeof value === "string") return JSON.stringify(value);
   if (Array.isArray(value))
     return "[" + value.map(jcs).join(",") + "]";
-  const obj = value;
-  const keys2 = Object.keys(obj).sort();
-  return "{" + keys2.map((k) => JSON.stringify(k) + ":" + jcs(obj[k])).join(",") + "}";
+  const obj4 = value;
+  const keys2 = Object.keys(obj4).sort();
+  return "{" + keys2.map((k) => JSON.stringify(k) + ":" + jcs(obj4[k])).join(",") + "}";
 }
 
 // src/commitments/leaf.ts
@@ -39371,12 +39443,12 @@ function base64urlDecode(s) {
   return out;
 }
 function encodeLeaf(field) {
-  const obj = {
+  const obj4 = {
     name: field.name,
     salt: base64urlNoPad(field.salt),
     value: field.value
   };
-  const canonical2 = jcs(obj);
+  const canonical2 = jcs(obj4);
   return new TextEncoder().encode(canonical2);
 }
 function sortFields(fields) {
@@ -39430,12 +39502,12 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
   const committedFields = [];
   const cleartextFields = {};
   const openings = {};
-  for (const [name, value] of Object.entries(allFields)) {
-    if (committedFieldNames.includes(name)) {
+  for (const [name2, value] of Object.entries(allFields)) {
+    if (committedFieldNames.includes(name2)) {
       const salt = freshSalt();
-      committedFields.push({ name, salt, value });
+      committedFields.push({ name: name2, salt, value });
     } else {
-      cleartextFields[name] = value;
+      cleartextFields[name2] = value;
     }
   }
   let committedFieldsRoot = null;
@@ -39617,12 +39689,12 @@ function verifyCommittedReceiptSignature(receipt, publicKeyHex) {
   if (!signature || typeof signature !== "object") return null;
   const sig = signature;
   if (sig.alg !== "EdDSA" || typeof sig.sig !== "string") return null;
-  const key = publicKeyHex ?? (typeof sig.public_key === "string" ? sig.public_key : void 0);
-  if (!key) return null;
+  const key4 = publicKeyHex ?? (typeof sig.public_key === "string" ? sig.public_key : void 0);
+  if (!key4) return null;
   const signed2 = committedPayload(receipt);
   const sigBytes = /^[0-9a-f]+$/i.test(sig.sig) && sig.sig.length % 2 === 0 ? (0, import_utils4.hexToBytes)(sig.sig) : base64urlDecode(sig.sig);
   try {
-    return import_ed255192.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed2)), (0, import_utils4.hexToBytes)(key));
+    return import_ed255192.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed2)), (0, import_utils4.hexToBytes)(key4));
   } catch {
     return false;
   }
@@ -39637,9 +39709,9 @@ function createAuditBundle(opts) {
     throw new Error("Audit bundle requires at least one signed receipt");
   }
   const keyMap = /* @__PURE__ */ new Map();
-  for (const key of opts.signingKeys) {
-    if (!keyMap.has(key.kid)) {
-      keyMap.set(key.kid, key);
+  for (const key4 of opts.signingKeys) {
+    if (!keyMap.has(key4.kid)) {
+      keyMap.set(key4.kid, key4);
     }
   }
   let timeRange = opts.timeRange || null;
@@ -39690,8 +39762,8 @@ var import_node_fs9 = require("fs");
 function parseLogFile(path) {
   const raw = (0, import_node_fs9.readFileSync)(path, "utf-8");
   const entries = [];
-  for (const line of raw.split("\n")) {
-    const trimmed = line.trim();
+  for (const line3 of raw.split("\n")) {
+    const trimmed = line3.trim();
     if (!trimmed) continue;
     const jsonStr = trimmed.replace(/^\[PROTECT_MCP\]\s*/, "");
     try {
@@ -39824,8 +39896,8 @@ function generateReport(logPath, receiptPath, periodDays) {
   const entries = [];
   if ((0, import_node_fs10.existsSync)(logPath)) {
     const raw = (0, import_node_fs10.readFileSync)(logPath, "utf-8");
-    for (const line of raw.split("\n")) {
-      const trimmed = line.trim();
+    for (const line3 of raw.split("\n")) {
+      const trimmed = line3.trim();
       if (!trimmed) continue;
       const jsonStr = trimmed.replace(/^\[PROTECT_MCP\]\s*/, "");
       try {
@@ -39845,8 +39917,8 @@ function generateReport(logPath, receiptPath, periodDays) {
   let signerIssuer = "";
   if ((0, import_node_fs10.existsSync)(receiptPath)) {
     const raw = (0, import_node_fs10.readFileSync)(receiptPath, "utf-8");
-    for (const line of raw.split("\n")) {
-      const trimmed = line.trim();
+    for (const line3 of raw.split("\n")) {
+      const trimmed = line3.trim();
       if (!trimmed) continue;
       try {
         const parsed = JSON.parse(trimmed);
@@ -39892,8 +39964,8 @@ function generateReport(logPath, receiptPath, periodDays) {
       policyDigests.set(entry.policy_digest, new Date(entry.timestamp).toISOString());
     }
   }
-  const policyChanges = Array.from(policyDigests.entries()).map(([digest, at2]) => ({
-    at: at2,
+  const policyChanges = Array.from(policyDigests.entries()).map(([digest, at8]) => ({
+    at: at8,
     policy_digest: digest
   })).sort((a, b) => a.at.localeCompare(b.at));
   return {
@@ -40021,11 +40093,11 @@ function validateManifest(manifest) {
   if (!m.identity || typeof m.identity !== "object") {
     errors.push("identity is required");
   } else {
-    const id4 = m.identity;
-    if (typeof id4.public_key !== "string" || !id4.public_key.startsWith("ed25519:")) {
+    const id9 = m.identity;
+    if (typeof id9.public_key !== "string" || !id9.public_key.startsWith("ed25519:")) {
       errors.push("identity.public_key must be an ed25519: prefixed key");
     }
-    if (id4.key_algorithm !== "Ed25519") {
+    if (id9.key_algorithm !== "Ed25519") {
       errors.push('identity.key_algorithm must be "Ed25519"');
     }
   }
@@ -40251,21 +40323,21 @@ function toEgressSummary(envelope2, opts) {
   };
   return summary;
 }
-function inspectEgress(obj, opts = {}) {
+function inspectEgress(obj4, opts = {}) {
   const violations = [];
-  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return { safe: false, violations: [{ path: "$", reason: "not an egress summary object" }] };
-  const o = obj;
+  if (!obj4 || typeof obj4 !== "object" || Array.isArray(obj4)) return { safe: false, violations: [{ path: "$", reason: "not an egress summary object" }] };
+  const o = obj4;
   const allowed = opts.signed ? EGRESS_SIGNED_PAYLOAD_FIELDS : EGRESS_SUMMARY_FIELDS;
-  for (const [key, value] of Object.entries(o)) {
-    if (!allowed.has(key)) {
-      violations.push({ path: `$.${key}`, reason: "field is not allowed in an egress summary" });
+  for (const [key4, value] of Object.entries(o)) {
+    if (!allowed.has(key4)) {
+      violations.push({ path: `$.${key4}`, reason: "field is not allowed in an egress summary" });
       continue;
     }
     if (value === null || value === void 0) {
-      violations.push({ path: `$.${key}`, reason: "null and undefined are not permitted" });
+      violations.push({ path: `$.${key4}`, reason: "null and undefined are not permitted" });
       continue;
     }
-    if (typeof value === "object") violations.push({ path: `$.${key}`, reason: "nested objects and arrays are not permitted" });
+    if (typeof value === "object") violations.push({ path: `$.${key4}`, reason: "nested objects and arrays are not permitted" });
   }
   if (o.type !== EGRESS_SUMMARY_TYPE) violations.push({ path: "$.type", reason: "wrong egress summary type" });
   if (o.version !== EGRESS_SUMMARY_VERSION) violations.push({ path: "$.version", reason: "unsupported egress summary version" });
@@ -40480,8 +40552,8 @@ var ScopeBlindBridge = class {
         })
       });
       if (!res.ok) {
-        const text4 = await res.text().catch(() => "");
-        this.stats.last_error = `brass-issue: HTTP ${res.status} ${text4.slice(0, 160)}`;
+        const text7 = await res.text().catch(() => "");
+        this.stats.last_error = `brass-issue: HTTP ${res.status} ${text7.slice(0, 160)}`;
         return null;
       }
       const body = await res.json();
@@ -40515,9 +40587,9 @@ var ScopeBlindBridge = class {
   }
 };
 function parseConfiguredPseudonymKey(value) {
-  const key = Buffer.from(value, "base64url");
-  if (key.length !== 32) throw new Error("SCOPEBLIND_EGRESS_HMAC_KEY must be a base64url-encoded 32-byte key");
-  return key;
+  const key4 = Buffer.from(value, "base64url");
+  if (key4.length !== 32) throw new Error("SCOPEBLIND_EGRESS_HMAC_KEY must be a base64url-encoded 32-byte key");
+  return key4;
 }
 function loadOrCreatePseudonymKey(env, base, slug) {
   const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path6.join)((0, import_node_os.homedir)(), ".protect-mcp", "egress-keys");
@@ -40602,15 +40674,15 @@ var RULES = [
 ];
 function deriveCapabilities(tool, input) {
   const t = String(tool || "").toLowerCase();
-  let text4 = "";
+  let text7 = "";
   try {
-    text4 = canonicalJson(input).toLowerCase();
+    text7 = canonicalJson(input).toLowerCase();
   } catch {
   }
   const caps = /* @__PURE__ */ new Set();
   for (const r of RULES) {
     if (r.tool && r.tool.test(t)) caps.add(r.cap);
-    if (r.text && r.text.test(text4)) caps.add(r.cap);
+    if (r.text && r.text.test(text7)) caps.add(r.cap);
   }
   return Array.from(caps).sort();
 }
@@ -40835,8 +40907,8 @@ function mustIso(value, label) {
   if (!Number.isFinite(parsed)) throw new Error(`${label} must be an ISO-8601 timestamp`);
   return parsed;
 }
-function safePolicyFileName(name) {
-  return /^[A-Za-z0-9][A-Za-z0-9._-]*\.cedar$/.test(name) && !name.includes("..");
+function safePolicyFileName(name2) {
+  return /^[A-Za-z0-9][A-Za-z0-9._-]*\.cedar$/.test(name2) && !name2.includes("..");
 }
 function stableDigest(value) {
   return `sha256:${SHA256(Buffer.from(canonicalize(value), "utf-8"))}`;
@@ -40892,12 +40964,12 @@ function loadGateSigner(keyPath) {
   };
 }
 function snapshotFromDirectory(cedarDir, compiledAt) {
-  const entries = (0, import_node_fs12.readdirSync)(cedarDir, { encoding: "utf-8" }).filter((name) => name.endsWith(".cedar")).sort();
+  const entries = (0, import_node_fs12.readdirSync)(cedarDir, { encoding: "utf-8" }).filter((name2) => name2.endsWith(".cedar")).sort();
   if (entries.length === 0) throw new Error(`no Cedar policy files found in ${cedarDir}`);
-  const files = entries.map((name) => {
-    if (!safePolicyFileName(name)) throw new Error(`unsafe Cedar policy filename: ${name}`);
-    const content = (0, import_node_fs12.readFileSync)((0, import_node_path7.join)(cedarDir, name), "utf-8");
-    return { name, content, sha256: SHA256(Buffer.from(content, "utf-8")) };
+  const files = entries.map((name2) => {
+    if (!safePolicyFileName(name2)) throw new Error(`unsafe Cedar policy filename: ${name2}`);
+    const content2 = (0, import_node_fs12.readFileSync)((0, import_node_path7.join)(cedarDir, name2), "utf-8");
+    return { name: name2, content: content2, sha256: SHA256(Buffer.from(content2, "utf-8")) };
   });
   const digest = digestPolicyFiles("cedar", files).policy_digest;
   return { engine: "cedar", policy_digest: digest, files, compiled_at: compiledAt || nowIso() };
@@ -40942,18 +41014,18 @@ function writeAtomic(path, contents) {
 }
 function persistRegistry(cedarDir, registry) {
   registry.updated_at = nowIso();
-  const paths = mandatePaths(cedarDir);
-  writeAtomic(paths.registry, JSON.stringify(registry, null, 2) + "\n");
+  const paths2 = mandatePaths(cedarDir);
+  writeAtomic(paths2.registry, JSON.stringify(registry, null, 2) + "\n");
   const last = registry.history[registry.history.length - 1];
   if (last) {
-    (0, import_node_fs12.writeFileSync)(paths.auditLog, JSON.stringify(last) + "\n", { encoding: "utf-8", flag: "a", mode: 384 });
+    (0, import_node_fs12.writeFileSync)(paths2.auditLog, JSON.stringify(last) + "\n", { encoding: "utf-8", flag: "a", mode: 384 });
   }
 }
 function persistSnapshot(cedarDir, snapshot) {
-  const paths = mandatePaths(cedarDir);
-  (0, import_node_fs12.mkdirSync)(paths.snapshots, { recursive: true, mode: 448 });
-  const name = `${snapshot.policy_digest.replace(/^sha256:/, "")}.json`;
-  const output = (0, import_node_path7.join)(paths.snapshots, name);
+  const paths2 = mandatePaths(cedarDir);
+  (0, import_node_fs12.mkdirSync)(paths2.snapshots, { recursive: true, mode: 448 });
+  const name2 = `${snapshot.policy_digest.replace(/^sha256:/, "")}.json`;
+  const output = (0, import_node_path7.join)(paths2.snapshots, name2);
   if (!(0, import_node_fs12.existsSync)(output)) writeAtomic(output, JSON.stringify(snapshot, null, 2) + "\n");
 }
 function sourceStatements(snapshot) {
@@ -40964,23 +41036,23 @@ function sourceStatements(snapshot) {
   }
   return byFile;
 }
-function describePolicyDiff(before, after) {
-  assertSnapshot(before);
+function describePolicyDiff(before3, after) {
+  assertSnapshot(before3);
   assertSnapshot(after);
-  const beforeStatements = sourceStatements(before);
+  const beforeStatements = sourceStatements(before3);
   const afterStatements = sourceStatements(after);
   const names = [.../* @__PURE__ */ new Set([...beforeStatements.keys(), ...afterStatements.keys()])].sort();
   const added = [];
   const removed = [];
-  for (const name of names) {
-    const oldSet = beforeStatements.get(name) || /* @__PURE__ */ new Set();
-    const newSet = afterStatements.get(name) || /* @__PURE__ */ new Set();
-    for (const statement of newSet) if (!oldSet.has(statement)) added.push(`${name}: ${statement}`);
-    for (const statement of oldSet) if (!newSet.has(statement)) removed.push(`${name}: ${statement}`);
+  for (const name2 of names) {
+    const oldSet = beforeStatements.get(name2) || /* @__PURE__ */ new Set();
+    const newSet = afterStatements.get(name2) || /* @__PURE__ */ new Set();
+    for (const statement of newSet) if (!oldSet.has(statement)) added.push(`${name2}: ${statement}`);
+    for (const statement of oldSet) if (!newSet.has(statement)) removed.push(`${name2}: ${statement}`);
   }
-  const beforeFiles = new Map(before.files.map((file) => [file.name, file.sha256]));
+  const beforeFiles = new Map(before3.files.map((file) => [file.name, file.sha256]));
   const afterFiles = new Map(after.files.map((file) => [file.name, file.sha256]));
-  const changedFiles = names.filter((name) => beforeFiles.get(name) !== afterFiles.get(name)).map((name) => ({ name, before_sha256: beforeFiles.get(name) || null, after_sha256: afterFiles.get(name) || null }));
+  const changedFiles = names.filter((name2) => beforeFiles.get(name2) !== afterFiles.get(name2)).map((name2) => ({ name: name2, before_sha256: beforeFiles.get(name2) || null, after_sha256: afterFiles.get(name2) || null }));
   const plainEnglish = [];
   if (added.length) plainEnglish.push(`Adds ${added.length} executable policy statement${added.length === 1 ? "" : "s"}: the lines are shown below exactly as compiled.`);
   if (removed.length) plainEnglish.push(`Removes ${removed.length} executable policy statement${removed.length === 1 ? "" : "s"}: removed protections are shown below exactly as compiled.`);
@@ -41016,7 +41088,7 @@ function proposalUnsigned(input) {
 function approvalDigest(approval) {
   return stableDigest(approval);
 }
-function transition(registry, signer, event, headBefore, headAfter, fields = {}, at2 = nowIso()) {
+function transition(registry, signer, event, headBefore, headAfter, fields = {}, at8 = nowIso()) {
   const sequence = registry.history.length + 1;
   const body = {
     event,
@@ -41029,17 +41101,17 @@ function transition(registry, signer, event, headBefore, headAfter, fields = {},
   return {
     sequence,
     event,
-    occurred_at: at2,
+    occurred_at: at8,
     head_before: headBefore,
     head_after: headAfter,
     ...fields,
-    transition_receipt: signLifecycleEvent(signer, body, at2)
+    transition_receipt: signLifecycleEvent(signer, body, at8)
   };
 }
 function initializeMandateRegistry(input) {
   const { cedarDir, signer, controllers } = input;
-  const paths = mandatePaths(cedarDir);
-  if ((0, import_node_fs12.existsSync)(paths.registry)) throw new Error(`managed mandate registry already exists: ${paths.registry}`);
+  const paths2 = mandatePaths(cedarDir);
+  if ((0, import_node_fs12.existsSync)(paths2.registry)) throw new Error(`managed mandate registry already exists: ${paths2.registry}`);
   if (!controllers.length) throw new Error("at least one distinct controller is required before managing a mandate");
   const ids = /* @__PURE__ */ new Set();
   for (const controller of controllers) {
@@ -41202,11 +41274,11 @@ function verifyMandateRegistry(registry, now = /* @__PURE__ */ new Date()) {
       if (item.head_before !== currentHead) {
         return { valid: false, code: "transition_head_chain_invalid", message: "Policy transition heads are discontinuous." };
       }
-      const hash = stableDigest(item.transition_receipt);
+      const hash2 = stableDigest(item.transition_receipt);
       if (priorHash && payload.previous_transition_hash !== priorHash) {
         return { valid: false, code: "transition_chain_invalid", message: "Policy transition chain is discontinuous." };
       }
-      priorHash = hash;
+      priorHash = hash2;
       currentHead = item.head_after;
       const pExpiry = payload.expiry || null;
       const pProposalId = payload.proposal_id || null;
@@ -41295,7 +41367,7 @@ function installSnapshotAtomically(cedarDir, snapshot) {
     if ((0, import_node_fs12.existsSync)(backup) && !(0, import_node_fs12.existsSync)(target)) (0, import_node_fs12.renameSync)(backup, target);
   }
 }
-function addTransition(registry, signer, item, at2) {
+function addTransition(registry, signer, item, at8) {
   const previous = registry.history[registry.history.length - 1];
   const previousTransitionHash = previous ? stableDigest(previous.transition_receipt) : void 0;
   const trans = transition(registry, signer, item.event, item.head_before, item.head_after, {
@@ -41304,7 +41376,7 @@ function addTransition(registry, signer, item, at2) {
     ...item.policy_digest ? { policy_digest: item.policy_digest } : {},
     ...item.expiry ? { expiry: item.expiry } : {},
     ...previousTransitionHash ? { previous_transition_hash: previousTransitionHash } : {}
-  }, at2 || item.occurred_at);
+  }, at8 || item.occurred_at);
   registry.history.push(trans);
   return trans;
 }
@@ -41406,17 +41478,17 @@ function createWebAuthnPolicyChallenge(input) {
   persistRegistry(input.cedarDir, registry);
   return challenge;
 }
-function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at2) {
-  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at2)));
+function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at8) {
+  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at8)));
   if (!integrity.valid && integrity.code !== "active_grant_expired") throw new Error(`cannot activate against invalid registry: ${integrity.code}`);
   if (registry.active.policy_digest !== proposal.base_policy_digest) throw new Error("active policy changed after proposal; create a new proposal against the current head");
-  if (Date.parse(proposal.expires_at) <= Date.parse(at2)) throw new Error("proposal expired before approval; it cannot be activated");
+  if (Date.parse(proposal.expires_at) <= Date.parse(at8)) throw new Error("proposal expired before approval; it cannot be activated");
   const controller = registry.controllers.find((item) => item.id === approval.controller_id);
   if (!controller) throw new Error("approval controller is not registered");
   const error = approval.method === "ed25519" ? verifyDirectApproval(registry, proposal, approval) : verifyWebAuthnApproval(registry, proposal, approval);
   if (error) throw new Error(`controller approval rejected: ${error}`);
   if (controller.id === registry.gate.kid) throw new Error("the gate cannot approve its own policy proposal");
-  const before = registry.active.policy_digest;
+  const before3 = registry.active.policy_digest;
   const candidate = registry.policies[proposal.proposed_policy_digest] || proposal.candidate;
   assertSnapshot(candidate);
   installSnapshotAtomically(cedarDir, candidate);
@@ -41427,35 +41499,35 @@ function activateApprovedProposal(cedarDir, registry, signer, proposal, approval
     snapshot_digest: stableDigest(candidate),
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval)
-  }, at2);
+  }, at8);
   registry.policies[candidate.policy_digest] = candidate;
   registry.approvals[proposal.proposal_id] = approval;
   registry.active = {
     policy_digest: candidate.policy_digest,
-    baseline_policy_digest: before,
-    activated_at: at2,
+    baseline_policy_digest: before3,
+    activated_at: at8,
     expires_at: proposal.expires_at,
     proposal_id: proposal.proposal_id,
     compilation_receipt: compilationReceipt
   };
   addTransition(registry, signer, {
     event: "proposal_approved",
-    occurred_at: at2,
-    head_before: before,
-    head_after: before,
+    occurred_at: at8,
+    head_before: before3,
+    head_after: before3,
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval)
-  }, at2);
+  }, at8);
   addTransition(registry, signer, {
     event: "policy_activated",
-    occurred_at: at2,
-    head_before: before,
+    occurred_at: at8,
+    head_before: before3,
     head_after: candidate.policy_digest,
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval),
     policy_digest: candidate.policy_digest,
     expiry: proposal.expires_at
-  }, at2);
+  }, at8);
   delete registry.pending_webauthn[proposal.proposal_id];
   persistRegistry(cedarDir, registry);
   return registry;
@@ -41478,12 +41550,12 @@ function approvePolicyProposalWithWebAuthn(input) {
   if (pending.challenge.challenge !== policyApprovalChallenge(proposal, controller.id)) {
     throw new Error("pending WebAuthn challenge is not bound to this proposal");
   }
-  const at2 = nowIso(input.now);
+  const at8 = nowIso(input.now);
   const result = verifyApprovalAssertion(pending.challenge, input.assertion, controller.credential_public_key, {
     expectedOrigin: input.expectedOrigin,
     requireUserVerification: true,
     prevSignCount: controller.sign_count,
-    now: Date.parse(at2)
+    now: Date.parse(at8)
   });
   if (!result.valid || !result.userVerified) throw new Error(`WebAuthn approval rejected: ${result.reason || "user verification required"}`);
   controller.sign_count = result.signCount;
@@ -41495,9 +41567,9 @@ function approvePolicyProposalWithWebAuthn(input) {
     assertion: input.assertion,
     result,
     expected_origin: input.expectedOrigin,
-    approved_at: at2
+    approved_at: at8
   };
-  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at2);
+  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at8);
 }
 function refreshManagedMandate(input) {
   const registry = loadMandateRegistry(input.cedarDir);
@@ -41514,29 +41586,29 @@ function refreshManagedMandate(input) {
     if (!baseline) return { valid: false, code: "expiry_baseline_missing", message: "Expired policy has no baseline snapshot to restore." };
     try {
       installSnapshotAtomically(input.cedarDir, baseline);
-      const at2 = nowIso(now);
-      const before = registry.active.policy_digest;
+      const at8 = nowIso(now);
+      const before3 = registry.active.policy_digest;
       const compilationReceipt = signLifecycleEvent(input.signer, {
         event: "compiled",
         registry_id: registry.registry_id,
         policy_digest: baseline.policy_digest,
         snapshot_digest: stableDigest(baseline),
-        reverted_from: before
-      }, at2);
+        reverted_from: before3
+      }, at8);
       registry.active = {
         policy_digest: baseline.policy_digest,
         baseline_policy_digest: baseline.policy_digest,
-        activated_at: at2,
+        activated_at: at8,
         compilation_receipt: compilationReceipt
       };
       addTransition(registry, input.signer, {
         event: "policy_expired_reverted",
-        occurred_at: at2,
-        head_before: before,
+        occurred_at: at8,
+        head_before: before3,
         head_after: baseline.policy_digest,
         policy_digest: baseline.policy_digest,
         expiry: savedExpiry
-      }, at2);
+      }, at8);
       persistRegistry(input.cedarDir, registry);
       return { valid: true, registry, expired_reverted: true };
     } catch (error) {
@@ -41630,13 +41702,13 @@ function exportMandateDisciplineRecord(registry, now) {
   };
 }
 function verifyMandateLifecycleExport(registry, expectedPolicy, now) {
-  const status = verifyMandateRegistry(registry, now);
-  if (!status.valid || !expectedPolicy) return status;
+  const status2 = verifyMandateRegistry(registry, now);
+  if (!status2.valid || !expectedPolicy) return status2;
   const snapshot = registry.policies[registry.active.policy_digest];
   if (!snapshot) return { valid: false, code: "active_snapshot_missing", message: "The active snapshot is absent." };
   const bundled = digestPolicyFiles("cedar", expectedPolicy.files.map((file) => ({ name: file.name, content: file.content }))).policy_digest;
   if (bundled !== snapshot.policy_digest) return { valid: false, code: "export_policy_mismatch", message: "The exported policy bundle does not match the active lifecycle head." };
-  return status;
+  return status2;
 }
 
 // src/hook-server.ts
@@ -41671,26 +41743,26 @@ function detectSwarmContext() {
   };
 }
 function computePayloadDigest(input) {
-  const content = typeof input === "string" ? input : JSON.stringify(input || {});
-  const size = Buffer.byteLength(content, "utf-8");
+  const content2 = typeof input === "string" ? input : JSON.stringify(input || {});
+  const size = Buffer.byteLength(content2, "utf-8");
   if (size <= PAYLOAD_HASH_THRESHOLD) {
     return void 0;
   }
   return {
-    input_hash: (0, import_node_crypto10.createHash)("sha256").update(content).digest("hex"),
+    input_hash: (0, import_node_crypto10.createHash)("sha256").update(content2).digest("hex"),
     input_size: size,
     truncated: true,
-    preview: content.slice(0, 256)
+    preview: content2.slice(0, 256)
   };
 }
 function computeOutputDigest(output) {
-  const content = typeof output === "string" ? output : JSON.stringify(output || {});
-  const size = Buffer.byteLength(content, "utf-8");
+  const content2 = typeof output === "string" ? output : JSON.stringify(output || {});
+  const size = Buffer.byteLength(content2, "utf-8");
   if (size <= PAYLOAD_HASH_THRESHOLD) {
     return void 0;
   }
   return {
-    output_hash: (0, import_node_crypto10.createHash)("sha256").update(content).digest("hex"),
+    output_hash: (0, import_node_crypto10.createHash)("sha256").update(content2).digest("hex"),
     output_size: size
   };
 }
@@ -41935,8 +42007,8 @@ async function handlePreToolUse(input, state) {
     if (toolPolicy.rate_limit) {
       try {
         const limit = parseRateLimit(toolPolicy.rate_limit);
-        const key = `tool:${toolName}:hook`;
-        const { allowed, remaining } = checkRateLimit(key, limit, state.rateLimitStore);
+        const key4 = `tool:${toolName}:hook`;
+        const { allowed, remaining } = checkRateLimit(key4, limit, state.rateLimitStore);
         if (!allowed) {
           const hookLatency2 = Date.now() - hookStart;
           emitDecisionLog(state, {
@@ -42995,8 +43067,8 @@ var SNAKE_TO_CAMEL_MAP = {
 };
 function normalizeHookInput(raw) {
   const result = {};
-  for (const [key, value] of Object.entries(raw)) {
-    const camelKey = SNAKE_TO_CAMEL_MAP[key] || key;
+  for (const [key4, value] of Object.entries(raw)) {
+    const camelKey = SNAKE_TO_CAMEL_MAP[key4] || key4;
     result[camelKey] = value;
   }
   if (raw.source !== void 0 && raw.hook_event_name === "ConfigChange" && !raw.config_source) {
@@ -43347,10 +43419,10 @@ function jsonSchemaToCedarType(schema, namespace, path) {
     // Default to Set<String> for untyped arrays
     case "object":
       if (schema.properties && Object.keys(schema.properties).length > 0) {
-        const fields = Object.entries(schema.properties).map(([key, prop]) => {
-          const cedarType = jsonSchemaToCedarType(prop, namespace, path + "_" + sanitizeIdentifier(key));
-          const isRequired = schema.required?.includes(key) ?? false;
-          return `    "${sanitizeIdentifier(key)}": ${cedarType}${isRequired ? "" : "?"}`;
+        const fields = Object.entries(schema.properties).map(([key4, prop]) => {
+          const cedarType = jsonSchemaToCedarType(prop, namespace, path + "_" + sanitizeIdentifier(key4));
+          const isRequired = schema.required?.includes(key4) ?? false;
+          return `    "${sanitizeIdentifier(key4)}": ${cedarType}${isRequired ? "" : "?"}`;
         });
         return `{
 ${fields.join(",\n")}
@@ -43362,8 +43434,8 @@ ${fields.join(",\n")}
       return "String";
   }
 }
-function sanitizeIdentifier(name) {
-  return name.replace(/[^a-zA-Z0-9_]/g, "_").replace(/^(\d)/, "_$1");
+function sanitizeIdentifier(name2) {
+  return name2.replace(/[^a-zA-Z0-9_]/g, "_").replace(/^(\d)/, "_$1");
 }
 function cedarActionId(toolName) {
   if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(toolName)) {
@@ -43388,10 +43460,10 @@ function generateCedarSchema(tools, config = {}) {
     const actionName = cedarActionId(tool.name);
     const inputTypeName = `${sanitizeIdentifier(tool.name)}_Input`;
     if (tool.inputSchema?.properties && Object.keys(tool.inputSchema.properties).length > 0) {
-      const fields = Object.entries(tool.inputSchema.properties).map(([key, prop]) => {
-        const cedarType = jsonSchemaToCedarType(prop, ns, sanitizeIdentifier(tool.name) + "_" + sanitizeIdentifier(key));
-        const isRequired = tool.inputSchema?.required?.includes(key) ?? false;
-        return `    "${sanitizeIdentifier(key)}": ${cedarType}${isRequired ? "" : "?"}`;
+      const fields = Object.entries(tool.inputSchema.properties).map(([key4, prop]) => {
+        const cedarType = jsonSchemaToCedarType(prop, ns, sanitizeIdentifier(tool.name) + "_" + sanitizeIdentifier(key4));
+        const isRequired = tool.inputSchema?.required?.includes(key4) ?? false;
+        return `    "${sanitizeIdentifier(key4)}": ${cedarType}${isRequired ? "" : "?"}`;
       });
       inputTypeDeclarations.push(
         `  // Input type for tool: ${tool.name}` + (tool.description ? `
@@ -43493,10 +43565,10 @@ function buildSchemaJson(tools, namespace, config) {
     }
     if (tool.inputSchema?.properties) {
       const inputAttrs = {};
-      for (const [key, prop] of Object.entries(tool.inputSchema.properties)) {
-        inputAttrs[sanitizeIdentifier(key)] = {
+      for (const [key4, prop] of Object.entries(tool.inputSchema.properties)) {
+        inputAttrs[sanitizeIdentifier(key4)] = {
           type: jsonSchemaToSchemaJsonType(prop),
-          required: tool.inputSchema.required?.includes(key) ?? false
+          required: tool.inputSchema.required?.includes(key4) ?? false
         };
       }
       contextAttrs["input"] = {
@@ -43590,7 +43662,7 @@ function generateSchemaStub(namespace = "ScopeBlind") {
 }
 
 // src/policy-packs.ts
-var header = (id4, description) => `// ScopeBlind protect-mcp policy pack: ${id4}
+var header = (id9, description) => `// ScopeBlind protect-mcp policy pack: ${id9}
 // ${description}
 // Start in shadow mode, review receipts, then run with --enforce.
 
@@ -43810,8 +43882,8 @@ var POLICY_PACKS = [
     files: [{ path: "finance-mandate-safe.cedar", contents: financeMandateSafe }]
   }
 ];
-function getPolicyPack(id4) {
-  return POLICY_PACKS.find((pack) => pack.id === id4);
+function getPolicyPack(id9) {
+  return POLICY_PACKS.find((pack) => pack.id === id9);
 }
 function policyPackIds() {
   return POLICY_PACKS.map((pack) => pack.id);
@@ -44406,8 +44478,8 @@ when { context.tool == "nautilus.strategy.deploy" && context.strategy_pack_signe
 function connectorPilotIds() {
   return CONNECTOR_PILOTS.map((pilot) => pilot.id);
 }
-function getConnectorPilot(id4) {
-  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id4);
+function getConnectorPilot(id9) {
+  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id9);
 }
 function connectorDirectory(dir) {
   return (0, import_node_path9.join)(dir, ".protect-mcp", "connectors");
@@ -44415,9 +44487,9 @@ function connectorDirectory(dir) {
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
   (0, import_node_fs14.mkdirSync)(directory, { recursive: true });
-  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id4) => {
-    const pilot = getConnectorPilot(id4);
-    if (!pilot) throw new Error(`Unknown connector pilot: ${id4}`);
+  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id9) => {
+    const pilot = getConnectorPilot(id9);
+    if (!pilot) throw new Error(`Unknown connector pilot: ${id9}`);
     return pilot;
   }) : CONNECTOR_PILOTS;
   const written = [];
@@ -44445,28 +44517,28 @@ function writeConnectorPilots(opts) {
   return { written, pilots: selected, directory };
 }
 function connectorArtifactPath(directory, relativePath) {
-  const clean = (0, import_node_path9.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
-  if (clean.startsWith("/") || clean.includes("..")) {
+  const clean2 = (0, import_node_path9.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
+  if (clean2.startsWith("/") || clean2.includes("..")) {
     throw new Error(`Unsafe connector artifact path: ${relativePath}`);
   }
-  return (0, import_node_path9.join)(directory, clean);
+  return (0, import_node_path9.join)(directory, clean2);
 }
 function readInstalledConnectorPilots(dir) {
   const directory = connectorDirectory(dir);
   if (!(0, import_node_fs14.existsSync)(directory)) return [];
-  return (0, import_node_fs14.readdirSync)(directory).filter((name) => name.endsWith(".json")).map((name) => {
-    const configPath = (0, import_node_path9.join)(directory, name);
+  return (0, import_node_fs14.readdirSync)(directory).filter((name2) => name2.endsWith(".json")).map((name2) => {
+    const configPath = (0, import_node_path9.join)(directory, name2);
     try {
       const parsed = JSON.parse((0, import_node_fs14.readFileSync)(configPath, "utf-8"));
-      const id4 = String(parsed.id || name.replace(/\.json$/, ""));
-      const pilot = getConnectorPilot(id4);
+      const id9 = String(parsed.id || name2.replace(/\.json$/, ""));
+      const pilot = getConnectorPilot(id9);
       return {
-        id: id4,
-        name: String(parsed.name || pilot?.name || id4),
+        id: id9,
+        name: String(parsed.name || pilot?.name || id9),
         category: String(parsed.category || pilot?.category || "unknown"),
         status: String(parsed.status || parsed.type || "installed"),
         config_path: configPath,
-        policy_path: (0, import_node_path9.join)(directory, `${id4}.cedar`)
+        policy_path: (0, import_node_path9.join)(directory, `${id9}.cedar`)
       };
     } catch {
       return null;
@@ -44580,8 +44652,8 @@ async function verifyRekorAnchor(logIndex, expectedHash) {
   let receiptHashMatch = false;
   try {
     const bodyJson = JSON.parse(Buffer.from(data.body, "base64").toString());
-    const hash = bodyJson?.spec?.data?.hash?.value;
-    receiptHashMatch = hash === expectedHash;
+    const hash2 = bodyJson?.spec?.data?.hash?.value;
+    receiptHashMatch = hash2 === expectedHash;
   } catch {
   }
   return {
@@ -44618,14 +44690,14 @@ function redactFields(receipt, fieldsToRedact) {
     let parent = null;
     let lastKey = "";
     for (let i = 0; i < parts.length; i++) {
-      const key = parts[i];
+      const key4 = parts[i];
       if (i === parts.length - 1) {
-        if (key in current) {
-          const originalValue = current[key];
+        if (key4 in current) {
+          const originalValue = current[key4];
           const salt = (0, import_node_crypto12.randomBytes)(16).toString("hex");
           const commitment = computeCommitment(salt, originalValue);
           salts.push({ field: fieldPath, salt, originalValue });
-          current[key] = `sha256(salt + ${typeof originalValue === "string" ? "..." : JSON.stringify(originalValue).slice(0, 20) + "..."})`;
+          current[key4] = `sha256(salt + ${typeof originalValue === "string" ? "..." : JSON.stringify(originalValue).slice(0, 20) + "..."})`;
           redactedFields.push(fieldPath);
           if (!redacted._commitments) {
             redacted._commitments = {};
@@ -44633,10 +44705,10 @@ function redactFields(receipt, fieldsToRedact) {
           redacted._commitments[fieldPath] = commitment;
         }
       } else {
-        if (typeof current[key] === "object" && current[key] !== null) {
+        if (typeof current[key4] === "object" && current[key4] !== null) {
           parent = current;
-          lastKey = key;
-          current = current[key];
+          lastKey = key4;
+          current = current[key4];
         } else {
           break;
         }
@@ -44654,11 +44726,11 @@ function revealField(redactedReceipt, salts, fieldPath) {
   const parts = fieldPath.split(".");
   let current = revealed;
   for (let i = 0; i < parts.length; i++) {
-    const key = parts[i];
+    const key4 = parts[i];
     if (i === parts.length - 1) {
-      current[key] = salt.originalValue;
+      current[key4] = salt.originalValue;
     } else {
-      current = current[key];
+      current = current[key4];
     }
   }
   return revealed;
@@ -44696,8 +44768,8 @@ function computeCommitment(salt, value) {
   const serialized = typeof value === "string" ? value : JSON.stringify(value);
   return (0, import_node_crypto12.createHash)("sha256").update(salt + serialized).digest("hex");
 }
-function hashObject(obj) {
-  const canonical2 = JSON.stringify(obj, Object.keys(obj).sort());
+function hashObject(obj4) {
+  const canonical2 = JSON.stringify(obj4, Object.keys(obj4).sort());
   return (0, import_node_crypto12.createHash)("sha256").update(canonical2).digest("hex");
 }
 
@@ -44725,7 +44797,7 @@ function receiptsToHFRows(receipts) {
     };
   });
 }
-function generateHFMetadata(rows, name) {
+function generateHFMetadata(rows, name2) {
   const types = {};
   const decisions = {};
   const agents = /* @__PURE__ */ new Set();
@@ -44742,7 +44814,7 @@ function generateHFMetadata(rows, name) {
     if (t > maxTime) maxTime = t;
   }
   return {
-    name: name || "scopeblind-acta-receipts",
+    name: name2 || "scopeblind-acta-receipts",
     description: "Cryptographically signed decision receipts from AI agent tool calls. Each row is an Ed25519-signed receipt capturing a machine decision, its causal context, and policy evaluation result. Produced by protect-mcp and verified with @veritasacta/verify.",
     num_rows: rows.length,
     type_distribution: types,
@@ -44900,11 +44972,11 @@ function receiptToVP(receipt, issuerPublicKey) {
 }
 function base58btcEncode(buffer) {
   const ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-  let num = BigInt("0x" + buffer.toString("hex"));
+  let num3 = BigInt("0x" + buffer.toString("hex"));
   let result = "";
-  while (num > 0n) {
-    result = ALPHABET[Number(num % 58n)] + result;
-    num = num / 58n;
+  while (num3 > 0n) {
+    result = ALPHABET[Number(num3 % 58n)] + result;
+    num3 = num3 / 58n;
   }
   for (const byte of buffer) {
     if (byte === 0) result = "1" + result;
@@ -45014,21 +45086,21 @@ async function createE2BSandbox(config) {
 }
 async function createDockerSandbox(config) {
   const { execSync } = await import("child_process");
-  const { randomUUID: randomUUID5 } = await import("crypto");
-  const id4 = `scopeblind-sandbox-${randomUUID5().slice(0, 8)}`;
+  const { randomUUID: randomUUID6 } = await import("crypto");
+  const id9 = `scopeblind-sandbox-${randomUUID6().slice(0, 8)}`;
   const image = config.template.includes(":") ? config.template : `node:${config.template.replace("node-", "")}`;
   const memoryFlag = config.memoryMB ? `--memory=${config.memoryMB}m` : "";
   const timeout = config.timeoutSeconds || 300;
   try {
     execSync(
-      `docker run -d --name ${id4} ${memoryFlag} --network=none --stop-timeout=${timeout} ${image} sleep ${timeout}`,
+      `docker run -d --name ${id9} ${memoryFlag} --network=none --stop-timeout=${timeout} ${image} sleep ${timeout}`,
       { stdio: "pipe" }
     );
   } catch (err) {
     throw new Error(`Docker sandbox creation failed: ${err instanceof Error ? err.message : err}`);
   }
   return {
-    id: id4,
+    id: id9,
     runtime: "docker",
     createdAt: (/* @__PURE__ */ new Date()).toISOString(),
     status: "running",
@@ -45496,10 +45568,10 @@ var ReceiptPropagator = class {
   traceChain(receiptId) {
     const chain = [];
     const visited = /* @__PURE__ */ new Set();
-    const walk = (id4) => {
-      if (visited.has(id4)) return;
-      visited.add(id4);
-      const receipt = this.receipts.get(id4);
+    const walk = (id9) => {
+      if (visited.has(id9)) return;
+      visited.add(id9);
+      const receipt = this.receipts.get(id9);
       if (!receipt) return;
       for (const parentId of receipt.parent_receipts) {
         walk(parentId);
@@ -45601,14 +45673,14 @@ var ConfidentialGate = class {
       }
     }
     if (this.config.expected_measurements) {
-      for (const [key, expected] of Object.entries(this.config.expected_measurements)) {
-        const actual = doc.measurements[key];
+      for (const [key4, expected] of Object.entries(this.config.expected_measurements)) {
+        const actual = doc.measurements[key4];
         if (actual !== expected) {
           return {
             accepted: false,
             tier: "signed",
             provider: doc.provider,
-            reason: `Measurement mismatch: ${key} expected ${expected}, got ${actual || "missing"}`
+            reason: `Measurement mismatch: ${key4} expected ${expected}, got ${actual || "missing"}`
           };
         }
       }
@@ -45828,8 +45900,8 @@ Contents: Hello from protect-mcp demo server!`;
 var isMainModule = /demo-server\.(js|cjs|mjs|ts)$/.test(process.argv[1] || "");
 if (isMainModule) {
   const rl = (0, import_node_readline2.createInterface)({ input: process.stdin, crlfDelay: Infinity });
-  rl.on("line", (line) => {
-    const trimmed = line.trim();
+  rl.on("line", (line3) => {
+    const trimmed = line3.trim();
     if (!trimmed) return;
     try {
       const request = JSON.parse(trimmed);
@@ -45912,7 +45984,7 @@ var SNAPSHOT_RETENTION_MS = 30 * 24 * 60 * 60 * 1e3;
 var SNAPSHOT_MAX_BYTES = 512 * 1024;
 var exact3 = (v, names) => !!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join(",") === [...names].sort().join(",");
 async function verifyPublicSnapshot(value, authorityKey) {
-  const checks = [], add = (name, passed) => checks.push({ name, passed: passed === true });
+  const checks2 = [], add = (name2, passed) => checks2.push({ name: name2, passed: passed === true });
   try {
     const s = value, r = s.receipt.payload, a = s.authorization.payload, created = Date.parse(r.created_at), expires = Date.parse(r.expires_at);
     add("Recognized immutable snapshot", exact3(s, ["kind", "id", "created_at", "expires_at", "evidence", "receipt", "authorization"]) && ["negotiation", "result"].includes(s.kind) && /^[0-9a-f]{64}$/.test(s.id));
@@ -45931,7 +46003,88 @@ async function verifyPublicSnapshot(value, authorityKey) {
   } catch {
     add("Snapshot structure is complete", false);
   }
-  return { valid: checks.length > 0 && checks.every((c) => c.passed), checks, limitations: ["This is a historical snapshot of the exact shared export. It does not establish current task status, current approval, or payment authority.", "The public link permits reading only. Its hosted copy is available for 30 days; downloaded evidence can be retained separately."] };
+  return { valid: checks2.length > 0 && checks2.every((c) => c.passed), checks: checks2, limitations: ["This is a historical snapshot of the exact shared export. It does not establish current task status, current approval, or payment authority.", "The public link permits reading only. Its hosted copy is available for 30 days; downloaded evidence can be retained separately."] };
+}
+
+// src/coordination-repository-devices.ts
+var REPOSITORY_DEVICE_DOMAIN = "scopeblind.repository.device-authorization.v1\n";
+var REPOSITORY_DEVICE_ACTIONS = ["repository_device_link_request", "repository_device_link_status", "repository_device_authorize", "repository_device_confirm", "repository_device_list", "repository_device_revoke"];
+var REPOSITORY_DEVICE_PERMISSIONS = ["read", "claim", "review", "feedback", "accept"];
+var REPOSITORY_DEVICE_LINK_MS = 10 * 60 * 1e3;
+var REPOSITORY_DEVICE_MAX_MS = 7 * 864e5;
+var obj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var exact4 = (v, required, optional = []) => required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+var key = (v) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
+var id3 = (v) => typeof v === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(v);
+var name = (v) => typeof v === "string" && v === v.trim() && v.length > 0 && v.length <= 60 && !/[\u0000-\u001f\u007f]/.test(v);
+var time3 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v));
+var period = (v, max) => time3(v.issued_at) && time3(v.expires_at) && Date.parse(v.expires_at) > Date.parse(v.issued_at) && Date.parse(v.expires_at) - Date.parse(v.issued_at) <= max;
+var clean = (v) => obj(v) && exact4(v, ["payload", "signer", "digest", "signature"]);
+function validRepositoryDeviceLink(v) {
+  return obj(v) && exact4(v, ["type", "id", "workspace_id", "device_key", "name", "secret_hash", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.device-link.v1" && id3(v.id) && id3(v.workspace_id) && key(v.device_key) && key(v.secret_hash) && name(v.name) && period(v, REPOSITORY_DEVICE_LINK_MS);
+}
+function validRepositoryDeviceAuthorization(v) {
+  return obj(v) && exact4(v, ["type", "id", "link_id", "workspace_id", "workspace_digest", "member_id", "member_revision", "principal_key", "device_key", "device_name", "actions", "authority_key", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.device-authorization.v1" && [v.id, v.link_id, v.workspace_id, v.member_id].every(id3) && [v.workspace_digest, v.principal_key, v.device_key, v.authority_key].every(key) && (/* @__PURE__ */ new Set([v.principal_key, v.device_key, v.authority_key])).size === 3 && Number.isSafeInteger(v.member_revision) && Number(v.member_revision) > 0 && name(v.device_name) && Array.isArray(v.actions) && v.actions.includes("read") && v.actions.length <= REPOSITORY_DEVICE_PERMISSIONS.length && new Set(v.actions).size === v.actions.length && v.actions.every((a) => REPOSITORY_DEVICE_PERMISSIONS.includes(a)) && period(v, REPOSITORY_DEVICE_MAX_MS);
+}
+function validRepositoryDeviceConfirmation(v) {
+  return obj(v) && exact4(v, ["type", "authorization_digest", "workspace_id", "device_key", "issued_at"]) && v.type === "scopeblind.repository.device-confirmation.v1" && key(v.authorization_digest) && key(v.device_key) && id3(v.workspace_id) && time3(v.issued_at);
+}
+async function verifyRepositoryDeviceAuthorization(value) {
+  return clean(value) && validRepositoryDeviceAuthorization(value.payload) && await verify(value, value.payload.principal_key);
+}
+function repositoryDevicePreimage(payloadDigest, authorizationDigest) {
+  return REPOSITORY_DEVICE_DOMAIN + payloadDigest + "\n" + authorizationDigest;
+}
+function repositoryHumanPrincipal(value) {
+  return value.repository_authorization?.payload.principal_key ?? value.signer;
+}
+function sameRepositoryHumanIntent(left, right) {
+  if (!validRepositoryHumanEnvelope(left) || !validRepositoryHumanEnvelope(right)) return false;
+  const { repository_authorization_use: ignoredLeft, ...a } = left, { repository_authorization_use: ignoredRight, ...b } = right;
+  return canonical(a) === canonical(b);
+}
+function repositoryDevicePermission(action) {
+  if (["repository_workspace_list", "repository_workspace_get", "repository_workspace_inbox", "repository_workspace_task_get", "repository_get", "repository_export", "repository_review_get", "repository_review_export", "repository_collaboration_get", "repository_collaboration_export"].includes(action)) return "read";
+  if (action === "repository_workspace_claim") return "claim";
+  if (action === "repository_approve") return "review";
+  if (action === "repository_review_feedback") return "feedback";
+  if (action === "repository_accept") return "accept";
+  return null;
+}
+function repositoryHumanPermission(value) {
+  const p = value.payload, g = value.repository_authorization?.payload;
+  if (!obj(p) || !g || !time3(p.issued_at)) return null;
+  if (p.type === "scopeblind.coordination.request.v1") {
+    const action2 = typeof p.action === "string" ? repositoryDevicePermission(p.action) : null;
+    return action2 ? { action: action2, at: p.issued_at } : null;
+  }
+  const action = p.type === "scopeblind.repository.claim.v1" && p.reviewer_key === g.principal_key ? "claim" : ["scopeblind.repository.approval.v1", "scopeblind.repository.review-decision.v1"].includes(String(p.type)) && p.principal_key === g.principal_key ? "review" : p.type === "scopeblind.repository.acceptance.v1" && p.reviewer_key === g.principal_key ? "accept" : p.type === "scopeblind.repository.review-feedback.v1" && p.requester_key === g.principal_key && !p.mandate_digest ? "feedback" : null;
+  return action && id3(p.task_id) && key(p.task_digest) ? { action, at: p.issued_at } : null;
+}
+function validRepositoryHumanEnvelope(value) {
+  if (!obj(value)) return false;
+  if (!Object.hasOwn(value, "repository_authorization")) return clean(value);
+  return exact4(value, ["payload", "signer", "digest", "signature", "repository_authorization", "repository_authorization_signature"], ["repository_authorization_use"]);
+}
+async function verifyRepositoryHuman(value, principal, context) {
+  try {
+    if (!validRepositoryHumanEnvelope(value) || !key(principal)) return false;
+    if (!value.repository_authorization) return await verify(value, principal);
+    const authorization = value.repository_authorization, g = authorization.payload;
+    if (!await verifyRepositoryDeviceAuthorization(authorization) || g.authority_key !== context.authorityKey || g.principal_key !== principal || g.device_key !== value.signer || !await verify(value) || typeof value.repository_authorization_signature !== "string" || !/^[a-f0-9]{128}$/.test(value.repository_authorization_signature)) return false;
+    const publicKey = await crypto.subtle.importKey("raw", hexToBytes(value.signer), { name: "Ed25519" }, false, ["verify"]);
+    if (!await crypto.subtle.verify("Ed25519", publicKey, hexToBytes(value.repository_authorization_signature), new TextEncoder().encode(repositoryDevicePreimage(value.digest, authorization.digest)))) return false;
+    const permission = repositoryHumanPermission(value), p = value.payload;
+    if (!permission || !g.actions.includes(permission.action) || Date.parse(permission.at) < Date.parse(g.issued_at) || Date.parse(permission.at) >= Date.parse(g.expires_at)) return false;
+    if (p.expires_at !== void 0 && (!time3(p.expires_at) || Date.parse(p.expires_at) > Date.parse(g.expires_at))) return false;
+    if (context.task && (p.task_id !== context.task.payload.id || p.task_digest !== context.task.digest || context.task.payload.authority_key !== g.authority_key)) return false;
+    const use = value.repository_authorization_use;
+    if (!use) return !context.requireRecordedUse;
+    const u = use.payload;
+    return clean(use) && obj(u) && exact4(u, ["type", "authorization_digest", "workspace_id", "workspace_digest", "member_id", "member_revision", "principal_key", "device_key", "task_id", "task_digest", "payload_digest", "action", "recorded_at"]) && u.type === "scopeblind.repository.device-use.v1" && await verify(use, g.authority_key) && u.authorization_digest === authorization.digest && u.workspace_id === g.workspace_id && u.workspace_digest === g.workspace_digest && u.member_id === g.member_id && u.member_revision === g.member_revision && u.principal_key === g.principal_key && u.device_key === g.device_key && u.task_id === p.task_id && u.task_digest === p.task_digest && u.payload_digest === value.digest && u.action === permission.action && time3(u.recorded_at) && Date.parse(u.recorded_at) >= Date.parse(permission.at) && Date.parse(u.recorded_at) < Date.parse(g.expires_at);
+  } catch {
+    return false;
+  }
 }
 
 // src/coordination-repository.ts
@@ -45940,8 +46093,8 @@ var REPOSITORY_SHA = /^[0-9a-f]{40}$/;
 var REPOSITORY_ID = /^[A-Za-z0-9_-]{8,100}$/;
 var object2 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 var text2 = (v, n) => typeof v === "string" && v.length > 0 && v.length <= n && !/[\u0000-\u001f\u007f]/.test(v);
-var time3 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v));
-var exact4 = (v, required, optional = []) => required.every((k) => k in v) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+var time4 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v));
+var exact5 = (v, required, optional = []) => required.every((k) => k in v) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
 function repositoryPath(path) {
   return text2(path, 300) && !path.startsWith("/") && !path.endsWith("/") && !path.includes("\\") && !path.split("/").some((p) => !p || p === "." || p === ".." || p.toLowerCase() === ".git");
 }
@@ -45953,30 +46106,30 @@ function pathAllowed(path, allowed) {
   return allowed.some((rule) => rule.endsWith("/**") ? path.startsWith(rule.slice(0, -2)) : path === rule);
 }
 function validRepositoryTask(v) {
-  if (!object2(v) || !exact4(v, ["type", "id", "title", "repository", "pull_number", "base_branch", "owner_key", "receiver_key", "authority_key", "allowed_paths", "required_checks", "reviewer_secret_hash", "issued_at", "expires_at"])) return false;
-  return v.type === "scopeblind.repository.task.v1" && REPOSITORY_ID.test(String(v.id)) && text2(v.title, 140) && typeof v.repository === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v.repository) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every((x) => typeof x === "string" && REPOSITORY_HEX.test(x)) && v.owner_key !== v.receiver_key && v.owner_key !== v.authority_key && v.receiver_key !== v.authority_key && Array.isArray(v.allowed_paths) && v.allowed_paths.length > 0 && v.allowed_paths.length <= 12 && new Set(v.allowed_paths).size === v.allowed_paths.length && v.allowed_paths.every((p) => typeof p === "string" && repositoryPath(p.endsWith("/**") ? p.slice(0, -3) : p) && pathAllowed(p.endsWith("/**") ? p.slice(0, -2) + "placeholder" : p, [p])) && Array.isArray(v.required_checks) && v.required_checks.length > 0 && v.required_checks.length <= 12 && v.required_checks.every((c) => object2(c) && exact4(c, ["name", "app_id"]) && text2(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0) && new Set(v.required_checks.map((c) => canonical(c))).size === v.required_checks.length && time3(v.issued_at) && time3(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 7 * 864e5;
+  if (!object2(v) || !exact5(v, ["type", "id", "title", "repository", "pull_number", "base_branch", "owner_key", "receiver_key", "authority_key", "allowed_paths", "required_checks", "reviewer_secret_hash", "issued_at", "expires_at"])) return false;
+  return v.type === "scopeblind.repository.task.v1" && REPOSITORY_ID.test(String(v.id)) && text2(v.title, 140) && typeof v.repository === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v.repository) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every((x) => typeof x === "string" && REPOSITORY_HEX.test(x)) && v.owner_key !== v.receiver_key && v.owner_key !== v.authority_key && v.receiver_key !== v.authority_key && Array.isArray(v.allowed_paths) && v.allowed_paths.length > 0 && v.allowed_paths.length <= 12 && new Set(v.allowed_paths).size === v.allowed_paths.length && v.allowed_paths.every((p) => typeof p === "string" && repositoryPath(p.endsWith("/**") ? p.slice(0, -3) : p) && pathAllowed(p.endsWith("/**") ? p.slice(0, -2) + "placeholder" : p, [p])) && Array.isArray(v.required_checks) && v.required_checks.length > 0 && v.required_checks.length <= 12 && v.required_checks.every((c) => object2(c) && exact5(c, ["name", "app_id"]) && text2(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0) && new Set(v.required_checks.map((c) => canonical(c))).size === v.required_checks.length && time4(v.issued_at) && time4(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 7 * 864e5;
 }
 function validRepositoryProposal(v, task, taskDigest) {
-  if (!object2(v) || !exact4(v, ["type", "id", "task_id", "task_digest", "repository_id", "base_ref", "head_ref", "base_sha", "head_sha", "merge_sha", "tree_sha", "files", "checks", "observed_at"])) return false;
-  if (v.type !== "scopeblind.repository.proposal.v1" || !REPOSITORY_ID.test(String(v.id)) || v.task_id !== task.id || v.task_digest !== taskDigest || !text2(v.repository_id, 100) || v.base_ref !== `refs/heads/${task.base_branch}` || typeof v.head_ref !== "string" || !v.head_ref.startsWith("refs/heads/") || !repositoryBranch(v.head_ref.slice(11)) || v.head_ref === v.base_ref || ![v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every((s) => typeof s === "string" && REPOSITORY_SHA.test(s)) || v.base_sha === v.head_sha || v.merge_sha === v.base_sha || !time3(v.observed_at)) return false;
-  if (!Array.isArray(v.files) || !v.files.length || v.files.length > 50 || new Set(v.files.map((f) => object2(f) ? f.path : null)).size !== v.files.length || !v.files.every((f) => object2(f) && exact4(f, ["path", "status", "mode", "additions", "deletions"], ["previous_path", "patch", "patch_truncated"]) && typeof f.path === "string" && pathAllowed(f.path, task.allowed_paths) && ["added", "modified", "removed", "renamed"].includes(String(f.status)) && ["100644", "100755"].includes(String(f.mode)) && Number.isSafeInteger(f.additions) && Number(f.additions) >= 0 && Number.isSafeInteger(f.deletions) && Number(f.deletions) >= 0 && (f.patch === void 0 || typeof f.patch === "string" && f.patch.length <= 400) && (f.patch_truncated === void 0 || f.patch_truncated === true) && (f.status === "renamed" ? typeof f.previous_path === "string" && pathAllowed(f.previous_path, task.allowed_paths) : f.previous_path === void 0))) return false;
-  return Array.isArray(v.checks) && v.checks.length === task.required_checks.length && v.checks.every((c) => object2(c) && exact4(c, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(c.id) && Number(c.id) > 0 && c.head_sha === v.head_sha && c.conclusion === "success" && task.required_checks.some((r) => r.name === c.name && r.app_id === c.app_id)) && new Set(v.checks.map((c) => `${c.name}:${c.app_id}`)).size === v.checks.length;
+  if (!object2(v) || !exact5(v, ["type", "id", "task_id", "task_digest", "repository_id", "base_ref", "head_ref", "base_sha", "head_sha", "merge_sha", "tree_sha", "files", "checks", "observed_at"])) return false;
+  if (v.type !== "scopeblind.repository.proposal.v1" || !REPOSITORY_ID.test(String(v.id)) || v.task_id !== task.id || v.task_digest !== taskDigest || !text2(v.repository_id, 100) || v.base_ref !== `refs/heads/${task.base_branch}` || typeof v.head_ref !== "string" || !v.head_ref.startsWith("refs/heads/") || !repositoryBranch(v.head_ref.slice(11)) || v.head_ref === v.base_ref || ![v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every((s) => typeof s === "string" && REPOSITORY_SHA.test(s)) || v.base_sha === v.head_sha || v.merge_sha === v.base_sha || !time4(v.observed_at)) return false;
+  if (!Array.isArray(v.files) || !v.files.length || v.files.length > 50 || new Set(v.files.map((f) => object2(f) ? f.path : null)).size !== v.files.length || !v.files.every((f) => object2(f) && exact5(f, ["path", "status", "mode", "additions", "deletions"], ["previous_path", "patch", "patch_truncated"]) && typeof f.path === "string" && pathAllowed(f.path, task.allowed_paths) && ["added", "modified", "removed", "renamed"].includes(String(f.status)) && ["100644", "100755"].includes(String(f.mode)) && Number.isSafeInteger(f.additions) && Number(f.additions) >= 0 && Number.isSafeInteger(f.deletions) && Number(f.deletions) >= 0 && (f.patch === void 0 || typeof f.patch === "string" && f.patch.length <= 400) && (f.patch_truncated === void 0 || f.patch_truncated === true) && (f.status === "renamed" ? typeof f.previous_path === "string" && pathAllowed(f.previous_path, task.allowed_paths) : f.previous_path === void 0))) return false;
+  return Array.isArray(v.checks) && v.checks.length === task.required_checks.length && v.checks.every((c) => object2(c) && exact5(c, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(c.id) && Number(c.id) > 0 && c.head_sha === v.head_sha && c.conclusion === "success" && task.required_checks.some((r) => r.name === c.name && r.app_id === c.app_id)) && new Set(v.checks.map((c) => `${c.name}:${c.app_id}`)).size === v.checks.length;
 }
 async function repositorySnapshotDigest(p) {
-  const { id: id4, observed_at, ...snapshot } = p;
+  const { id: id9, observed_at, ...snapshot } = p;
   return sha256(canonical(snapshot));
 }
 function validRepositoryRecord(v, kind) {
   if (!object2(v) || v.type !== `scopeblind.repository.${kind}.v1` || !REPOSITORY_ID.test(String(v.task_id)) || !REPOSITORY_HEX.test(String(v.task_digest))) return false;
   const common = ["type", "task_id", "task_digest"];
-  if (kind === "claim") return exact4(v, [...common, "reviewer_key", "name", "issued_at"]) && REPOSITORY_HEX.test(String(v.reviewer_key)) && text2(v.name, 60) && time3(v.issued_at);
+  if (kind === "claim") return exact5(v, [...common, "reviewer_key", "name", "issued_at"]) && REPOSITORY_HEX.test(String(v.reviewer_key)) && text2(v.name, 60) && time4(v.issued_at);
   const note = (v2) => typeof v2 === "string" && v2.length <= 600;
-  if (kind === "approval") return exact4(v, [...common, "proposal_digest", "role", "principal_key", "decision", "issued_at", "expires_at", "note"]) && REPOSITORY_HEX.test(String(v.proposal_digest)) && REPOSITORY_HEX.test(String(v.principal_key)) && ["owner", "reviewer"].includes(String(v.role)) && ["approve", "reject"].includes(String(v.decision)) && time3(v.issued_at) && time3(v.expires_at) && note(v.note) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 9e5;
-  if (kind === "execution") return exact4(v, [...common, "operation_id", "receiver_attempt_id", "proposal_digest", "owner_approval_digest", "reviewer_approval_digest", "receiver_key", "action", "issued_at", "expires_at"]) && [v.operation_id, v.receiver_attempt_id].every((x) => REPOSITORY_ID.test(String(x))) && [v.proposal_digest, v.owner_approval_digest, v.reviewer_approval_digest, v.receiver_key].every((x) => REPOSITORY_HEX.test(String(x))) && v.action === "github.updateRefs" && time3(v.issued_at) && time3(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 12e4;
-  if (kind === "outcome") return exact4(v, [...common, "operation_id", "proposal_digest", "execution_digest", "status", "observed_base_sha", "readback", "observed_at", "note"], ["github_request_id"]) && REPOSITORY_ID.test(String(v.operation_id)) && [v.proposal_digest, v.execution_digest].every((x) => REPOSITORY_HEX.test(String(x))) && ["confirmed", "failed", "unknown"].includes(String(v.status)) && (v.observed_base_sha === null || REPOSITORY_SHA.test(String(v.observed_base_sha))) && ["exact_ref", "descendant_ref", "not_confirmed"].includes(String(v.readback)) && (v.status === "confirmed" ? v.readback !== "not_confirmed" && v.observed_base_sha !== null : v.readback === "not_confirmed") && time3(v.observed_at) && note(v.note) && (v.github_request_id === void 0 || text2(v.github_request_id, 200));
-  return exact4(v, [...common, "outcome_digest", "reviewer_key", "decision", "issued_at", "note"]) && [v.outcome_digest, v.reviewer_key].every((x) => REPOSITORY_HEX.test(String(x))) && ["accept", "request_changes"].includes(String(v.decision)) && time3(v.issued_at) && note(v.note);
+  if (kind === "approval") return exact5(v, [...common, "proposal_digest", "role", "principal_key", "decision", "issued_at", "expires_at", "note"]) && REPOSITORY_HEX.test(String(v.proposal_digest)) && REPOSITORY_HEX.test(String(v.principal_key)) && ["owner", "reviewer"].includes(String(v.role)) && ["approve", "reject"].includes(String(v.decision)) && time4(v.issued_at) && time4(v.expires_at) && note(v.note) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 9e5;
+  if (kind === "execution") return exact5(v, [...common, "operation_id", "receiver_attempt_id", "proposal_digest", "owner_approval_digest", "reviewer_approval_digest", "receiver_key", "action", "issued_at", "expires_at"]) && [v.operation_id, v.receiver_attempt_id].every((x) => REPOSITORY_ID.test(String(x))) && [v.proposal_digest, v.owner_approval_digest, v.reviewer_approval_digest, v.receiver_key].every((x) => REPOSITORY_HEX.test(String(x))) && v.action === "github.updateRefs" && time4(v.issued_at) && time4(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 12e4;
+  if (kind === "outcome") return exact5(v, [...common, "operation_id", "proposal_digest", "execution_digest", "status", "observed_base_sha", "readback", "observed_at", "note"], ["github_request_id"]) && REPOSITORY_ID.test(String(v.operation_id)) && [v.proposal_digest, v.execution_digest].every((x) => REPOSITORY_HEX.test(String(x))) && ["confirmed", "failed", "unknown"].includes(String(v.status)) && (v.observed_base_sha === null || REPOSITORY_SHA.test(String(v.observed_base_sha))) && ["exact_ref", "descendant_ref", "not_confirmed"].includes(String(v.readback)) && (v.status === "confirmed" ? v.readback !== "not_confirmed" && v.observed_base_sha !== null : v.readback === "not_confirmed") && time4(v.observed_at) && note(v.note) && (v.github_request_id === void 0 || text2(v.github_request_id, 200));
+  return exact5(v, [...common, "outcome_digest", "reviewer_key", "decision", "issued_at", "note"]) && [v.outcome_digest, v.reviewer_key].every((x) => REPOSITORY_HEX.test(String(x))) && ["accept", "request_changes"].includes(String(v.decision)) && time4(v.issued_at) && note(v.note);
 }
-var validRepositoryEnvelope = (e) => object2(e) && exact4(e, ["payload", "signer", "digest", "signature"]);
+var validRepositoryEnvelope = (e) => object2(e) && exact5(e, ["payload", "signer", "digest", "signature"]);
 async function verifyRepositoryEvidence(value, pin) {
   const pins = typeof pin === "string" ? { authority_key: pin } : pin ?? { authority_key: value?.state?.payload?.task?.payload?.authority_key };
   const errors = [];
@@ -45986,15 +46139,15 @@ async function verifyRepositoryEvidence(value, pin) {
   };
   try {
     const e = value, s = e.state?.payload, t = s?.task?.payload;
-    check(object2(e) && exact4(e, ["type", "state"]) && e.type === "scopeblind.repository.evidence.v1" && validRepositoryEnvelope(e.state) && !!s && s.type === "scopeblind.repository.state.v1" && exact4(s, ["type", "task", "reviewer", "proposal", "approvals", "execution", "outcome", "acceptance", "status", "revision", "observed_at"]) && Number.isSafeInteger(s.revision) && s.revision > 0 && time3(s.observed_at) && await verify(e.state, pins.authority_key), "Service state signature or shape is invalid");
+    check(object2(e) && exact5(e, ["type", "state"]) && e.type === "scopeblind.repository.evidence.v1" && validRepositoryEnvelope(e.state) && !!s && s.type === "scopeblind.repository.state.v1" && exact5(s, ["type", "task", "reviewer", "proposal", "approvals", "execution", "outcome", "acceptance", "status", "revision", "observed_at"]) && Number.isSafeInteger(s.revision) && s.revision > 0 && time4(s.observed_at) && await verify(e.state, pins.authority_key), "Service state signature or shape is invalid");
     check(validRepositoryEnvelope(s.task) && validRepositoryTask(t) && await verify(s.task, t.owner_key) && t.authority_key === pins.authority_key && (!pins.owner_key || pins.owner_key === t.owner_key) && (!pins.receiver_key || pins.receiver_key === t.receiver_key) && Date.parse(s.observed_at) >= Date.parse(t.issued_at), "Task or pinned owner/receiver is invalid");
     const reviewer = s.reviewer?.payload;
-    if (s.reviewer) check(validRepositoryEnvelope(s.reviewer) && validRepositoryRecord(reviewer, "claim") && reviewer.task_id === t.id && reviewer.task_digest === s.task.digest && ![t.owner_key, t.receiver_key, t.authority_key].includes(reviewer.reviewer_key) && await verify(s.reviewer, reviewer.reviewer_key) && (!pins.reviewer_key || pins.reviewer_key === reviewer.reviewer_key) && Date.parse(reviewer.issued_at) >= Date.parse(t.issued_at) && Date.parse(reviewer.issued_at) < Date.parse(t.expires_at), "Reviewer role is invalid");
+    if (s.reviewer) check(validRepositoryHumanEnvelope(s.reviewer) && validRepositoryRecord(reviewer, "claim") && reviewer.task_id === t.id && reviewer.task_digest === s.task.digest && ![t.owner_key, t.receiver_key, t.authority_key].includes(reviewer.reviewer_key) && await verifyRepositoryHuman(s.reviewer, reviewer.reviewer_key, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && (!pins.reviewer_key || pins.reviewer_key === reviewer.reviewer_key) && Date.parse(reviewer.issued_at) >= Date.parse(t.issued_at) && Date.parse(reviewer.issued_at) < Date.parse(t.expires_at), "Reviewer role is invalid");
     if (s.proposal) check(!!reviewer && validRepositoryEnvelope(s.proposal) && validRepositoryProposal(s.proposal.payload, t, s.task.digest) && await verify(s.proposal, t.receiver_key) && Date.parse(s.proposal.payload.observed_at) >= Date.parse(reviewer.issued_at) && Date.parse(s.proposal.payload.observed_at) < Date.parse(t.expires_at), "Repository snapshot is invalid");
     check(Array.isArray(s.approvals) && s.approvals.length <= 2 && new Set(s.approvals.map((a) => a.payload.role)).size === s.approvals.length, "Approval roles are invalid");
     for (const approval of s.approvals) {
-      const a = approval.payload, key = a.role === "owner" ? t.owner_key : reviewer?.reviewer_key;
-      check(!!s.proposal && validRepositoryEnvelope(approval) && validRepositoryRecord(a, "approval") && a.principal_key === key && a.task_id === t.id && a.task_digest === s.task.digest && a.proposal_digest === s.proposal.digest && await verify(approval, key) && Date.parse(a.issued_at) >= Date.parse(s.proposal.payload.observed_at) && Date.parse(a.expires_at) <= Date.parse(t.expires_at), "Exact proposal approval is invalid");
+      const a = approval.payload, key4 = a.role === "owner" ? t.owner_key : reviewer?.reviewer_key;
+      check(!!s.proposal && validRepositoryHumanEnvelope(approval) && validRepositoryRecord(a, "approval") && a.principal_key === key4 && a.task_id === t.id && a.task_digest === s.task.digest && a.proposal_digest === s.proposal.digest && await verifyRepositoryHuman(approval, key4, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && Date.parse(a.issued_at) >= Date.parse(s.proposal.payload.observed_at) && Date.parse(a.expires_at) <= Date.parse(t.expires_at), "Exact proposal approval is invalid");
     }
     if (s.execution) {
       const x = s.execution.payload, owner = s.approvals.find((a) => a.payload.role === "owner"), review = s.approvals.find((a) => a.payload.role === "reviewer");
@@ -46007,7 +46160,7 @@ async function verifyRepositoryEvidence(value, pin) {
     }
     if (s.acceptance) {
       const a = s.acceptance.payload;
-      check(s.outcome?.payload.status === "confirmed" && validRepositoryEnvelope(s.acceptance) && validRepositoryRecord(a, "acceptance") && a.task_id === t.id && a.task_digest === s.task.digest && a.outcome_digest === s.outcome.digest && a.reviewer_key === reviewer?.reviewer_key && await verify(s.acceptance, reviewer?.reviewer_key) && Date.parse(a.issued_at) >= Date.parse(s.outcome.payload.observed_at), "Recipient acceptance is invalid");
+      check(s.outcome?.payload.status === "confirmed" && validRepositoryHumanEnvelope(s.acceptance) && validRepositoryRecord(a, "acceptance") && a.task_id === t.id && a.task_digest === s.task.digest && a.outcome_digest === s.outcome.digest && a.reviewer_key === reviewer?.reviewer_key && await verifyRepositoryHuman(s.acceptance, reviewer?.reviewer_key, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && Date.parse(a.issued_at) >= Date.parse(s.outcome.payload.observed_at), "Recipient acceptance is invalid");
       accepted = a.decision === "accept";
     }
     const expected = s.acceptance ? s.acceptance.payload.decision === "accept" ? "accepted" : "changes_requested" : s.outcome ? s.outcome.payload.status : s.execution ? "executing" : !reviewer ? "awaiting_reviewer" : !s.proposal ? "awaiting_snapshot" : s.approvals.some((a) => a.payload.decision === "reject") ? "rejected" : s.approvals.length === 2 && s.approvals.every((a) => Date.parse(a.payload.expires_at) > Date.parse(s.observed_at)) ? "approved" : "review";
@@ -46024,13 +46177,14 @@ var DEMO_REPOSITORY = "ScopeBlind/scopeblind-repository-demo";
 var DEMO_CHECK = { name: "ScopeBlind contact validation", app_id: 4962726 };
 var CONTACT_PATH = "demo/contact.json";
 var object3 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
-var shape = (value, required, optional = []) => object3(value) && required.every((key) => key in value) && Object.keys(value).every((key) => required.includes(key) || optional.includes(key));
+var shape = (value, required, optional = []) => object3(value) && required.every((key4) => key4 in value) && Object.keys(value).every((key4) => required.includes(key4) || optional.includes(key4));
 var text3 = (value, max, empty = false) => typeof value === "string" && (empty || value.trim().length > 0) && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
 var hex2 = (value) => typeof value === "string" && REPOSITORY_HEX.test(value);
-var id3 = (value) => typeof value === "string" && REPOSITORY_ID.test(value);
+var id4 = (value) => typeof value === "string" && REPOSITORY_ID.test(value);
 var sha = (value) => typeof value === "string" && REPOSITORY_SHA.test(value);
 var at = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
 var span = (issued, expires, max) => at(issued) && at(expires) && Date.parse(String(expires)) > Date.parse(String(issued)) && Date.parse(String(expires)) - Date.parse(String(issued)) <= max;
+var repository = (value) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(value);
 function validContactPage(value) {
   return shape(value, ["type", "button_label", "target", "accent"]) && value.type === "scopeblind.contact-page.v1" && text3(value.button_label, 40) && ["broken", "contact"].includes(String(value.target)) && ["indigo", "emerald", "rose"].includes(String(value.accent));
 }
@@ -46039,29 +46193,45 @@ function contactPageBytes(value) {
     throw new Error("invalid_contact_page");
   return canonical(value) + "\n";
 }
+function validRepositoryConnection(v) {
+  if (!shape(v, ["type", "id", "endpoint", "repository", "base_branch", "owner_key", "receiver_key", "authority_key", "issued_at", "expires_at"]))
+    return false;
+  let endpoint;
+  try {
+    endpoint = new URL(String(v.endpoint));
+  } catch {
+    return false;
+  }
+  return v.type === "scopeblind.repository.connection.v1" && id4(v.id) && endpoint.protocol === "https:" && endpoint.pathname === "/api/coordination" && !endpoint.search && !endpoint.hash && !endpoint.username && !endpoint.password && endpoint.href === v.endpoint && repository(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(hex2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && span(v.issued_at, v.expires_at, 30 * 864e5);
+}
+function validRepositoryReadiness(v) {
+  if (!shape(v, ["type", "connection_digest", "repository", "base_branch", "owner_key", "receiver_key", "authority_key", "checks", "base_sha", "check_head_sha", "protection", "runtime", "workflow", "observed_at", "expires_at"], ["required_checks", "workflow_sha"]))
+    return false;
+  return v.type === "scopeblind.repository.readiness.v1" && hex2(v.connection_digest) && repository(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(hex2) && sha(v.base_sha) && sha(v.check_head_sha) && ["observed", "unavailable"].includes(String(v.protection)) && ["local", "github_actions"].includes(String(v.runtime)) && ["not_checked", "missing", "matching", "different", "unavailable"].includes(String(v.workflow)) && (v.workflow_sha === void 0 || sha(v.workflow_sha)) && span(v.observed_at, v.expires_at, 864e5) && Array.isArray(v.checks) && v.checks.length <= 100 && v.checks.every((c) => shape(c, ["name", "app_id"], ["app_name"]) && text3(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0 && (c.app_name === void 0 || text3(c.app_name, 100))) && (v.required_checks === void 0 || Array.isArray(v.required_checks) && v.required_checks.length <= 100 && v.required_checks.every((c) => shape(c, ["name", "app_id"]) && text3(c.name, 100) && (c.app_id === null || Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0)));
+}
 function validRepositoryParticipants(v) {
-  return shape(v, ["type", "task_id", "task_digest", "owner_key", "receiver_key", "reviewer_key", "reviewer_claim_digest", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.participants.v1" && id3(v.task_id) && [v.task_digest, v.owner_key, v.receiver_key, v.reviewer_key, v.reviewer_claim_digest].every(hex2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.reviewer_key])).size === 3 && span(v.issued_at, v.expires_at, 7 * 864e5);
+  return shape(v, ["type", "task_id", "task_digest", "owner_key", "receiver_key", "reviewer_key", "reviewer_claim_digest", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.participants.v1" && id4(v.task_id) && [v.task_digest, v.owner_key, v.receiver_key, v.reviewer_key, v.reviewer_claim_digest].every(hex2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.reviewer_key])).size === 3 && span(v.issued_at, v.expires_at, 7 * 864e5);
 }
 function validRepositoryPreview(v) {
-  return shape(v, ["type", "task_id", "task_digest", "proposal_digest", "base_sha", "head_sha", "merge_sha", "tree_sha", "path", "before", "after", "renderer", "observed_at"]) && v.type === "scopeblind.repository.preview.v1" && id3(v.task_id) && hex2(v.task_digest) && hex2(v.proposal_digest) && [v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every(sha) && v.path === CONTACT_PATH && v.renderer === "scopeblind.contact-page.v1" && at(v.observed_at) && [v.before, v.after].every((side) => shape(side, ["model", "blob_sha", "content_sha256"]) && validContactPage(side.model) && sha(side.blob_sha) && hex2(side.content_sha256));
+  return shape(v, ["type", "task_id", "task_digest", "proposal_digest", "base_sha", "head_sha", "merge_sha", "tree_sha", "path", "before", "after", "renderer", "observed_at"]) && v.type === "scopeblind.repository.preview.v1" && id4(v.task_id) && hex2(v.task_digest) && hex2(v.proposal_digest) && [v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every(sha) && v.path === CONTACT_PATH && v.renderer === "scopeblind.contact-page.v1" && at(v.observed_at) && [v.before, v.after].every((side) => shape(side, ["model", "blob_sha", "content_sha256"]) && validContactPage(side.model) && sha(side.blob_sha) && hex2(side.content_sha256));
 }
 function validRepositoryAgentGrant(v) {
-  return shape(v, ["type", "id", "task_id", "task_digest", "issuer_key", "agent_key", "permissions", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.agent-grant.v1" && id3(v.id) && id3(v.task_id) && [v.task_digest, v.issuer_key, v.agent_key].every(hex2) && v.issuer_key !== v.agent_key && Array.isArray(v.permissions) && v.permissions.length > 0 && v.permissions.length <= 2 && new Set(v.permissions).size === v.permissions.length && v.permissions.every((p) => p === "read_task" || p === "request_revision") && v.permissions.includes("read_task") && span(v.issued_at, v.expires_at, 36e5);
+  return shape(v, ["type", "id", "task_id", "task_digest", "issuer_key", "agent_key", "permissions", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.agent-grant.v1" && id4(v.id) && id4(v.task_id) && [v.task_digest, v.issuer_key, v.agent_key].every(hex2) && v.issuer_key !== v.agent_key && Array.isArray(v.permissions) && v.permissions.length > 0 && v.permissions.length <= 2 && new Set(v.permissions).size === v.permissions.length && v.permissions.every((p) => p === "read_task" || p === "request_revision") && v.permissions.includes("read_task") && span(v.issued_at, v.expires_at, 36e5);
 }
 function validRepositoryRevisionRequest(v) {
-  return shape(v, ["type", "id", "task_id", "task_digest", "basis_digest", "requester_key", "message", "proposed", "issued_at"], ["grant_digest"]) && v.type === "scopeblind.repository.revision-request.v1" && id3(v.id) && id3(v.task_id) && [v.task_digest, v.basis_digest, v.requester_key].every(hex2) && (v.grant_digest === void 0 || hex2(v.grant_digest)) && text3(v.message, 600) && validContactPage(v.proposed) && at(v.issued_at);
+  return shape(v, ["type", "id", "task_id", "task_digest", "basis_digest", "requester_key", "message", "proposed", "issued_at"], ["grant_digest"]) && v.type === "scopeblind.repository.revision-request.v1" && id4(v.id) && id4(v.task_id) && [v.task_digest, v.basis_digest, v.requester_key].every(hex2) && (v.grant_digest === void 0 || hex2(v.grant_digest)) && text3(v.message, 600) && validContactPage(v.proposed) && at(v.issued_at);
 }
 function validRepositoryRevisionLink(v) {
-  return shape(v, ["type", "id", "parent_task_id", "parent_task_digest", "parent_basis_digest", "request_digest", "child_task_id", "child_task_digest", "owner_key", "issued_at"]) && v.type === "scopeblind.repository.revision-link.v1" && [v.id, v.parent_task_id, v.child_task_id].every(id3) && v.parent_task_id !== v.child_task_id && [v.parent_task_digest, v.parent_basis_digest, v.request_digest, v.child_task_digest, v.owner_key].every(hex2) && at(v.issued_at);
+  return shape(v, ["type", "id", "parent_task_id", "parent_task_digest", "parent_basis_digest", "request_digest", "child_task_id", "child_task_digest", "owner_key", "issued_at"]) && v.type === "scopeblind.repository.revision-link.v1" && [v.id, v.parent_task_id, v.child_task_id].every(id4) && v.parent_task_id !== v.child_task_id && [v.parent_task_digest, v.parent_basis_digest, v.request_digest, v.child_task_digest, v.owner_key].every(hex2) && at(v.issued_at);
 }
 function validRepositoryDemoRequest(v) {
   if (!shape(v, ["type", "id", "owner_key", "receiver_key", "authority_key", "title", "goal", "proposed", "reviewer_secret_hash", "issued_at", "expires_at"], ["parent_task_id", "parent_task_digest", "parent_basis_digest", "revision_request_digest"]))
     return false;
   const parent = ["parent_task_id", "parent_task_digest", "parent_basis_digest", "revision_request_digest"];
-  return v.type === "scopeblind.repository.demo-request.v1" && id3(v.id) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every(hex2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && text3(v.title, 140) && text3(v.goal, 600) && validContactPage(v.proposed) && span(v.issued_at, v.expires_at, 864e5) && (parent.every((k) => v[k] === void 0) || id3(v.parent_task_id) && [v.parent_task_digest, v.parent_basis_digest, v.revision_request_digest].every(hex2));
+  return v.type === "scopeblind.repository.demo-request.v1" && id4(v.id) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every(hex2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && text3(v.title, 140) && text3(v.goal, 600) && validContactPage(v.proposed) && span(v.issued_at, v.expires_at, 864e5) && (parent.every((k) => v[k] === void 0) || id4(v.parent_task_id) && [v.parent_task_digest, v.parent_basis_digest, v.revision_request_digest].every(hex2));
 }
 function validRepositoryDemoProvision(v) {
-  return shape(v, ["type", "request_id", "request_digest", "repository", "base_branch", "head_branch", "pull_number", "initial_base_sha", "initial_head_sha", "receiver_key", "required_checks", "observed_at"]) && v.type === "scopeblind.repository.demo-provision.v1" && id3(v.request_id) && [v.request_digest, v.receiver_key].every(hex2) && v.repository === DEMO_REPOSITORY && v.base_branch === `scopeblind/demo/${v.request_id}/base` && v.head_branch === `scopeblind/demo/${v.request_id}/change` && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && sha(v.initial_base_sha) && sha(v.initial_head_sha) && Array.isArray(v.required_checks) && canonical(v.required_checks) === canonical([DEMO_CHECK]) && at(v.observed_at);
+  return shape(v, ["type", "request_id", "request_digest", "repository", "base_branch", "head_branch", "pull_number", "initial_base_sha", "initial_head_sha", "receiver_key", "required_checks", "observed_at"]) && v.type === "scopeblind.repository.demo-provision.v1" && id4(v.request_id) && [v.request_digest, v.receiver_key].every(hex2) && v.repository === DEMO_REPOSITORY && v.base_branch === `scopeblind/demo/${v.request_id}/base` && v.head_branch === `scopeblind/demo/${v.request_id}/change` && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && sha(v.initial_base_sha) && sha(v.initial_head_sha) && Array.isArray(v.required_checks) && canonical(v.required_checks) === canonical([DEMO_CHECK]) && at(v.observed_at);
 }
 function repositoryRevisionBasis(state) {
   return state.acceptance?.digest ?? state.outcome?.digest ?? state.proposal?.digest ?? null;
@@ -46070,8 +46240,8 @@ function repositoryRevisionBasis(state) {
 // src/coordination-repository-collaboration-evidence.ts
 var shape2 = (v, required, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
 var envelope = (v) => shape2(v, ["payload", "signer", "digest", "signature"]);
-var time4 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
-var within = (at2, start, end) => Date.parse(at2) >= Date.parse(start) && Date.parse(at2) <= Date.parse(end);
+var time5 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var within = (at8, start, end) => Date.parse(at8) >= Date.parse(start) && Date.parse(at8) <= Date.parse(end);
 function requireValid(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -46090,7 +46260,7 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
     requireValid(core.valid, core.errors.join("; "));
     result.authorityPinned = core.authorityPinned;
     const state = bundle.repository.state.payload, task = state.task.payload, collaboration = bundle.collaboration, c = collaboration?.payload;
-    requireValid(envelope(collaboration) && await verify(collaboration, task.authority_key) && shape2(c, ["type", "task_id", "task_digest", "participants", "preview", "requests", "revisions", "agent_grants", "observed_at"]) && c.type === "scopeblind.repository.collaboration.v1" && c.task_id === task.id && c.task_digest === state.task.digest && time4(c.observed_at), "Collaboration must be signed by this task\u2019s authority and name the exact task.");
+    requireValid(envelope(collaboration) && await verify(collaboration, task.authority_key) && shape2(c, ["type", "task_id", "task_digest", "participants", "preview", "requests", "revisions", "agent_grants", "observed_at"]) && c.type === "scopeblind.repository.collaboration.v1" && c.task_id === task.id && c.task_digest === state.task.digest && time5(c.observed_at), "Collaboration must be signed by this task\u2019s authority and name the exact task.");
     const principals = [task.owner_key, ...state.reviewer ? [state.reviewer.payload.reviewer_key] : []];
     if (c.participants !== null) {
       const signed2 = c.participants, p = signed2?.payload;
@@ -46111,7 +46281,7 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
     }
     requireValid(Array.isArray(c.agent_grants) && c.agent_grants.length <= 100 && Array.isArray(c.requests) && c.requests.length <= 100 && Array.isArray(c.revisions) && c.revisions.length <= 100, "Collaboration collections exceed their supported bounds.");
     const incomingLinks = c.revisions.filter((link) => link?.payload?.child_task_id === task.id);
-    requireValid(incomingLinks.length <= 1 && (incomingLinks.length === 1 || !["parent", "parent_request", "parent_agent_grant"].some((key) => Object.hasOwn(bundle, key))), "Predecessor records must be consumed by exactly one incoming revision link.");
+    requireValid(incomingLinks.length <= 1 && (incomingLinks.length === 1 || !["parent", "parent_request", "parent_agent_grant"].some((key4) => Object.hasOwn(bundle, key4))), "Predecessor records must be consumed by exactly one incoming revision link.");
     const grants = /* @__PURE__ */ new Map(), requestIds = /* @__PURE__ */ new Set(), requests = /* @__PURE__ */ new Map();
     for (const entry of c.agent_grants) {
       const signed2 = entry.grant, g = signed2?.payload;
@@ -46139,7 +46309,7 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
     const linkIds = /* @__PURE__ */ new Set();
     for (const signed2 of c.revisions) {
       const l = signed2?.payload;
-      requireValid(envelope(signed2) && validRepositoryRevisionLink(l) && await verify(signed2, task.owner_key) && l.owner_key === task.owner_key && time4(l.issued_at) && Date.parse(l.issued_at) <= Date.parse(c.observed_at) && !linkIds.has(l.id), "A revision link is invalid or duplicated.");
+      requireValid(envelope(signed2) && validRepositoryRevisionLink(l) && await verify(signed2, task.owner_key) && l.owner_key === task.owner_key && time5(l.issued_at) && Date.parse(l.issued_at) <= Date.parse(c.observed_at) && !linkIds.has(l.id), "A revision link is invalid or duplicated.");
       linkIds.add(l.id);
       if (l.child_task_id === task.id) {
         requireValid(l.child_task_digest === state.task.digest && parent && l.parent_task_id === parent.task.payload.id && l.parent_task_digest === parent.task.digest && l.parent_basis_digest === repositoryRevisionBasis(parent), "The child revision does not bind the included predecessor and exact feedback.");
@@ -46158,7 +46328,7 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
     }
     if (bundle.demo) {
       const signed2 = bundle.demo, d = signed2?.payload, r = d?.request?.payload, p = d?.provision?.payload;
-      requireValid(envelope(signed2) && await verify(signed2, task.authority_key) && shape2(d, ["type", "request", "provision", "task", "status", "dispatch", "error", "observed_at"]) && d.type === "scopeblind.repository.demo-state.v1" && ["queued", "provisioning", "ready_to_review", "active", "failed", "expired"].includes(d.status) && ["requested", "unconfigured", "unavailable"].includes(d.dispatch) && (d.error === null || typeof d.error === "string" && d.error.length <= 100) && time4(d.observed_at), "The demo\u2019s service record is invalid.");
+      requireValid(envelope(signed2) && await verify(signed2, task.authority_key) && shape2(d, ["type", "request", "provision", "task", "status", "dispatch", "error", "observed_at"]) && d.type === "scopeblind.repository.demo-state.v1" && ["queued", "provisioning", "ready_to_review", "active", "failed", "expired"].includes(d.status) && ["requested", "unconfigured", "unavailable"].includes(d.dispatch) && (d.error === null || typeof d.error === "string" && d.error.length <= 100) && time5(d.observed_at), "The demo\u2019s service record is invalid.");
       requireValid(envelope(d.request) && validRepositoryDemoRequest(r) && await verify(d.request, task.owner_key) && r.id === task.id && r.owner_key === task.owner_key && r.authority_key === task.authority_key && r.receiver_key === task.receiver_key && r.reviewer_secret_hash === task.reviewer_secret_hash && r.title === task.title && Date.parse(task.expires_at) <= Date.parse(r.expires_at), "The demo request is not the task owner\u2019s exact provisioning authority.");
       requireValid(d.task && canonical(d.task) === canonical(state.task) && envelope(d.provision) && validRepositoryDemoProvision(p) && await verify(d.provision, task.receiver_key) && p.request_id === task.id && p.request_digest === d.request.digest && p.repository === task.repository && p.base_branch === task.base_branch && p.pull_number === task.pull_number && p.receiver_key === task.receiver_key && canonical(p.required_checks) === canonical(task.required_checks) && canonical(task.allowed_paths) === canonical([CONTACT_PATH]), "The provisioned workspace does not match the signed task.");
       if (c.preview) requireValid(c.preview.payload.base_sha === p.initial_base_sha && c.preview.payload.head_sha === p.initial_head_sha && canonical(c.preview.payload.after.model) === canonical(r.proposed), "The demo preview differs from the exact requested and provisioned change.");
@@ -46174,17 +46344,1007 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
   }
   return result;
 }
+
+// src/coordination-repository-review.ts
+var object4 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var shape3 = (v, required, optional = []) => object4(v) && required.every((k) => Object.prototype.hasOwnProperty.call(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+var text4 = (v, max, empty = false) => typeof v === "string" && (empty || v.trim().length > 0) && v.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);
+var line = (v, max) => text4(v, max) && !/[\r\n\t]/.test(String(v));
+var hex3 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
+var id5 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
+var sha2 = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
+var num = (v) => typeof v === "number" && Number.isSafeInteger(v) && v > 0;
+var at2 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var span2 = (a, b, max) => at2(a) && at2(b) && Date.parse(b) > Date.parse(a) && Date.parse(b) - Date.parse(a) <= max;
+function safeRepositoryPreviewUrl(value) {
+  if (typeof value !== "string" || value.length > 2e3 || /[\s\u0000-\u001f\u007f]/.test(value)) return false;
+  try {
+    const u = new URL(value);
+    return u.protocol === "https:" && !u.username && !u.password && u.href === value && !u.hash && !u.search && u.hostname !== "localhost" && !u.hostname.endsWith(".localhost") && u.hostname.includes(".") && !/^\d+(?:\.\d+){3}$/.test(u.hostname) && !u.hostname.includes(":");
+  } catch {
+    return false;
+  }
+}
+function content(v) {
+  if (!text4(v.brief, 4e3) || !Array.isArray(v.success_criteria) || v.success_criteria.length < 1 || v.success_criteria.length > 20 || !v.success_criteria.every((c) => shape3(c, ["id", "text"]) && id5(c.id) && text4(c.text, 600)) || new Set(v.success_criteria.map((c) => c.id)).size !== v.success_criteria.length) return false;
+  const p = v.preview_policy;
+  return p === void 0 || shape3(p, ["environment", "check", "allowed_origins", "required"]) && line(p.environment, 100) && shape3(p.check, ["name", "app_id"]) && line(p.check.name, 100) && num(p.check.app_id) && typeof p.required === "boolean" && Array.isArray(p.allowed_origins) && p.allowed_origins.length > 0 && p.allowed_origins.length <= 8 && new Set(p.allowed_origins).size === p.allowed_origins.length && p.allowed_origins.every((origin) => typeof origin === "string" && safeRepositoryPreviewUrl(origin + "/") && new URL(origin).origin === origin);
+}
+function validRepositoryReviewContent(v) {
+  return shape3(v, ["brief", "success_criteria"], ["preview_policy"]) && content(v);
+}
+function validRepositoryReviewBrief(v, task, taskDigest) {
+  return shape3(v, ["type", "task_id", "task_digest", "owner_key", "brief", "success_criteria", "issued_at", "expires_at"], ["preview_policy"]) && v.type === "scopeblind.repository.review-brief.v1" && v.task_id === task.id && v.task_digest === taskDigest && v.owner_key === task.owner_key && content(v) && span2(v.issued_at, v.expires_at, 7 * 864e5) && Date.parse(String(v.issued_at)) >= Date.parse(task.issued_at) && Date.parse(String(v.expires_at)) <= Date.parse(task.expires_at);
+}
+function validRepositoryReviewPacket(v, brief, proposal) {
+  if (!shape3(v, ["type", "task_id", "task_digest", "brief_digest", "proposal_digest", "base_sha", "head_sha", "merge_sha", "preview", "observed_at", "expires_at"]) || v.type !== "scopeblind.repository.review-packet.v1" || v.task_id !== brief.payload.task_id || v.task_digest !== brief.payload.task_digest || v.brief_digest !== brief.digest || v.proposal_digest !== proposal.digest || v.base_sha !== proposal.payload.base_sha || v.head_sha !== proposal.payload.head_sha || v.merge_sha !== proposal.payload.merge_sha || !span2(v.observed_at, v.expires_at, 9e5) || Date.parse(String(v.observed_at)) < Math.max(Date.parse(brief.payload.issued_at), Date.parse(proposal.payload.observed_at)) || Date.parse(String(v.expires_at)) > Date.parse(brief.payload.expires_at)) return false;
+  const p = v.preview, policy = brief.payload.preview_policy;
+  if (!object4(p)) return false;
+  if (p.status !== "available") return shape3(p, ["status", "reason"]) && ["not_requested", "missing", "pending", "failed", "unavailable", "ambiguous"].includes(String(p.status)) && text4(p.reason, 600) && p.status === "not_requested" === !policy;
+  if (!policy || !shape3(p, ["status", "deployment"], ["artifact"])) return false;
+  const d = p.deployment;
+  if (!shape3(d, ["deployment_id", "status_id", "sha", "environment", "state", "environment_url", "deployment_creator_id", "status_creator_id", "created_at", "updated_at", "check"]) || ![d.deployment_id, d.status_id, d.deployment_creator_id, d.status_creator_id].every(num) || d.sha !== v.head_sha || d.environment !== policy.environment || d.state !== "success" || !safeRepositoryPreviewUrl(d.environment_url) || !policy.allowed_origins.includes(new URL(d.environment_url).origin) || !at2(d.created_at) || !at2(d.updated_at) || Date.parse(d.updated_at) < Date.parse(d.created_at) || Date.parse(d.updated_at) > Date.parse(String(v.observed_at)) || !shape3(d.check, ["id", "name", "app_id", "head_sha", "conclusion"]) || !num(d.check.id) || d.check.name !== policy.check.name || d.check.app_id !== policy.check.app_id || d.check.head_sha !== v.head_sha || d.check.conclusion !== "success") return false;
+  const a = p.artifact;
+  return a === void 0 || shape3(a, ["id", "name", "sha256", "workflow_run_id", "head_sha", "expires_at"]) && num(a.id) && line(a.name, 200) && hex3(a.sha256) && num(a.workflow_run_id) && a.head_sha === v.head_sha && at2(a.expires_at) && Date.parse(a.expires_at) > Date.parse(String(v.observed_at));
+}
+function validRepositoryReviewDecision(v, brief, packet, approval) {
+  return shape3(v, ["type", "task_id", "task_digest", "brief_digest", "packet_digest", "proposal_digest", "approval_digest", "principal_key", "role", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.review-decision.v1" && v.task_id === brief.payload.task_id && v.task_digest === brief.payload.task_digest && v.brief_digest === brief.digest && v.packet_digest === packet.digest && v.proposal_digest === packet.payload.proposal_digest && v.approval_digest === approval.digest && v.principal_key === approval.payload.principal_key && v.role === approval.payload.role && v.issued_at === approval.payload.issued_at && v.expires_at === approval.payload.expires_at && at2(v.issued_at) && at2(v.expires_at) && Date.parse(v.issued_at) >= Date.parse(packet.payload.observed_at) && Date.parse(v.expires_at) <= Date.parse(packet.payload.expires_at) && (!brief.payload.preview_policy?.required || packet.payload.preview.status === "available" || approval.payload.decision === "reject");
+}
+function validRepositoryReviewFeedback(v, brief, packet) {
+  return shape3(v, ["type", "id", "task_id", "task_digest", "basis_digest", "packet_digest", "requester_key", "criterion_ids", "message", "requested_changes", "issued_at"], ["mandate_digest"]) && v.type === "scopeblind.repository.review-feedback.v1" && id5(v.id) && v.task_id === brief.payload.task_id && v.task_digest === brief.payload.task_digest && hex3(v.basis_digest) && v.packet_digest === packet.digest && hex3(v.requester_key) && (v.mandate_digest === void 0 || hex3(v.mandate_digest)) && Array.isArray(v.criterion_ids) && v.criterion_ids.length <= 20 && new Set(v.criterion_ids).size === v.criterion_ids.length && v.criterion_ids.every((cid) => brief.payload.success_criteria.some((c) => c.id === cid)) && text4(v.message, 2e3) && text4(v.requested_changes, 4e3, true) && at2(v.issued_at) && Date.parse(v.issued_at) >= Date.parse(packet.payload.observed_at);
+}
+function validRepositoryReviewRecommendation(v, brief, packet, proposal) {
+  if (!shape3(v, ["type", "id", "task_id", "task_digest", "packet_digest", "proposal_digest", "brief_digest", "agent_key", "mandate_digest", "recommendation", "criteria", "source", "observed_at"]) || v.type !== "scopeblind.repository.review-recommendation.v1" || !id5(v.id) || v.task_id !== brief.payload.task_id || v.task_digest !== brief.payload.task_digest || v.packet_digest !== packet.digest || v.proposal_digest !== proposal.digest || v.brief_digest !== brief.digest || !hex3(v.agent_key) || !hex3(v.mandate_digest) || !["ready_for_human_review", "changes_recommended", "insufficient_evidence"].includes(String(v.recommendation)) || !shape3(v.source, ["kind"], ["model"]) || v.source.kind !== "agent" || v.source.model !== void 0 && !line(v.source.model, 120) || !at2(v.observed_at) || Date.parse(v.observed_at) < Date.parse(packet.payload.observed_at) || !Array.isArray(v.criteria) || v.criteria.length !== brief.payload.success_criteria.length) return false;
+  if (new Set(v.criteria.map((c) => object4(c) ? c.criterion_id : null)).size !== v.criteria.length) return false;
+  return v.criteria.every((c) => shape3(c, ["criterion_id", "verdict", "evidence_refs", "explanation"]) && brief.payload.success_criteria.some((b) => b.id === c.criterion_id) && ["met", "not_met", "unknown"].includes(String(c.verdict)) && text4(c.explanation, 1e3) && Array.isArray(c.evidence_refs) && c.evidence_refs.length <= 12 && c.evidence_refs.every((r) => {
+    if (!object4(r)) return false;
+    if (r.kind === "check") return shape3(r, ["kind", "id"]) && proposal.payload.checks.some((check) => check.id === r.id);
+    if (r.kind === "file") return shape3(r, ["kind", "path"]) && proposal.payload.files.some((file) => file.path === r.path);
+    if (r.kind === "deployment") return shape3(r, ["kind", "id"]) && packet.payload.preview.status === "available" && packet.payload.preview.deployment.deployment_id === r.id;
+    return r.kind === "artifact" && shape3(r, ["kind", "sha256"]) && packet.payload.preview.status === "available" && packet.payload.preview.artifact?.sha256 === r.sha256;
+  }));
+}
+async function verifyRepositoryPreviewDiscovery(value, pins, now = Date.now()) {
+  try {
+    const e = value, v = e.payload;
+    return validRepositoryEnvelope(e) && shape3(v, ["type", "repository", "pull_number", "head_sha", "owner_key", "receiver_key", "authority_key", "candidates", "checks", "status", "observed_at", "expires_at"]) && v.type === "scopeblind.repository.preview-discovery.v1" && v.repository === pins.repository && num(v.pull_number) && (pins.pull_number === void 0 || v.pull_number === pins.pull_number) && sha2(v.head_sha) && v.owner_key === pins.owner_key && v.receiver_key === pins.receiver_key && v.authority_key === pins.authority_key && span2(v.observed_at, v.expires_at, 864e5) && Date.parse(v.observed_at) <= now + 1e3 && Date.parse(v.expires_at) > now && ["observed", "unavailable"].includes(v.status) && Array.isArray(v.candidates) && v.candidates.length <= 20 && v.candidates.every((c) => shape3(c, ["environment", "origin", "environment_url", "deployment_id", "status_id"]) && line(c.environment, 100) && safeRepositoryPreviewUrl(c.environment_url) && new URL(c.environment_url).origin === c.origin && num(c.deployment_id) && num(c.status_id)) && new Set(v.candidates.map((c) => c.deployment_id)).size === v.candidates.length && Array.isArray(v.checks) && v.checks.length <= 100 && v.checks.every((c) => shape3(c, ["name", "app_id", "id"]) && line(c.name, 100) && num(c.app_id) && num(c.id)) && new Set(v.checks.map((c) => c.name + ":" + c.app_id)).size === v.checks.length && (v.status !== "unavailable" || v.candidates.length === 0) && await verify(e, pins.receiver_key);
+  } catch {
+    return false;
+  }
+}
+
+// src/coordination-repository-workspace.ts
+var obj2 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var exact6 = (v, req, opt = []) => req.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => req.includes(k) || opt.includes(k));
+var text5 = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
+var key2 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
+var id6 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
+var at3 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var period2 = (v, max) => at3(v.issued_at) && at3(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= max;
+var repo = (v) => typeof v === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v);
+var paths = (v) => Array.isArray(v) && v.length > 0 && v.length <= 12 && new Set(v).size === v.length && v.every((p) => typeof p === "string" && repositoryPath(p.endsWith("/**") ? p.slice(0, -3) : p) && pathAllowed(p.endsWith("/**") ? p.slice(0, -2) + "placeholder" : p, [p]));
+var checks = (v) => Array.isArray(v) && v.length > 0 && v.length <= 12 && v.every((c) => obj2(c) && exact6(c, ["name", "app_id"]) && text5(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0) && new Set(v.map((c) => c.name)).size === v.length;
+var revision = (v) => Number.isSafeInteger(v) && Number(v) > 0;
+function workspacePathsWithin(proposed, allowed) {
+  return proposed.every((path) => path.endsWith("/**") ? allowed.some((rule) => rule.endsWith("/**") && (path === rule || path.slice(0, -3).startsWith(rule.slice(0, -2)))) : pathAllowed(path, allowed));
+}
+function validRepositoryWorkspace(v) {
+  return obj2(v) && exact6(v, ["type", "id", "title", "client_name", "repository", "base_branch", "receiver_key", "authority_key", "owner_member_id", "owner_key", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.workspace.v1" && id6(v.id) && id6(v.owner_member_id) && text5(v.title, 100) && text5(v.client_name, 100) && repo(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(key2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && period2(v, 365 * 864e5);
+}
+function validWorkspaceInvitation(v) {
+  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "workspace_digest", "member_id", "role", "display_name", "issuer_key", "secret_hash", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.workspace-invitation.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && [v.workspace_digest, v.issuer_key, v.secret_hash].every(key2) && ["reviewer", "observer"].includes(String(v.role)) && text5(v.display_name, 60) && period2(v, 7 * 864e5);
+}
+function validWorkspaceMemberClaim(v) {
+  return obj2(v) && exact6(v, ["type", "workspace_id", "invitation_digest", "member_id", "member_key", "issued_at"]) && v.type === "scopeblind.repository.workspace-member-claim.v1" && [v.workspace_id, v.member_id].every(id6) && [v.invitation_digest, v.member_key].every(key2) && at3(v.issued_at);
+}
+function validWorkspaceMemberUpdate(v) {
+  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "member_id", "expected_revision", "role", "status", "issuer_key", "issued_at"]) && v.type === "scopeblind.repository.workspace-member-update.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && key2(v.issuer_key) && revision(v.expected_revision) && ["reviewer", "observer"].includes(String(v.role)) && ["active", "revoked"].includes(String(v.status)) && at3(v.issued_at);
+}
+function validWorkspaceRecovery(v) {
+  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "member_id", "member_key", "recovery_key", "expected_revision", "issued_at", "expires_at"], ["previous_recovery_digest"]) && v.type === "scopeblind.repository.workspace-recovery.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && [v.member_key, v.recovery_key].every(key2) && v.member_key !== v.recovery_key && revision(v.expected_revision) && (v.previous_recovery_digest === void 0 || key2(v.previous_recovery_digest)) && period2(v, 365 * 864e5);
+}
+function validWorkspaceRotation(v) {
+  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "member_id", "previous_key", "new_key", "recovery_digest", "expected_revision", "issued_at"]) && v.type === "scopeblind.repository.workspace-key-rotation.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && [v.previous_key, v.new_key, v.recovery_digest].every(key2) && v.previous_key !== v.new_key && revision(v.expected_revision) && at3(v.issued_at);
+}
+function validWorkspaceTaskAssignment(v) {
+  return obj2(v) && exact6(v, ["type", "workspace_id", "workspace_digest", "task_id", "task_digest", "owner_member_id", "owner_key", "owner_member_revision", "reviewer_member_id", "reviewer_key", "reviewer_member_revision", "review_brief_digest", "issued_at", "expires_at"], ["source_draft_digest"]) && v.type === "scopeblind.repository.workspace-task-assignment.v1" && [v.workspace_id, v.task_id, v.owner_member_id, v.reviewer_member_id].every(id6) && [v.workspace_digest, v.task_digest, v.owner_key, v.reviewer_key, v.review_brief_digest].every(key2) && v.owner_key !== v.reviewer_key && v.owner_member_id !== v.reviewer_member_id && revision(v.owner_member_revision) && revision(v.reviewer_member_revision) && (v.source_draft_digest === void 0 || key2(v.source_draft_digest)) && period2(v, 7 * 864e5);
+}
+function validWorkspacePreparationMandate(v) {
+  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "workspace_digest", "mode", "owner_member_id", "owner_key", "owner_member_revision", "reviewer_member_id", "reviewer_key", "reviewer_member_revision", "agent_key", "repository", "base_branch", "allowed_paths", "required_checks", "permissions", "max_requests", "max_open_requests", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.preparation-mandate.v1" && v.mode === "prepare_review" && [v.id, v.workspace_id, v.owner_member_id, v.reviewer_member_id].every(id6) && [v.workspace_digest, v.owner_key, v.reviewer_key, v.agent_key].every(key2) && (/* @__PURE__ */ new Set([v.owner_key, v.reviewer_key, v.agent_key])).size === 3 && revision(v.owner_member_revision) && revision(v.reviewer_member_revision) && repo(v.repository) && repositoryBranch(v.base_branch) && paths(v.allowed_paths) && checks(v.required_checks) && Array.isArray(v.permissions) && v.permissions.includes("prepare_review") && v.permissions.length <= 4 && new Set(v.permissions).size === v.permissions.length && v.permissions.every((p) => ["prepare_review", "read_task", "report_criteria", "request_revision"].includes(String(p))) && Number.isSafeInteger(v.max_requests) && Number(v.max_requests) > 0 && Number(v.max_requests) <= 20 && Number.isSafeInteger(v.max_open_requests) && Number(v.max_open_requests) > 0 && Number(v.max_open_requests) <= 3 && Number(v.max_open_requests) <= Number(v.max_requests) && period2(v, 7 * 864e5);
+}
+function validWorkspaceMandateRevocation(v) {
+  return obj2(v) && exact6(v, ["type", "mandate_id", "mandate_digest", "workspace_id", "principal_key", "issued_at"]) && v.type === "scopeblind.repository.preparation-revocation.v1" && [v.mandate_id, v.workspace_id].every(id6) && [v.mandate_digest, v.principal_key].every(key2) && at3(v.issued_at);
+}
+function validWorkspaceReviewDraft(v) {
+  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "mandate_digest", "agent_key", "repository", "pull_number", "title", "content", "allowed_paths", "required_checks", "issued_at"], ["suggested_preview_url", "observed_head_sha", "source"]) && v.type === "scopeblind.repository.workspace-review-draft.v1" && [v.id, v.workspace_id].every(id6) && [v.mandate_digest, v.agent_key].every(key2) && repo(v.repository) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && text5(v.title, 140) && validRepositoryReviewContent(v.content) && paths(v.allowed_paths) && checks(v.required_checks) && at3(v.issued_at) && (v.source === void 0 || obj2(v.source) && exact6(v.source, ["task_id", "task_digest", "basis_digest", "packet_digest", "feedback_digest"]) && id6(v.source.task_id) && [v.source.task_digest, v.source.basis_digest, v.source.packet_digest, v.source.feedback_digest].every(key2)) && (v.observed_head_sha === void 0 || typeof v.observed_head_sha === "string" && /^[a-f0-9]{40}$/.test(v.observed_head_sha)) && (v.suggested_preview_url === void 0 || typeof v.suggested_preview_url === "string" && v.suggested_preview_url.length <= 2e3 && safeWorkspacePreview(v.suggested_preview_url));
+}
+function safeWorkspacePreview(value) {
+  try {
+    const u = new URL(value);
+    return u.protocol === "https:" && !u.username && !u.password && !u.hash;
+  } catch {
+    return false;
+  }
+}
+function validWorkspaceDraftDecision(v) {
+  return obj2(v) && exact6(v, ["type", "workspace_id", "draft_digest", "owner_key", "decision", "note", "issued_at"], ["task_id", "task_digest"]) && v.type === "scopeblind.repository.workspace-draft-decision.v1" && id6(v.workspace_id) && [v.draft_digest, v.owner_key].every(key2) && ["adopt", "reject"].includes(String(v.decision)) && typeof v.note === "string" && v.note.length <= 600 && at3(v.issued_at) && (v.decision === "adopt" ? id6(v.task_id) && key2(v.task_digest) : v.task_id === void 0 && v.task_digest === void 0);
+}
+var cleanEnvelope = (v) => obj2(v) && exact6(v, ["payload", "signer", "digest", "signature"]);
+var before = (time6, observation) => Date.parse(time6) <= Date.parse(observation);
+function memberAt(member, time6, workspace) {
+  let current = member.claim?.payload.member_key ?? workspace.owner_key, role = member.invitation?.payload.role ?? "owner", status2 = "active", revision2 = 1;
+  const events = [...member.rotations.map((p) => ({ at: p.rotation.payload.issued_at, revision: p.rotation.payload.expected_revision, rotation: p.rotation.payload, update: null })), ...member.updates.map((u) => ({ at: u.payload.issued_at, revision: u.payload.expected_revision, rotation: null, update: u.payload }))].sort((a, b) => a.revision - b.revision);
+  for (const e of events) if (before(e.at, time6)) {
+    if (e.rotation) current = e.rotation.new_key;
+    if (e.update) {
+      role = e.update.role;
+      status2 = e.update.status;
+    }
+    revision2 = e.revision + 1;
+  }
+  return { key: current, role, status: status2, revision: revision2 };
+}
+function memberRevisionAt(member, wanted, time6, workspace) {
+  if (!Number.isSafeInteger(wanted) || wanted < 1 || wanted > member.revision) return null;
+  let current = member.claim?.payload.member_key ?? workspace.owner_key, role = member.invitation?.payload.role ?? "owner", status2 = "active", start = member.claim?.payload.issued_at ?? workspace.issued_at;
+  const events = [...member.rotations.map((p) => ({ at: p.rotation.payload.issued_at, revision: p.rotation.payload.expected_revision, rotation: p.rotation.payload, update: null })), ...member.updates.map((u) => ({ at: u.payload.issued_at, revision: u.payload.expected_revision, rotation: null, update: u.payload }))].sort((a, b) => a.revision - b.revision);
+  for (const e of events) {
+    if (e.revision >= wanted) {
+      if (Date.parse(time6) > Date.parse(e.at)) return null;
+      break;
+    }
+    if (e.rotation) current = e.rotation.new_key;
+    if (e.update) {
+      role = e.update.role;
+      status2 = e.update.status;
+    }
+    start = e.at;
+  }
+  return Date.parse(time6) >= Date.parse(start) ? { key: current, role, status: status2, revision: wanted } : null;
+}
+function historicalMemberKeys(member, workspace) {
+  return [.../* @__PURE__ */ new Set([member.claim?.payload.member_key ?? workspace.owner_key, member.current_key, ...member.rotations.flatMap((p) => [p.rotation.payload.previous_key, p.rotation.payload.new_key])])];
+}
+function memberRecoveryKeys(member) {
+  return [.../* @__PURE__ */ new Set([...member.recovery ? [member.recovery.payload.recovery_key] : [], ...member.rotations.map((p) => p.recovery.payload.recovery_key)])];
+}
+function ownerKeyAt(owner, key4, time6, workspace) {
+  for (let r = 1; r <= owner.revision; r++) {
+    const state = memberRevisionAt(owner, r, time6, workspace);
+    if (state?.key === key4 && state.role === "owner" && state.status === "active") return true;
+  }
+  return false;
+}
+async function checkedMembers(workspace, members, observation) {
+  const w = workspace.payload;
+  if (!cleanEnvelope(workspace) || !validRepositoryWorkspace(w) || !await verify(workspace, w.owner_key) || !at3(observation) || !before(w.issued_at, observation) || !Array.isArray(members) || !members.length || members.length > 20 || new Set(members.map((m) => m.member_id)).size !== members.length || new Set(members.map((m) => m.current_key)).size !== members.length) return false;
+  const humans = members.flatMap((m) => historicalMemberKeys(m, w)), recoveries = members.flatMap(memberRecoveryKeys);
+  if (new Set(humans).size !== humans.length || humans.some((k) => [w.authority_key, w.receiver_key].includes(k)) || recoveries.some((k) => [w.authority_key, w.receiver_key, ...humans].includes(k))) return false;
+  const owner = members.find((m) => m.member_id === w.owner_member_id);
+  if (!owner || owner.invitation || owner.claim || owner.role !== "owner" || owner.updates.length) return false;
+  for (const m of [owner, ...members.filter((m2) => m2 !== owner)]) {
+    if (!exact6(m, ["member_id", "display_name", "role", "status", "current_key", "revision", "invitation", "claim", "recovery", "rotations", "updates"]) || !id6(m.member_id) || !text5(m.display_name, 60) || !key2(m.current_key) || !revision(m.revision) || !["owner", "reviewer", "observer"].includes(m.role) || !["active", "revoked"].includes(m.status) || !Array.isArray(m.rotations) || m.rotations.length > 12 || !Array.isArray(m.updates) || m.updates.length > 40) return false;
+    let current = w.owner_key, previousAt = w.issued_at;
+    if (m !== owner) {
+      const invitation = m.invitation, claim = m.claim;
+      if (!invitation || !claim || !cleanEnvelope(invitation) || !cleanEnvelope(claim) || !validWorkspaceInvitation(invitation.payload) || !validWorkspaceMemberClaim(claim.payload)) return false;
+      const i = invitation.payload, c = claim.payload;
+      if (i.workspace_id !== w.id || i.workspace_digest !== workspace.digest || i.member_id !== m.member_id || !ownerKeyAt(owner, i.issuer_key, i.issued_at, w) || c.workspace_id !== w.id || c.member_id !== m.member_id || c.invitation_digest !== invitation.digest || Date.parse(c.issued_at) < Date.parse(i.issued_at) || Date.parse(c.issued_at) >= Date.parse(i.expires_at) || !before(c.issued_at, observation) || !await verify(invitation, i.issuer_key) || !await verify(claim, c.member_key)) return false;
+      current = c.member_key;
+      previousAt = c.issued_at;
+    }
+    const events = [...m.rotations.map((p) => ({ revision: p.rotation.payload.expected_revision, rotation: p, update: null })), ...m.updates.map((u) => ({ revision: u.payload.expected_revision, rotation: null, update: u }))].sort((a, b) => a.revision - b.revision);
+    if (events.length !== m.revision - 1) return false;
+    for (let index = 0; index < events.length; index++) {
+      const event = events[index];
+      if (event.revision !== index + 1) return false;
+      if (event.rotation) {
+        const p = event.rotation, r = p.rotation.payload, g = p.recovery.payload;
+        if (!exact6(p, ["recovery", "rotation", "confirmation"]) || ![p.recovery, p.rotation, p.confirmation].every(cleanEnvelope) || !validWorkspaceRecovery(g) || !validWorkspaceRotation(r) || g.workspace_id !== w.id || g.member_id !== m.member_id || g.member_key !== current || g.expected_revision > r.expected_revision || memberRevisionAt(m, g.expected_revision, g.issued_at, w)?.key !== g.member_key || memberRevisionAt(m, g.expected_revision, g.issued_at, w)?.status !== "active" || r.workspace_id !== w.id || r.member_id !== m.member_id || r.previous_key !== current || r.recovery_digest !== p.recovery.digest || p.confirmation.digest !== p.rotation.digest || Date.parse(r.issued_at) < Date.parse(g.issued_at) || Date.parse(r.issued_at) < Date.parse(previousAt) || Date.parse(r.issued_at) >= Date.parse(g.expires_at) || !before(r.issued_at, observation) || !await verify(p.recovery, current) || !await verify(p.rotation, g.recovery_key) || !await verify(p.confirmation, r.new_key)) return false;
+        current = r.new_key;
+        previousAt = r.issued_at;
+      } else {
+        const u = event.update, p = u.payload;
+        if (!cleanEnvelope(u) || !validWorkspaceMemberUpdate(p) || p.workspace_id !== w.id || p.member_id !== m.member_id || !ownerKeyAt(owner, p.issuer_key, p.issued_at, w) || Date.parse(p.issued_at) < Date.parse(previousAt) || !before(p.issued_at, observation) || !await verify(u, p.issuer_key)) return false;
+        previousAt = p.issued_at;
+      }
+    }
+    const observed = memberAt(m, observation, w);
+    if (current !== m.current_key || observed.role !== m.role || observed.status !== m.status || observed.revision !== m.revision) return false;
+    if (m.recovery) {
+      const g = m.recovery.payload;
+      if (!cleanEnvelope(m.recovery) || !validWorkspaceRecovery(g) || g.workspace_id !== w.id || g.member_id !== m.member_id || g.member_key !== m.current_key || g.expected_revision > m.revision || memberRevisionAt(m, g.expected_revision, g.issued_at, w)?.key !== g.member_key || memberRevisionAt(m, g.expected_revision, g.issued_at, w)?.status !== "active" || !before(g.issued_at, observation) || !await verify(m.recovery, m.current_key)) return false;
+    }
+  }
+  return true;
+}
+async function checkedMandate(view, workspace, members, observation) {
+  if (!obj2(view) || !exact6(view, ["mandate", "adoption", "revocation", "status", "used_requests", "open_requests"]) || !cleanEnvelope(view.mandate) || !validWorkspacePreparationMandate(view.mandate.payload)) return false;
+  const p = view.mandate.payload, w = workspace.payload, o = members.find((m) => m.member_id === p.owner_member_id), r = members.find((m) => m.member_id === p.reviewer_member_id);
+  if (!o || !r) return false;
+  const owner = memberRevisionAt(o, p.owner_member_revision, p.issued_at, w), reviewer = memberRevisionAt(r, p.reviewer_member_revision, p.issued_at, w);
+  if (!owner || !reviewer || p.workspace_id !== w.id || p.workspace_digest !== workspace.digest || p.repository !== w.repository || p.base_branch !== w.base_branch || p.owner_key !== owner.key || p.reviewer_key !== reviewer.key || owner.role !== "owner" || reviewer.role !== "reviewer" || owner.status !== "active" || reviewer.status !== "active" || [w.receiver_key, w.authority_key, ...members.flatMap((m) => historicalMemberKeys(m, w)), ...members.flatMap(memberRecoveryKeys)].includes(p.agent_key) || !before(p.issued_at, observation) || Date.parse(p.expires_at) > Date.parse(w.expires_at) || !await verify(view.mandate, p.owner_key) || !Number.isSafeInteger(view.used_requests) || view.used_requests < 0 || view.used_requests > p.max_requests || !Number.isSafeInteger(view.open_requests) || view.open_requests < 0 || view.open_requests > p.max_open_requests || view.open_requests > view.used_requests) return false;
+  if (view.adoption && (!cleanEnvelope(view.adoption) || view.adoption.digest !== view.mandate.digest || canonical(view.adoption.payload) !== canonical(p) || !await verify(view.adoption, p.reviewer_key))) return false;
+  if (view.revocation) {
+    const rev = view.revocation.payload;
+    if (!cleanEnvelope(view.revocation) || !validWorkspaceMandateRevocation(rev) || rev.workspace_id !== w.id || rev.mandate_id !== p.id || rev.mandate_digest !== view.mandate.digest || ![p.owner_key, p.reviewer_key].includes(rev.principal_key) || !before(rev.issued_at, observation) || !await verify(view.revocation, rev.principal_key)) return false;
+  }
+  const nowO = memberAt(o, observation, w), nowR = memberAt(r, observation, w), expected = view.revocation ? "revoked" : nowO.key !== p.owner_key || nowR.key !== p.reviewer_key || nowO.revision !== p.owner_member_revision || nowR.revision !== p.reviewer_member_revision || nowO.role !== "owner" || nowR.role !== "reviewer" || nowO.status !== "active" || nowR.status !== "active" ? "membership_changed" : Date.parse(p.expires_at) <= Date.parse(observation) ? "expired" : !view.adoption ? "awaiting_reviewer" : view.used_requests >= p.max_requests ? "exhausted" : "active";
+  return view.status === expected;
+}
+async function checkedDraft(view, workspace, members, mandates, observation) {
+  if (!obj2(view) || !exact6(view, ["draft", "decision"]) || !cleanEnvelope(view.draft) || !validWorkspaceReviewDraft(view.draft.payload)) return false;
+  const p = view.draft.payload, m = mandates.find((m2) => m2.mandate.digest === p.mandate_digest), g = m?.mandate.payload;
+  if (!g || !m?.adoption || p.workspace_id !== workspace.payload.id || p.agent_key !== g.agent_key || p.repository !== g.repository || Date.parse(p.issued_at) < Date.parse(g.issued_at) || Date.parse(p.issued_at) >= Date.parse(g.expires_at) || !before(p.issued_at, observation) || !await verify(view.draft, g.agent_key) || !workspacePathsWithin(p.allowed_paths, g.allowed_paths) || !g.required_checks.every((c) => p.required_checks.some((r) => canonical(r) === canonical(c))) || p.required_checks.some((c) => g.required_checks.some((r) => r.name === c.name && r.app_id !== c.app_id))) return false;
+  if (view.decision) {
+    const d = view.decision.payload, owner = members.find((m2) => m2.member_id === workspace.payload.owner_member_id);
+    if (!owner || !cleanEnvelope(view.decision) || !validWorkspaceDraftDecision(d) || d.workspace_id !== workspace.payload.id || d.draft_digest !== view.draft.digest || !ownerKeyAt(owner, d.owner_key, d.issued_at, workspace.payload) || !before(d.issued_at, observation) || !await verify(view.decision, d.owner_key)) return false;
+  }
+  return true;
+}
+async function verifyRepositoryWorkspaceState(value, authorityKey, viewerKey) {
+  try {
+    const e = value, s = e.payload;
+    if (!cleanEnvelope(e) || !s || !exact6(s, ["type", "workspace", "members", "invitations", "assignments", "mandates", "drafts", "viewer", "observed_at"]) || s.type !== "scopeblind.repository.workspace-state.v1" || !await verify(e, authorityKey) || s.workspace.payload.authority_key !== authorityKey || viewerKey && s.viewer.key !== viewerKey || !await checkedMembers(s.workspace, s.members, s.observed_at) || !Array.isArray(s.invitations) || s.invitations.length > 40 || !Array.isArray(s.assignments) || s.assignments.length > 100 || !Array.isArray(s.mandates) || s.mandates.length > 40 || !Array.isArray(s.drafts) || s.drafts.length > 100) return false;
+    const viewer = s.members.find((m) => m.current_key === s.viewer.key);
+    if (!obj2(s.viewer) || !exact6(s.viewer, ["key", "member_id", "role", "capabilities"]) || !viewer || viewer.status !== "active" || s.viewer.member_id !== viewer.member_id || s.viewer.role !== viewer.role || canonical(s.viewer.capabilities) !== canonical(viewer.role === "owner" ? ["read", "invite", "assign", "prepare_mandate", "review_draft", "recover"] : viewer.role === "reviewer" ? ["read", "review", "adopt_mandate", "recover"] : ["read", "recover"])) return false;
+    const owner = s.members.find((m) => m.member_id === s.workspace.payload.owner_member_id);
+    for (const i of s.invitations) if (!cleanEnvelope(i) || !validWorkspaceInvitation(i.payload) || i.payload.workspace_id !== s.workspace.payload.id || i.payload.workspace_digest !== s.workspace.digest || !ownerKeyAt(owner, i.payload.issuer_key, i.payload.issued_at, s.workspace.payload) || !before(i.payload.issued_at, s.observed_at) || !await verify(i, i.payload.issuer_key)) return false;
+    for (const a of s.assignments) {
+      const p = a.payload, o = s.members.find((m) => m.member_id === p.owner_member_id), r = s.members.find((m) => m.member_id === p.reviewer_member_id);
+      if (!cleanEnvelope(a) || !validWorkspaceTaskAssignment(p) || !o || !r || p.workspace_id !== s.workspace.payload.id || p.workspace_digest !== s.workspace.digest || p.owner_key !== memberRevisionAt(o, p.owner_member_revision, p.issued_at, s.workspace.payload)?.key || p.reviewer_key !== memberRevisionAt(r, p.reviewer_member_revision, p.issued_at, s.workspace.payload)?.key || memberRevisionAt(o, p.owner_member_revision, p.issued_at, s.workspace.payload)?.role !== "owner" || memberRevisionAt(o, p.owner_member_revision, p.issued_at, s.workspace.payload)?.status !== "active" || memberRevisionAt(r, p.reviewer_member_revision, p.issued_at, s.workspace.payload)?.role !== "reviewer" || memberRevisionAt(r, p.reviewer_member_revision, p.issued_at, s.workspace.payload)?.status !== "active" || !before(p.issued_at, s.observed_at) || !await verify(a, p.owner_key)) return false;
+    }
+    for (const m of s.mandates) if (!await checkedMandate(m, s.workspace, s.members, s.observed_at)) return false;
+    for (const d of s.drafts) if (!await checkedDraft(d, s.workspace, s.members, s.mandates, s.observed_at)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function verifyRepositoryWorkspaceAgentState(value, authorityKey, agentKey) {
+  try {
+    const e = value, s = e.payload;
+    if (!cleanEnvelope(e) || !s || !exact6(s, ["type", "workspace", "members", "mandate", "drafts", "observed_at"]) || s.type !== "scopeblind.repository.workspace-agent-state.v1" || !await verify(e, authorityKey) || s.workspace.payload.authority_key !== authorityKey || agentKey && s.mandate.mandate.payload.agent_key !== agentKey || !await checkedMembers(s.workspace, s.members, s.observed_at) || !await checkedMandate(s.mandate, s.workspace, s.members, s.observed_at) || !Array.isArray(s.drafts) || s.drafts.length > 20 || s.drafts.length !== s.mandate.used_requests || s.drafts.filter((d) => !d.decision).length !== s.mandate.open_requests) return false;
+    for (const d of s.drafts) if (!await checkedDraft(d, s.workspace, s.members, [s.mandate], s.observed_at)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// src/coordination-repository-coding.ts
+var REPOSITORY_CODING_ACTIONS = ["repository_coding_info", "repository_coding_mandate", "repository_coding_adopt", "repository_coding_revoke", "repository_coding_start", "repository_coding_get", "repository_coding_list", "repository_coding_cancel", "repository_coding_reconcile", "repository_coding_poll", "repository_coding_heartbeat", "repository_coding_model", "repository_coding_publish", "repository_coding_preview", "repository_coding_complete"];
+var CODING_PERMISSIONS = ["read_source", "edit_code", "run_tests", "open_pull_request", "publish_preview"];
+var object5 = (x) => !!x && typeof x === "object" && !Array.isArray(x);
+var exact7 = (v, required, optional = []) => required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+var key3 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
+var id7 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
+var number = (v, min, max) => Number.isSafeInteger(v) && Number(v) >= min && Number(v) <= max;
+var at4 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var hex40 = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
+function validRepositoryCodingRefreshableConnections(v) {
+  return Array.isArray(v) && v.length <= 20 && v.every((c) => object5(c) && exact7(c, ["setup_id", "worker_key"]) && id7(c.setup_id) && key3(c.worker_key)) && new Set(v.map((c) => c.setup_id)).size === v.length;
+}
+function codingSafePath(path) {
+  return typeof path === "string" && repositoryPath(path) && !path.toLowerCase().split("/").some((p) => p === "node_modules" || p === ".git" || p === ".github" || p === ".env" || p.startsWith(".env.") || p === ".npmrc" || p === ".yarnrc" || p === ".netrc") && !/\.(pem|key|p12|pfx)$/i.test(path);
+}
+function codingCommand(v) {
+  return Array.isArray(v) && v.length >= 2 && v.length <= 8 && v[0] === "node" && v.slice(1).every((x) => typeof x === "string" && x.length <= 200) && (v[1] === "--test" && v.length >= 3 && v.slice(2).every(codingSafePath) || v.length === 2 && codingSafePath(v[1]));
+}
+function validRepositoryCodingSource(v) {
+  return object5(v) && exact7(v, ["task_id", "task_digest", "basis_digest", "packet_digest", "feedback_digest"]) && id7(v.task_id) && [v.task_digest, v.basis_digest, v.packet_digest, v.feedback_digest].every(key3);
+}
+function validRepositoryCodingMandate(v) {
+  if (!object5(v) || !exact7(v, ["type", "id", "workspace_id", "workspace_digest", "mode", "owner_member_id", "owner_key", "owner_member_revision", "reviewer_member_id", "reviewer_key", "reviewer_member_revision", "worker_key", "repository", "base_branch", "allowed_paths", "required_checks", "runtime", "docker_image", "test_command", "build_command", "preview_directory", "max_jobs", "max_attempts", "max_model_calls", "max_tokens", "max_seconds", "max_changed_files", "max_changed_bytes", "permissions", "issued_at", "expires_at"])) return false;
+  return v.type === "scopeblind.repository.coding-mandate.v1" && v.mode === "edit_code" && [v.id, v.workspace_id, v.owner_member_id, v.reviewer_member_id].every(id7) && [v.workspace_digest, v.owner_key, v.reviewer_key, v.worker_key].every(key3) && (/* @__PURE__ */ new Set([v.owner_key, v.reviewer_key, v.worker_key])).size === 3 && v.owner_member_id !== v.reviewer_member_id && number(v.owner_member_revision, 1, 1e3) && number(v.reviewer_member_revision, 1, 1e3) && typeof v.repository === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v.repository) && repositoryBranch(v.base_branch) && Array.isArray(v.allowed_paths) && v.allowed_paths.length > 0 && v.allowed_paths.length <= 12 && new Set(v.allowed_paths).size === v.allowed_paths.length && v.allowed_paths.every((p) => typeof p === "string" && codingSafePath(p.endsWith("/**") ? p.slice(0, -3) : p)) && Array.isArray(v.required_checks) && v.required_checks.length > 0 && v.required_checks.length <= 12 && new Set(v.required_checks.map((c) => object5(c) ? c.name : null)).size === v.required_checks.length && v.required_checks.every((c) => object5(c) && exact7(c, ["name", "app_id"]) && typeof c.name === "string" && c.name.length > 0 && c.name.length <= 100 && number(c.app_id, 1, Number.MAX_SAFE_INTEGER)) && v.runtime === "node22-static-v1" && typeof v.docker_image === "string" && /^node@sha256:[a-f0-9]{64}$/.test(v.docker_image) && codingCommand(v.test_command) && codingCommand(v.build_command) && codingSafePath(v.preview_directory) && !pathAllowed(v.preview_directory, v.allowed_paths) && v.allowed_paths.every((p) => p !== v.preview_directory && !p.startsWith(String(v.preview_directory) + "/")) && v.test_command.slice(1).filter((p) => !p.startsWith("--")).every((p) => !pathAllowed(p, v.allowed_paths)) && v.build_command.slice(1).every((p) => !pathAllowed(p, v.allowed_paths)) && number(v.max_jobs, 1, 3) && number(v.max_attempts, 1, 2) && number(v.max_model_calls, 1, 12) && number(v.max_tokens, 4096, 524288) && number(v.max_seconds, 60, 900) && number(v.max_changed_files, 1, 20) && number(v.max_changed_bytes, 1, 262144) && JSON.stringify(v.permissions) === JSON.stringify(CODING_PERMISSIONS) && at4(v.issued_at) && at4(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 864e5;
+}
+function validRepositoryCodingRequest(v) {
+  return object5(v) && exact7(v, ["type", "id", "workspace_id", "mandate_digest", "source", "owner_key", "issued_at"]) && v.type === "scopeblind.repository.coding-request.v1" && [v.id, v.workspace_id].every(id7) && [v.mandate_digest, v.owner_key].every(key3) && validRepositoryCodingSource(v.source) && at4(v.issued_at);
+}
+function validRepositoryCodingStop(v) {
+  return object5(v) && exact7(v, ["type", "id", "workspace_id", "mandate_digest", "principal_key", "issued_at"], ["job_id"]) && v.type === "scopeblind.repository.coding-stop.v1" && [v.id, v.workspace_id].every(id7) && [v.mandate_digest, v.principal_key].every(key3) && (v.job_id === void 0 || id7(v.job_id)) && at4(v.issued_at);
+}
+function validRepositoryCodingPlan(v, m) {
+  return object5(v) && exact7(v, ["type", "job_id", "request_digest", "mandate_digest", "source_head_sha", "source_base_sha", "branch", "commit_sha", "tree_sha", "files", "tests", "build", "preview_digest", "model_calls", "reserved_tokens", "issued_at"]) && v.type === "scopeblind.repository.coding-plan.v1" && id7(v.job_id) && [v.request_digest, v.mandate_digest, v.preview_digest].every(key3) && [v.source_head_sha, v.source_base_sha, v.commit_sha, v.tree_sha].every(hex40) && v.branch === "scopeblind/code/" + v.job_id && Array.isArray(v.files) && v.files.length > 0 && v.files.length <= m.max_changed_files && new Set(v.files.map((f) => object5(f) ? f.path : null)).size === v.files.length && v.files.every((f) => object5(f) && exact7(f, ["path", "before_sha", "after_sha", "bytes"]) && codingSafePath(f.path) && pathAllowed(f.path, m.allowed_paths) && (f.before_sha === null || hex40(f.before_sha)) && (f.after_sha === null || hex40(f.after_sha)) && f.before_sha !== f.after_sha && number(f.bytes, 0, m.max_changed_bytes)) && v.files.reduce((n, f) => n + Number(f.bytes), 0) <= m.max_changed_bytes && [v.tests, v.build].every((t) => object5(t) && exact7(t, ["command_digest", "exit_code", "output_sha256", "duration_ms"]) && key3(t.command_digest) && key3(t.output_sha256) && t.exit_code === 0 && number(t.duration_ms, 0, m.max_seconds * 1e3)) && number(v.model_calls, 1, m.max_model_calls) && number(v.reserved_tokens, 4096, m.max_tokens) && at4(v.issued_at);
+}
+function codingScopeWithin(paths2, m) {
+  return workspacePathsWithin(paths2, m.allowed_paths);
+}
+function validRepositoryCodingResult(v) {
+  return object5(v) && exact7(v, ["type", "job_id", "plan_digest", "publication_digest", "repository", "branch", "head_sha", "pull_number", "pull_url", "preview_url", "preview_digest", "deployment_id", "deployment_status_id", "deployment_environment", "check", "observed_at"]) && v.type === "scopeblind.repository.coding-result.v1" && id7(v.job_id) && [v.plan_digest, v.publication_digest, v.preview_digest].every(key3) && hex40(v.head_sha) && typeof v.repository === "string" && typeof v.branch === "string" && number(v.pull_number, 1, Number.MAX_SAFE_INTEGER) && v.pull_url === `https://github.com/${v.repository}/pull/${v.pull_number}` && typeof v.preview_url === "string" && v.preview_url.startsWith("https://") && number(v.deployment_id, 1, Number.MAX_SAFE_INTEGER) && number(v.deployment_status_id, 1, Number.MAX_SAFE_INTEGER) && v.deployment_environment === "ScopeBlind coding preview" && object5(v.check) && exact7(v.check, ["id", "name", "app_id", "head_sha", "conclusion"]) && number(v.check.id, 1, Number.MAX_SAFE_INTEGER) && v.check.name === "ScopeBlind isolated coding checks" && v.check.app_id === 15368 && v.check.head_sha === v.head_sha && v.check.conclusion === "success" && at4(v.observed_at);
+}
+
+// src/coordination-repository-coding-evidence.ts
+var object6 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var shape4 = (v, keys2) => Object.keys(v).length === keys2.length && keys2.every((k) => Object.hasOwn(v, k));
+var at5 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var before2 = (a, b) => Date.parse(a) <= Date.parse(b);
+var status = ["queued", "running", "testing", "publishing", "pr_ready", "failed", "cancelled", "unknown", "expired"];
+async function verifyRepositoryCodingEvidence(value, authorityKey) {
+  const errors = [];
+  let published = false;
+  function check(ok, message) {
+    if (!ok) throw Error(message);
+  }
+  try {
+    check(object6(value) && shape4(value, ["type", "job"]) && value.type === "scopeblind.repository.coding-evidence.v1", "Unrecognized coding evidence");
+    const e = value, j = e.job?.payload, m = j?.mandate?.payload, r = j?.request?.payload;
+    check(validRepositoryEnvelope(e.job) && object6(j) && shape4(j, ["type", "request", "mandate", "adoption", "workspace", "parent", "status", "attempts", "model_calls", "reserved_tokens", "lease_id", "lease_expires_at", "started_at", "plan", "publication", "result", "stop", "error", "observed_at"]) && j.type === "scopeblind.repository.coding-job.v1" && status.includes(j.status) && at5(j.observed_at), "Invalid coding state");
+    const key4 = authorityKey || j.workspace?.signer;
+    check(await verify(e.job, key4), "Coding service signature invalid");
+    check(await verifyRepositoryWorkspaceState(j.workspace, key4), "Coding workspace proof invalid");
+    const w = j.workspace.payload.workspace.payload;
+    check(validRepositoryEnvelope(j.mandate) && validRepositoryCodingMandate(m) && await verify(j.mandate, m.owner_key) && validRepositoryEnvelope(j.adoption) && j.adoption.digest === j.mandate.digest && canonical(j.adoption.payload) === canonical(m) && await verify(j.adoption, m.reviewer_key), "Separate dual-signed code-edit authority required");
+    check(m.workspace_id === w.id && m.workspace_digest === j.workspace.payload.workspace.digest && m.repository === w.repository && m.base_branch === w.base_branch && m.worker_key !== key4 && m.worker_key !== w.receiver_key, "Coding project scope mismatch");
+    for (const [id9, k, revision2, role] of [[m.owner_member_id, m.owner_key, m.owner_member_revision, "owner"], [m.reviewer_member_id, m.reviewer_key, m.reviewer_member_revision, "reviewer"]]) {
+      const member = j.workspace.payload.members.find((x) => x.member_id === id9);
+      check(member && member.current_key === k && member.revision === revision2 && member.status === "active" && member.role === role, "Coding member revision mismatch");
+    }
+    check(validRepositoryEnvelope(j.request) && validRepositoryCodingRequest(r) && await verify(j.request, m.owner_key) && r.owner_key === m.owner_key && r.workspace_id === m.workspace_id && r.mandate_digest === j.mandate.digest && before2(m.issued_at, r.issued_at) && before2(r.issued_at, m.expires_at) && before2(r.issued_at, j.observed_at) && before2(r.issued_at, j.workspace.payload.observed_at) && before2(j.workspace.payload.observed_at, j.observed_at), "Coding request authority mismatch");
+    check(!j.parent.origin && !j.parent.coding_origin && (await verifyRepositoryReviewEvidence(j.parent, key4)).valid, "Invalid frozen coding source");
+    const core = j.parent.repository.type === "scopeblind.repository.evidence.v1" ? j.parent.repository.state : j.parent.repository.repository.state, source = r.source, feedback = j.parent.review.payload.feedback.find((f) => f.digest === source.feedback_digest);
+    check(core.payload.task.digest === source.task_digest && core.payload.task.payload.id === source.task_id && core.payload.task.payload.repository === m.repository && core.payload.task.payload.base_branch === m.base_branch && feedback && feedback.payload.basis_digest === source.basis_digest && feedback.payload.packet_digest === source.packet_digest && before2(feedback.payload.issued_at, r.issued_at) && core.payload.proposal, "Coding source feedback mismatch");
+    check(Number.isSafeInteger(j.attempts) && j.attempts >= 0 && j.attempts <= m.max_attempts && Number.isSafeInteger(j.model_calls) && j.model_calls >= 0 && j.model_calls <= m.max_model_calls && Number.isSafeInteger(j.reserved_tokens) && j.reserved_tokens >= 0 && j.reserved_tokens <= m.max_tokens, "Coding work limits exceeded");
+    check((j.started_at === null || at5(j.started_at) && before2(r.issued_at, j.started_at) && before2(j.started_at, j.observed_at)) && (j.lease_id === null ? j.lease_expires_at === null : typeof j.lease_id === "string" && at5(j.lease_expires_at)) && (j.error === null || typeof j.error === "string" && /^[a-z0-9_]{3,80}$/.test(j.error)), "Invalid coding lifecycle");
+    if (j.stop) {
+      check(validRepositoryEnvelope(j.stop) && validRepositoryCodingStop(j.stop.payload) && [m.owner_key, m.reviewer_key].includes(j.stop.payload.principal_key) && await verify(j.stop, j.stop.payload.principal_key) && j.stop.payload.job_id === r.id && j.stop.payload.mandate_digest === j.mandate.digest && j.stop.payload.workspace_id === m.workspace_id && before2(j.stop.payload.issued_at, j.observed_at), "Invalid coding cancellation");
+    }
+    if (j.plan) {
+      const p = j.plan.payload;
+      check(validRepositoryEnvelope(j.plan) && validRepositoryCodingPlan(p, m) && await verify(j.plan, m.worker_key) && p.job_id === r.id && p.request_digest === j.request.digest && p.mandate_digest === j.mandate.digest && p.source_head_sha === core.payload.proposal.payload.head_sha && p.source_base_sha === core.payload.proposal.payload.base_sha && p.tests.command_digest === await sha256(canonical(m.test_command)) && p.build.command_digest === await sha256(canonical(m.build_command)) && p.model_calls === j.model_calls && p.reserved_tokens === j.reserved_tokens && before2(p.issued_at, j.observed_at), "Coding plan scope or tests invalid");
+    }
+    if (j.publication) {
+      const p = j.publication.payload;
+      check(j.plan && validRepositoryEnvelope(j.publication) && object6(p) && shape4(p, ["type", "job_id", "plan_digest", "mandate_digest", "request_digest", "worker_key", "lease_id", "issued_at", "expires_at"]) && p.type === "scopeblind.repository.coding-publication.v1" && await verify(j.publication, key4) && p.job_id === r.id && p.plan_digest === j.plan.digest && p.mandate_digest === j.mandate.digest && p.request_digest === j.request.digest && p.worker_key === m.worker_key && at5(p.issued_at) && at5(p.expires_at) && before2(j.plan.payload.issued_at, p.issued_at) && Date.parse(p.expires_at) > Date.parse(p.issued_at) && Date.parse(p.expires_at) - Date.parse(p.issued_at) <= 12e4 && before2(p.expires_at, m.expires_at) && before2(p.issued_at, j.observed_at), "Invalid exact publication gate");
+    }
+    if (j.result) {
+      const result = j.result.payload;
+      check(j.plan && j.publication && validRepositoryEnvelope(j.result) && validRepositoryCodingResult(result) && result.type === "scopeblind.repository.coding-result.v1" && await verify(j.result, m.worker_key) && result.job_id === r.id && result.plan_digest === j.plan.digest && result.publication_digest === j.publication.digest && result.repository === m.repository && result.branch === j.plan.payload.branch && result.head_sha === j.plan.payload.commit_sha && Number.isSafeInteger(result.pull_number) && result.pull_number > 0 && result.pull_url === `https://github.com/${m.repository}/pull/${result.pull_number}` && result.preview_digest === j.plan.payload.preview_digest && Number.isSafeInteger(result.deployment_id) && result.deployment_id > 0 && Number.isSafeInteger(result.deployment_status_id) && result.deployment_status_id > 0 && at5(result.observed_at) && before2(j.publication.payload.issued_at, result.observed_at) && before2(result.observed_at, j.observed_at), "Invalid coding publication readback");
+      const u = new URL(result.preview_url);
+      check(u.protocol === "https:" && !u.username && !u.password && !u.search && !u.hash && u.pathname === `/v1/${r.id}/${result.head_sha}/${result.preview_digest}/index.html`, "Preview must identify the immutable content");
+      published = true;
+    }
+    check(j.status === "pr_ready" === !!j.result && (!j.publication || j.plan) && (!["publishing", "unknown"].includes(j.status) || !!j.publication), "Contradictory coding status");
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : "Malformed coding evidence");
+  }
+  return { valid: errors.length === 0, errors, published: errors.length === 0 && published, authorityPinned: !!authorityKey, limitations: ["Code-edit authority permits only bounded work and a new pull request; no merge or recipient acceptance is inherited.", "The service attests live membership, revocation, spending reservations and the publication gate. The worker attests model work, isolated test results and GitHub readbacks.", "A content-addressed preview identifies the published bundle; verification does not execute it or prove that the code satisfies the brief."] };
+}
+
+// src/coordination-repository-review-evidence.ts
+var shape5 = (v, keys2, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && keys2.every((k) => Object.prototype.hasOwnProperty.call(v, k)) && Object.keys(v).every((k) => keys2.includes(k) || optional.includes(k));
+var at6 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+function repositoryReviewCore(e) {
+  return e.repository.type === "scopeblind.repository.evidence.v1" ? e.repository : e.repository.repository;
+}
+async function verifyRepositoryReviewEvidence(value, pins) {
+  const errors = [], check = (condition, message) => {
+    if (!condition) errors.push(message);
+  };
+  let codingOriginVerified = false, originVerified = false, accepted = false, packetVerified = false, decisionsVerified = false, previewAvailable = false, authorityPinned = false;
+  try {
+    const e = value;
+    check((shape5(e, ["type", "repository", "review"]) || shape5(e, ["type", "repository", "review", "origin"]) || shape5(e, ["type", "repository", "review", "coding_origin"])) && e.type === "scopeblind.repository.review-evidence.v1", "Review evidence shape is invalid");
+    const core = repositoryReviewCore(e), base = e.repository.type === "scopeblind.repository.evidence.v1" ? await verifyRepositoryEvidence(e.repository, pins) : await verifyRepositoryCollaborationEvidence(e.repository, pins), s = core.state.payload, r = e.review.payload, t = s.task.payload, key4 = typeof pins === "string" ? pins : pins?.authority_key ?? t.authority_key;
+    check(base.valid, "Underlying repository evidence is invalid");
+    accepted = base.accepted;
+    authorityPinned = base.authorityPinned;
+    check(validRepositoryEnvelope(e.review) && shape5(r, ["type", "task_id", "task_digest", "brief", "packet", "decisions", "feedback", "recommendations", "history", "agent_uses", "observed_at"], ["origin_digest", "coding_origin_digest"]) && r.type === "scopeblind.repository.review-state.v1" && r.task_id === t.id && r.task_digest === s.task.digest && at6(r.observed_at) && Date.parse(r.observed_at) >= Date.parse(s.observed_at) && await verify(e.review, key4), "Review service state is invalid");
+    check(validRepositoryEnvelope(r.brief) && validRepositoryReviewBrief(r.brief.payload, t, s.task.digest) && Date.parse(r.brief.payload.issued_at) <= Date.parse(r.observed_at) && await verify(r.brief, t.owner_key), "Owner review brief is invalid");
+    check(Array.isArray(r.decisions) && r.decisions.length <= 2 && new Set(r.decisions.map((d) => d.payload.role)).size === r.decisions.length && Array.isArray(r.feedback) && r.feedback.length <= 20 && new Set(r.feedback.map((f) => f.payload.id)).size === r.feedback.length && Array.isArray(r.recommendations) && r.recommendations.length <= 20 && new Set(r.recommendations.map((f) => f.payload.id)).size === r.recommendations.length && Array.isArray(r.history) && r.history.length <= 40 && new Set(r.history.map((h) => h.state.digest + ":" + h.packet.digest)).size === r.history.length, "Review record bounds are invalid");
+    check(Array.isArray(r.agent_uses) && r.agent_uses.length <= 40 && new Set(r.agent_uses.map((u) => u.payload.record_digest)).size === r.agent_uses.length, "Agent-use record bounds are invalid");
+    if (r.packet) {
+      packetVerified = !!s.proposal && validRepositoryEnvelope(r.packet) && validRepositoryReviewPacket(r.packet.payload, r.brief, s.proposal) && Date.parse(r.packet.payload.observed_at) <= Date.parse(r.observed_at) && await verify(r.packet, t.receiver_key);
+      check(packetVerified, "Receiver review packet is invalid");
+      previewAvailable = packetVerified && r.packet.payload.preview.status === "available";
+    } else check(!r.decisions.length && !s.execution, "Exact packet decisions require a current packet");
+    for (const decision of r.decisions) {
+      const a = s.approvals.find((a2) => a2.payload.role === decision.payload.role), principal = decision.payload.role === "owner" ? t.owner_key : s.reviewer?.payload.reviewer_key;
+      check(a && r.packet && validRepositoryHumanEnvelope(decision) && validRepositoryReviewDecision(decision.payload, r.brief, r.packet, a) && decision.payload.principal_key === principal && await verifyRepositoryHuman(decision, principal, { authorityKey: key4, task: s.task, requireRecordedUse: true }) && Date.parse(decision.payload.issued_at) <= Date.parse(r.observed_at), "Exact packet decision is invalid");
+    }
+    check(r.decisions.length === s.approvals.length && s.approvals.every((a) => r.decisions.some((d) => d.payload.role === a.payload.role && d.payload.approval_digest === a.digest)), "Each ordinary approval requires its exact packet decision");
+    decisionsVerified = packetVerified && r.decisions.length === 2 && s.approvals.length === 2 && s.approvals.every((a) => a.payload.decision === "approve");
+    if (s.execution) check(decisionsVerified && r.packet && Date.parse(s.execution.payload.expires_at) <= Date.parse(r.packet.payload.expires_at), "Execution lacks both exact current packet decisions");
+    const contexts = r.packet ? [{ state: core.state, packet: r.packet }] : [];
+    for (const h of r.history) {
+      check(shape5(h, ["state", "packet", "decisions"]) && (await verifyRepositoryEvidence({ type: "scopeblind.repository.evidence.v1", state: h.state }, pins ?? key4)).valid && h.state.payload.task.digest === s.task.digest && h.state.payload.reviewer?.digest === s.reviewer?.digest && Date.parse(h.state.payload.observed_at) <= Date.parse(r.observed_at) && h.state.payload.proposal && validRepositoryEnvelope(h.packet) && validRepositoryReviewPacket(h.packet.payload, r.brief, h.state.payload.proposal) && await verify(h.packet, t.receiver_key), "Historical review basis is invalid");
+      contexts.push(h);
+      check(Array.isArray(h.decisions) && h.decisions.length <= 2 && new Set(h.decisions.map((d) => d.payload.role)).size === h.decisions.length, "Historical packet decisions are invalid");
+      for (const decision of h.decisions) {
+        const approval = h.state.payload.approvals.find((a) => a.payload.role === decision.payload.role), principal = decision.payload.role === "owner" ? t.owner_key : s.reviewer?.payload.reviewer_key;
+        check(approval && validRepositoryHumanEnvelope(decision) && validRepositoryReviewDecision(decision.payload, r.brief, h.packet, approval) && decision.payload.principal_key === principal && await verifyRepositoryHuman(decision, principal, { authorityKey: key4, task: s.task, requireRecordedUse: true }), "Historical exact packet decision is invalid");
+      }
+      check(h.decisions.length === h.state.payload.approvals.length && h.state.payload.approvals.every((a) => h.decisions.some((d) => d.payload.role === a.payload.role && d.payload.approval_digest === a.digest)), "Each historical approval requires its exact packet decision");
+      if (h.state.payload.execution) check(h.decisions.length === 2 && Date.parse(h.state.payload.execution.payload.expires_at) <= Date.parse(h.packet.payload.expires_at), "Historical execution lacks both exact packet decisions");
+      check(r.feedback.some((f) => f.payload.packet_digest === h.packet.digest && (f.payload.basis_digest === h.state.payload.proposal?.digest || f.payload.basis_digest === h.state.payload.outcome?.digest || f.payload.basis_digest === h.state.payload.acceptance?.digest)) || r.recommendations.some((a) => a.payload.packet_digest === h.packet.digest && a.payload.proposal_digest === h.state.payload.proposal?.digest), "Unreferenced review history is invalid");
+    }
+    const uses = /* @__PURE__ */ new Map();
+    for (const use of r.agent_uses) {
+      const u = use.payload, m = u.mandate?.payload, a = u.assignment?.payload, record = [...r.feedback, ...r.recommendations].find((x) => x.digest === u.record_digest), recordTime = record ? record.payload.issued_at ?? record.payload.observed_at : "";
+      check(validRepositoryEnvelope(use) && shape5(u, ["type", "task_id", "task_digest", "record_digest", "permission", "mandate", "adoption", "assignment", "checked_at"]) && u.type === "scopeblind.repository.review-agent-use.v1" && u.task_id === t.id && u.task_digest === s.task.digest && await verify(use, key4) && record && at6(u.checked_at) && Date.parse(u.checked_at) <= Date.parse(r.observed_at) && Date.parse(u.checked_at) >= Date.parse(recordTime), "Agent-use service attestation is invalid");
+      check(validRepositoryEnvelope(u.mandate) && validRepositoryEnvelope(u.adoption) && validWorkspacePreparationMandate(m) && m.owner_key === t.owner_key && m.reviewer_key === s.reviewer?.payload.reviewer_key && !["", t.owner_key, t.receiver_key, t.authority_key, s.reviewer?.payload.reviewer_key].includes(m.agent_key) && m.repository === t.repository && m.base_branch === t.base_branch && u.adoption.digest === u.mandate.digest && canonical(u.adoption.payload) === canonical(m) && await verify(u.mandate, t.owner_key) && await verify(u.adoption, m.reviewer_key) && m.permissions.includes(u.permission) && ["report_criteria", "request_revision"].includes(u.permission) && Date.parse(m.issued_at) <= Date.parse(recordTime) && Date.parse(m.expires_at) >= Date.parse(u.checked_at) && t.allowed_paths.every((p) => m.allowed_paths.includes(p) || m.allowed_paths.some((scope) => scope.endsWith("/**") && p.startsWith(scope.slice(0, -2)))) && m.required_checks.every((c) => t.required_checks.some((tc) => tc.name === c.name && tc.app_id === c.app_id)), "Dual-signed preparation mandate is invalid");
+      check(validRepositoryEnvelope(u.assignment) && validWorkspaceTaskAssignment(a) && a.task_id === t.id && a.task_digest === s.task.digest && a.review_brief_digest === r.brief.digest && a.workspace_id === m.workspace_id && a.workspace_digest === m.workspace_digest && a.owner_key === t.owner_key && a.reviewer_key === s.reviewer?.payload.reviewer_key && a.owner_member_id === m.owner_member_id && a.reviewer_member_id === m.reviewer_member_id && a.owner_member_revision === m.owner_member_revision && a.reviewer_member_revision === m.reviewer_member_revision && Date.parse(a.issued_at) <= Date.parse(recordTime) && Date.parse(a.expires_at) >= Date.parse(u.checked_at) && await verify(u.assignment, t.owner_key), "Task assignment for the agent use is invalid");
+      uses.set(u.record_digest, use);
+    }
+    for (const feedback of r.feedback) {
+      const f = feedback.payload, c = contexts.find((c2) => c2.packet.digest === f.packet_digest && [c2.state.payload.proposal?.digest, c2.state.payload.outcome?.digest, c2.state.payload.acceptance?.digest].includes(f.basis_digest));
+      check(c && validRepositoryHumanEnvelope(feedback) && validRepositoryReviewFeedback(f, r.brief, c.packet) && await verifyRepositoryHuman(feedback, f.requester_key, { authorityKey: key4, task: s.task, requireRecordedUse: true }) && Date.parse(f.issued_at) <= Date.parse(r.observed_at), "Review feedback is invalid");
+      const use = uses.get(feedback.digest)?.payload;
+      check(f.mandate_digest ? use && use.permission === "request_revision" && use.mandate.digest === f.mandate_digest && use.mandate.payload.agent_key === f.requester_key : !use && [t.owner_key, s.reviewer?.payload.reviewer_key].includes(f.requester_key), "Review feedback lacks independently verifiable human or scoped-agent authority");
+    }
+    for (const recommendation of r.recommendations) {
+      const a = recommendation.payload, c = contexts.find((c2) => c2.packet.digest === a.packet_digest && c2.state.payload.proposal?.digest === a.proposal_digest);
+      check(c && validRepositoryEnvelope(recommendation) && validRepositoryReviewRecommendation(a, r.brief, c.packet, c.state.payload.proposal) && await verify(recommendation, a.agent_key) && Date.parse(a.observed_at) <= Date.parse(r.observed_at), "Criterion recommendation is invalid");
+      const use = uses.get(recommendation.digest)?.payload;
+      check(use && use.permission === "report_criteria" && use.mandate.digest === a.mandate_digest && use.mandate.payload.agent_key === a.agent_key, "Recommendation lacks independently verifiable scoped-agent authority");
+    }
+    check(e.origin ? r.origin_digest === await sha256(canonical(e.origin)) : r.origin_digest === void 0, "Registered origin commitment is missing or mismatched");
+    check(e.coding_origin ? r.coding_origin_digest === await sha256(canonical(e.coding_origin)) : r.coding_origin_digest === void 0, "Registered coding origin commitment is missing or mismatched");
+    if (e.coding_origin) {
+      const o = e.coding_origin, j = o.job?.job?.payload, a = o.assignment?.payload;
+      check(!e.origin && shape5(o, ["job", "assignment"]) && (await verifyRepositoryCodingEvidence(o.job, key4)).published, "Coding origin is not a verified completed code job");
+      check(j?.result && j.request.payload.source.task_id !== t.id && j.result.payload.repository === t.repository && j.result.payload.pull_number === t.pull_number && j.mandate.payload.base_branch === t.base_branch, "Coding result does not match the fresh review");
+      check(validRepositoryEnvelope(o.assignment) && validWorkspaceTaskAssignment(a) && a.task_id === t.id && a.task_digest === s.task.digest && a.review_brief_digest === r.brief.digest && !a.source_draft_digest && a.workspace_id === j.mandate.payload.workspace_id && a.workspace_digest === j.mandate.payload.workspace_digest && a.owner_key === t.owner_key && (!s.reviewer || a.reviewer_key === s.reviewer.payload.reviewer_key) && Date.parse(a.issued_at) >= Date.parse(j.result.payload.observed_at) && Date.parse(a.issued_at) <= Date.parse(r.observed_at) && await verify(o.assignment, t.owner_key), "Coding result assignment is invalid");
+      if (s.proposal) check(s.proposal.payload.head_sha === j.result.payload.head_sha, "Fresh review changed beyond the registered coding result");
+      codingOriginVerified = true;
+    }
+    if (e.origin) {
+      const o = e.origin;
+      check(shape5(o, ["draft", "assignment", "parent_assignment", "parent", "preparation"]) && !Object.prototype.hasOwnProperty.call(o.parent, "origin") && shape5(o.preparation, ["mandate", "adoption"]), "Review origin shape or depth is invalid");
+      if (!shape5(o.parent, ["type", "repository", "review"])) throw Error("Nested origin is forbidden");
+      const parent = await verifyRepositoryReviewEvidence(o.parent, key4), ps = repositoryReviewCore(o.parent).state.payload, d = o.draft.payload, a = o.assignment.payload, m = o.preparation.mandate.payload, source = d.source;
+      check(parent.valid && validRepositoryEnvelope(o.draft) && validWorkspaceReviewDraft(d) && source && d.repository === t.repository && d.pull_number === t.pull_number && d.workspace_id === a.workspace_id && d.mandate_digest === o.preparation.mandate.digest && d.agent_key === m.agent_key && await verify(o.draft, d.agent_key), "Incoming review draft is invalid");
+      const pa = o.parent_assignment?.payload;
+      check(validRepositoryEnvelope(o.parent_assignment) && validWorkspaceTaskAssignment(pa) && pa.task_id === ps.task.payload.id && pa.task_digest === ps.task.digest && pa.review_brief_digest === o.parent.review.payload.brief.digest && pa.workspace_id === a.workspace_id && pa.workspace_digest === a.workspace_digest && pa.owner_key === ps.task.payload.owner_key && pa.reviewer_key === ps.reviewer?.payload.reviewer_key && await verify(o.parent_assignment, ps.task.payload.owner_key), "Source task project assignment is invalid");
+      const feedback = source ? o.parent.review.payload.feedback.find((f) => f.digest === source.feedback_digest) : void 0;
+      check(source && ps.task.payload.id === source.task_id && ps.task.digest === source.task_digest && ps.task.payload.repository === t.repository && ps.task.payload.authority_key === t.authority_key && ps.task.payload.receiver_key === t.receiver_key && o.parent.review.payload.packet?.digest === source.packet_digest && feedback && feedback.payload.basis_digest === source.basis_digest && feedback.payload.packet_digest === source.packet_digest && Date.parse(feedback.payload.issued_at) <= Date.parse(d.issued_at) && Date.parse(ps.observed_at) <= Date.parse(d.issued_at) && o.parent.review.payload.feedback.length === 1 && o.parent.review.payload.recommendations.length === 0, "Incoming source feedback does not match the frozen parent");
+      check(validRepositoryEnvelope(o.assignment) && validWorkspaceTaskAssignment(a) && a.task_id === t.id && a.task_digest === s.task.digest && a.review_brief_digest === r.brief.digest && a.source_draft_digest === o.draft.digest && a.owner_key === t.owner_key && a.reviewer_key === m.reviewer_key && (!s.reviewer || a.reviewer_key === s.reviewer.payload.reviewer_key) && a.workspace_id === m.workspace_id && a.workspace_digest === m.workspace_digest && a.owner_member_id === m.owner_member_id && a.reviewer_member_id === m.reviewer_member_id && a.owner_member_revision === m.owner_member_revision && a.reviewer_member_revision === m.reviewer_member_revision && Date.parse(a.issued_at) >= Date.parse(d.issued_at) && Date.parse(a.issued_at) <= Date.parse(r.observed_at) && await verify(o.assignment, t.owner_key), "Incoming task assignment is invalid");
+      check(validRepositoryEnvelope(o.preparation.mandate) && validRepositoryEnvelope(o.preparation.adoption) && validWorkspacePreparationMandate(m) && m.owner_key === t.owner_key && m.repository === t.repository && m.base_branch === t.base_branch && m.permissions.includes("prepare_review") && ![t.owner_key, t.receiver_key, t.authority_key, m.reviewer_key].includes(d.agent_key) && canonical(o.preparation.adoption.payload) === canonical(m) && o.preparation.adoption.digest === o.preparation.mandate.digest && await verify(o.preparation.mandate, m.owner_key) && await verify(o.preparation.adoption, m.reviewer_key) && Date.parse(d.issued_at) >= Date.parse(m.issued_at) && Date.parse(d.issued_at) <= Date.parse(m.expires_at) && d.allowed_paths.every((p) => m.allowed_paths.includes(p) || m.allowed_paths.some((scope) => scope.endsWith("/**") && p.startsWith(scope.slice(0, -2)))) && m.required_checks.every((c) => d.required_checks.some((dc) => dc.name === c.name && dc.app_id === c.app_id)), "Incoming draft preparation authority is invalid");
+      originVerified = true;
+    }
+  } catch {
+    errors.push("Malformed review evidence");
+  }
+  return { valid: errors.length === 0, errors, originVerified: originVerified && errors.length === 0, codingOriginVerified: codingOriginVerified && errors.length === 0, accepted: accepted && errors.length === 0, authorityPinned: authorityPinned && errors.length === 0, packetVerified: packetVerified && errors.length === 0, previewAvailable: previewAvailable && errors.length === 0, decisionsVerified: decisionsVerified && errors.length === 0, limitations: ["A receiver signature records GitHub API metadata; it is not a GitHub-signed receipt.", "An external preview URL is mutable. Its observed commit association does not pin the bytes the browser later receives.", "An observed artifact digest does not prove that a preview URL serves that artifact.", "A pinned check provider identifies the check issuer, not necessarily the deployment publisher.", "Agent criterion assessments are recommendations, not independent proof, human review, or execution authority.", "The service attests that membership, revocation and counters were checked atomically when each recorded agent use was accepted. This is historical authority, not a current grant.", "This controls only the installed receiver. Other repository credentials and actions remain outside its coverage.", ...!pins ? ["No independent authority key was supplied. Only consistency with the included authority was checked."] : []] };
+}
+
+// src/coordination-repository-connection.ts
+var REPOSITORY_SETUP_ACTIONS = ["repository_setup_info", "repository_setup_create", "repository_setup_get", "repository_setup_oauth", "repository_setup_enroll", "repository_setup_confirm", "repository_setup_ready", "repository_setup_coding_ready", "repository_setup_refresh", "repository_setup_renew", "repository_setup_revoke", "repository_setup_dispatch", "repository_setup_job_get", "repository_setup_job_complete"];
+var REPOSITORY_GUIDED_WORKFLOW = ".github/workflows/scopeblind-connection.yml";
+var REPOSITORY_SETUP_TTL = 30 * 6e4;
+var REPOSITORY_CODING_IMAGE = "node@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752";
+var obj3 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var shape6 = (v, keys2, optional = []) => obj3(v) && keys2.every((k) => k in v) && Object.keys(v).every((k) => keys2.includes(k) || optional.includes(k));
+var hex4 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
+var id8 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
+var sha3 = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
+var num2 = (v) => typeof v === "number" && Number.isSafeInteger(v) && v > 0;
+var at7 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var text6 = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);
+var line2 = (v, max) => text6(v, max) && !/[\r\n\t]/.test(v);
+var repo2 = (v) => typeof v === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v) && !v.split("/").some((x) => x === "." || x === "..");
+var span3 = (a, b, max) => at7(a) && at7(b) && Date.parse(b) > Date.parse(a) && Date.parse(b) - Date.parse(a) <= max;
+function repositorySetupArtifactUrl(v) {
+  return typeof v === "string" && /^https:\/\/scopeblind\.com\/releases\/repository-receiver-[0-9]+\.[0-9]+\.[0-9]+\.cjs$/.test(v);
+}
+function validRepositorySetupRequest(v) {
+  return shape6(v, ["type", "id", "owner_key", "authority_key", "repository", "pull_number", "mode", "secret_hash", "state_hash", "pkce_challenge", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.setup-request.v1" && id8(v.id) && hex4(v.owner_key) && hex4(v.authority_key) && v.owner_key !== v.authority_key && repo2(v.repository) && num2(v.pull_number) && ["github_app", "owner_local"].includes(String(v.mode)) && hex4(v.secret_hash) && hex4(v.state_hash) && typeof v.pkce_challenge === "string" && /^[A-Za-z0-9_-]{43}$/.test(v.pkce_challenge) && span3(v.issued_at, v.expires_at, REPOSITORY_SETUP_TTL);
+}
+function validRepositorySetupInspection(v, request, receiverKey) {
+  if (!shape6(v, ["type", "setup_digest", "owner_key", "receiver_key", "repository", "repository_id", "pull_number", "title", "url", "base_branch", "head_branch", "base_sha", "head_sha", "draft", "mergeable", "files", "checks", "preview", "observed_at", "expires_at"]) || v.type !== "scopeblind.repository.setup-inspection.v1" || v.setup_digest !== request.digest || v.owner_key !== request.payload.owner_key || v.receiver_key !== receiverKey || v.repository !== request.payload.repository || !num2(v.repository_id) || v.pull_number !== request.payload.pull_number || !line2(v.title, 300) || v.url !== `https://github.com/${v.repository}/pull/${v.pull_number}` || !repositoryBranch(String(v.base_branch)) || !repositoryBranch(String(v.head_branch)) || !sha3(v.base_sha) || !sha3(v.head_sha) || typeof v.draft !== "boolean" || v.mergeable !== null && typeof v.mergeable !== "boolean" || !span3(v.observed_at, v.expires_at, 864e5)) return false;
+  if (!Array.isArray(v.files) || v.files.length > 50 || !v.files.every((f) => shape6(f, ["path", "status", "additions", "deletions"], ["previous_path", "patch", "patch_truncated"]) && line2(f.path, 500) && ["added", "modified", "removed", "renamed"].includes(String(f.status)) && Number.isSafeInteger(f.additions) && Number(f.additions) >= 0 && Number.isSafeInteger(f.deletions) && Number(f.deletions) >= 0 && (f.previous_path === void 0 || line2(f.previous_path, 500)) && f.status === "renamed" === (f.previous_path !== void 0) && (f.patch === void 0 || typeof f.patch === "string" && f.patch.length <= 4e3) && (f.patch_truncated === void 0 || f.patch_truncated === true && typeof f.patch === "string")) || new Set(v.files.map((f) => f.path)).size !== v.files.length) return false;
+  return Array.isArray(v.checks) && v.checks.length <= 100 && v.checks.every((c) => shape6(c, ["id", "name", "app_id", "head_sha", "status", "conclusion"]) && num2(c.id) && line2(c.name, 100) && num2(c.app_id) && c.head_sha === v.head_sha && ["queued", "in_progress", "completed"].includes(String(c.status)) && (c.conclusion === null || line2(c.conclusion, 100))) && new Set(v.checks.map((c) => c.id)).size === v.checks.length && (v.preview === null || validRepositoryEnvelope(v.preview));
+}
+function validRepositorySetupAuthorization(v) {
+  return shape6(v, ["type", "setup_id", "setup_digest", "enrollment_digest", "connection_digest", "owner_key", "repository_id", "workflow_path", "workflow_sha256", "receiver_url", "receiver_sha256", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.setup-authorization.v1" && id8(v.setup_id) && [v.setup_digest, v.enrollment_digest, v.connection_digest, v.owner_key, v.workflow_sha256, v.receiver_sha256].every(hex4) && num2(v.repository_id) && v.workflow_path === REPOSITORY_GUIDED_WORKFLOW && repositorySetupArtifactUrl(v.receiver_url) && span3(v.issued_at, v.expires_at, REPOSITORY_SETUP_TTL);
+}
+function validRepositorySetupRenewal(v) {
+  return shape6(v, ["type", "id", "setup_id", "authorization_digest", "owner_key", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.setup-renewal.v1" && id8(v.id) && id8(v.setup_id) && hex4(v.authorization_digest) && hex4(v.owner_key) && span3(v.issued_at, v.expires_at, REPOSITORY_SETUP_TTL);
+}
+function validRepositoryCodingConnectionConfig(v) {
+  if (!obj3(v) || typeof v.endpoint !== "string") return false;
+  let endpoint;
+  try {
+    endpoint = new URL(v.endpoint);
+  } catch {
+    return false;
+  }
+  if (endpoint.protocol !== "https:" || endpoint.pathname !== "/api/coordination" || endpoint.search || endpoint.hash || endpoint.username || endpoint.password || endpoint.href !== v.endpoint) return false;
+  return shape6(v, ["type", "endpoint", "authority_key", "worker_key", "repository", "base_branch", "runtime", "test_command", "build_command", "preview_directory", "docker_image"]) && v.type === "scopeblind.repository.coding-config.v1" && typeof v.endpoint === "string" && /^https:\/\/[^/?#]+\/api\/coordination$/.test(v.endpoint) && hex4(v.authority_key) && hex4(v.worker_key) && repo2(v.repository) && repositoryBranch(String(v.base_branch)) && v.runtime === "node22-static-v1" && codingCommand(v.test_command) && codingCommand(v.build_command) && codingSafePath(v.preview_directory) && typeof v.docker_image === "string" && /^node@sha256:[a-f0-9]{64}$/.test(v.docker_image);
+}
+async function verifyRepositorySetupEnrollment(value, request, expectedEndpoint = "https://scopeblind.com/api/coordination") {
+  try {
+    if (!validRepositoryEnvelope(value)) return false;
+    const e = value, v = e.payload, c = v.connection;
+    if (!shape6(v, ["type", "setup_id", "setup_digest", "receiver_key", "connection", "readiness", "inspection", "installation", "issued_at"], ["coding", "replaces"]) || v.type !== "scopeblind.repository.setup-enrollment.v1" || v.setup_id !== request.payload.id || v.setup_digest !== request.digest || !hex4(v.receiver_key) || [request.payload.owner_key, request.payload.authority_key].includes(v.receiver_key) || !at7(v.issued_at) || !validRepositoryConnection(c) || c.id !== request.payload.id || c.owner_key !== request.payload.owner_key || c.authority_key !== request.payload.authority_key || c.receiver_key !== v.receiver_key || c.repository !== request.payload.repository || c.endpoint !== expectedEndpoint) return false;
+    const i = v.installation;
+    if (!shape6(i, ["workflow_path", "workflow", "workflow_sha256", "receiver_url", "receiver_sha256", "secret_name", "variable_name"]) || i.workflow_path !== REPOSITORY_GUIDED_WORKFLOW || !text6(i.workflow, 3e4) || !hex4(i.workflow_sha256) || await sha256(i.workflow) !== i.workflow_sha256 || !repositorySetupArtifactUrl(i.receiver_url) || !hex4(i.receiver_sha256) || i.secret_name !== "SCOPEBLIND_GUIDED_RECEIVER_KEY" || i.variable_name !== "SCOPEBLIND_GUIDED_CONNECTION") return false;
+    if (!validRepositoryEnvelope(v.readiness) || !validRepositoryReadiness(v.readiness.payload) || v.readiness.payload.runtime !== "local" || v.readiness.payload.connection_digest !== await sha256(COORDINATION_DOMAIN + canonical(c)) || !validRepositoryEnvelope(v.inspection) || !validRepositorySetupInspection(v.inspection.payload, request, v.receiver_key)) return false;
+    const r = v.readiness.payload, s = v.inspection.payload;
+    if (Date.parse(v.issued_at) < Date.parse(request.payload.issued_at) - 1e3 || Date.parse(v.issued_at) > Date.parse(request.payload.expires_at) || Date.parse(c.issued_at) < Date.parse(request.payload.issued_at) - 1e3 || [r.observed_at, s.observed_at].some((t) => Date.parse(t) > Date.parse(v.issued_at) + 1e3 || Date.parse(v.issued_at) - Date.parse(t) > 3e5) || Date.parse(r.expires_at) > Date.parse(c.expires_at) || ["repository", "base_branch", "owner_key", "receiver_key", "authority_key"].some((k) => r[k] !== c[k]) || s.base_branch !== c.base_branch || r.base_sha !== s.base_sha || r.check_head_sha !== s.head_sha) return false;
+    if (s.preview && (s.preview.payload.head_sha !== s.head_sha || !await verifyRepositoryPreviewDiscovery(s.preview, { owner_key: c.owner_key, receiver_key: c.receiver_key, authority_key: c.authority_key, repository: c.repository, pull_number: request.payload.pull_number }, Date.parse(s.observed_at)))) return false;
+    if (v.coding) {
+      const k = v.coding;
+      if (!shape6(k, ["config", "workflow", "workflow_sha256", "artifact_url", "artifact_sha256"]) || !validRepositoryCodingConnectionConfig(k.config) || k.config.endpoint !== c.endpoint || k.config.repository !== c.repository || k.config.base_branch !== c.base_branch || k.config.authority_key !== c.authority_key || [c.owner_key, c.receiver_key, c.authority_key].includes(k.config.worker_key) || !text6(k.workflow, 3e4) || !hex4(k.workflow_sha256) || await sha256(k.workflow) !== k.workflow_sha256 || !/^https:\/\/scopeblind\.com\/releases\/repository-coding-[0-9]+\.[0-9]+\.[0-9]+\.cjs$/.test(k.artifact_url) || !hex4(k.artifact_sha256)) return false;
+    }
+    if (v.replaces && !await verifyRepositorySetupReplacement(v.replaces, c)) return false;
+    return await verify(e, v.receiver_key) && await verify(v.readiness, v.receiver_key) && await verify(v.inspection, v.receiver_key);
+  } catch {
+    return false;
+  }
+}
+async function verifyRepositorySetupReplacement(value, next) {
+  try {
+    if (!shape6(value, ["type", "endpoint", "authority_key", "connection", "authorization"]) || value.type !== "scopeblind.repository.guided-receiver-config.v1" || !validRepositoryEnvelope(value.connection) || !validRepositoryEnvelope(value.authorization)) return false;
+    const c = value.connection, a = value.authorization;
+    return validRepositoryConnection(c.payload) && validRepositorySetupAuthorization(a.payload) && value.endpoint === next.endpoint && value.authority_key === next.authority_key && c.payload.id !== next.id && ["endpoint", "repository", "base_branch", "owner_key", "receiver_key", "authority_key"].every((k) => c.payload[k] === next[k]) && a.payload.connection_digest === c.digest && a.payload.setup_id === c.payload.id && a.payload.owner_key === next.owner_key && await verify(c, next.owner_key) && await verify(a, next.owner_key);
+  } catch {
+    return false;
+  }
+}
+function validWorkflowProof(proof, ready, repositoryId, workflowRef, observedAt) {
+  return shape6(proof, ["repository_id", "run_id", "run_attempt", "workflow_ref", "workflow_sha", "token_digest", "verified_at"]) && proof.repository_id === repositoryId && num2(proof.run_id) && num2(proof.run_attempt) && proof.run_id === ready.run_id && proof.run_attempt === ready.run_attempt && proof.workflow_ref === workflowRef && ready.workflow_ref === workflowRef && sha3(proof.workflow_sha) && proof.workflow_sha === ready.workflow_sha && hex4(proof.token_digest) && at7(proof.verified_at) && at7(ready.observed_at) && Date.parse(proof.verified_at) >= Date.parse(ready.observed_at) - 1e3 && Date.parse(proof.verified_at) - Date.parse(ready.observed_at) <= 3e5 && Date.parse(proof.verified_at) <= Date.parse(observedAt) + 1e3;
+}
+async function verifyRepositorySetupState(value, authorityKey, ownerKey, expectedEndpoint = "https://scopeblind.com/api/coordination") {
+  try {
+    if (!validRepositoryEnvelope(value)) return false;
+    const signed2 = value;
+    if (!await verify(signed2, authorityKey)) return false;
+    const s = signed2.payload, r = s.request;
+    if (!shape6(s, ["type", "request", "github", "enrollment", "connection", "authorization", "challenge", "ready", "workflow_proof", "status", "dispatch", "observed_at"], ["coding_ready", "superseded_by", "blocking_jobs", "initial_ready", "installation_renewal"]) || s.type !== "scopeblind.repository.setup-state.v1" || !validRepositoryEnvelope(r) || !validRepositorySetupRequest(r.payload) || r.payload.authority_key !== authorityKey || ownerKey && r.payload.owner_key !== ownerKey || !await verify(r, r.payload.owner_key) || !at7(s.observed_at) || Date.parse(s.observed_at) < Date.parse(r.payload.issued_at) - 1e3 || !["awaiting_github", "awaiting_receiver", "awaiting_confirmation", "awaiting_workflow", "ready", "expired", "revoked", "superseded", "replacement_pending", "installation_expired"].includes(s.status) || !["none", "requested", "unconfigured", "unavailable"].includes(s.dispatch)) return false;
+    if (s.blocking_jobs !== void 0 && typeof s.blocking_jobs !== "boolean" || s.superseded_by !== void 0 && s.superseded_by !== null && (!id8(s.superseded_by) || s.superseded_by === r.payload.id)) return false;
+    const observed = Date.parse(s.observed_at);
+    if (s.github) {
+      const g = s.github.payload;
+      if (!validRepositoryEnvelope(s.github) || !await verify(s.github, authorityKey) || !shape6(g, ["type", "setup_digest", "app_id", "installation_id", "user_id", "login", "repository_id", "repository", "default_branch", "permissions", "repository_selection", "observed_at"]) || g.type !== "scopeblind.repository.setup-github.v1" || g.setup_digest !== r.digest || g.repository !== r.payload.repository || g.repository_selection !== "selected" || ![g.app_id, g.installation_id, g.user_id, g.repository_id].every(num2) || !line2(g.login, 100) || !repositoryBranch(g.default_branch) || !shape6(g.permissions, ["admin", "push"]) || typeof g.permissions.admin !== "boolean" || g.permissions.push !== true || !at7(g.observed_at) || Date.parse(g.observed_at) > observed + 1e3 || Date.parse(g.observed_at) < Date.parse(r.payload.issued_at) - 1e3) return false;
+    }
+    if (s.enrollment) {
+      if (!await verifyRepositorySetupEnrollment(s.enrollment, r, expectedEndpoint) || Date.parse(s.enrollment.payload.issued_at) > observed + 1e3) return false;
+      if (r.payload.mode === "github_app" && (!s.github || s.github.payload.repository_id !== s.enrollment.payload.inspection.payload.repository_id || s.github.payload.default_branch !== s.enrollment.payload.connection.base_branch)) return false;
+    }
+    if (!!s.connection !== !!s.authorization) return false;
+    if (s.connection && (!s.enrollment || !validRepositoryEnvelope(s.connection) || !await verify(s.connection, r.payload.owner_key) || canonical(s.connection.payload) !== canonical(s.enrollment.payload.connection))) return false;
+    if (s.authorization) {
+      const a = s.authorization;
+      if (!s.connection || !s.enrollment || !validRepositoryEnvelope(a) || !validRepositorySetupAuthorization(a.payload) || !await verify(a, r.payload.owner_key) || a.payload.setup_id !== r.payload.id || a.payload.setup_digest !== r.digest || a.payload.enrollment_digest !== s.enrollment.digest || a.payload.connection_digest !== s.connection.digest || a.payload.owner_key !== r.payload.owner_key || a.payload.repository_id !== s.enrollment.payload.inspection.payload.repository_id || a.payload.workflow_sha256 !== s.enrollment.payload.installation.workflow_sha256 || a.payload.receiver_url !== s.enrollment.payload.installation.receiver_url || a.payload.receiver_sha256 !== s.enrollment.payload.installation.receiver_sha256 || Date.parse(a.payload.issued_at) < Date.parse(s.enrollment.payload.issued_at) - 1e3 || Date.parse(a.payload.issued_at) > observed + 1e3 || Date.parse(a.payload.expires_at) > Date.parse(r.payload.expires_at)) return false;
+    }
+    if (s.installation_renewal) {
+      const renewal = s.installation_renewal;
+      if (!s.authorization || !s.connection || !validRepositoryEnvelope(renewal) || !validRepositorySetupRenewal(renewal.payload) || renewal.payload.setup_id !== r.payload.id || renewal.payload.authorization_digest !== s.authorization.digest || renewal.payload.owner_key !== r.payload.owner_key || !await verify(renewal, r.payload.owner_key) || Date.parse(renewal.payload.issued_at) < Date.parse(s.authorization.payload.issued_at) || Date.parse(renewal.payload.issued_at) > observed + 1e3 || Date.parse(renewal.payload.expires_at) > Date.parse(s.connection.payload.expires_at)) return false;
+    }
+    if (s.challenge && (!s.authorization || !shape6(s.challenge, ["id", "audience", "issued_at", "expires_at"]) || !id8(s.challenge.id) || !span3(s.challenge.issued_at, s.challenge.expires_at, 6e5) || Date.parse(s.challenge.issued_at) > observed + 1e3 || !s.challenge.audience.startsWith(`https://scopeblind.com/repository-setup/${r.payload.id}/`) || !id8(s.challenge.audience.slice(s.challenge.audience.lastIndexOf("/") + 1)))) return false;
+    if (!!s.ready !== !!s.workflow_proof) return false;
+    if (s.initial_ready && (!shape6(s.initial_ready, ["ready", "workflow_proof"]) || !validRepositoryEnvelope(s.initial_ready.ready) || !s.initial_ready.ready.payload.inspection)) return false;
+    const readinessRecords = [...s.initial_ready ? [s.initial_ready] : [], ...s.ready ? [{ ready: s.ready, workflow_proof: s.workflow_proof }] : []];
+    for (const record of readinessRecords) {
+      const q = record.ready, p = q.payload, c = s.connection?.payload;
+      if (!s.authorization || !s.connection || !s.enrollment || !c || !validRepositoryEnvelope(q) || !shape6(p, ["type", "setup_id", "setup_digest", "connection_digest", "authorization_digest", "challenge_id", "receiver_key", "readiness", "inspection", "run_id", "run_attempt", "workflow_ref", "workflow_sha", "observed_at"]) || p.type !== "scopeblind.repository.setup-ready.v1" || !await verify(q, c.receiver_key) || p.setup_id !== r.payload.id || p.setup_digest !== r.digest || p.connection_digest !== s.connection.digest || p.authorization_digest !== s.authorization.digest || p.receiver_key !== c.receiver_key || !id8(p.challenge_id) || !validWorkflowProof(record.workflow_proof, p, s.enrollment.payload.inspection.payload.repository_id, `${c.repository}/${REPOSITORY_GUIDED_WORKFLOW}@refs/heads/${c.base_branch}`, s.observed_at) || !validRepositoryEnvelope(p.readiness) || !validRepositoryReadiness(p.readiness.payload) || p.readiness.payload.runtime !== "github_actions" || p.readiness.payload.workflow !== "matching" || p.readiness.payload.connection_digest !== s.connection.digest || !await verify(p.readiness, c.receiver_key)) return false;
+      const ready = p.readiness.payload;
+      if (p.inspection === null && (!s.initial_ready || Date.parse(p.observed_at) < Date.parse(s.initial_ready.ready.payload.observed_at))) return false;
+      if (p.inspection !== null && (!validRepositoryEnvelope(p.inspection) || !validRepositorySetupInspection(p.inspection.payload, r, c.receiver_key) || !await verify(p.inspection, c.receiver_key))) return false;
+      const i = p.inspection?.payload;
+      if (["repository", "base_branch", "owner_key", "receiver_key", "authority_key"].some((k) => ready[k] !== c[k]) || i && (i.repository_id !== s.enrollment.payload.inspection.payload.repository_id || i.base_branch !== c.base_branch || ready.base_sha !== i.base_sha || ready.check_head_sha !== i.head_sha) || Date.parse(ready.expires_at) > Date.parse(c.expires_at) || Date.parse(p.observed_at) < Date.parse(s.authorization.payload.issued_at) - 1e3 || [ready.observed_at, ...i ? [i.observed_at] : []].some((t) => Date.parse(t) > Date.parse(p.observed_at) + 1e3 || Date.parse(p.observed_at) - Date.parse(t) > 3e5)) return false;
+      if (i?.preview && (i.preview.payload.head_sha !== i.head_sha || !await verifyRepositoryPreviewDiscovery(i.preview, { owner_key: c.owner_key, receiver_key: c.receiver_key, authority_key: c.authority_key, repository: c.repository, pull_number: r.payload.pull_number }, Date.parse(i.observed_at)))) return false;
+    }
+    if (s.coding_ready) {
+      const bundle = s.coding_ready, q = bundle.ready, p = q?.payload, c = s.connection?.payload, k = s.enrollment?.payload.coding;
+      if (!shape6(bundle, ["ready", "workflow_proof"]) || !c || !k || !s.authorization || !validRepositoryEnvelope(q) || !shape6(p, ["type", "setup_id", "setup_digest", "connection_digest", "coding_digest", "worker_key", "challenge_id", "run_id", "run_attempt", "workflow_ref", "workflow_sha", "observed_at", "expires_at"]) || p.type !== "scopeblind.repository.setup-coding-ready.v1" || p.setup_id !== r.payload.id || p.setup_digest !== r.digest || p.connection_digest !== s.connection.digest || p.coding_digest !== await sha256(canonical(k.config)) || p.worker_key !== k.config.worker_key || !id8(p.challenge_id) || !span3(p.observed_at, p.expires_at, 864e5) || Date.parse(p.expires_at) > Date.parse(c.expires_at) || Date.parse(p.observed_at) < Date.parse(s.authorization.payload.issued_at) - 1e3 || !await verify(q, k.config.worker_key) || !validWorkflowProof(bundle.workflow_proof, p, s.enrollment.payload.inspection.payload.repository_id, `${c.repository}/.github/workflows/scopeblind-coding.yml@refs/heads/${c.base_branch}`, s.observed_at)) return false;
+    }
+    if (s.status === "revoked") return true;
+    if (s.status === "superseded" || s.status === "replacement_pending") return !!s.superseded_by;
+    if (s.superseded_by) return false;
+    const expired = Date.parse(s.connection?.payload.expires_at ?? r.payload.expires_at) <= observed;
+    const expected = expired ? "expired" : s.ready && Date.parse(s.ready.payload.readiness.payload.expires_at) > observed ? "ready" : r.payload.mode === "github_app" && !s.github ? "awaiting_github" : !s.enrollment ? "awaiting_receiver" : !s.authorization ? "awaiting_confirmation" : !s.initial_ready && !s.ready && Date.parse(s.installation_renewal?.payload.expires_at ?? s.authorization.payload.expires_at) <= observed ? "installation_expired" : "awaiting_workflow";
+    return s.status === expected;
+  } catch {
+    return false;
+  }
+}
+
+// src/repository-preview-bundle.ts
+var REPOSITORY_PREVIEW_MAX_BYTES = 512 * 1024;
+var REPOSITORY_PREVIEW_MAX_FILES = 64;
+var PREVIEW_TYPES = { html: "text/html; charset=utf-8", css: "text/css; charset=utf-8", js: "text/javascript; charset=utf-8", mjs: "text/javascript; charset=utf-8", json: "application/json; charset=utf-8", svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif", ico: "image/x-icon", woff2: "font/woff2", txt: "text/plain; charset=utf-8" };
+function repositoryPreviewPath(path) {
+  return typeof path === "string" && path.length <= 200 && path.split("/").length <= 10 && path.split("/").every((p) => /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(p)) && Object.hasOwn(PREVIEW_TYPES, path.split(".").at(-1) ?? "");
+}
+var exact8 = (v, keys2) => !!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join(" ") === [...keys2].sort().join(" ");
+function need(value) {
+  if (!value) throw new Error("invalid_repository_preview_bundle");
+}
+async function validateRepositoryPreviewBundle(value) {
+  need(exact8(value, ["files", "sha256"]) && typeof value.sha256 === "string" && /^[a-f0-9]{64}$/.test(value.sha256) && Array.isArray(value.files) && value.files.length > 0 && value.files.length <= REPOSITORY_PREVIEW_MAX_FILES);
+  let total = 0, last = "";
+  const files = [], entries = [];
+  for (const file of value.files) {
+    need(exact8(file, ["path", "content_base64", "sha256"]) && repositoryPreviewPath(file.path) && file.path > last && typeof file.sha256 === "string" && /^[a-f0-9]{64}$/.test(file.sha256) && typeof file.content_base64 === "string" && file.content_base64.length <= Math.ceil(REPOSITORY_PREVIEW_MAX_BYTES / 3) * 4 && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(file.content_base64));
+    const raw = atob(file.content_base64);
+    need(btoa(raw) === file.content_base64);
+    const bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+    total += bytes.byteLength;
+    need(total <= REPOSITORY_PREVIEW_MAX_BYTES);
+    need(bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))) === file.sha256);
+    last = file.path;
+    files.push({ path: file.path, bytes, sha256: file.sha256 });
+    entries.push({ path: file.path, sha256: file.sha256, bytes: bytes.length });
+  }
+  need(entries.some((f) => f.path === "index.html"));
+  const digest = await sha256(canonical(entries));
+  need(digest === value.sha256);
+  return { digest, entries, files };
+}
+
+// src/repository-coding-runner.ts
+var import_promises = require("fs/promises");
+var import_node_os2 = require("os");
+var import_node_path10 = require("path");
+var import_node_child_process2 = require("child_process");
+var import_node_util = require("util");
+var import_node_crypto16 = require("crypto");
+var execute = (0, import_node_util.promisify)(import_node_child_process2.execFile);
+var hash = (v) => (0, import_node_crypto16.createHash)("sha1").update(v).digest("hex");
+var gitBlob = (b) => hash(Buffer.concat([Buffer.from(`blob ${b.length}\0`), b]));
+var DockerCodingSandbox = class {
+  constructor(directory, image, dockerExecute = execute) {
+    this.directory = directory;
+    this.image = image;
+    this.dockerExecute = dockerExecute;
+    if (!/^node@sha256:[a-f0-9]{64}$/.test(image)) throw Error("coding_image_pin_required");
+  }
+  containers = /* @__PURE__ */ new Set();
+  closed = false;
+  async run(command, timeout) {
+    if (this.closed) throw Error("coding_sandbox_closed");
+    if (!codingCommand(command)) throw Error("coding_command_invalid");
+    const name2 = "scopeblind-coding-" + (0, import_node_crypto16.randomUUID)(), started = Date.now(), args = ["run", "--name", name2, "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "128", "--memory", "512m", "--cpus", "1", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m", "--user", `${process.getuid?.() ?? 1e3}:${process.getgid?.() ?? 1e3}`, "--mount", `type=bind,source=${this.directory},target=/workspace`, "--workdir", "/workspace", this.image, ...command];
+    this.containers.add(name2);
+    try {
+      const r = await this.dockerExecute("docker", args, { timeout, maxBuffer: 65536, env: { PATH: process.env.PATH } });
+      return { exit_code: 0, output: r.stdout + "\n" + r.stderr, duration_ms: Date.now() - started };
+    } catch (e) {
+      const error = e;
+      return { exit_code: Number.isSafeInteger(error.code) ? Number(error.code) : 124, output: (error.stdout || "") + "\n" + (error.stderr || ""), duration_ms: Date.now() - started };
+    } finally {
+      await this.remove(name2);
+    }
+  }
+  async remove(name2) {
+    await this.dockerExecute("docker", ["rm", "--force", name2], { timeout: 1e4, maxBuffer: 4096, env: { PATH: process.env.PATH } }).catch(() => {
+    });
+    this.containers.delete(name2);
+  }
+  async close() {
+    this.closed = true;
+    await Promise.all([...this.containers].map((name2) => this.remove(name2)));
+  }
+};
+async function bounded(response, max = 4e6) {
+  const reader = response.body?.getReader();
+  if (!reader) throw Error("coding_empty_response");
+  let n = 0, parts = [];
+  try {
+    for (; ; ) {
+      const p = await reader.read();
+      if (p.done) break;
+      n += p.value.length;
+      if (n > max) throw Error("coding_response_limit");
+      parts.push(p.value);
+    }
+  } finally {
+    await reader.cancel().catch(() => {
+    });
+  }
+  return JSON.parse(Buffer.concat(parts).toString("utf8"));
+}
+function need2(ok, code2) {
+  if (!ok) throw Error(code2);
+}
+async function safeWrite(root, path, content2) {
+  need2(codingSafePath(path), "coding_path_forbidden");
+  const parts = path.split("/");
+  let current = root;
+  for (const p of parts.slice(0, -1)) {
+    current = (0, import_node_path10.join)(current, p);
+    try {
+      const s = await (0, import_promises.lstat)(current);
+      need2(s.isDirectory() && !s.isSymbolicLink(), "coding_symlink_forbidden");
+    } catch (e) {
+      if (e.code !== "ENOENT") throw e;
+      await (0, import_promises.mkdir)(current);
+    }
+  }
+  const file = (0, import_node_path10.join)(root, path);
+  try {
+    const s = await (0, import_promises.lstat)(file);
+    need2(s.isFile() && !s.isSymbolicLink(), "coding_symlink_forbidden");
+  } catch (e) {
+    if (e.code !== "ENOENT") throw e;
+  }
+  if (content2 === null) await (0, import_promises.rm)(file, { force: true });
+  else await (0, import_promises.writeFile)(file, content2, { mode: 384 });
+}
+async function scanCodingWorkspace(root) {
+  const found = /* @__PURE__ */ new Map();
+  let nodes = 0, bytes = 0;
+  const visit = async (dir, depth) => {
+    need2(depth <= 10, "coding_directory_depth_limit");
+    for await (const entry of await (0, import_promises.opendir)(dir)) {
+      need2(++nodes <= 1200, "coding_node_limit");
+      const path = (0, import_node_path10.join)(dir, entry.name), s = await (0, import_promises.lstat)(path), rel = (0, import_node_path10.relative)(root, path);
+      need2(rel.length <= 200 && !s.isSymbolicLink(), "coding_symlink_forbidden");
+      if (s.isDirectory()) await visit(path, depth + 1);
+      else {
+        need2(s.isFile() && s.size <= 524288, "coding_file_limit");
+        need2(bytes + s.size <= 2 * 1024 * 1024, "coding_workspace_byte_limit");
+        const content2 = await (0, import_promises.readFile)(path);
+        bytes += content2.length;
+        need2(bytes <= 2 * 1024 * 1024 && content2.length === s.size, "coding_workspace_byte_limit");
+        found.set(rel, content2);
+        need2(found.size <= 1e3, "coding_file_count_limit");
+      }
+    }
+  };
+  await visit(root, 0);
+  return found;
+}
+function assertCodingWorkspaceUnchanged(before3, after, previewDirectory) {
+  for (const path of /* @__PURE__ */ new Set([...before3.keys(), ...after.keys()])) {
+    if (previewDirectory && (path === previewDirectory || path.startsWith(previewDirectory + "/"))) continue;
+    const a = before3.get(path), b = after.get(path);
+    need2(a && b && Buffer.compare(a, b) === 0, "coding_test_or_build_modified_source");
+  }
+}
+function codingChanges(before3, after, m) {
+  const changes = [];
+  for (const p of /* @__PURE__ */ new Set([...before3.keys(), ...after.keys()])) {
+    if (p === m.preview_directory || p.startsWith(m.preview_directory + "/")) continue;
+    const a = before3.get(p), b = after.get(p);
+    if (a && b && Buffer.compare(a, b) === 0) continue;
+    need2(codingSafePath(p) && pathAllowed(p, m.allowed_paths), "coding_diff_outside_scope");
+    changes.push({ path: p, before_sha: a ? gitBlob(a) : null, after_sha: b ? gitBlob(b) : null, bytes: Math.max(a?.length ?? 0, b?.length ?? 0) });
+  }
+  need2(changes.length > 0 && changes.length <= m.max_changed_files && changes.reduce((n, f) => n + f.bytes, 0) <= m.max_changed_bytes, "coding_diff_limit");
+  return changes.sort((a, b) => a.path.localeCompare(b.path));
+}
+function codingTree(entries, changes) {
+  const files = new Map(entries.map((x) => [x.path, x]));
+  for (const c of changes) if (c.after_sha) files.set(c.path, { path: c.path, mode: files.get(c.path)?.mode || "100644", sha: c.after_sha });
+  else files.delete(c.path);
+  const objects = [];
+  const tree = (prefix) => {
+    const rows = [], dirs = /* @__PURE__ */ new Set();
+    for (const f of files.values()) {
+      if (!f.path.startsWith(prefix)) continue;
+      const rest = f.path.slice(prefix.length), slash = rest.indexOf("/");
+      if (slash >= 0) dirs.add(rest.slice(0, slash));
+      else rows.push({ path: rest, mode: f.mode, type: "blob", sha: f.sha });
+    }
+    for (const d of dirs) rows.push({ path: d, mode: "040000", type: "tree", sha: tree(prefix + d + "/") });
+    rows.sort((a, b) => Buffer.compare(Buffer.from(a.path + (a.type === "tree" ? "/" : "")), Buffer.from(b.path + (b.type === "tree" ? "/" : ""))));
+    const data = Buffer.concat(rows.map((r) => Buffer.concat([Buffer.from(`${r.type === "tree" ? "40000" : r.mode} ${r.path}\0`), Buffer.from(r.sha, "hex")]))), sha4 = hash(Buffer.concat([Buffer.from(`tree ${data.length}\0`), data]));
+    objects.push({ path: prefix, sha: sha4, entries: rows });
+    return sha4;
+  };
+  return { sha: tree(""), objects };
+}
+var RepositoryCodingRunner = class {
+  constructor(config, identity, githubToken, fetcher = fetch, sandboxFactory = (dir) => new DockerCodingSandbox(dir, config.docker_image)) {
+    this.config = config;
+    this.identity = identity;
+    this.githubToken = githubToken;
+    this.fetcher = fetcher;
+    this.sandboxFactory = sandboxFactory;
+    const u = new URL(config.endpoint);
+    need2(u.protocol === "https:" && u.pathname === "/api/coordination" && !u.search && !u.hash && !u.username && !u.password && config.worker_key === identity.publicKey && githubToken, "coding_config_invalid");
+  }
+  publicationUntil = 0;
+  stopped = false;
+  async rpc(action, id9, body = {}) {
+    const request = await sign(makeRequest(action, id9, body), this.identity), r = await this.fetcher(this.config.endpoint, { method: "POST", headers: { "content-type": "application/json", "x-scopeblind-action": action }, body: JSON.stringify({ request }), redirect: "error", signal: AbortSignal.timeout(55e3) }), v = await bounded(r);
+    need2(r.ok && v.ok === true, typeof v.error === "string" ? v.error : "coding_service_refused");
+    return v;
+  }
+  async github(path, init = {}, missing = false) {
+    if (init.method && init.method !== "GET") need2(!this.stopped && this.publicationUntil > Date.now(), "coding_publication_expired");
+    const r = await this.fetcher("https://api.github.com/repos/" + this.config.repository + path, { ...init, headers: { authorization: "Bearer " + this.githubToken, accept: "application/vnd.github+json", "content-type": "application/json", "x-github-api-version": "2026-03-10" }, redirect: "error", signal: AbortSignal.timeout(2e4) });
+    if (missing && r.status === 404) {
+      await r.body?.cancel();
+      return null;
+    }
+    const v = await bounded(r);
+    need2(r.ok, "coding_github_" + r.status);
+    return v;
+  }
+  async checked(reply) {
+    const job = reply.job;
+    need2(job && (await verifyRepositoryCodingEvidence({ type: "scopeblind.repository.coding-evidence.v1", job }, this.config.authority_key)).valid, "coding_job_evidence_invalid");
+    const m = job.payload.mandate.payload;
+    need2(m.worker_key === this.identity.publicKey && m.repository === this.config.repository && m.base_branch === this.config.base_branch && m.docker_image === this.config.docker_image && m.runtime === this.config.runtime && canonical(m.test_command) === canonical(this.config.test_command) && canonical(m.build_command) === canonical(this.config.build_command) && m.preview_directory === this.config.preview_directory, "coding_config_scope_mismatch");
+    return job;
+  }
+  async readback(j) {
+    const p = j.plan, result = await this.github("/pulls?state=all&head=" + encodeURIComponent(this.config.repository.split("/")[0] + ":" + p.payload.branch) + "&base=" + encodeURIComponent(this.config.base_branch) + "&per_page=100");
+    need2(Array.isArray(result) && result.length <= 1, "coding_pull_ambiguous");
+    if (!result.length) return null;
+    const pull = result[0];
+    need2(pull.head?.sha === p.payload.commit_sha && pull.head?.ref === p.payload.branch && pull.base?.ref === this.config.base_branch && pull.base?.repo?.full_name === this.config.repository && pull.head?.repo?.full_name === this.config.repository, "coding_pull_conflict");
+    return pull;
+  }
+  async result(j, pull, preview, deployment, status2, check) {
+    need2(check.name === "ScopeBlind isolated coding checks" && check.app?.id === 15368 && check.head_sha === j.plan.payload.commit_sha && check.conclusion === "success", "coding_check_invalid");
+    const result = await sign({ type: "scopeblind.repository.coding-result.v1", job_id: j.request.payload.id, plan_digest: j.plan.digest, publication_digest: j.publication.digest, repository: this.config.repository, branch: j.plan.payload.branch, head_sha: j.plan.payload.commit_sha, pull_number: pull.number, pull_url: `https://github.com/${this.config.repository}/pull/${pull.number}`, preview_url: preview.url, preview_digest: preview.digest, deployment_id: deployment.id, deployment_status_id: status2.id, deployment_environment: "ScopeBlind coding preview", check: { id: check.id, name: "ScopeBlind isolated coding checks", app_id: 15368, head_sha: j.plan.payload.commit_sha, conclusion: "success" }, observed_at: (/* @__PURE__ */ new Date()).toISOString() }, this.identity);
+    await this.rpc("repository_coding_complete", j.request.payload.workspace_id, { job_id: j.request.payload.id, lease_id: j.lease_id, result });
+  }
+  async runOne(jobIdFilter) {
+    need2(jobIdFilter === void 0 || REPOSITORY_ID.test(jobIdFilter), "invalid_coding_job");
+    const lease = crypto.randomUUID(), reply = await this.rpc("repository_coding_poll", "repository-coding", { lease_id: lease, ...jobIdFilter ? { job_id: jobIdFilter } : {} });
+    if (reply.job === null) return false;
+    let signed2 = await this.checked(reply), j = signed2.payload;
+    need2(j.lease_id === lease && Date.parse(j.lease_expires_at) > Date.now(), "coding_lease_invalid");
+    const jobId = j.request.payload.id, workspaceId = j.request.payload.workspace_id, base = { job_id: jobId, lease_id: lease };
+    this.stopped = false;
+    let root, sandbox;
+    const heartbeat = setInterval(() => {
+      void this.rpc("repository_coding_heartbeat", workspaceId, base).then((r) => this.checked(r)).then((state) => {
+        if (state.payload.stop || ["cancelled", "expired", "failed", "unknown"].includes(state.payload.status)) throw Error("coding_stopped");
+      }).catch(() => {
+        this.stopped = true;
+        void sandbox?.close();
+      });
+    }, 2e4);
+    try {
+      if (j.publication) {
+        const pull2 = await this.readback(j);
+        need2(pull2, "coding_publication_unknown");
+        const deployments = await this.github("/deployments?sha=" + j.plan.payload.commit_sha + "&environment=ScopeBlind%20coding%20preview&per_page=100");
+        need2(Array.isArray(deployments) && deployments.length < 100, "coding_deployment_ambiguous");
+        const deployment2 = deployments.find((d) => d.payload?.scopeblind_job_id === jobId && d.sha === j.plan.payload.commit_sha);
+        need2(deployment2, "coding_publication_unknown");
+        const statuses = await this.github("/deployments/" + deployment2.id + "/statuses?per_page=100"), status2 = statuses[0];
+        need2(status2?.state === "success" && typeof status2.environment_url === "string" && status2.environment_url.includes(j.plan.payload.preview_digest), "coding_publication_unknown");
+        const checks2 = await this.github("/commits/" + j.plan.payload.commit_sha + "/check-runs?check_name=ScopeBlind%20isolated%20coding%20checks&per_page=100"), check2 = checks2.check_runs?.find((c) => c.name === "ScopeBlind isolated coding checks" && c.app?.id === 15368 && c.head_sha === j.plan.payload.commit_sha && c.conclusion === "success");
+        need2(check2, "coding_publication_unknown");
+        await this.result(j, pull2, { url: status2.environment_url, digest: j.plan.payload.preview_digest }, deployment2, status2, check2);
+        return true;
+      }
+      const parent = j.parent.repository.type === "scopeblind.repository.evidence.v1" ? j.parent.repository.state : j.parent.repository.repository.state, proposal = parent.payload.proposal, m = j.mandate.payload;
+      const currentBase = await this.github("/git/ref/heads/" + encodeURIComponent(m.base_branch));
+      need2(currentBase.object?.sha === proposal.payload.base_sha, "coding_source_base_changed");
+      const head = await this.github("/git/commits/" + proposal.payload.head_sha);
+      need2(head.sha === proposal.payload.head_sha && REPOSITORY_SHA.test(head.tree?.sha), "coding_source_head_invalid");
+      const tree = await this.github("/git/trees/" + head.tree.sha + "?recursive=1");
+      need2(tree.truncated === false && Array.isArray(tree.tree) && tree.tree.length <= 1e3, "coding_source_tree_limit");
+      const entries = tree.tree.filter((f) => f.type !== "tree");
+      need2(entries.every((f) => f.type === "blob" && ["100644", "100755"].includes(f.mode) && typeof f.path === "string" && REPOSITORY_SHA.test(f.sha)), "coding_source_unsupported");
+      root = await (0, import_promises.mkdtemp)((0, import_node_path10.join)((0, import_node_os2.tmpdir)(), "scopeblind-code-"));
+      const before3 = /* @__PURE__ */ new Map();
+      let total = 0;
+      for (const f of entries) {
+        if (!codingSafePath(f.path)) continue;
+        need2(f.size <= 131072, "coding_source_file_limit");
+        const blob = await this.github("/git/blobs/" + f.sha);
+        need2(blob.encoding === "base64" && typeof blob.content === "string", "coding_source_blob_invalid");
+        const bytes = Buffer.from(blob.content, "base64");
+        total += bytes.length;
+        need2(total <= 524288 && bytes.length === blob.size && gitBlob(bytes) === f.sha, "coding_source_integrity");
+        before3.set(f.path, bytes);
+        await (0, import_promises.mkdir)((0, import_node_path10.dirname)((0, import_node_path10.join)(root, f.path)), { recursive: true });
+        await (0, import_promises.writeFile)((0, import_node_path10.join)(root, f.path), bytes, { mode: 384 });
+      }
+      sandbox = this.sandboxFactory(root);
+      const history = [];
+      let tests = null, finished = false;
+      for (let n = j.model_calls; n < m.max_model_calls; n++) {
+        need2(!this.stopped && Date.now() < Date.parse(j.started_at) + m.max_seconds * 1e3, "coding_time_limit");
+        const files = await scanCodingWorkspace(root), contextFiles = [...files].filter(([p]) => pathAllowed(p, m.allowed_paths) || m.test_command.includes(p) || m.build_command.includes(p)).map(([path, b]) => ({ path, content: new TextDecoder("utf-8", { fatal: true }).decode(b) }));
+        const step = await this.rpc("repository_coding_model", workspaceId, { ...base, step_id: jobId + "-" + n, context: { files: contextFiles, history: history.slice(-6) } }), action = step.reply;
+        if (action.action === "write_file" || action.action === "delete_file") {
+          need2(codingSafePath(action.path) && pathAllowed(action.path, m.allowed_paths), "coding_edit_forbidden");
+          await safeWrite(root, action.path, action.action === "write_file" ? action.content : null);
+          tests = null;
+          history.push({ action, result: "Applied to isolated workspace." });
+        } else if (action.action === "run_tests") {
+          await this.rpc("repository_coding_heartbeat", workspaceId, { ...base, stage: "testing" });
+          const testBefore = await scanCodingWorkspace(root), test = await sandbox.run(m.test_command, Math.min(6e4, Math.max(1, Date.parse(j.started_at) + m.max_seconds * 1e3 - Date.now())));
+          assertCodingWorkspaceUnchanged(testBefore, await scanCodingWorkspace(root));
+          tests = { command_digest: await sha256(canonical(m.test_command)), exit_code: test.exit_code, output_sha256: await sha256(test.output), duration_ms: test.duration_ms };
+          history.push({ action, result: test.output.slice(-8e3) });
+        } else if (action.action === "finish") {
+          need2(tests?.exit_code === 0, "coding_tests_required");
+          finished = true;
+          break;
+        } else throw Error("coding_model_action_invalid");
+      }
+      need2(finished && tests?.exit_code === 0, "coding_model_budget_exhausted");
+      const buildBefore = await scanCodingWorkspace(root), build = await sandbox.run(m.build_command, Math.min(6e4, Math.max(1, Date.parse(j.started_at) + m.max_seconds * 1e3 - Date.now())));
+      need2(build.exit_code === 0, "coding_build_failed");
+      const built = await scanCodingWorkspace(root);
+      assertCodingWorkspaceUnchanged(buildBefore, built, m.preview_directory);
+      const finalTest = await sandbox.run(m.test_command, Math.min(6e4, Math.max(1, Date.parse(j.started_at) + m.max_seconds * 1e3 - Date.now())));
+      need2(finalTest.exit_code === 0, "coding_tests_required");
+      const after = await scanCodingWorkspace(root);
+      assertCodingWorkspaceUnchanged(built, after);
+      tests = { command_digest: await sha256(canonical(m.test_command)), exit_code: 0, output_sha256: await sha256(finalTest.output), duration_ms: finalTest.duration_ms };
+      const changes = codingChanges(before3, after, m), previewFiles = [...after].filter(([p]) => p.startsWith(m.preview_directory + "/")).map(([p, b]) => ({ path: p.slice(m.preview_directory.length + 1), content_base64: Buffer.from(b).toString("base64"), sha256: (0, import_node_crypto16.createHash)("sha256").update(b).digest("hex") }));
+      need2(previewFiles.length > 0 && previewFiles.length <= 64 && previewFiles.reduce((n, f) => n + Buffer.from(f.content_base64, "base64").length, 0) <= 524288, "coding_preview_limit");
+      previewFiles.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+      const previewDigest = await sha256(canonical(previewFiles.map((f) => ({ path: f.path, sha256: f.sha256, bytes: Buffer.from(f.content_base64, "base64").length })))), bundle = { files: previewFiles, sha256: previewDigest };
+      const next = codingTree(entries, changes), seconds = Math.floor(Date.parse(j.request.payload.issued_at) / 1e3), message = "ScopeBlind bounded coding job " + jobId, person = { name: "ScopeBlind Coding Worker", email: "coding@scopeblind.com", date: new Date(seconds * 1e3).toISOString() }, commitBody = `tree ${next.sha}
+parent ${proposal.payload.head_sha}
+author ${person.name} <${person.email}> ${seconds} +0000
+committer ${person.name} <${person.email}> ${seconds} +0000
+
+${message}
+`, commitSha = hash(Buffer.concat([Buffer.from(`commit ${Buffer.byteLength(commitBody)}\0`), Buffer.from(commitBody)]));
+      signed2 = await this.checked(await this.rpc("repository_coding_get", workspaceId, { job_id: jobId }));
+      j = signed2.payload;
+      const plan = await sign({ type: "scopeblind.repository.coding-plan.v1", job_id: jobId, request_digest: j.request.digest, mandate_digest: j.mandate.digest, source_head_sha: proposal.payload.head_sha, source_base_sha: proposal.payload.base_sha, branch: "scopeblind/code/" + jobId, commit_sha: commitSha, tree_sha: next.sha, files: changes, tests, build: { command_digest: await sha256(canonical(m.build_command)), exit_code: 0, output_sha256: await sha256(build.output), duration_ms: build.duration_ms }, preview_digest: previewDigest, model_calls: j.model_calls, reserved_tokens: j.reserved_tokens, issued_at: (/* @__PURE__ */ new Date()).toISOString() }, this.identity);
+      j = (await this.checked(await this.rpc("repository_coding_publish", workspaceId, { ...base, plan }))).payload;
+      need2(j.publication && Date.parse(j.publication.payload.expires_at) > Date.now(), "coding_publication_expired");
+      this.publicationUntil = Date.parse(j.publication.payload.expires_at);
+      const preview = (await this.rpc("repository_coding_preview", workspaceId, { ...base, bundle })).preview;
+      for (const change of changes) if (change.after_sha) {
+        const bytes = after.get(change.path);
+        const blob = await this.github("/git/blobs", { method: "POST", body: JSON.stringify({ encoding: "base64", content: Buffer.from(bytes).toString("base64") }) });
+        need2(blob.sha === change.after_sha, "coding_blob_mismatch");
+      }
+      for (const object7 of next.objects) {
+        const made = await this.github("/git/trees", { method: "POST", body: JSON.stringify({ tree: object7.entries }) });
+        need2(made.sha === object7.sha, "coding_tree_mismatch");
+      }
+      const commit = await this.github("/git/commits", { method: "POST", body: JSON.stringify({ message: message + "\n", tree: next.sha, parents: [proposal.payload.head_sha], author: person, committer: person }) });
+      need2(commit.sha === commitSha, "coding_commit_mismatch");
+      need2(Date.parse(j.publication.payload.expires_at) > Date.now(), "coding_publication_expired");
+      await this.github("/git/refs", { method: "POST", body: JSON.stringify({ ref: "refs/heads/" + plan.payload.branch, sha: commitSha }) });
+      const pull = await this.github("/pulls", { method: "POST", body: JSON.stringify({ title: "Address review feedback " + jobId, head: plan.payload.branch, base: m.base_branch, draft: true, body: "Prepared under a separate bounded code-edit mandate. Requires a new exact human review before any merge. Source feedback: " + j.request.payload.source.feedback_digest }) });
+      need2(pull.head?.sha === commitSha, "coding_pull_mismatch");
+      const check = await this.github("/check-runs", { method: "POST", body: JSON.stringify({ name: "ScopeBlind isolated coding checks", head_sha: commitSha, status: "completed", conclusion: "success", completed_at: (/* @__PURE__ */ new Date()).toISOString(), output: { title: "Fixed isolated tests and build passed", summary: "Executed the owner-reviewed fixed commands inside a networkless container without credentials. Test output SHA256: " + tests.output_sha256 + ". Build output SHA256: " + plan.payload.build.output_sha256 } }) });
+      const deployment = await this.github("/deployments", { method: "POST", body: JSON.stringify({ ref: commitSha, auto_merge: false, required_contexts: [], environment: "ScopeBlind coding preview", transient_environment: true, production_environment: false, payload: { scopeblind_job_id: jobId, preview_digest: previewDigest } }) });
+      need2(Number.isSafeInteger(deployment.id), "coding_deployment_invalid");
+      const deploymentStatus = await this.github("/deployments/" + deployment.id + "/statuses", { method: "POST", body: JSON.stringify({ state: "success", environment_url: preview.url, description: "Content-addressed static preview from isolated build.", auto_inactive: false }) });
+      need2(deploymentStatus.state === "success", "coding_deployment_invalid");
+      await this.result(j, pull, preview, deployment, deploymentStatus, check);
+      return true;
+    } catch (error) {
+      const code2 = error instanceof Error && /^[a-z0-9_]{3,80}$/.test(error.message) ? error.message : "coding_worker_interrupted";
+      await this.rpc("repository_coding_complete", workspaceId, { ...base, error: code2 }).catch(() => {
+      });
+      return true;
+    } finally {
+      this.publicationUntil = 0;
+      clearInterval(heartbeat);
+      await sandbox?.close();
+      if (root) await (0, import_promises.rm)(root, { recursive: true, force: true });
+    }
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   BUILTIN_PATTERNS,
+  CODING_PERMISSIONS,
   CONNECTOR_PILOTS,
   ConfidentialGate,
   CoordinationClient,
   CoordinationError,
+  DockerCodingSandbox,
   EGRESS_SUMMARY_FIELDS,
   POLICY_PACKS,
+  PREVIEW_TYPES,
   ProtectGateway,
+  REPOSITORY_CODING_ACTIONS,
+  REPOSITORY_CODING_IMAGE,
+  REPOSITORY_DEVICE_ACTIONS,
+  REPOSITORY_DEVICE_DOMAIN,
+  REPOSITORY_DEVICE_LINK_MS,
+  REPOSITORY_DEVICE_MAX_MS,
+  REPOSITORY_DEVICE_PERMISSIONS,
+  REPOSITORY_GUIDED_WORKFLOW,
+  REPOSITORY_PREVIEW_MAX_BYTES,
+  REPOSITORY_PREVIEW_MAX_FILES,
+  REPOSITORY_SETUP_ACTIONS,
+  REPOSITORY_SETUP_TTL,
   ReceiptPropagator,
+  RepositoryCodingRunner,
   ScopeBlindBridge,
   anchorToRekor,
   approvePolicyProposalWithDirectSignature,
@@ -46192,6 +47352,9 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
   assertEgressSafe,
   buildDecisionContext,
   checkRateLimit,
+  codingCommand,
+  codingSafePath,
+  codingScopeWithin,
   collectSignedReceipts,
   computeCalibration,
   computeSbIssuerKid,
@@ -46277,12 +47440,19 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
   receiptsToHFRows,
   redactFields,
   refreshManagedMandate,
+  repositoryDevicePermission,
+  repositoryDevicePreimage,
+  repositoryHumanPermission,
+  repositoryHumanPrincipal,
+  repositoryPreviewPath,
+  repositorySetupArtifactUrl,
   repositorySnapshotDigest,
   resolveCredential,
   revealField,
   runEgressSelfCheck,
   runEvaluatorSelfTest,
   runInSandbox,
+  sameRepositoryHumanIntent,
   sendApprovalNotification,
   signCommittedDecision,
   signDecision,
@@ -46293,11 +47463,28 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
   toEgressSummary,
   toManifoldFormat,
   toMetaculusFormat,
+  validRepositoryCodingConnectionConfig,
+  validRepositoryCodingMandate,
+  validRepositoryCodingPlan,
+  validRepositoryCodingRefreshableConnections,
+  validRepositoryCodingRequest,
+  validRepositoryCodingResult,
+  validRepositoryCodingSource,
+  validRepositoryCodingStop,
+  validRepositoryDeviceAuthorization,
+  validRepositoryDeviceConfirmation,
+  validRepositoryDeviceLink,
+  validRepositoryHumanEnvelope,
+  validRepositorySetupAuthorization,
+  validRepositorySetupInspection,
+  validRepositorySetupRenewal,
+  validRepositorySetupRequest,
   validateCoordinationConfig,
   validateCoordinationPayment,
   validateCredentials,
   validateEvidenceReceipt,
   validateManifest,
+  validateRepositoryPreviewBundle,
   verifyActaC2PAAssertions,
   verifyAllCommitments,
   verifyApprovalAssertion,
@@ -46313,8 +47500,17 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
   verifyReceipt,
   verifyRehearsalEvidence,
   verifyRekorAnchor,
+  verifyRepositoryCodingEvidence,
   verifyRepositoryCollaborationEvidence,
+  verifyRepositoryDeviceAuthorization,
   verifyRepositoryEvidence,
+  verifyRepositoryHuman,
+  verifyRepositoryReviewEvidence,
+  verifyRepositorySetupEnrollment,
+  verifyRepositorySetupReplacement,
+  verifyRepositorySetupState,
+  verifyRepositoryWorkspaceAgentState,
+  verifyRepositoryWorkspaceState,
   verifySelectiveDisclosurePackage,
   writeConnectorPilots
 });
