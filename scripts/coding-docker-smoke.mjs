@@ -10,7 +10,7 @@ import {DockerCodingSandbox, REPOSITORY_CODING_IMAGE} from '../dist/index.mjs';
 
 const execute = promisify(execFile);
 const docker = (args, timeout = 10_000) => execute('docker', args, {
-  timeout, maxBuffer: 256 * 1024, env: {PATH: process.env.PATH},
+  timeout, killSignal: 'SIGKILL', maxBuffer: 256 * 1024, env: {PATH: process.env.PATH},
 });
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const credentialNames = [
@@ -51,6 +51,7 @@ try {
   assert.match(REPOSITORY_CODING_IMAGE, /^node@sha256:[a-f0-9]{64}$/);
   await docker(['version', '--format', '{{.Server.Version}}']); // Absence is a failure, never a skip.
   await docker(['pull', REPOSITORY_CODING_IMAGE], 120_000);
+  console.log('Docker isolation: pinned image available');
 
   root = await mkdtemp(join(tmpdir(), 'scopeblind-docker-smoke-'));
   const workspace = join(root, 'workspace');
@@ -100,10 +101,12 @@ const os = require('node:os');
 `);
   await writeFile(join(workspace, 'scripts/heartbeat.cjs'), `
 const fs = require('node:fs');
+process.on('SIGTERM', () => {});
 let n = 0; setInterval(() => fs.writeFileSync('heartbeat', String(++n)), 50);
 `);
   await writeFile(join(workspace, 'scripts/timeout.cjs'), `
 const {spawn} = require('node:child_process');
+process.on('SIGTERM', () => {});
 spawn(process.execPath, ['scripts/heartbeat.cjs'], {stdio:'ignore'});
 process.stdout.write('timeout-probe-started\\n');
 setInterval(() => {}, 1000);
@@ -111,11 +114,13 @@ setInterval(() => {}, 1000);
 
   sandbox = new DockerCodingSandbox(workspace, REPOSITORY_CODING_IMAGE);
   await checkedRun(['node', 'scripts/isolation.cjs']);
+  console.log('Docker isolation: credential, mount and network assertions passed');
   assert.deepEqual(JSON.parse(await readFile(join(workspace, 'isolation-result.json'), 'utf8')),
     {credentialsAbsent: true, hostFilesAbsent: true, readOnlyRoot: true, networkDenied: true});
   await checkedRun(['node', '--test', 'tests/value.test.cjs']);
   await checkedRun(['node', 'scripts/build.cjs']);
   assert.equal(await readFile(join(workspace, 'preview/index.html'), 'utf8'), '<!doctype html><title>Smoke</title><p>42</p>');
+  console.log('Docker isolation: fixed test and build passed; starting SIGTERM-ignoring timeout probe');
 
   timeoutRun = sandbox.run(['node', 'scripts/timeout.cjs'], 5_000);
   const container = await inspectActiveContainer(workspace);
@@ -140,7 +145,7 @@ setInterval(() => {}, 1000);
   process.stderr.write(`Docker isolation release gate failed: ${error instanceof Error ? error.message.split('\n')[0] : 'unknown error'}\n`);
   process.exitCode = 1;
 } finally {
-  await sandbox?.close();
+  await sandbox?.close().catch(() => { process.stderr.write('Docker isolation cleanup failed\n'); process.exitCode = 1; });
   if (timeoutRun) await timeoutRun.catch(() => {});
   for (const id of observedContainers) await docker(['rm', '--force', id]).catch(() => {});
   for (const [name, value] of previous) { if (value === undefined) delete process.env[name]; else process.env[name] = value; }

@@ -852,7 +852,7 @@ var DockerCodingSandbox = class {
     const name2 = "scopeblind-coding-" + (0, import_node_crypto.randomUUID)(), started = Date.now(), args = ["run", "--name", name2, "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "128", "--memory", "512m", "--cpus", "1", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m", "--user", `${process.getuid?.() ?? 1e3}:${process.getgid?.() ?? 1e3}`, "--mount", `type=bind,source=${this.directory},target=/workspace`, "--workdir", "/workspace", this.image, ...command];
     this.containers.add(name2);
     try {
-      const r = await this.dockerExecute("docker", args, { timeout, maxBuffer: 65536, env: { PATH: process.env.PATH } });
+      const r = await this.dockerExecute("docker", args, { timeout, killSignal: "SIGKILL", maxBuffer: 65536, env: { PATH: process.env.PATH } });
       return { exit_code: 0, output: r.stdout + "\n" + r.stderr, duration_ms: Date.now() - started };
     } catch (e) {
       const error = e;
@@ -862,13 +862,21 @@ var DockerCodingSandbox = class {
     }
   }
   async remove(name2) {
-    await this.dockerExecute("docker", ["rm", "--force", name2], { timeout: 1e4, maxBuffer: 4096, env: { PATH: process.env.PATH } }).catch(() => {
-    });
+    try {
+      await this.dockerExecute("docker", ["rm", "--force", name2], { timeout: 1e4, killSignal: "SIGKILL", maxBuffer: 4096, env: { PATH: process.env.PATH } });
+    } catch (error) {
+      const e = error;
+      if (e.code !== 1 || e.stderr?.trim() !== `Error response from daemon: No such container: ${name2}`) {
+        this.closed = true;
+        throw Error("coding_sandbox_cleanup_failed");
+      }
+    }
     this.containers.delete(name2);
   }
   async close() {
     this.closed = true;
-    await Promise.all([...this.containers].map((name2) => this.remove(name2)));
+    const results = await Promise.allSettled([...this.containers].map((name2) => this.remove(name2)));
+    if (results.some((r) => r.status === "rejected")) throw Error("coding_sandbox_cleanup_failed");
   }
 };
 async function bounded(response, max = 4e6) {

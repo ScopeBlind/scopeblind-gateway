@@ -5952,6 +5952,7 @@ interface CodingSandbox {
 }
 type DockerExecute = (file: string, args: string[], options: {
     timeout: number;
+    killSignal: 'SIGKILL';
     maxBuffer: number;
     env: {
         PATH: string | undefined;

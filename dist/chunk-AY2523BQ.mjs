@@ -39,7 +39,7 @@ var DockerCodingSandbox = class {
     const name = "scopeblind-coding-" + randomUUID(), started = Date.now(), args = ["run", "--name", name, "--rm", "--network", "none", "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "128", "--memory", "512m", "--cpus", "1", "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m", "--user", `${process.getuid?.() ?? 1e3}:${process.getgid?.() ?? 1e3}`, "--mount", `type=bind,source=${this.directory},target=/workspace`, "--workdir", "/workspace", this.image, ...command];
     this.containers.add(name);
     try {
-      const r = await this.dockerExecute("docker", args, { timeout, maxBuffer: 65536, env: { PATH: process.env.PATH } });
+      const r = await this.dockerExecute("docker", args, { timeout, killSignal: "SIGKILL", maxBuffer: 65536, env: { PATH: process.env.PATH } });
       return { exit_code: 0, output: r.stdout + "\n" + r.stderr, duration_ms: Date.now() - started };
     } catch (e) {
       const error = e;
@@ -49,13 +49,21 @@ var DockerCodingSandbox = class {
     }
   }
   async remove(name) {
-    await this.dockerExecute("docker", ["rm", "--force", name], { timeout: 1e4, maxBuffer: 4096, env: { PATH: process.env.PATH } }).catch(() => {
-    });
+    try {
+      await this.dockerExecute("docker", ["rm", "--force", name], { timeout: 1e4, killSignal: "SIGKILL", maxBuffer: 4096, env: { PATH: process.env.PATH } });
+    } catch (error) {
+      const e = error;
+      if (e.code !== 1 || e.stderr?.trim() !== `Error response from daemon: No such container: ${name}`) {
+        this.closed = true;
+        throw Error("coding_sandbox_cleanup_failed");
+      }
+    }
     this.containers.delete(name);
   }
   async close() {
     this.closed = true;
-    await Promise.all([...this.containers].map((name) => this.remove(name)));
+    const results = await Promise.allSettled([...this.containers].map((name) => this.remove(name)));
+    if (results.some((r) => r.status === "rejected")) throw Error("coding_sandbox_cleanup_failed");
   }
 };
 async function bounded(response, max = 4e6) {

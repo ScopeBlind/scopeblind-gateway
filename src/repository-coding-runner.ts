@@ -9,19 +9,21 @@ const execute=promisify(execFile),hash=(v:Buffer|string)=>createHash('sha1').upd
 export const gitBlob=(b:Buffer)=>hash(Buffer.concat([Buffer.from(`blob ${b.length}\0`),b]));
 export interface RepositoryCodingConfig {type:'scopeblind.repository.coding-config.v1';endpoint:string;authority_key:string;worker_key:string;repository:string;base_branch:string;runtime:'node22-static-v1';test_command:string[];build_command:string[];preview_directory:string;docker_image:string}
 export interface CodingSandbox {run(command:string[],timeout:number):Promise<{exit_code:number;output:string;duration_ms:number}>;close():Promise<void>}
-type DockerExecute=(file:string,args:string[],options:{timeout:number;maxBuffer:number;env:{PATH:string|undefined}})=>Promise<{stdout:string;stderr:string}>;
+type DockerExecute=(file:string,args:string[],options:{timeout:number;killSignal:'SIGKILL';maxBuffer:number;env:{PATH:string|undefined}})=>Promise<{stdout:string;stderr:string}>;
 export class DockerCodingSandbox implements CodingSandbox {
  private containers=new Set<string>();private closed=false;
  constructor(readonly directory:string,readonly image:string,private dockerExecute:DockerExecute=execute){if(!/^node@sha256:[a-f0-9]{64}$/.test(image))throw Error('coding_image_pin_required');}
  async run(command:string[],timeout:number){
   if(this.closed)throw Error('coding_sandbox_closed');if(!C.codingCommand(command))throw Error('coding_command_invalid');
   const name='scopeblind-coding-'+randomUUID(),started=Date.now(),args=['run','--name',name,'--rm','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--pids-limit','128','--memory','512m','--cpus','1','--tmpfs','/tmp:rw,noexec,nosuid,size=64m','--user',`${process.getuid?.()??1000}:${process.getgid?.()??1000}`,'--mount',`type=bind,source=${this.directory},target=/workspace`,'--workdir','/workspace',this.image,...command];this.containers.add(name);
-  try{const r=await this.dockerExecute('docker',args,{timeout,maxBuffer:65536,env:{PATH:process.env.PATH}});return {exit_code:0,output:r.stdout+'\n'+r.stderr,duration_ms:Date.now()-started};}
+  // Docker forwards SIGTERM to the container and may keep waiting for an uncooperative PID 1.
+  // Kill the local CLI at the deadline, then independently remove the named container below.
+  try{const r=await this.dockerExecute('docker',args,{timeout,killSignal:'SIGKILL',maxBuffer:65536,env:{PATH:process.env.PATH}});return {exit_code:0,output:r.stdout+'\n'+r.stderr,duration_ms:Date.now()-started};}
   catch(e){const error=e as {code?:number;stdout?:string;stderr?:string};return {exit_code:Number.isSafeInteger(error.code)?Number(error.code):124,output:(error.stdout||'')+'\n'+(error.stderr||''),duration_ms:Date.now()-started};}
   finally{await this.remove(name);}
  }
- private async remove(name:string){await this.dockerExecute('docker',['rm','--force',name],{timeout:10000,maxBuffer:4096,env:{PATH:process.env.PATH}}).catch(()=>{});this.containers.delete(name);}
- async close(){this.closed=true;await Promise.all([...this.containers].map(name=>this.remove(name)));}
+ private async remove(name:string){try{await this.dockerExecute('docker',['rm','--force',name],{timeout:10000,killSignal:'SIGKILL',maxBuffer:4096,env:{PATH:process.env.PATH}});}catch(error){const e=error as {code?:number;stderr?:string};if(e.code!==1||e.stderr?.trim()!==`Error response from daemon: No such container: ${name}`){this.closed=true;throw Error('coding_sandbox_cleanup_failed');}}this.containers.delete(name);}
+ async close(){this.closed=true;const results=await Promise.allSettled([...this.containers].map(name=>this.remove(name)));if(results.some(r=>r.status==='rejected'))throw Error('coding_sandbox_cleanup_failed');}
 }
 async function bounded(response:Response,max=4_000_000):Promise<any>{const reader=response.body?.getReader();if(!reader)throw Error('coding_empty_response');let n=0,parts:Uint8Array[]=[];try{for(;;){const p=await reader.read();if(p.done)break;n+=p.value.length;if(n>max)throw Error('coding_response_limit');parts.push(p.value);}}finally{await reader.cancel().catch(()=>{});}return JSON.parse(Buffer.concat(parts).toString('utf8'));}
 function need(ok:unknown,code:string):asserts ok{if(!ok)throw Error(code);}
