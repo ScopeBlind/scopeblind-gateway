@@ -1,0 +1,42 @@
+name: Publish reviewed npm release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact version already committed on main
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.22.3'
+          registry-url: https://registry.npmjs.org
+      - name: Use the reviewed npm toolchain
+        run: npm install --global npm@11.19.1
+      - name: Check requested version
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: node -e "const p=require('./package.json');if(p.version!==process.env.RELEASE_VERSION)throw Error('Requested version differs from source');"
+      - run: npm ci
+      - run: npm test
+      - name: Pack the checked source
+        run: npm pack --json > packed.json
+      - name: Verify a clean installation
+        run: node scripts/release-install-check.mjs
+      - name: Publish with npm trusted publishing and provenance
+        run: node -e "const {execFileSync}=require('node:child_process');const p=require('./packed.json')[0];execFileSync('npm',['publish',p.filename,'--access','public','--provenance','--ignore-scripts'],{stdio:'inherit'});"
