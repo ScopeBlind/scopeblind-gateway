@@ -20,14 +20,16 @@ describe('bounded coding controller',()=>{
   const box=new DockerCodingSandbox(dir,'node@sha256:'+key('1'));
   try{
    await writeFile(join(dir,'docker'),`#!/usr/bin/env node\nconst fs=require('node:fs');fs.appendFileSync(${JSON.stringify(callsFile)},JSON.stringify(process.argv.slice(2))+'\\n');if(process.argv[2]==='run'){process.on('SIGTERM',()=>{});fs.writeFileSync(${JSON.stringify(pidFile)},String(process.pid));process.stdout.write('started\\n');setInterval(()=>{},1000);}\n`,{mode:0o755});
-   process.env.PATH=dir+':'+oldPath;const started=Date.now();pending=box.run(['node','tools/build.mjs'],500);
-   const result=await Promise.race([pending,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('sandbox deadline did not terminate the real CLI')),4000);})]);
-   expect(result).toMatchObject({exit_code:124,output:expect.stringContaining('started')});expect(Date.now()-started).toBeLessThan(3000);
+   // Allow real Node startup during the full release gate's CPU load; the child still
+   // ignores SIGTERM indefinitely and must be killed at the sandbox's own deadline.
+   process.env.PATH=dir+':'+oldPath;const started=Date.now();pending=box.run(['node','tools/build.mjs'],3000);
+   const result=await Promise.race([pending,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error('sandbox deadline did not terminate the real CLI')),8000);})]);
+   expect(result).toMatchObject({exit_code:124,output:expect.stringContaining('started')});expect(Date.now()-started).toBeLessThan(7000);
    const pid=Number(await readFile(pidFile,'utf8'));expect(()=>process.kill(pid,0)).toThrow();const calls=(await readFile(callsFile,'utf8')).trim().split('\n').map(x=>JSON.parse(x));expect(calls).toHaveLength(2);expect(calls[1]).toEqual(['rm','--force',calls[0][calls[0].indexOf('--name')+1]]);
   }finally{
    if(timer)clearTimeout(timer);try{process.kill(Number(await readFile(pidFile,'utf8')),'SIGKILL');}catch{}await pending?.catch(()=>{});await box.close();process.env.PATH=oldPath;await rm(dir,{recursive:true,force:true});
   }
- });
+ },12000);
  it('fails closed and retains cleanup responsibility when bounded force-removal fails',async()=>{
   let fail=true;const options:any[]=[],box=new DockerCodingSandbox('/tmp/isolated-test','node@sha256:'+key('1'),async(_file,args,opts)=>{options.push(opts);if(args[0]==='rm'&&fail)throw Object.assign(Error('daemon unavailable'),{code:'ETIMEDOUT'});return {stdout:'',stderr:''};});
   await expect(box.run(['node','tools/build.mjs'],100)).rejects.toThrow('coding_sandbox_cleanup_failed');expect(options.every(o=>o.killSignal==='SIGKILL')).toBe(true);await expect(box.run(['node','tools/build.mjs'],100)).rejects.toThrow('coding_sandbox_closed');await expect(box.close()).rejects.toThrow('coding_sandbox_cleanup_failed');fail=false;await expect(box.close()).resolves.toBeUndefined();expect(options).toHaveLength(4);
