@@ -1,6 +1,12 @@
 // ── Core Gateway ────────────────────────────────────────────────
 export { ProtectGateway } from './gateway.js';
 
+// Installed adapter for the same shared invoice admission protocol as the browser.
+export { CoordinationClient, CoordinationError, validateCoordinationPayment } from './coordination-client.js';
+export type { CoordinationPayment, CoordinationPaymentResult } from './coordination-client.js';
+export { coordinationConfigFromArgs, validateCoordinationConfig } from './coordination-config.js';
+export type { CoordinationConfig } from './coordination-config.js';
+
 // ── Policy ──────────────────────────────────────────────────────
 export { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
 
@@ -22,7 +28,7 @@ export {
   receiptIdentity,
   computeSbIssuerKid,
 } from './acta-envelope.js';
-export type { ActaEnvelope, ActaSignature, ReceiptShape } from './acta-envelope.js';
+export type { ActaEnvelope, ActaSignature, ReceiptShape, ReceiptVerification } from './acta-envelope.js';
 
 // ── Commitment-mode signing (v0.6.0+) ──────────────────────────
 // draft-farley-acta-signed-receipts-01 §commitment-mode
@@ -260,3 +266,21 @@ export { createSandboxServer } from './demo-server.js';
 // SCOPEBLIND_TOKEN is set in env. Otherwise inert.
 export { ScopeBlindBridge, getScopeBlindBridge, forwardReceipt } from './scopeblind-bridge.js';
 export { inspectEgress, assertEgressSafe, toEgressSummary, runEgressSelfCheck, EGRESS_SUMMARY_FIELDS } from './egress-guard.js';
+
+// Portable reports from the shared invoice rule rehearsal; verification makes no network requests.
+export { verifyRehearsalEvidence } from './coordination-rehearsal.js';
+export type { RehearsalExport, RehearsalVerification } from './coordination-rehearsal.js';
+
+export { verifyPublicSnapshot } from './coordination-sharing.js';
+export type { PublicSnapshot, SnapshotReceipt, SnapshotVerification } from './coordination-sharing.js';
+
+export { verifyNegotiationEvidence } from './coordination-negotiation.js';
+export type { NegotiationExport, NegotiationVerification, NegotiationMandate, NegotiationProposal, NegotiationReport } from './coordination-negotiation.js';
+
+export { verifyHuman, verifyDeviceAuthorization, humanPrincipal } from './coordination-devices.js';
+export type { DeviceAuthorization, DeviceUse, DevicePermission, HumanContext } from './coordination-devices.js';
+export { verifyOwnerAgreement } from './coordination-evidence.js';
+
+// Real repository tasks: offline verification of the exact review/action/acceptance chain.
+export {verifyRepositoryEvidence,repositorySnapshotDigest} from './coordination-repository.js';
+export type {RepositoryTask,RepositoryClaim,RepositoryProposal,RepositoryApproval,RepositoryExecution,RepositoryOutcome,RepositoryAcceptance,RepositoryState,RepositoryEvidence} from './coordination-repository.js';

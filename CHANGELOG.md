@@ -1,4 +1,61 @@
+## 0.21.0 — 2026-09-16
+
+- Add repository tasks with bounded paths, exact base/head commit approval by two distinct principals, pinned check providers and receiver-signed destination observations.
+- Add `repository keygen`, `inspect`, `execute` and read-only `reconcile` commands. The repository owner retains the write credential; execution uses GitHub atomic ref preconditions and never executes proposed code.
+- Separate authorization, observed effects and recipient acceptance in portable evidence. An uncertain execution is reconciled rather than sent again.
+- Align the hosted coordination client and standalone gateway on one version-pinned npm release.
+
+## 0.20.0 — 2026-09-15
+
+- Add a reusable private agent profile and agent-first draft preparation. People review and sign their own limits; draft links and profile setup grant no task authority.
+- Preserve separate negotiation and execution connections. An original organizer may explicitly authorize the same agent key for the exact jointly adopted task, with durable claim recovery and bounded reconnection.
+- Add room-bound phone device authorization, expiry and revocation. Keep the actual device signature, original human authorization and service-recorded use in portable evidence; exact plan approvals carry their required agreement and reviewer-role context.
+- Add an authenticated decision inbox and optional generic browser reminders. Reminders contain no task data, grant no authority and do not wake external agents.
+- Verify phone-signed agreement lineage when inspecting or exporting subsequent negotiation, rehearsal and completed-work records. Existing standalone gateway commands and earlier evidence formats remain available.
+
+## 0.19.0 — 2026-09-15
+
+- Add Claude Code, Codex CLI and generic MCP setup choices, connection-specific configuration paths and scoped resume instructions. Private pairing codes are entered through the terminal prompt.
+- Confirm readiness only after the authenticated adapter verifies and acknowledges the current signed context; preserve separate execution, rehearsal and negotiation scopes.
+- Negotiate bounded total-budget and review-threshold plans, retain human hard requirements, and privately express budget preferences. Legacy mandates keep their fixed source budget.
+- Compare explicitly requested alternatives through the actual isolated gate and bind both human approvals to one exact selected plan. Preserve earlier proposals, records and immutable public snapshots.
+- Link fresh recovery discussions to earlier discussions or an eligible exact blocked request without transferring old authority.
+
+## 0.18.0 — 2026-09-15
+
+- Verify exact public negotiation and result snapshots with `verifyPublicSnapshot`, including the person’s signed sharing request and the service’s historical receipt. View-only links confer no action or approval authority.
+- Keep public sharing and invitation rotation restricted to human principals; paired agent capabilities are unchanged.
+- Update versioned coordination setup commands.
+
+## 0.17.0 — 2026-09-15
+
+- Add principal-bound, version-3 pairing for two-person invoice agreement discussions.
+- Expose scoped inspection, proposal, response, comparison and bounded wait tools without payment or approval powers.
+- Verify portable negotiation history, exact dual approvals, reviewer enrollment and adopted agreement lineage.
+- Include the shared negotiation history in the final work evidence; preserve existing evidence and pairing formats.
+
 # Changelog
+
+## 0.16.0 (2026-09-14)
+
+### Added
+- Explicit test-only agent pairing with version-2 codes, a separate audience, and four narrowly scoped tools: inspect rehearsal, propose case, propose repair, and run rehearsal. Existing execution grants keep their original scope.
+- Installed MCP verification of signed source agreements, proposed changes, actual-gate comparison reports, and immutable historical evidence snapshots. Stable case, proposal, and run IDs preserve retry identity.
+- Public `verifyRehearsalEvidence` export for offline signature, snapshot, and report-consistency checks, with explicit operator-attestation limitations.
+- Purpose-specific tool lists and setup prompts. Test agents cannot execute source payments, approve exceptions, or adopt rules; owners may adopt a passing comparison only into a new, separate sample task.
+
+
+## 0.15.0 (2026-09-14)
+
+### Added
+- Shared invoice coordination through the room's authoritative admission API: independently verify exact signed admissions and destination outcomes, preserve operation identity across retries, and deliver a signed result for separate recipient acceptance.
+- `coordination pair`: a short-lived one-use code enrolls an independently keyed agent. The client saves private recovery state before claiming, verifies the owner grant and service binding, and retains only a scoped executor credential after success.
+- `coordination setup --client claude-code|json`: print secret-free MCP registration settings using a private config file. The adapter provides `coordination.inspect`, `ledger.pay`, `coordination.deliver`, and a bounded `coordination.wait` for collaborator decisions without model polling. Successful pairing prints the client registration command directly.
+- Live invoice/purchase-order inspection, fixture revision binding, signed result revision history, and structured recovery guidance for expired/revoked connections and held work.
+
+### Fixed
+- Strict JCS ordering for numeric-looking object keys, with explicit historical compatibility labels and preservation of legacy receipt hashes.
+
 
 ## 0.14.0 (2026-09-14)
 

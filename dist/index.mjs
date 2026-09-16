@@ -1,13 +1,33 @@
 import {
+  formatReportMarkdown,
+  generateReport
+} from "./chunk-KV532C3M.mjs";
+import {
+  collectSignedReceipts,
+  createAuditBundle
+} from "./chunk-PM2ZO57M.mjs";
+import {
   createSelectiveDisclosurePackage,
   discloseField,
   signCommittedDecision,
   verifySelectiveDisclosurePackage
 } from "./chunk-NJX7GOKG.mjs";
 import {
-  formatReportMarkdown,
-  generateReport
-} from "./chunk-7RDWXH74.mjs";
+  CoordinationClient,
+  CoordinationError,
+  validateCoordinationPayment
+} from "./chunk-2SYSTEXK.mjs";
+import {
+  coordinationConfigFromArgs,
+  humanPrincipal,
+  validateCoordinationConfig,
+  verifyDeviceAuthorization,
+  verifyEvidence,
+  verifyHuman,
+  verifyNegotiationEvidence,
+  verifyOwnerAgreement,
+  verifyRehearsalEvidence
+} from "./chunk-ZSS4X3C3.mjs";
 import {
   CONNECTOR_PILOTS,
   connectorDirectory,
@@ -19,7 +39,7 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-M4OCJURX.mjs";
+} from "./chunk-5KKNSXNI.mjs";
 import {
   POLICY_PACKS,
   getPolicyPack,
@@ -36,7 +56,7 @@ import {
   resolveCredential,
   sendApprovalNotification,
   validateCredentials
-} from "./chunk-TORQ2QFI.mjs";
+} from "./chunk-6DMPXIYJ.mjs";
 import {
   createSandboxServer
 } from "./chunk-QRLQZXTO.mjs";
@@ -51,7 +71,7 @@ import {
   forwardReceipt,
   getScopeBlindBridge,
   startHookServer
-} from "./chunk-7JZIM5HG.mjs";
+} from "./chunk-UMFUH2SF.mjs";
 import "./chunk-KRKZ2YX7.mjs";
 import {
   EGRESS_SUMMARY_FIELDS,
@@ -59,7 +79,7 @@ import {
   inspectEgress,
   runEgressSelfCheck,
   toEgressSummary
-} from "./chunk-UJMFRQOL.mjs";
+} from "./chunk-W5MGNQNK.mjs";
 import {
   approvePolicyProposalWithDirectSignature,
   approvePolicyProposalWithWebAuthn,
@@ -81,38 +101,43 @@ import {
   verifyApprovalAssertion,
   verifyMandateLifecycleExport,
   verifyMandateRegistry
-} from "./chunk-XO3CXSSD.mjs";
+} from "./chunk-6WSDNYAH.mjs";
 import "./chunk-MZOD6A6U.mjs";
 import {
   checkRateLimit,
   getToolPolicy,
   loadPolicy,
   parseRateLimit
-} from "./chunk-AROKUUGG.mjs";
+} from "./chunk-GADWK3VN.mjs";
 import {
   getSignerInfo,
   initSigning,
   isSigningEnabled,
   signDecision
-} from "./chunk-WG5V64D7.mjs";
+} from "./chunk-VBLTBTAJ.mjs";
 import {
   evaluateCedar,
   isCedarAvailable,
   loadCedarPolicies,
   policySetFromSource,
   runEvaluatorSelfTest
-} from "./chunk-PF7HOTBP.mjs";
+} from "./chunk-LVMGH3VC.mjs";
 import {
   computeSbIssuerKid,
   createReceiptEnvelope,
   receiptHash,
   receiptIdentity,
   verifyReceipt
-} from "./chunk-EIRUB2BZ.mjs";
+} from "./chunk-6JTYFG2X.mjs";
 import {
-  collectSignedReceipts,
-  createAuditBundle
-} from "./chunk-PM2ZO57M.mjs";
+  repositorySnapshotDigest,
+  verifyRepositoryEvidence
+} from "./chunk-BPZXU6OQ.mjs";
+import {
+  canonical,
+  sha256,
+  verify
+} from "./chunk-VS4TVKA7.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/manifest.ts
@@ -606,8 +631,8 @@ async function verifyRekorAnchor(logIndex, expectedHash) {
   };
 }
 function hashReceipt(receipt) {
-  const canonical = JSON.stringify(receipt, Object.keys(receipt).sort());
-  return createHash("sha256").update(canonical).digest("hex");
+  const canonical2 = JSON.stringify(receipt, Object.keys(receipt).sort());
+  return createHash("sha256").update(canonical2).digest("hex");
 }
 function createLogAnchorField(anchor) {
   return {
@@ -711,8 +736,8 @@ function computeCommitment(salt, value) {
   return createHash2("sha256").update(salt + serialized).digest("hex");
 }
 function hashObject(obj) {
-  const canonical = JSON.stringify(obj, Object.keys(obj).sort());
-  return createHash2("sha256").update(canonical).digest("hex");
+  const canonical2 = JSON.stringify(obj, Object.keys(obj).sort());
+  return createHash2("sha256").update(canonical2).digest("hex");
 }
 
 // src/huggingface-export.ts
@@ -1667,10 +1692,39 @@ async function confidentialInference(_prompt, _config) {
     "Confidential inference requires a TEE/HE provider SDK. See docs at scopeblind.com/docs/confidential for setup instructions. Supported providers: Gramine (local_tee), Zama Concrete ML (homomorphic), NVIDIA Confidential Computing (secure_enclave)."
   );
 }
+
+// src/coordination-sharing.ts
+var SNAPSHOT_RETENTION_MS = 30 * 24 * 60 * 60 * 1e3;
+var SNAPSHOT_MAX_BYTES = 512 * 1024;
+var exact = (v, names) => !!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join(",") === [...names].sort().join(",");
+async function verifyPublicSnapshot(value, authorityKey) {
+  const checks = [], add = (name, passed) => checks.push({ name, passed: passed === true });
+  try {
+    const s = value, r = s.receipt.payload, a = s.authorization.payload, created = Date.parse(r.created_at), expires = Date.parse(r.expires_at);
+    add("Recognized immutable snapshot", exact(s, ["kind", "id", "created_at", "expires_at", "evidence", "receipt", "authorization"]) && ["negotiation", "result"].includes(s.kind) && /^[0-9a-f]{64}$/.test(s.id));
+    add("Pinned authority signed the historical sharing receipt", /^[0-9a-f]{64}$/.test(authorityKey) && await verify(s.receipt, authorityKey) && r.type === "scopeblind.coordination.public-snapshot.v1" && r.purpose === "public_read_only_snapshot" && r.historical === true);
+    add("Receipt names these exact bytes and retention dates", exact(r, ["type", "id", "kind", "room_id", "target_digest", "evidence_sha256", "authorization_digest", "shared_by", "created_at", "expires_at", "purpose", "historical", ...s.kind === "negotiation" ? ["session_id", "proposal_digest"] : []]) && r.id === s.id && r.kind === s.kind && r.created_at === s.created_at && r.expires_at === s.expires_at && Number.isFinite(created) && expires - created === SNAPSHOT_RETENTION_MS && r.evidence_sha256 === await sha256(canonical(s.evidence)) && new TextEncoder().encode(canonical(s.evidence)).byteLength <= SNAPSHOT_MAX_BYTES);
+    add("A person explicitly signed public sharing of this target", exact(s.authorization, ["payload", "signer", "digest", "signature"]) && exact(a, ["type", "action", "room_id", "issued_at", "nonce", "body"]) && await verify(s.authorization, r.shared_by) && r.authorization_digest === s.authorization.digest && a.type === "scopeblind.coordination.request.v1" && a.room_id === r.room_id && Math.abs(created - Date.parse(a.issued_at)) <= 3e5 && typeof a.nonce === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(a.nonce));
+    if (s.kind === "negotiation") {
+      const e = s.evidence, checked = await verifyNegotiationEvidence(e, authorityKey);
+      add("Exact verified negotiation report", checked.valid && a.action === "negotiation_share" && exact(a.body, ["session_id", "proposal_digest", "report_digest"]) && a.body.session_id === r.session_id && a.body.proposal_digest === r.proposal_digest && a.body.report_digest === r.target_digest && r.room_id === e.session.payload.room_id && r.session_id === e.session.payload.id && r.proposal_digest === e.report.payload.proposal_digest && r.proposal_digest === e.proposals.at(-1)?.digest && r.target_digest === e.report.digest);
+      add("Sharing person is one of the two principals", r.shared_by === e.session.payload.owner_key || r.shared_by === e.binding.payload.guest_key);
+    } else {
+      const e = s.evidence, checked = await verifyEvidence(e, authorityKey);
+      add("Exact verified completed result", checked.valid && a.action === "result_share" && exact(a.body, ["manifest_digest"]) && a.body.manifest_digest === r.target_digest && r.room_id === e.agreement.payload.id && r.target_digest === e.manifest.digest);
+      add("Sharing person was organizer or a current reviewer", r.shared_by === e.agreement.payload.owner_key || e.grants.some((g) => !g.revoked && g.binding?.payload.guest_key === r.shared_by && Date.parse(g.grant.payload.expires_at) > created && g.grant.payload.actions.some((x) => x === "decide" || x === "accept")));
+    }
+  } catch {
+    add("Snapshot structure is complete", false);
+  }
+  return { valid: checks.length > 0 && checks.every((c) => c.passed), checks, limitations: ["This is a historical snapshot of the exact shared export. It does not establish current task status, current approval, or payment authority.", "The public link permits reading only. Its hosted copy is available for 30 days; downloaded evidence can be retained separately."] };
+}
 export {
   BUILTIN_PATTERNS,
   CONNECTOR_PILOTS,
   ConfidentialGate,
+  CoordinationClient,
+  CoordinationError,
   EGRESS_SUMMARY_FIELDS,
   POLICY_PACKS,
   ProtectGateway,
@@ -1689,6 +1743,7 @@ export {
   connectorDirectory,
   connectorDoctor,
   connectorPilotIds,
+  coordinationConfigFromArgs,
   createApprovalChallenge,
   createApprovalReceiptPayload,
   createAttestationField,
@@ -1734,6 +1789,7 @@ export {
   getToolPolicy,
   hashReceipt,
   hashResponseBody,
+  humanPrincipal,
   initSigning,
   initializeMandateRegistry,
   inspectEgress,
@@ -1765,6 +1821,7 @@ export {
   receiptsToHFRows,
   redactFields,
   refreshManagedMandate,
+  repositorySnapshotDigest,
   resolveCredential,
   revealField,
   runEgressSelfCheck,
@@ -1780,6 +1837,8 @@ export {
   toEgressSummary,
   toManifoldFormat,
   toMetaculusFormat,
+  validateCoordinationConfig,
+  validateCoordinationPayment,
   validateCredentials,
   validateEvidenceReceipt,
   validateManifest,
@@ -1787,11 +1846,18 @@ export {
   verifyAllCommitments,
   verifyApprovalAssertion,
   verifyCommitment,
+  verifyDeviceAuthorization,
   verifyEvidenceAttestation,
+  verifyHuman,
   verifyMandateLifecycleExport,
   verifyMandateRegistry,
+  verifyNegotiationEvidence,
+  verifyOwnerAgreement,
+  verifyPublicSnapshot,
   verifyReceipt,
+  verifyRehearsalEvidence,
   verifyRekorAnchor,
+  verifyRepositoryEvidence,
   verifySelectiveDisclosurePackage,
   writeConnectorPilots
 };

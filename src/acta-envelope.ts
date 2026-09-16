@@ -19,13 +19,14 @@
  *
  * Verification is dual-shape: envelopes produced by protect-mcp <= 0.9.x
  * (flat v1 artifacts and structured v2 artifacts with a top-level signature
- * string) continue to verify, so receipt logs written before the migration
- * remain checkable with the same tooling.
+ * string) remain checkable. Historical non-JCS numeric-key signatures are
+ * identified explicitly and require opt-in compatibility verification.
  */
 
 import { ed25519 } from '@noble/curves/ed25519';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes, utf8ToBytes } from '@noble/hashes/utils';
+import { canonical as canonicalJson } from './coordination-protocol.js';
 
 /** The receipt envelope shape a verification resolved to. */
 export type ReceiptShape = 'acta-02' | 'legacy-v2' | 'legacy-v1';
@@ -42,10 +43,27 @@ export interface ActaEnvelope {
 }
 
 /**
- * Deterministic JSON serialization (JCS-style: keys sorted at every level).
+ * JCS serialization: emit sorted members directly. Rebuilding a sorted object
+ * is insufficient because JavaScript reorders integer-like properties again.
  * ASCII-only keys enforced, matching the ingest rule used across the stack.
  */
 export function canonicalize(obj: unknown): string {
+  if (Array.isArray(obj)) return '[' + Array.from(obj, canonicalize).join(',') + ']';
+  if (obj !== null && typeof obj === 'object') {
+    if (Object.getPrototypeOf(obj) !== Object.prototype && Object.getPrototypeOf(obj) !== null) throw new Error('Expected a plain JSON object');
+    const record = obj as Record<string, unknown>;
+    return '{' + Object.keys(record).sort().map(key => {
+      if (!/^[\x20-\x7E]*$/.test(key)) throw new Error(`Non-ASCII key "${key}" in receipt payload. Only ASCII keys are permitted.`);
+      return JSON.stringify(key) + ':' + canonicalize(record[key]);
+    }).join(',') + '}';
+  }
+  // The shared primitive implementation rejects non-finite numbers, invalid
+  // Unicode, undefined and other values outside the JSON data model.
+  return canonicalJson(obj);
+}
+
+/** Frozen pre-fix encoding, solely for explicitly identified historical data. */
+function legacyCanonicalize(obj: unknown): string {
   return JSON.stringify(obj, (_key, value) => {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       const sorted: Record<string, unknown> = {};
@@ -59,6 +77,46 @@ export function canonicalize(obj: unknown): string {
     }
     return value;
   });
+}
+
+function hasLegacyUnsafeKey(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  if (Object.prototype.hasOwnProperty.call(value, '__proto__')) return true;
+  return Object.values(value).some(hasLegacyUnsafeKey);
+}
+
+export interface ReceiptVerification {
+  valid: boolean;
+  shape: ReceiptShape | null;
+  hash?: string;
+  error?: string;
+  canonicalization?: 'jcs' | 'legacy-numeric-key-order';
+  warning?: string;
+  legacy_signature_valid?: boolean;
+  legacy_hash?: string;
+}
+
+function verifyEncoding(payload: unknown, envelope: unknown, signature: string, publicKeyHex: string, shape: ReceiptShape, allowLegacy: boolean): ReceiptVerification {
+  const jcs = canonicalize(payload);
+  if (ed25519.verify(hexToBytes(signature), utf8ToBytes(jcs), hexToBytes(publicKeyHex))) {
+    return { valid: true, shape, hash: receiptHash(envelope), canonicalization: 'jcs' };
+  }
+  // A fallback must never resurrect an ignored __proto__ member from the old
+  // object-rebuilding serializer. Parsed plain JSON otherwise differs only in
+  // the order of integer-like members. Strict verification remains the default.
+  if (!hasLegacyUnsafeKey(envelope)) {
+    const legacy = legacyCanonicalize(payload);
+    if (legacy !== jcs && ed25519.verify(hexToBytes(signature), utf8ToBytes(legacy), hexToBytes(publicKeyHex))) {
+      const legacyHash = bytesToHex(sha256(utf8ToBytes(legacyCanonicalize(envelope))));
+      return {
+        valid: allowLegacy, shape, canonicalization: 'legacy-numeric-key-order',
+        legacy_signature_valid: true, legacy_hash: legacyHash,
+        ...(allowLegacy ? { hash: legacyHash } : { error: 'legacy_non_jcs_signature' }),
+        warning: 'Historical signature verifies only with pre-fix integer-key ordering. This is not JCS-conformant; preserve its original bytes and chain hashes.',
+      };
+    }
+  }
+  return { valid: false, shape, error: 'invalid_signature' };
 }
 
 /**
@@ -147,7 +205,8 @@ export function createReceiptEnvelope(
 export function verifyReceipt(
   envelope: unknown,
   publicKeyHex: string,
-): { valid: boolean; shape: ReceiptShape | null; hash?: string; error?: string } {
+  options: { allowLegacyNumericKeys?: boolean } = {},
+): ReceiptVerification {
   try {
     if (!envelope || typeof envelope !== 'object') {
       return { valid: false, shape: null, error: 'not_an_object' };
@@ -163,22 +222,14 @@ export function verifyReceipt(
       if (typeof sigObj.sig !== 'string' || !env.payload || typeof env.payload !== 'object') {
         return { valid: false, shape: 'acta-02', error: 'malformed_envelope' };
       }
-      const message = utf8ToBytes(canonicalize(env.payload));
-      const valid = ed25519.verify(hexToBytes(sigObj.sig), message, hexToBytes(publicKeyHex));
-      return valid
-        ? { valid: true, shape: 'acta-02', hash: receiptHash(env) }
-        : { valid: false, shape: 'acta-02', error: 'invalid_signature' };
+      return verifyEncoding(env.payload, env, sigObj.sig as string, publicKeyHex, 'acta-02', options.allowLegacyNumericKeys === true);
     }
 
     if (typeof signature === 'string') {
-      const rest: Record<string, unknown> = {};
+      const rest: Record<string, unknown> = Object.create(null);
       for (const k of Object.keys(env)) if (k !== 'signature') rest[k] = env[k];
-      const message = utf8ToBytes(canonicalize(rest));
-      const valid = ed25519.verify(hexToBytes(signature), message, hexToBytes(publicKeyHex));
       const shape: ReceiptShape = env.v === 2 ? 'legacy-v2' : 'legacy-v1';
-      return valid
-        ? { valid: true, shape, hash: receiptHash(env) }
-        : { valid: false, shape, error: 'invalid_signature' };
+      return verifyEncoding(rest, env, signature, publicKeyHex, shape, options.allowLegacyNumericKeys === true);
     }
 
     return { valid: false, shape: null, error: 'missing_signature' };

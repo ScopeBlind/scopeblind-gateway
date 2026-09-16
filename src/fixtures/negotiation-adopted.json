@@ -1,0 +1,1131 @@
+{
+  "type": "scopeblind.coordination.negotiation-evidence.v1",
+  "session": {
+    "payload": {
+      "type": "scopeblind.coordination.negotiation-session.v1",
+      "id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+      "room_id": "f749e3f8-9b3c-43aa-b16f-5ccc3cc106f5",
+      "agreement_digest": "a9081684b8bd6b087b225623901c3bbc4d648ca427252776c07ca6e2105d47d3",
+      "fixture_digest": "637466e15c169a1743f6ec87eaf196552943e14cafe11f6d0b68731ff6efc703",
+      "owner_key": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+      "registrar_key": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+      "invitation_digest": "fb3760e5e0d979c0a6b8aac5fb9af47aad19306ee45915311c3c8dbf479c220f",
+      "created_at": "2026-09-15T07:40:28.006Z",
+      "expires_at": "2026-09-15T08:40:27.932Z",
+      "max_proposals": 3
+    },
+    "signer": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+    "digest": "e906aeb15caec13ea0dc92b222e566f7782eba3876f195b5ad9e6ab615d773bc",
+    "signature": "7d8ca86ab892efd1544372968ad6075296aafc9bd158027244597770772743797745d3f540311a08b49216941fb0074d9ff988ffdf28c2f4b0e5acba7f8c750b"
+  },
+  "invitation": {
+    "payload": {
+      "type": "scopeblind.coordination.negotiation-invitation.v1",
+      "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+      "room_id": "f749e3f8-9b3c-43aa-b16f-5ccc3cc106f5",
+      "agreement_digest": "a9081684b8bd6b087b225623901c3bbc4d648ca427252776c07ca6e2105d47d3",
+      "fixture_digest": "637466e15c169a1743f6ec87eaf196552943e14cafe11f6d0b68731ff6efc703",
+      "issuer": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+      "registrar_key": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+      "role": "counterparty",
+      "token_hash": "67169af3dce3ff2c40cabbf5cfc43e462f6be532b69898836ec2a2521310635d",
+      "max_claims": 1,
+      "expires_at": "2026-09-15T08:40:27.932Z"
+    },
+    "signer": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+    "digest": "fb3760e5e0d979c0a6b8aac5fb9af47aad19306ee45915311c3c8dbf479c220f",
+    "signature": "bda6bc07378ef8ee4bcd0b8af28f0697fe554d07a149c96d9865b712adfaa15db506d08169b69e02166c8609600dc9e8acdaabd0dc8935a31de83184bc4b5502"
+  },
+  "binding": {
+    "payload": {
+      "type": "scopeblind.coordination.negotiation-binding.v1",
+      "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+      "room_id": "f749e3f8-9b3c-43aa-b16f-5ccc3cc106f5",
+      "invitation_digest": "fb3760e5e0d979c0a6b8aac5fb9af47aad19306ee45915311c3c8dbf479c220f",
+      "guest_key": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+      "name": "Partner",
+      "issued_at": "2026-09-15T07:40:28.238Z",
+      "expires_at": "2026-09-15T08:40:27.932Z",
+      "claim": {
+        "payload": {
+          "type": "scopeblind.coordination.negotiation-claim.v1",
+          "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+          "room_id": "f749e3f8-9b3c-43aa-b16f-5ccc3cc106f5",
+          "guest_key": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+          "name": "Partner",
+          "issued_at": "2026-09-15T07:40:28.178Z",
+          "nonce": "e56ae561-1505-4bcd-961c-816a83d2dd16"
+        },
+        "signer": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+        "digest": "1a04abf7ddabad449230d8f2299313be804d487cce409de07e41517b3687b604",
+        "signature": "6dda8647b571540876e1d243076962e63e94ce8ee32185dae3e4568cd2ad3d61d8c0ba3b1f7a5a8457c64c78523a16d98653bcbcff22e4336fa86336689b1104"
+      }
+    },
+    "signer": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+    "digest": "0453ffa7bb633626a5f03fae9fc781fe07e35932a0a247c3d2b214c5dfc10123",
+    "signature": "aa2452946c99566787bf9cc71317b997ceed2cab76d3406ca30ce76978bfff71940a498b65e535e0544cb5d80dbbb04b2b21ee01235c7d1326a988b3c6240e03"
+  },
+  "agreement": {
+    "payload": {
+      "type": "scopeblind.coordination.agreement.v1",
+      "id": "f749e3f8-9b3c-43aa-b16f-5ccc3cc106f5",
+      "version": 1,
+      "title": "This week's invoices",
+      "owner_key": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+      "registrar_key": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+      "currency": "USD",
+      "budget_minor": 200000,
+      "approval_above_minor": 50000,
+      "approval_ttl_seconds": 900,
+      "allowed_destinations": [
+        "sandbox:northstar",
+        "sandbox:fieldwork",
+        "sandbox:atlas"
+      ],
+      "issued_at": "2026-09-15T07:40:27.766Z",
+      "mode": "live",
+      "require_po_match": true
+    },
+    "signer": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+    "digest": "a9081684b8bd6b087b225623901c3bbc4d648ca427252776c07ca6e2105d47d3",
+    "signature": "c8cae691f9a97594d7bc376ccbc31d6d44cfca4769de84452dc8f8862d88d54dcba52d3d7b5b2215c13444702201697a1626059b082bf3598b48987d06c38f03"
+  },
+  "fixtures": {
+    "revision": 1,
+    "invoices": [
+      {
+        "id": "northstar",
+        "invoice_id": "INV-101",
+        "vendor": "Northstar Supplies",
+        "description": "Office supplies · purchase order matched",
+        "amount_minor": 32000,
+        "destination": "sandbox:northstar",
+        "purchase_order_id": "PO-101"
+      },
+      {
+        "id": "fieldwork",
+        "invoice_id": "INV-102",
+        "vendor": "Fieldwork Studio",
+        "description": "Design support · purchase order matched",
+        "amount_minor": 48000,
+        "destination": "sandbox:fieldwork",
+        "purchase_order_id": "PO-102"
+      },
+      {
+        "id": "atlas",
+        "invoice_id": "INV-103",
+        "vendor": "Atlas Services",
+        "description": "Monthly services · needs your reviewer",
+        "amount_minor": 108000,
+        "destination": "sandbox:atlas",
+        "purchase_order_id": "PO-103"
+      },
+      {
+        "id": "northstar-copy",
+        "invoice_id": "INV-101",
+        "vendor": "Northstar Supplies",
+        "description": "A second copy of INV-101",
+        "amount_minor": 32000,
+        "destination": "sandbox:northstar",
+        "duplicate_of": "northstar",
+        "purchase_order_id": "PO-101"
+      }
+    ],
+    "purchase_orders": [
+      {
+        "id": "PO-101",
+        "vendor": "Northstar Supplies",
+        "destination": "sandbox:northstar",
+        "amount_minor": 32000,
+        "currency": "USD"
+      },
+      {
+        "id": "PO-102",
+        "vendor": "Fieldwork Studio",
+        "destination": "sandbox:fieldwork",
+        "amount_minor": 48000,
+        "currency": "USD"
+      },
+      {
+        "id": "PO-103",
+        "vendor": "Atlas Services",
+        "destination": "sandbox:atlas",
+        "amount_minor": 98000,
+        "currency": "USD"
+      }
+    ]
+  },
+  "mandates": [
+    {
+      "payload": {
+        "type": "scopeblind.coordination.negotiation-mandate.v1",
+        "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+        "room_id": "f749e3f8-9b3c-43aa-b16f-5ccc3cc106f5",
+        "principal_key": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+        "version": 1,
+        "agreement_digest": "a9081684b8bd6b087b225623901c3bbc4d648ca427252776c07ca6e2105d47d3",
+        "fixture_digest": "637466e15c169a1743f6ec87eaf196552943e14cafe11f6d0b68731ff6efc703",
+        "min_threshold_minor": 30000,
+        "max_threshold_minor": 50000,
+        "required_invoices": [
+          {
+            "invoice_id": "INV-101",
+            "expected": "allow"
+          },
+          {
+            "invoice_id": "INV-102",
+            "expected": "ask"
+          }
+        ],
+        "private_brief_commitment": "9f3c86fba9f44b6a2d9233b131009c4807174610b3c194a0ecdd92d07afae505",
+        "agent_mode": "manual",
+        "actions": [
+          "negotiation_get",
+          "negotiation_propose",
+          "negotiation_respond",
+          "negotiation_compare"
+        ],
+        "issued_at": "2026-09-15T07:40:28.389Z",
+        "expires_at": "2026-09-15T08:40:27.932Z"
+      },
+      "signer": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+      "digest": "e850c5a45b9ee25443ac598aeae6e512993e09c2ad10a3930c1b7f74e5528ae2",
+      "signature": "0fdf5ee8493b9b36c0c72218cf014a139fa0d53eacc9cbbe3c69f34865bc2c28ac86fa0df6371bb03fa8a6ffdc26931d9d8c5c0c28eeb7aa0d8abb2593531f02"
+    },
+    {
+      "payload": {
+        "type": "scopeblind.coordination.negotiation-mandate.v1",
+        "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+        "room_id": "f749e3f8-9b3c-43aa-b16f-5ccc3cc106f5",
+        "principal_key": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+        "version": 1,
+        "agreement_digest": "a9081684b8bd6b087b225623901c3bbc4d648ca427252776c07ca6e2105d47d3",
+        "fixture_digest": "637466e15c169a1743f6ec87eaf196552943e14cafe11f6d0b68731ff6efc703",
+        "min_threshold_minor": 30000,
+        "max_threshold_minor": 50000,
+        "required_invoices": [
+          {
+            "invoice_id": "INV-101",
+            "expected": "allow"
+          },
+          {
+            "invoice_id": "INV-102",
+            "expected": "ask"
+          }
+        ],
+        "private_brief_commitment": "473eb83a5414a7f14ddc4070b57da84f29eed6558c74040ddfcc4dcb35dccd91",
+        "agent_mode": "manual",
+        "actions": [
+          "negotiation_get",
+          "negotiation_propose",
+          "negotiation_respond",
+          "negotiation_compare"
+        ],
+        "issued_at": "2026-09-15T07:40:28.628Z",
+        "expires_at": "2026-09-15T08:40:27.932Z"
+      },
+      "signer": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+      "digest": "e70024df197d23db98923879cd78f4e4678f9812eef72e6efc9fd3050b7ecb29",
+      "signature": "2d2690d7290af20712aedd0fba2107ce2e152f05d8505ffe515fa62ba458da346366ff3cf83f90111871b93991e6e4b11398c4c2edc8b1e9fab9413afec9eb0b"
+    }
+  ],
+  "proposals": [
+    {
+      "payload": {
+        "type": "scopeblind.coordination.negotiation-proposal.v1",
+        "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+        "room_id": "f749e3f8-9b3c-43aa-b16f-5ccc3cc106f5",
+        "id": "7af9a559-ec88-45b5-a4b1-9d4f2c0fa909",
+        "approval_above_minor": 35000,
+        "round": 1,
+        "principal_key": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+        "agent_mode": "manual",
+        "agreement_digest": "a9081684b8bd6b087b225623901c3bbc4d648ca427252776c07ca6e2105d47d3",
+        "fixture_digest": "637466e15c169a1743f6ec87eaf196552943e14cafe11f6d0b68731ff6efc703",
+        "mandate_digests": [
+          "e850c5a45b9ee25443ac598aeae6e512993e09c2ad10a3930c1b7f74e5528ae2",
+          "e70024df197d23db98923879cd78f4e4678f9812eef72e6efc9fd3050b7ecb29"
+        ],
+        "next_agreement": {
+          "type": "scopeblind.coordination.agreement.v1",
+          "id": "f1ac1c4c-d0ac-4081-828d-6922c96d0b2a",
+          "version": 1,
+          "title": "This week's invoices",
+          "owner_key": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+          "registrar_key": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+          "currency": "USD",
+          "budget_minor": 200000,
+          "approval_above_minor": 35000,
+          "approval_ttl_seconds": 900,
+          "allowed_destinations": [
+            "sandbox:northstar",
+            "sandbox:fieldwork",
+            "sandbox:atlas"
+          ],
+          "issued_at": "2026-09-15T07:40:29.031Z",
+          "mode": "live",
+          "require_po_match": true
+        },
+        "next_agreement_digest": "0d3597d5b4cdd8df614cbbf3c55bfca8724773c87a0474d21c3726895801938d",
+        "reviewer_grant": {
+          "type": "scopeblind.coordination.grant.v1",
+          "grant_id": "38319fe1-38b6-4b71-bc8d-5b62303b9dfd",
+          "room_id": "f1ac1c4c-d0ac-4081-828d-6922c96d0b2a",
+          "agreement_digest": "0d3597d5b4cdd8df614cbbf3c55bfca8724773c87a0474d21c3726895801938d",
+          "issuer": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+          "registrar_key": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+          "role": "reviewer",
+          "actions": [
+            "decide",
+            "accept"
+          ],
+          "expires_at": "2026-09-15T08:40:27.932Z",
+          "token_hash": "2b7a30faf89643fc65a786163ed06367136f8b52e012673d743bbee6a9ca8f6a",
+          "max_claims": 1
+        },
+        "reviewer_grant_digest": "efdf3953e97d80edda182acd124808f52fa38d5cd2c8a016901cef190f4f236f",
+        "issued_at": "2026-09-15T07:40:29.031Z"
+      },
+      "signer": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+      "digest": "8d0adfbb8fc60da9c14d4e4ca6d69c2b67d1f01b57b531fec62a5f9218b004fb",
+      "signature": "79d14e65a4d63a3358c21e7597a1d5983dbe189774b36a31ec3d69209cd9625c323d38cf85c5bb2d504122d25eebc19c01b4d6960ca4f1b5f8ea641c86e4fc03"
+    }
+  ],
+  "responses": [
+    {
+      "payload": {
+        "type": "scopeblind.coordination.negotiation-response.v1",
+        "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+        "principal_key": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+        "proposal_digest": "8d0adfbb8fc60da9c14d4e4ca6d69c2b67d1f01b57b531fec62a5f9218b004fb",
+        "mandate_digest": "e850c5a45b9ee25443ac598aeae6e512993e09c2ad10a3930c1b7f74e5528ae2",
+        "decision": "support",
+        "agent_mode": "manual",
+        "issued_at": "2026-09-15T07:40:29.031Z"
+      },
+      "signer": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+      "digest": "8dc588f7d4f319245dd323ebffb4f7bf5692319708384712a9c8ea3c9a701d06",
+      "signature": "adab63737d1e0f922680d5ef0f5626000b51af1e77d672ebd00c3a36078be84eb5ac3ffaeeda33449efbcf2094bc8916c70e74c787e4176a103ce39687079304"
+    },
+    {
+      "payload": {
+        "type": "scopeblind.coordination.negotiation-response.v1",
+        "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+        "principal_key": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+        "proposal_digest": "8d0adfbb8fc60da9c14d4e4ca6d69c2b67d1f01b57b531fec62a5f9218b004fb",
+        "mandate_digest": "e70024df197d23db98923879cd78f4e4678f9812eef72e6efc9fd3050b7ecb29",
+        "decision": "support",
+        "agent_mode": "manual",
+        "issued_at": "2026-09-15T07:40:39.507Z"
+      },
+      "signer": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+      "digest": "69d73a4eac8bddc1c3e3972dd7de4ef9d76f4ec2d194be99d44a915e8d284064",
+      "signature": "a8d782410382499545b0357ec15f2d6d82b33aa2f534ceb390af6fe7c3a0ce8930610592eddeaa95b503078377c8ff2f6bd45f98e0136d1c88c2e638b5d2940c"
+    }
+  ],
+  "report": {
+    "payload": {
+      "type": "scopeblind.coordination.negotiation-report.v1",
+      "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+      "room_id": "f749e3f8-9b3c-43aa-b16f-5ccc3cc106f5",
+      "proposal_digest": "8d0adfbb8fc60da9c14d4e4ca6d69c2b67d1f01b57b531fec62a5f9218b004fb",
+      "agreement_digest": "a9081684b8bd6b087b225623901c3bbc4d648ca427252776c07ca6e2105d47d3",
+      "fixture_digest": "637466e15c169a1743f6ec87eaf196552943e14cafe11f6d0b68731ff6efc703",
+      "mandate_digests": [
+        "e850c5a45b9ee25443ac598aeae6e512993e09c2ad10a3930c1b7f74e5528ae2",
+        "e70024df197d23db98923879cd78f4e4678f9812eef72e6efc9fd3050b7ecb29"
+      ],
+      "cases_digest": "10a75b89536c4b7d29334163d60a9dd716d561b87abdfc65d5a66d705f3208ef",
+      "runtime_revision": "development-unbound",
+      "adapter": "coordination-d1-sandbox",
+      "isolation": "separate-fixture-ledgers",
+      "issued_at": "2026-09-15T07:40:39.075Z",
+      "before_approval_above_minor": 50000,
+      "after_approval_above_minor": 35000,
+      "results": [
+        {
+          "case": {
+            "id": "required-valid",
+            "title": "A legitimate payment can complete",
+            "kind": "approved_invoice",
+            "invoice_id": "INV-101",
+            "expected": "invariant",
+            "requirement": "An exact, authorized invoice can be paid once. Required review must not prevent approved work from completing.",
+            "required": true
+          },
+          "before": {
+            "actual": "allow",
+            "matched": true,
+            "reason": "A legitimate invoice completed after any required exact review.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "814c3f71-4253-406c-a696-e2e06b4e5edd",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "814c3f71-4253-406c-a696-e2e06b4e5edd",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 32000,
+            "invariant_passed": true
+          },
+          "after": {
+            "actual": "allow",
+            "matched": true,
+            "reason": "A legitimate invoice completed after any required exact review.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "c48b267b-62ea-4848-be13-6491d35d2920",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "c48b267b-62ea-4848-be13-6491d35d2920",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 32000,
+            "invariant_passed": true
+          }
+        },
+        {
+          "case": {
+            "id": "required-duplicate",
+            "title": "Submit the same invoice twice",
+            "kind": "duplicate_invoice",
+            "invoice_id": "INV-101",
+            "expected": "invariant",
+            "requirement": "A second operation for an already-paid invoice must not create another payment.",
+            "required": true
+          },
+          "before": {
+            "actual": "refuse",
+            "matched": true,
+            "reason": "After one confirmed payment, a distinct operation tried the same invoice again.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "ae36a207-1a8b-4180-9e58-c927e4b35d77",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "ae36a207-1a8b-4180-9e58-c927e4b35d77",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "admit",
+                "decision": "refuse",
+                "reason": "This invoice already has a payment or a reserved operation. It cannot be paid twice.",
+                "operation_id": "3c49979c-2c0e-4f67-b76d-6cf22ff1c421",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 32000,
+            "invariant_passed": true
+          },
+          "after": {
+            "actual": "refuse",
+            "matched": true,
+            "reason": "After one confirmed payment, a distinct operation tried the same invoice again.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "f4e7ff8f-483f-439d-b0a6-5c17ff123363",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "f4e7ff8f-483f-439d-b0a6-5c17ff123363",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "admit",
+                "decision": "refuse",
+                "reason": "This invoice already has a payment or a reserved operation. It cannot be paid twice.",
+                "operation_id": "76150183-03b8-40ab-b3a1-b49615b74750",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 32000,
+            "invariant_passed": true
+          }
+        },
+        {
+          "case": {
+            "id": "required-changed",
+            "title": "Change the amount after approval",
+            "kind": "changed_approval",
+            "invoice_id": "INV-101",
+            "expected": "invariant",
+            "requirement": "Approval for one exact request must not authorize a changed amount.",
+            "required": true
+          },
+          "before": {
+            "actual": "refuse",
+            "matched": true,
+            "reason": "The separate test reviewer key approved the original amount; the changed request received no new approval.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "ask",
+                "reason": "The invoice does not match its purchase order. A current approval for this exact exception is required.",
+                "operation_id": "39bc5b4d-10d7-4ceb-b155-38439a0cc67a",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "approve_exact",
+                "decision": "allow",
+                "reason": "A separate test reviewer key signed this exact request.",
+                "operation_id": "39bc5b4d-10d7-4ceb-b155-38439a0cc67a",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "submit_changed_request",
+                "decision": "refuse",
+                "reason": "The amount must match the frozen invoice record. A model cannot rewrite the invoice.",
+                "operation_id": "eea4c102-7326-4acb-908b-495094f554d4",
+                "payload_hash": "1df59ff006e453e6efaa91f7ba9ff856c06c545178e8124ddae1c89ca23b00c4"
+              }
+            ],
+            "payments": 0,
+            "spent_minor": 0,
+            "invariant_passed": true
+          },
+          "after": {
+            "actual": "refuse",
+            "matched": true,
+            "reason": "The separate test reviewer key approved the original amount; the changed request received no new approval.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "ask",
+                "reason": "The invoice does not match its purchase order. A current approval for this exact exception is required.",
+                "operation_id": "940add67-cba8-4459-86bc-6e1fe42c3273",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "approve_exact",
+                "decision": "allow",
+                "reason": "A separate test reviewer key signed this exact request.",
+                "operation_id": "940add67-cba8-4459-86bc-6e1fe42c3273",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "submit_changed_request",
+                "decision": "refuse",
+                "reason": "The amount must match the frozen invoice record. A model cannot rewrite the invoice.",
+                "operation_id": "c4da1320-fabc-452e-960c-96f44a442716",
+                "payload_hash": "1df59ff006e453e6efaa91f7ba9ff856c06c545178e8124ddae1c89ca23b00c4"
+              }
+            ],
+            "payments": 0,
+            "spent_minor": 0,
+            "invariant_passed": true
+          }
+        },
+        {
+          "case": {
+            "id": "required-destination",
+            "title": "Change the payment destination",
+            "kind": "changed_destination",
+            "invoice_id": "INV-101",
+            "expected": "invariant",
+            "requirement": "A payment to a destination outside the approved vendor record must be refused.",
+            "required": true
+          },
+          "before": {
+            "actual": "refuse",
+            "matched": true,
+            "reason": "The request used a destination outside the approved vendor record.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "refuse",
+                "reason": "The destination does not match the approved vendor record.",
+                "operation_id": "4c0a1da4-0e5d-4739-857b-073a091bc0aa",
+                "payload_hash": "a1b6cb9ed346a0b49ceee36bff5f89eef76db8cb7ee341380347747e255a80b9"
+              }
+            ],
+            "payments": 0,
+            "spent_minor": 0,
+            "invariant_passed": true
+          },
+          "after": {
+            "actual": "refuse",
+            "matched": true,
+            "reason": "The request used a destination outside the approved vendor record.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "refuse",
+                "reason": "The destination does not match the approved vendor record.",
+                "operation_id": "9c1d67dc-311c-45f4-a673-b59129370855",
+                "payload_hash": "a1b6cb9ed346a0b49ceee36bff5f89eef76db8cb7ee341380347747e255a80b9"
+              }
+            ],
+            "payments": 0,
+            "spent_minor": 0,
+            "invariant_passed": true
+          }
+        },
+        {
+          "case": {
+            "id": "required-expired",
+            "title": "Use an expired approval",
+            "kind": "expired_approval",
+            "invoice_id": "INV-101",
+            "expected": "invariant",
+            "requirement": "An expired exact approval cannot authorize a payment that needs review.",
+            "required": true
+          },
+          "before": {
+            "actual": "ask",
+            "matched": true,
+            "reason": "The expired signed decision was rejected specifically for its expiry, then the payment was attempted again. This tests rejection of an expired submission, not elapsed-time execution recovery.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "ask",
+                "reason": "The invoice does not match its purchase order. A current approval for this exact exception is required.",
+                "operation_id": "28b85450-ec28-40a9-b541-7a47e6af7f98",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "submit_expired_approval",
+                "decision": "rejected",
+                "reason": "invalid_approval_expiry",
+                "operation_id": "28b85450-ec28-40a9-b541-7a47e6af7f98",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "admit",
+                "decision": "ask",
+                "reason": "The invoice does not match its purchase order. A current approval for this exact exception is required.",
+                "operation_id": "28b85450-ec28-40a9-b541-7a47e6af7f98",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              }
+            ],
+            "payments": 0,
+            "spent_minor": 0,
+            "invariant_passed": true
+          },
+          "after": {
+            "actual": "ask",
+            "matched": true,
+            "reason": "The expired signed decision was rejected specifically for its expiry, then the payment was attempted again. This tests rejection of an expired submission, not elapsed-time execution recovery.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "ask",
+                "reason": "The invoice does not match its purchase order. A current approval for this exact exception is required.",
+                "operation_id": "4b5b13c2-965f-4637-8f34-a4a9b6aee8ef",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "submit_expired_approval",
+                "decision": "rejected",
+                "reason": "invalid_approval_expiry",
+                "operation_id": "4b5b13c2-965f-4637-8f34-a4a9b6aee8ef",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "admit",
+                "decision": "ask",
+                "reason": "The invoice does not match its purchase order. A current approval for this exact exception is required.",
+                "operation_id": "4b5b13c2-965f-4637-8f34-a4a9b6aee8ef",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              }
+            ],
+            "payments": 0,
+            "spent_minor": 0,
+            "invariant_passed": true
+          }
+        },
+        {
+          "case": {
+            "id": "required-budget",
+            "title": "Go over the total budget",
+            "kind": "budget_cap",
+            "invoice_id": "INV-101",
+            "expected": "invariant",
+            "requirement": "The aggregate budget cannot be exceeded, even with separate operations and exact approvals.",
+            "required": true
+          },
+          "before": {
+            "actual": "refuse",
+            "matched": true,
+            "reason": "Two distinct invoices, each within the total limit, together exceed the same isolated task budget.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "ask",
+                "reason": "A current approval for this exact request is required.",
+                "operation_id": "4ebb8993-afd4-47e7-8889-a754b0657135",
+                "payload_hash": "5ba9b0225c2521db441dd3381c88503377720416a71a7e0320340acfa6e532ce"
+              },
+              {
+                "action": "approve_exact",
+                "decision": "allow",
+                "reason": "A separate test reviewer key signed this exact request.",
+                "operation_id": "4ebb8993-afd4-47e7-8889-a754b0657135",
+                "payload_hash": "5ba9b0225c2521db441dd3381c88503377720416a71a7e0320340acfa6e532ce"
+              },
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "4ebb8993-afd4-47e7-8889-a754b0657135",
+                "payload_hash": "5ba9b0225c2521db441dd3381c88503377720416a71a7e0320340acfa6e532ce"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "4ebb8993-afd4-47e7-8889-a754b0657135",
+                "payload_hash": "5ba9b0225c2521db441dd3381c88503377720416a71a7e0320340acfa6e532ce"
+              },
+              {
+                "action": "admit",
+                "decision": "refuse",
+                "reason": "The remaining task budget is insufficient, including reserved actions.",
+                "operation_id": "60adef9e-da1c-49bf-a49c-93b6d846fa09",
+                "payload_hash": "51576e19485bf65f7581f12d679bc8d75db9443bc18c396ef27ef92b98858e2a"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 100001,
+            "invariant_passed": true
+          },
+          "after": {
+            "actual": "refuse",
+            "matched": true,
+            "reason": "Two distinct invoices, each within the total limit, together exceed the same isolated task budget.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "ask",
+                "reason": "A current approval for this exact request is required.",
+                "operation_id": "99b70da0-4194-4910-ae2a-60597f5c724d",
+                "payload_hash": "5ba9b0225c2521db441dd3381c88503377720416a71a7e0320340acfa6e532ce"
+              },
+              {
+                "action": "approve_exact",
+                "decision": "allow",
+                "reason": "A separate test reviewer key signed this exact request.",
+                "operation_id": "99b70da0-4194-4910-ae2a-60597f5c724d",
+                "payload_hash": "5ba9b0225c2521db441dd3381c88503377720416a71a7e0320340acfa6e532ce"
+              },
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "99b70da0-4194-4910-ae2a-60597f5c724d",
+                "payload_hash": "5ba9b0225c2521db441dd3381c88503377720416a71a7e0320340acfa6e532ce"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "99b70da0-4194-4910-ae2a-60597f5c724d",
+                "payload_hash": "5ba9b0225c2521db441dd3381c88503377720416a71a7e0320340acfa6e532ce"
+              },
+              {
+                "action": "admit",
+                "decision": "refuse",
+                "reason": "The remaining task budget is insufficient, including reserved actions.",
+                "operation_id": "5dd7b81c-d353-4303-b77e-963ad52c68a1",
+                "payload_hash": "51576e19485bf65f7581f12d679bc8d75db9443bc18c396ef27ef92b98858e2a"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 100001,
+            "invariant_passed": true
+          }
+        },
+        {
+          "case": {
+            "id": "principal-0-0",
+            "title": "INV-101 · keep moving",
+            "kind": "invoice",
+            "invoice_id": "INV-101",
+            "expected": "allow",
+            "requirement": "Required by the organizer.",
+            "required": true
+          },
+          "before": {
+            "actual": "allow",
+            "matched": true,
+            "reason": "Within the agreed limits.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "a28f13ba-dc38-4596-a6ae-74caa67b2296",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "a28f13ba-dc38-4596-a6ae-74caa67b2296",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 32000
+          },
+          "after": {
+            "actual": "allow",
+            "matched": true,
+            "reason": "Within the agreed limits.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "7224fb96-97ed-421e-8977-1d6e7728bbef",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "7224fb96-97ed-421e-8977-1d6e7728bbef",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 32000
+          }
+        },
+        {
+          "case": {
+            "id": "principal-0-1",
+            "title": "INV-102 · needs review",
+            "kind": "invoice",
+            "invoice_id": "INV-102",
+            "expected": "ask",
+            "requirement": "Required by the organizer.",
+            "required": true
+          },
+          "before": {
+            "actual": "allow",
+            "matched": false,
+            "reason": "Within the agreed limits.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "0f11d54d-c594-4119-9994-b5178ddfd6a6",
+                "payload_hash": "0d1fe52b8e1f929f28686037142303b4dbf10a55d69572d46b9d496237898157"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "0f11d54d-c594-4119-9994-b5178ddfd6a6",
+                "payload_hash": "0d1fe52b8e1f929f28686037142303b4dbf10a55d69572d46b9d496237898157"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 48000
+          },
+          "after": {
+            "actual": "ask",
+            "matched": true,
+            "reason": "A current approval for this exact request is required.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "ask",
+                "reason": "A current approval for this exact request is required.",
+                "operation_id": "27c74a81-12c2-47ef-8281-99b055dfc35b",
+                "payload_hash": "0d1fe52b8e1f929f28686037142303b4dbf10a55d69572d46b9d496237898157"
+              }
+            ],
+            "payments": 0,
+            "spent_minor": 0
+          }
+        },
+        {
+          "case": {
+            "id": "principal-1-0",
+            "title": "INV-101 · keep moving",
+            "kind": "invoice",
+            "invoice_id": "INV-101",
+            "expected": "allow",
+            "requirement": "Required by the partner.",
+            "required": true
+          },
+          "before": {
+            "actual": "allow",
+            "matched": true,
+            "reason": "Within the agreed limits.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "7a5f2553-aa85-480f-b2d4-01480c0133ef",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "7a5f2553-aa85-480f-b2d4-01480c0133ef",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 32000
+          },
+          "after": {
+            "actual": "allow",
+            "matched": true,
+            "reason": "Within the agreed limits.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "45c757bd-4687-4b2e-a770-13cb4749c37a",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "45c757bd-4687-4b2e-a770-13cb4749c37a",
+                "payload_hash": "002f0f70087ceeb03cf2296b07833830e8541496ed8b31f05b2039596742d2d0"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 32000
+          }
+        },
+        {
+          "case": {
+            "id": "principal-1-1",
+            "title": "INV-102 · needs review",
+            "kind": "invoice",
+            "invoice_id": "INV-102",
+            "expected": "ask",
+            "requirement": "Required by the partner.",
+            "required": true
+          },
+          "before": {
+            "actual": "allow",
+            "matched": false,
+            "reason": "Within the agreed limits.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "allow",
+                "reason": "Within the agreed limits.",
+                "operation_id": "0241d44c-6e9f-4339-a395-c72a13593b1e",
+                "payload_hash": "0d1fe52b8e1f929f28686037142303b4dbf10a55d69572d46b9d496237898157"
+              },
+              {
+                "action": "execute",
+                "decision": "confirmed",
+                "reason": "The isolated sample ledger confirmed one payment.",
+                "operation_id": "0241d44c-6e9f-4339-a395-c72a13593b1e",
+                "payload_hash": "0d1fe52b8e1f929f28686037142303b4dbf10a55d69572d46b9d496237898157"
+              }
+            ],
+            "payments": 1,
+            "spent_minor": 48000
+          },
+          "after": {
+            "actual": "ask",
+            "matched": true,
+            "reason": "A current approval for this exact request is required.",
+            "steps": [
+              {
+                "action": "admit",
+                "decision": "ask",
+                "reason": "A current approval for this exact request is required.",
+                "operation_id": "919fe3d2-2a71-4041-b0c0-ff37ab937a2d",
+                "payload_hash": "0d1fe52b8e1f929f28686037142303b4dbf10a55d69572d46b9d496237898157"
+              }
+            ],
+            "payments": 0,
+            "spent_minor": 0
+          }
+        }
+      ],
+      "required_passed": true,
+      "expectations_met": true,
+      "mandates_met": true
+    },
+    "signer": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+    "digest": "ba56081170022f96f94288baba4d5cb8d5b7dc78a18ab6f2567b44bc8a05696a",
+    "signature": "28547487f24e38eb7c91e98b05bbc3349d229af929802288f9a3eb3105fc2195049bca799f17c3278aa1ca2dc46bed832d233c9f66bb8d2585a17dc153c3fc0c"
+  },
+  "approvals": [
+    {
+      "payload": {
+        "type": "scopeblind.coordination.negotiation-approval.v1",
+        "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+        "principal_key": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+        "proposal_digest": "8d0adfbb8fc60da9c14d4e4ca6d69c2b67d1f01b57b531fec62a5f9218b004fb",
+        "report_digest": "ba56081170022f96f94288baba4d5cb8d5b7dc78a18ab6f2567b44bc8a05696a",
+        "next_agreement_digest": "0d3597d5b4cdd8df614cbbf3c55bfca8724773c87a0474d21c3726895801938d",
+        "mandate_digests": [
+          "e850c5a45b9ee25443ac598aeae6e512993e09c2ad10a3930c1b7f74e5528ae2",
+          "e70024df197d23db98923879cd78f4e4678f9812eef72e6efc9fd3050b7ecb29"
+        ],
+        "decision": "approve",
+        "issued_at": "2026-09-15T07:40:39.691Z",
+        "expires_at": "2026-09-15T07:50:39.691Z"
+      },
+      "signer": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+      "digest": "63f26110350b34fe4f631d9b0e415d3d3937e774b38f8205ffaa8d4fe51db038",
+      "signature": "420e0b6e264766cf5cf27d08cea89b7f013ae12649be5009d9f4aa0ae8a95dc10f8617c6e5f5a27fd173d66b12e8f31ee6362041bb83b2e41438260300557005"
+    },
+    {
+      "payload": {
+        "type": "scopeblind.coordination.negotiation-approval.v1",
+        "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+        "principal_key": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+        "proposal_digest": "8d0adfbb8fc60da9c14d4e4ca6d69c2b67d1f01b57b531fec62a5f9218b004fb",
+        "report_digest": "ba56081170022f96f94288baba4d5cb8d5b7dc78a18ab6f2567b44bc8a05696a",
+        "next_agreement_digest": "0d3597d5b4cdd8df614cbbf3c55bfca8724773c87a0474d21c3726895801938d",
+        "mandate_digests": [
+          "e850c5a45b9ee25443ac598aeae6e512993e09c2ad10a3930c1b7f74e5528ae2",
+          "e70024df197d23db98923879cd78f4e4678f9812eef72e6efc9fd3050b7ecb29"
+        ],
+        "decision": "approve",
+        "issued_at": "2026-09-15T07:40:40.166Z",
+        "expires_at": "2026-09-15T07:50:40.166Z"
+      },
+      "signer": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+      "digest": "461444bf27592f17807c73d78462278b3d28813f604be7dc208b47a93f6d3a7d",
+      "signature": "d128587a0d3910700e74833778f414b8aae7c30fd02a803bce8bf595665c8ed24a6623f0ff28477572ab192691806c68eb2678b9dedffb998703dbb236ea610c"
+    }
+  ],
+  "reviewer_grant": {
+    "payload": {
+      "type": "scopeblind.coordination.grant.v1",
+      "grant_id": "38319fe1-38b6-4b71-bc8d-5b62303b9dfd",
+      "room_id": "f1ac1c4c-d0ac-4081-828d-6922c96d0b2a",
+      "agreement_digest": "0d3597d5b4cdd8df614cbbf3c55bfca8724773c87a0474d21c3726895801938d",
+      "issuer": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+      "registrar_key": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+      "role": "reviewer",
+      "actions": [
+        "decide",
+        "accept"
+      ],
+      "expires_at": "2026-09-15T08:40:27.932Z",
+      "token_hash": "2b7a30faf89643fc65a786163ed06367136f8b52e012673d743bbee6a9ca8f6a",
+      "max_claims": 1
+    },
+    "signer": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+    "digest": "efdf3953e97d80edda182acd124808f52fa38d5cd2c8a016901cef190f4f236f",
+    "signature": "a0376c6aa98e502a1c83c675c75ad469371099cd835102a659edd2b8d55fb832f2adb487ea715a9fc1ac9cef0967cfc5dd6d6e76320f88b81fedebac6e525805"
+  },
+  "adoption": {
+    "payload": {
+      "type": "scopeblind.coordination.negotiation-adoption.v1",
+      "session_id": "289cb093-f8b6-4df0-8077-1a05e71c20a3",
+      "source_room_id": "f749e3f8-9b3c-43aa-b16f-5ccc3cc106f5",
+      "room_id": "f1ac1c4c-d0ac-4081-828d-6922c96d0b2a",
+      "source_agreement_digest": "a9081684b8bd6b087b225623901c3bbc4d648ca427252776c07ca6e2105d47d3",
+      "agreement_digest": "0d3597d5b4cdd8df614cbbf3c55bfca8724773c87a0474d21c3726895801938d",
+      "proposal_digest": "8d0adfbb8fc60da9c14d4e4ca6d69c2b67d1f01b57b531fec62a5f9218b004fb",
+      "report_digest": "ba56081170022f96f94288baba4d5cb8d5b7dc78a18ab6f2567b44bc8a05696a",
+      "approval_digests": [
+        "461444bf27592f17807c73d78462278b3d28813f604be7dc208b47a93f6d3a7d",
+        "63f26110350b34fe4f631d9b0e415d3d3937e774b38f8205ffaa8d4fe51db038"
+      ],
+      "issued_at": "2026-09-15T07:40:40.789Z",
+      "scope": "new-separate-sample-task"
+    },
+    "signer": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+    "digest": "afc7935730d1607e61efaaf57ed5fdb80b4bd4d62602fe364b33ae03e6ef81ef",
+    "signature": "90677572e967f049ba65832d01ff5d39b6c5fa7e49042f6d94b4952bf212f695323f0d740e37f353951753f635aed943099d0447e8be3ae17c4b1af10aa30e0c"
+  },
+  "adopted_agreement": {
+    "payload": {
+      "type": "scopeblind.coordination.agreement.v1",
+      "id": "f1ac1c4c-d0ac-4081-828d-6922c96d0b2a",
+      "version": 1,
+      "title": "This week's invoices",
+      "owner_key": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+      "registrar_key": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+      "currency": "USD",
+      "budget_minor": 200000,
+      "approval_above_minor": 35000,
+      "approval_ttl_seconds": 900,
+      "allowed_destinations": [
+        "sandbox:northstar",
+        "sandbox:fieldwork",
+        "sandbox:atlas"
+      ],
+      "issued_at": "2026-09-15T07:40:29.031Z",
+      "mode": "live",
+      "require_po_match": true
+    },
+    "signer": "f5bb34ed3c88860fbc8dda0ec41c2f701524487b226fc2a3e8b937d5aebda78a",
+    "digest": "0d3597d5b4cdd8df614cbbf3c55bfca8724773c87a0474d21c3726895801938d",
+    "signature": "1f6487ced2988e324ab695379908a2b871ac0c6cbbd4cee6a9ea1625e1a532ade7c50a035e2d9455ff5777f2ff96143905df0411e468039bd14474d1f9edd608"
+  },
+  "reviewer_binding": {
+    "payload": {
+      "type": "scopeblind.coordination.binding.v1",
+      "grant_id": "38319fe1-38b6-4b71-bc8d-5b62303b9dfd",
+      "grant_digest": "efdf3953e97d80edda182acd124808f52fa38d5cd2c8a016901cef190f4f236f",
+      "room_id": "f1ac1c4c-d0ac-4081-828d-6922c96d0b2a",
+      "guest_key": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+      "name": "Partner",
+      "issued_at": "2026-09-15T07:40:40.790Z",
+      "expires_at": "2026-09-15T08:40:27.932Z",
+      "claim": {
+        "payload": {
+          "type": "scopeblind.coordination.claim.v1",
+          "grant_id": "38319fe1-38b6-4b71-bc8d-5b62303b9dfd",
+          "room_id": "f1ac1c4c-d0ac-4081-828d-6922c96d0b2a",
+          "guest_key": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+          "name": "Partner",
+          "issued_at": "2026-09-15T07:40:39.691Z",
+          "nonce": "8c219ee4-0ad3-4dd3-8833-6c10f7adb560"
+        },
+        "signer": "ebbb1decf846dfeee4e0ae2a005ac4fa1e2f010b5e1e62b218ff190e4c1ff0c1",
+        "digest": "934b1ddb6329bacafa8b48d77ee9fe9053ccd0bb9cb86c2b5dbe4a26e0732988",
+        "signature": "eaff81dacc3ae8dcb606aa80eb82b03554212c7b1c7bf789bf28bbebd1329f7354a7863507eae560395b2b28228b0fff6e21199b24e4bcaa6367e9f4a7794d08"
+      }
+    },
+    "signer": "468b6751d6d9c8f25e7aeb86e6d60230afe4a4392973a3da6f45514e25c1da35",
+    "digest": "4ea3588e75e21f4bac4222ab596c25fc87b77b42fcaa45c8cf5fd02b5724c5b2",
+    "signature": "64030afad88489e6d786ae5c78f43e3da177467d6fb6c29a173b113413e1dea5ba2927afb7ca3b96eb7ade78b175063d9020256d4efe69b2af2598afeba2fe0c"
+  }
+}

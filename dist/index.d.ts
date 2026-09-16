@@ -880,6 +880,845 @@ declare class ProtectGateway {
     stop(): void;
 }
 
+/** Explicit trust and room configuration for the installed coordination adapter. */
+interface CoordinationConfig {
+    endpoint: string;
+    roomId: string;
+    authorityKey: string;
+    token: string;
+    runId?: string;
+    timeoutMs?: number;
+    /** Presentation only; server-side grant checks remain authoritative. */
+    purpose?: 'execution' | 'rehearsal' | 'negotiation';
+    /** Negotiation identity is pinned by the separate principal-authorized pairing. */
+    sessionId?: string;
+    principalKey?: string;
+}
+declare function validateCoordinationConfig(config: CoordinationConfig): CoordinationConfig;
+/** Credentials deliberately have no command-line-value flag and are never printed. */
+declare function coordinationConfigFromArgs(args: string[], env?: NodeJS.ProcessEnv): CoordinationConfig;
+
+declare const DECISION_ACTIONS: readonly ["decision_inbox", "decision_subscribe", "decision_unsubscribe", "decision_notification_status"];
+
+declare const AGENT_REQUEST_ACTIONS: readonly ["agent_request_create", "agent_request_get", "agent_request_accept", "agent_request_revoke", "agent_request_reconnect", "agent_handoff_get", "agent_handoff_create", "agent_handoff_claim", "agent_handoff_revoke"];
+
+/** Real repository tasks. Browser/Worker/Node contract; no credentials or I/O. */
+
+declare const REPOSITORY_ACTIONS: readonly ["repository_create", "repository_get", "repository_claim", "repository_propose", "repository_approve", "repository_cancel", "repository_begin", "repository_outcome", "repository_accept", "repository_export"];
+type RepositoryAction = typeof REPOSITORY_ACTIONS[number];
+interface RepositoryTask {
+    type: 'scopeblind.repository.task.v1';
+    id: string;
+    title: string;
+    repository: string;
+    pull_number: number;
+    base_branch: string;
+    owner_key: string;
+    receiver_key: string;
+    authority_key: string;
+    allowed_paths: string[];
+    required_checks: Array<{
+        name: string;
+        app_id: number;
+    }>;
+    reviewer_secret_hash: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositoryClaim {
+    type: 'scopeblind.repository.claim.v1';
+    task_id: string;
+    task_digest: string;
+    reviewer_key: string;
+    name: string;
+    issued_at: string;
+}
+interface RepositoryFile {
+    path: string;
+    previous_path?: string;
+    status: 'added' | 'modified' | 'removed' | 'renamed';
+    mode: '100644' | '100755';
+    additions: number;
+    deletions: number;
+    patch?: string;
+    patch_truncated?: true;
+}
+interface RepositoryCheck {
+    id: number;
+    name: string;
+    app_id: number;
+    head_sha: string;
+    conclusion: 'success';
+}
+interface RepositoryProposal {
+    type: 'scopeblind.repository.proposal.v1';
+    id: string;
+    task_id: string;
+    task_digest: string;
+    repository_id: string;
+    base_ref: string;
+    head_ref: string;
+    base_sha: string;
+    head_sha: string;
+    merge_sha: string;
+    tree_sha: string;
+    files: RepositoryFile[];
+    checks: RepositoryCheck[];
+    observed_at: string;
+}
+interface RepositoryApproval {
+    type: 'scopeblind.repository.approval.v1';
+    task_id: string;
+    task_digest: string;
+    proposal_digest: string;
+    role: 'owner' | 'reviewer';
+    principal_key: string;
+    decision: 'approve' | 'reject';
+    issued_at: string;
+    expires_at: string;
+    note: string;
+}
+interface RepositoryExecution {
+    type: 'scopeblind.repository.execution.v1';
+    operation_id: string;
+    receiver_attempt_id: string;
+    task_id: string;
+    task_digest: string;
+    proposal_digest: string;
+    owner_approval_digest: string;
+    reviewer_approval_digest: string;
+    receiver_key: string;
+    action: 'github.updateRefs';
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositoryOutcome {
+    type: 'scopeblind.repository.outcome.v1';
+    operation_id: string;
+    task_id: string;
+    task_digest: string;
+    proposal_digest: string;
+    execution_digest: string;
+    status: 'confirmed' | 'failed' | 'unknown';
+    observed_base_sha: string | null;
+    readback: 'exact_ref' | 'descendant_ref' | 'not_confirmed';
+    github_request_id?: string;
+    observed_at: string;
+    note: string;
+}
+interface RepositoryAcceptance {
+    type: 'scopeblind.repository.acceptance.v1';
+    task_id: string;
+    task_digest: string;
+    outcome_digest: string;
+    reviewer_key: string;
+    decision: 'accept' | 'request_changes';
+    issued_at: string;
+    note: string;
+}
+interface RepositoryState {
+    type: 'scopeblind.repository.state.v1';
+    task: Signed<RepositoryTask>;
+    reviewer: Signed<RepositoryClaim> | null;
+    proposal: Signed<RepositoryProposal> | null;
+    approvals: Signed<RepositoryApproval>[];
+    execution: Signed<RepositoryExecution> | null;
+    outcome: Signed<RepositoryOutcome> | null;
+    acceptance: Signed<RepositoryAcceptance> | null;
+    status: 'awaiting_reviewer' | 'awaiting_snapshot' | 'review' | 'approved' | 'executing' | 'confirmed' | 'unknown' | 'failed' | 'rejected' | 'cancelled' | 'accepted' | 'changes_requested';
+    revision: number;
+    observed_at: string;
+}
+interface RepositoryEvidence {
+    type: 'scopeblind.repository.evidence.v1';
+    state: Signed<RepositoryState>;
+}
+declare function repositorySnapshotDigest(p: RepositoryProposal): Promise<string>;
+/** Verifies recorded signatures and bindings, not GitHub's independent truth.
+ * GitHub API observations are attested by the explicitly trusted receiver. */
+declare function verifyRepositoryEvidence(value: unknown, pin?: string | {
+    authority_key: string;
+    owner_key?: string;
+    reviewer_key?: string;
+    receiver_key?: string;
+}): Promise<{
+    valid: boolean;
+    errors: string[];
+    accepted: boolean;
+    authorityPinned: boolean;
+    limitations: string[];
+}>;
+
+/** Explicit, room-bound human device delegation. Raw signature verification stays separate. */
+
+declare const DEVICE_ACTIONS: readonly ["inspect", "decision_inbox", "negotiation_get", "decide", "accept", "negotiation_mandate", "negotiation_approve"];
+type DevicePermission = typeof DEVICE_ACTIONS[number];
+type DeviceAction = 'device_link_request' | 'device_link_status' | 'device_authorize' | 'device_list' | 'device_revoke';
+interface DeviceAuthorization {
+    type: 'scopeblind.coordination.device-authorization.v1';
+    id: string;
+    link_id: string;
+    room_id: string;
+    agreement_digest: string;
+    principal_key: string;
+    device_key: string;
+    device_name: string;
+    actions: DevicePermission[];
+    issued_at: string;
+    expires_at: string;
+    authority_key: string;
+}
+interface DeviceUse {
+    type: 'scopeblind.coordination.device-use.v1';
+    authorization_digest: string;
+    principal_key: string;
+    device_key: string;
+    room_id: string;
+    payload_digest: string;
+    action: DevicePermission;
+    recorded_at: string;
+}
+interface HumanContext {
+    authorityKey?: string;
+    proposal?: Signed<NegotiationProposal>;
+    approval?: Signed<NegotiationApproval>;
+    requireRecordedUse?: boolean;
+}
+/** Claimed principal only. Call verifyHuman before trusting this identity. */
+declare function humanPrincipal(value: Signed<unknown>): string;
+declare function verifyDeviceAuthorization(value: Signed<DeviceAuthorization>): Promise<boolean>;
+/** Offline authorization-at-signing check. Live mutation acceptance must also check storage revocation atomically. */
+declare function verifyHuman<T>(value: Signed<T>, expectedPrincipal: string, context?: HumanContext): Promise<boolean>;
+
+interface Signed<T> {
+    payload: T;
+    signer: string;
+    digest: string;
+    signature: string;
+    authorization?: Signed<DeviceAuthorization>;
+    authorization_signature?: string;
+    authorization_use?: Signed<DeviceUse>;
+}
+interface Agreement {
+    type: 'scopeblind.coordination.agreement.v1';
+    id: string;
+    version: 1;
+    title: string;
+    owner_key: string;
+    registrar_key: string;
+    currency: 'USD';
+    budget_minor: number;
+    approval_above_minor: number;
+    approval_ttl_seconds: number;
+    allowed_destinations: string[];
+    issued_at: string;
+    mode?: 'guided' | 'live';
+    brief?: string;
+    preferences?: string[];
+    assumptions?: string[];
+    require_po_match?: boolean;
+}
+interface InvitationGrant {
+    type: 'scopeblind.coordination.grant.v1';
+    grant_id: string;
+    room_id: string;
+    agreement_digest: string;
+    issuer: string;
+    registrar_key: string;
+    role: 'reviewer';
+    actions: Array<'decide' | 'accept'>;
+    expires_at: string;
+    token_hash: string;
+    max_claims: 1;
+}
+interface ClaimProof {
+    type: 'scopeblind.coordination.claim.v1';
+    grant_id: string;
+    room_id: string;
+    guest_key: string;
+    name: string;
+    issued_at: string;
+    nonce: string;
+}
+interface GuestBinding {
+    type: 'scopeblind.coordination.binding.v1';
+    grant_id: string;
+    grant_digest: string;
+    room_id: string;
+    guest_key: string;
+    name: string;
+    issued_at: string;
+    expires_at: string;
+    claim: Signed<ClaimProof>;
+}
+interface PaymentInput {
+    invoice_id: string;
+    amount_minor: number;
+    currency: 'USD';
+    destination: string;
+    fixture_revision?: number;
+}
+interface Invoice {
+    id: string;
+    invoice_id: string;
+    vendor: string;
+    description: string;
+    amount_minor: number;
+    destination: string;
+    duplicate_of?: string;
+    purchase_order_id?: string;
+}
+interface PurchaseOrder {
+    id: string;
+    vendor: string;
+    destination: string;
+    amount_minor: number;
+    currency: 'USD';
+}
+interface InvoiceFixtures {
+    revision: number;
+    invoices: Invoice[];
+    purchase_orders: PurchaseOrder[];
+}
+type OperationStatus = 'held' | 'admitted' | 'confirmed' | 'refused' | 'declined' | 'request_changes' | 'superseded' | 'unknown' | 'failed';
+interface Approval {
+    type: 'scopeblind.coordination.approval.v1';
+    room_id: string;
+    run_id: string;
+    operation_id: string;
+    agreement_digest: string;
+    payload_hash: string;
+    grant_id: string;
+    decision: 'approve' | 'deny' | 'request_changes';
+    issued_at: string;
+    expires_at: string;
+    note: string;
+}
+interface Admission {
+    type: 'scopeblind.coordination.admission.v1';
+    room_id: string;
+    run_id: string;
+    operation_id: string;
+    agreement_digest: string;
+    payload_hash: string;
+    input: PaymentInput;
+    destination: string;
+    decision: 'admitted' | 'held' | 'refused';
+    reason: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface Outcome {
+    type: 'scopeblind.coordination.outcome.v1';
+    room_id: string;
+    run_id: string;
+    operation_id: string;
+    payload_hash: string;
+    status: 'confirmed' | 'failed' | 'unknown';
+    amount_minor: number;
+    destination: string;
+    transaction_id?: string;
+    observed_by: 'sandbox-ledger' | 'gateway-report';
+    issued_at: string;
+    note?: string;
+}
+interface Operation {
+    operation_id: string;
+    run_id: string;
+    tool: 'ledger.pay';
+    input: PaymentInput;
+    payload_hash: string;
+    status: OperationStatus;
+    reason: string;
+    created_at: string;
+    updated_at: string;
+    decision?: Signed<Approval>;
+    admission?: Signed<Admission>;
+    receipt?: Signed<Outcome>;
+    supersedes?: string;
+    previous_input?: PaymentInput;
+}
+interface Manifest {
+    type: 'scopeblind.coordination.manifest.v1';
+    room_id: string;
+    run_id: string;
+    agreement_digest: string;
+    operations: Operation[];
+    budget: Budget;
+    finalized_at: string;
+    summary?: string;
+    previous_manifest_digest?: string;
+    historical_operations?: Operation[];
+    fixtures?: InvoiceFixtures;
+}
+interface Acceptance {
+    type: 'scopeblind.coordination.acceptance.v1';
+    room_id: string;
+    run_id: string;
+    agreement_digest: string;
+    manifest_digest: string;
+    grant_id: string;
+    decision: 'accept' | 'request_changes';
+    issued_at: string;
+    note: string;
+}
+interface AcceptanceRecord {
+    type: 'scopeblind.coordination.acceptance-record.v1';
+    room_id: string;
+    run_id: string;
+    manifest_digest: string;
+    acceptance_digest: string;
+    reviewer_key: string;
+    recorded_at: string;
+}
+interface AttemptRevision {
+    type: 'scopeblind.coordination.revision.v1';
+    room_id: string;
+    previous_run_id: string;
+    run_id: string;
+    previous_manifest_digest: string;
+    agreement_digest: string;
+    requested_by: string;
+    note: string;
+    issued_at: string;
+}
+interface AttemptView {
+    manifest: Signed<Manifest>;
+    acceptances: Signed<Acceptance>[];
+    acceptance_records: Signed<AcceptanceRecord>[];
+    revision: Signed<AttemptRevision>;
+}
+interface Budget {
+    limit_minor: number;
+    reserved_minor: number;
+    spent_minor: number;
+    remaining_minor: number;
+}
+interface GrantView {
+    grant: Signed<InvitationGrant>;
+    binding?: Signed<GuestBinding>;
+    revoked: boolean;
+}
+type RpcAction = 'create' | 'invite' | 'claim' | 'revoke' | 'admit' | 'execute' | 'outcome' | 'decide' | 'revise' | 'finalize' | 'accept' | 'pause' | 'actor_token' | 'inspect' | 'deliver' | 'fixtures_update' | 'restart' | 'live_start' | 'live_tick' | 'live_retry' | 'pair_create' | 'pair_revoke' | 'pair_claim' | 'brief_draft' | RehearsalAction | 'rehearsal_invite' | 'rehearsal_claim' | 'rehearsal_revoke' | 'rehearsal_adopt' | 'rehearsal_draft' | 'rehearsal_case_review' | NegotiationAction | 'negotiation_share' | 'negotiation_invitation_rotate' | 'result_share' | DeviceAction | RepositoryAction | typeof AGENT_REQUEST_ACTIONS[number] | typeof DECISION_ACTIONS[number];
+interface RpcRequest {
+    type: 'scopeblind.coordination.request.v1';
+    action: RpcAction;
+    room_id: string;
+    issued_at: string;
+    nonce: string;
+    body: Record<string, unknown>;
+}
+interface EvidenceBundle {
+    type: 'scopeblind.coordination.evidence.v1';
+    agreement: Signed<Agreement>;
+    grants: GrantView[];
+    manifest: Signed<Manifest>;
+    acceptances: Signed<Acceptance>[];
+    acceptance_records?: Signed<AcceptanceRecord>[];
+    prior_attempts?: AttemptView[];
+    negotiation?: NegotiationExport;
+}
+
+declare const REHEARSAL_PAIRING_AUDIENCE: "scopeblind.coordination.rehearsal";
+declare const NEGOTIATION_PAIRING_AUDIENCE: "scopeblind.coordination.negotiation";
+interface AgentBinding {
+    type: 'scopeblind.coordination.agent-binding.v1';
+    pair_id: string;
+    room_id: string;
+    agreement_digest: string;
+    owner_key: string;
+    agent_key: string;
+    name: string;
+    scope: readonly string[];
+    audience: 'scopeblind.coordination.sample-ledger' | typeof REHEARSAL_PAIRING_AUDIENCE | typeof NEGOTIATION_PAIRING_AUDIENCE;
+    principal_key?: string;
+    session_id?: string;
+    issued_at: string;
+    expires_at: string;
+    owner_authorization: Signed<RpcRequest>;
+}
+
+declare const NEGOTIATION_AGENT_ACTIONS: readonly ["negotiation_get", "negotiation_propose", "negotiation_respond", "negotiation_compare"];
+declare const NEGOTIATION_ACTIONS: readonly ["negotiation_get", "negotiation_propose", "negotiation_respond", "negotiation_compare", "negotiation_create", "negotiation_claim", "negotiation_mandate", "negotiation_approve", "negotiation_adopt", "negotiation_pair_create", "negotiation_pair_claim", "negotiation_pair_revoke", "negotiation_step", "negotiation_cancel"];
+type NegotiationAction = typeof NEGOTIATION_ACTIONS[number];
+type NegotiationAgentMode = 'hosted' | 'own' | 'manual';
+interface NegotiationRequirement {
+    invoice_id: string;
+    expected: 'allow' | 'ask';
+}
+interface NegotiationMandate {
+    type: 'scopeblind.coordination.negotiation-mandate.v1';
+    session_id: string;
+    room_id: string;
+    principal_key: string;
+    version: number;
+    agreement_digest: string;
+    fixture_digest: string;
+    min_threshold_minor: number;
+    max_threshold_minor: number;
+    /** Omitted together in legacy mandates: the source budget is fixed. */
+    min_budget_minor?: number;
+    max_budget_minor?: number;
+    required_invoices: NegotiationRequirement[];
+    private_brief_commitment: string;
+    agent_mode: NegotiationAgentMode;
+    /** Deliberately excludes payment, approval, invitation and onward-delegation powers. */
+    actions: readonly (typeof NEGOTIATION_AGENT_ACTIONS[number])[];
+    issued_at: string;
+    expires_at: string;
+}
+interface NegotiationInvitation {
+    type: 'scopeblind.coordination.negotiation-invitation.v1';
+    session_id: string;
+    room_id: string;
+    agreement_digest: string;
+    fixture_digest: string;
+    issuer: string;
+    registrar_key: string;
+    role: 'counterparty';
+    token_hash: string;
+    max_claims: 1;
+    expires_at: string;
+    /** Fresh discussion; no mandate or approval carries over. */
+    parent_session_id?: string;
+    source_operation_id?: string;
+}
+interface NegotiationClaim {
+    type: 'scopeblind.coordination.negotiation-claim.v1';
+    session_id: string;
+    room_id: string;
+    guest_key: string;
+    name: string;
+    issued_at: string;
+    nonce: string;
+}
+interface NegotiationBinding {
+    type: 'scopeblind.coordination.negotiation-binding.v1';
+    session_id: string;
+    room_id: string;
+    invitation_digest: string;
+    guest_key: string;
+    name: string;
+    issued_at: string;
+    expires_at: string;
+    claim: Signed<NegotiationClaim>;
+}
+interface NegotiationSession {
+    type: 'scopeblind.coordination.negotiation-session.v1';
+    id: string;
+    room_id: string;
+    agreement_digest: string;
+    fixture_digest: string;
+    owner_key: string;
+    registrar_key: string;
+    invitation_digest: string;
+    created_at: string;
+    expires_at: string;
+    max_proposals: 3;
+    parent_session_id?: string;
+    source_operation_id?: string;
+    source_invoice_id?: string;
+    source_operation_digest?: string;
+}
+interface NegotiationProposalInput {
+    id: string;
+    approval_above_minor: number;
+    budget_minor?: number;
+    exploration?: true;
+    parent_digest?: string;
+}
+interface NegotiationProposal extends NegotiationProposalInput {
+    type: 'scopeblind.coordination.negotiation-proposal.v1';
+    session_id: string;
+    room_id: string;
+    round: number;
+    principal_key: string;
+    agent_key?: string;
+    agent_mode: NegotiationAgentMode;
+    agreement_digest: string;
+    fixture_digest: string;
+    mandate_digests: [string, string];
+    /** This exact future agreement is shown before either human approves it. */
+    next_agreement: Agreement;
+    next_agreement_digest: string;
+    reviewer_grant: InvitationGrant;
+    reviewer_grant_digest: string;
+    issued_at: string;
+}
+interface NegotiationResponse {
+    type: 'scopeblind.coordination.negotiation-response.v1';
+    session_id: string;
+    principal_key: string;
+    proposal_digest: string;
+    mandate_digest: string;
+    decision: 'support' | 'no_agreement';
+    agent_key?: string;
+    agent_mode: NegotiationAgentMode;
+    issued_at: string;
+}
+interface NegotiationReport {
+    type: 'scopeblind.coordination.negotiation-report.v1';
+    session_id: string;
+    room_id: string;
+    proposal_digest: string;
+    agreement_digest: string;
+    fixture_digest: string;
+    mandate_digests: [string, string];
+    cases_digest: string;
+    runtime_revision: string;
+    adapter: 'coordination-d1-sandbox';
+    isolation: 'separate-fixture-ledgers';
+    issued_at: string;
+    before_approval_above_minor: number;
+    after_approval_above_minor: number;
+    before_budget_minor?: number;
+    after_budget_minor?: number;
+    results: Array<{
+        case: RehearsalCase;
+        before: RehearsalObservation;
+        after: RehearsalObservation;
+    }>;
+    required_passed: boolean;
+    expectations_met: boolean;
+    mandates_met: boolean;
+}
+interface NegotiationApproval {
+    type: 'scopeblind.coordination.negotiation-approval.v1';
+    session_id: string;
+    principal_key: string;
+    proposal_digest: string;
+    report_digest: string;
+    next_agreement_digest: string;
+    mandate_digests: [string, string];
+    decision: 'approve' | 'reject';
+    selection_basis?: 'human-selected-tested-plan';
+    issued_at: string;
+    expires_at: string;
+}
+interface NegotiationAdoption {
+    type: 'scopeblind.coordination.negotiation-adoption.v1';
+    session_id: string;
+    source_room_id: string;
+    room_id: string;
+    source_agreement_digest: string;
+    agreement_digest: string;
+    proposal_digest: string;
+    report_digest: string;
+    approval_digests: [string, string];
+    issued_at: string;
+    scope: 'new-separate-sample-task';
+}
+interface NegotiationExport {
+    source_negotiation?: NegotiationExport;
+    type: 'scopeblind.coordination.negotiation-evidence.v1';
+    session: Signed<NegotiationSession>;
+    invitation: Signed<NegotiationInvitation>;
+    binding: Signed<NegotiationBinding>;
+    agreement: Signed<Agreement>;
+    fixtures: InvoiceFixtures;
+    mandates: [Signed<NegotiationMandate>, Signed<NegotiationMandate>];
+    proposals: Signed<NegotiationProposal>[];
+    responses: Signed<NegotiationResponse>[];
+    report: Signed<NegotiationReport>;
+    approvals: Signed<NegotiationApproval>[];
+    adoption?: Signed<NegotiationAdoption>;
+    adopted_agreement?: Signed<Agreement>;
+    reviewer_grant?: Signed<InvitationGrant>;
+    reviewer_binding?: Signed<GuestBinding>;
+    agent_bindings?: Signed<AgentBinding>[];
+}
+interface NegotiationVerification {
+    valid: boolean;
+    checks: Array<{
+        name: string;
+        passed: boolean;
+    }>;
+    limitations: string[];
+}
+/** Portable integrity, authority and relationship checks. Expiry is evaluated at the recorded action, so historical evidence remains checkable. */
+declare function verifyNegotiationEvidence(value: unknown, authorityKey?: string, depth?: number): Promise<NegotiationVerification>;
+
+declare const REHEARSAL_ACTIONS: readonly ["rehearsal_get", "rehearsal_case", "rehearsal_run", "rehearsal_propose"];
+type RehearsalAction = typeof REHEARSAL_ACTIONS[number];
+type RehearsalKind = 'invoice' | 'approved_invoice' | 'duplicate_invoice' | 'changed_approval' | 'changed_destination' | 'expired_approval' | 'budget_cap';
+type RehearsalOutcome = 'allow' | 'ask' | 'refuse';
+interface RehearsalCase {
+    id: string;
+    title: string;
+    kind: RehearsalKind;
+    invoice_id: string;
+    /** Invoice AND matching PO override inside the rehearsal; unavailable for controlled approval/budget boundary probes. */
+    amount_minor?: number;
+    expected: RehearsalOutcome | 'invariant';
+    requirement: string;
+    /** Reserved for shipped safety cases; callers cannot assign or remove it. */
+    required?: boolean;
+}
+interface RepairProposalInput {
+    id: string;
+    approval_above_minor: number;
+    rationale: string;
+}
+interface RepairProposal extends RepairProposalInput {
+    type: 'scopeblind.coordination.repair-proposal.v1';
+    room_id: string;
+    author_key: string;
+    agreement_digest: string;
+    fixture_digest: string;
+    cases_digest: string;
+    previous_approval_above_minor: number;
+    issued_at: string;
+}
+interface RehearsalStep {
+    action: string;
+    decision: RehearsalOutcome | 'confirmed' | 'rejected';
+    reason: string;
+    operation_id?: string;
+    payload_hash?: string;
+}
+interface RehearsalObservation {
+    actual: RehearsalOutcome | 'error';
+    matched: boolean;
+    reason: string;
+    steps: RehearsalStep[];
+    payments: number;
+    spent_minor: number;
+    /** Used only for an invariant case, based on actual effects and admissions. */
+    invariant_passed?: boolean;
+}
+interface RehearsalCaseResult {
+    case: RehearsalCase;
+    before: RehearsalObservation;
+    after?: RehearsalObservation;
+}
+interface RehearsalReport {
+    type: 'scopeblind.coordination.rehearsal-report.v1';
+    id: string;
+    room_id: string;
+    agreement_digest: string;
+    fixture_digest: string;
+    cases_digest: string;
+    proposal_digest?: string;
+    runtime_revision: string;
+    adapter: 'coordination-d1-sandbox';
+    issued_at: string;
+    isolation: 'separate-fixture-ledgers';
+    results: RehearsalCaseResult[];
+    required_passed: boolean;
+    expectations_met: boolean;
+    before_approval_above_minor: number;
+    after_approval_above_minor?: number;
+}
+interface RehearsalAdoption {
+    type: 'scopeblind.coordination.rehearsal-adoption.v1';
+    source_room_id: string;
+    room_id: string;
+    source_agreement_digest: string;
+    agreement_digest: string;
+    report_digest: string;
+    proposal_digest: string;
+    fixture_digest: string;
+    cases_digest: string;
+    owner_key: string;
+    issued_at: string;
+    authorization_digest: string;
+    scope: 'new-separate-sample-task';
+}
+interface RehearsalExport {
+    type: 'scopeblind.coordination.rehearsal-evidence.v1';
+    agreement: Signed<Agreement>;
+    source_negotiation?: NegotiationExport;
+    fixtures: InvoiceFixtures;
+    cases: RehearsalCase[];
+    proposal?: Signed<RepairProposal>;
+    report: Signed<RehearsalReport>;
+    adoption?: Signed<RehearsalAdoption>;
+    adoption_authorization?: Signed<RpcRequest>;
+    adopted_agreement?: Signed<Agreement>;
+}
+interface RehearsalVerification {
+    valid: boolean;
+    checks: Array<{
+        label: string;
+        ok: boolean;
+    }>;
+    errors: string[];
+    limitations: string[];
+}
+/** Offline consistency/identity checks. Execution truth still relies on the named gate operator. */
+declare function verifyRehearsalEvidence(bundle: RehearsalExport, pin?: string): Promise<RehearsalVerification>;
+
+declare class CoordinationError extends Error {
+    readonly code: string;
+    constructor(code: string, message: string);
+}
+interface CoordinationPayment {
+    operation_id: string;
+    input: PaymentInput;
+}
+interface CoordinationPaymentResult {
+    operation_id: string;
+    status: 'held' | 'refused' | 'confirmed' | 'failed' | 'unknown';
+    reason: string;
+    admission?: Signed<Admission>;
+    outcome?: Signed<Outcome>;
+    replay?: boolean;
+}
+interface CoordinationWait {
+    after_cursor: number;
+    run_id?: string;
+    timeout_ms?: number;
+}
+declare function validateCoordinationPayment(payment: CoordinationPayment): void;
+/**
+ * An installed, fail-closed adapter for the sample ledger destination.
+ * An admission is never a generic permission to call an arbitrary downstream tool.
+ * The service owns destination idempotency; retries always retain operation_id.
+ */
+declare class CoordinationClient {
+    #private;
+    constructor(config: CoordinationConfig, fetchImpl?: typeof fetch);
+    /** Tool visibility is a local convenience; every RPC also checks the persisted grant. */
+    get purpose(): 'execution' | 'rehearsal' | 'negotiation';
+    /** Acknowledge only a context that this adapter has already verified. Pairing and MCP initialization do not call this. */
+    private acknowledgeInspection;
+    private negotiationConfig;
+    /** Inspect only the scoped negotiation response. Never read the public room to obtain a mandate. */
+    private checkedNegotiation;
+    private negotiationResult;
+    inspectNegotiation(reportDigest?: string, signal?: AbortSignal): Promise<Record<string, unknown>>;
+    proposeCandidate(value: NegotiationProposalInput): Promise<Record<string, unknown>>;
+    respondCandidate(value: {
+        proposal_digest: string;
+        decision: 'support' | 'no_agreement';
+    }): Promise<Record<string, unknown>>;
+    compareCandidate(value: {
+        proposal_digest: string;
+    }, signal?: AbortSignal): Promise<Record<string, unknown>>;
+    waitNegotiation(value: {
+        after_digest?: string;
+        timeout_ms?: number;
+    }, signal?: AbortSignal): Promise<Record<string, unknown>>;
+    private checkedRehearsal;
+    private rehearsalResult;
+    inspectRehearsal(reportDigest?: string): Promise<Record<string, unknown>>;
+    proposeCase(value: RehearsalCase): Promise<Record<string, unknown>>;
+    proposeRepair(value: RepairProposalInput): Promise<Record<string, unknown>>;
+    runRehearsal(value: {
+        id: string;
+        proposal_id?: string;
+    }, signal?: AbortSignal): Promise<Record<string, unknown>>;
+    private room;
+    /** Live room state is informational; only signed artifacts establish signed claims. */
+    inspect(): Promise<Record<string, unknown>>;
+    /** Poll inside the tool, without model calls, for at most thirty seconds. */
+    wait(input: CoordinationWait, signal?: AbortSignal): Promise<Record<string, unknown>>;
+    deliver(runId: string): Promise<Record<string, unknown>>;
+    private checkAdmission;
+    private checkOutcome;
+    pay(payment: CoordinationPayment): Promise<CoordinationPaymentResult>;
+}
+
 /**
  * Load and validate a policy file. Returns the policy, credentials, signing config, and digest.
  */
@@ -1073,8 +1912,8 @@ declare function isSigningEnabled(): boolean;
  *
  * Verification is dual-shape: envelopes produced by protect-mcp <= 0.9.x
  * (flat v1 artifacts and structured v2 artifacts with a top-level signature
- * string) continue to verify, so receipt logs written before the migration
- * remain checkable with the same tooling.
+ * string) remain checkable. Historical non-JCS numeric-key signatures are
+ * identified explicitly and require opt-in compatibility verification.
  */
 /** The receipt envelope shape a verification resolved to. */
 type ReceiptShape = 'acta-02' | 'legacy-v2' | 'legacy-v1';
@@ -1086,6 +1925,16 @@ interface ActaSignature {
 interface ActaEnvelope {
     payload: Record<string, unknown>;
     signature: ActaSignature;
+}
+interface ReceiptVerification {
+    valid: boolean;
+    shape: ReceiptShape | null;
+    hash?: string;
+    error?: string;
+    canonicalization?: 'jcs' | 'legacy-numeric-key-order';
+    warning?: string;
+    legacy_signature_valid?: boolean;
+    legacy_hash?: string;
 }
 /**
  * s5.7 chain hash: lowercase hex SHA-256 over the JCS bytes of the object
@@ -1122,12 +1971,9 @@ declare function createReceiptEnvelope(fields: Record<string, unknown> & {
  *    verify over JCS(envelope minus signature), exactly as
  *    @veritasacta/artifacts <= 0.2.x did.
  */
-declare function verifyReceipt(envelope: unknown, publicKeyHex: string): {
-    valid: boolean;
-    shape: ReceiptShape | null;
-    hash?: string;
-    error?: string;
-};
+declare function verifyReceipt(envelope: unknown, publicKeyHex: string, options?: {
+    allowLegacyNumericKeys?: boolean;
+}): ReceiptVerification;
 /** Extract kid/issuer identity from any envelope shape, for display paths. */
 declare function receiptIdentity(envelope: unknown): {
     kid: string | null;
@@ -3730,4 +4576,47 @@ interface EgressSelfCheck {
 }
 declare function runEgressSelfCheck(sampleReceipts: unknown[], now: string): EgressSelfCheck;
 
-export { type ActaEnvelope, type ActaSignature, type ActionReceipt, type AdmissionResult, type AgentId, type AgentManifest, type ApprovalAssertion, type ApprovalChallenge, type ApprovalNotification, type ApprovalResult, type ArenaPayload, type ArenaReceipt, type AttestationDocument, type AttestationPayload, type AttestationProvider, type AttestationReceipt, type AttestationResult, type AuditBundle, type AuditBundleOptions, type BenchmarkPayload, type BenchmarkReceipt, type BuilderId, type C2PAAssertion, type C2PAIngredient, type C2PAManifest, type C2PAOptions, type CCRConnectorConfig, type CCRSessionContext, CONNECTOR_PILOTS, type CalibrationScore, type CedarEvalOptions, type CedarEvalRequest, type CedarPolicySet, type CedarSchema, type CedarSchemaResult, type CommittedFieldOpening, type CommittedSignResult, type ComplianceReport, ConfidentialGate, type ConfidentialGateConfig, type ConfidentialInferenceConfig, type ConnectorAction, type ConnectorEnvVar, type ConnectorPilot, type ConnectorPilotId, type CredentialConfig, type DecisionContext, type DecisionLog, type DelegationReceipt, type DirectController, type DisclosureMode, EGRESS_SUMMARY_FIELDS, type Ed25519PublicKey, type EvidenceAttestation, type EvidenceAttestationInput, type EvidenceIssuer, type EvidenceReceipt, type EvidenceReceiptBase, type EvidenceSummary, type EvidenceSummaryEntry, type EvidenceType, type ExternalDecision, type ExternalPDPConfig, type GateSigner, type HFDatasetMetadata, type HFReceiptRow, type HookEventName, type HookInput, type HookResponse, type InstalledConnectorPilot, type IssuerType, type JsonRpcRequest, type JsonRpcResponse, type LeaseCompatibility, type MandateApproval, type MandateController, type MandateProposal, type MandateRegistry, type MandateTransition, type ManifestBuilder, type ManifestCapabilities, type ManifestConfig, type ManifestIdentity, type ManifestPresentation, type ManifestSignature, type ManifestStatus, type McpToolDescription, type MinimalDisclosure, type NotificationConfig, POLICY_PACKS, type PassportTokenClaims, type PayloadDigest, type PlanReceipt, type PolicyDiff, type PolicyEngineMode, type PolicyPack, type PolicySnapshot, type PredictionReceipt, type PredictionResolution, type PropagatorConfig, type ProtectConfig, ProtectGateway, type ProtectPolicy, type RateLimit, ReceiptPropagator, type ReceiptShape, type RedactedResult, type RedactionSalt, type RegistryCheck, type RekorAnchor, type RekorVerification, type RestraintPayload, type RestraintReceipt, type SHA256Hash, type SafetyTranscript, type Sandbox, type SandboxConfig, type SandboxReceipt, type SandboxResult, type SandboxToolCall, type SchemaGeneratorConfig, ScopeBlindBridge, type SelectiveDisclosurePackageV0, type SelectiveDisclosureVerification, type SelfTestCase, type SelfTestReport, type SigningConfig, type SimulationResult, type SimulationSummary, type SwarmContext, type TierOverrides, type TimingMetrics, type ToolPolicy, type TrustTier, type WebAuthnController, type WorkPayload, type WorkReceipt, anchorToRekor, approvePolicyProposalWithDirectSignature, approvePolicyProposalWithWebAuthn, assertEgressSafe, buildDecisionContext, checkRateLimit, collectSignedReceipts, computeCalibration, computeSbIssuerKid, confidentialInference, connectorDirectory, connectorDoctor, connectorPilotIds, createApprovalChallenge, createApprovalReceiptPayload, createAttestationField, createAuditBundle, createC2PAManifest, createDirectControllerApproval, createDisclosurePackage, createEvidenceAttestation, createLogAnchorField, createPolicyProposal, createReceiptChannel, createReceiptEnvelope, createSandbox, createSelectiveDisclosurePackage, createWebAuthnPolicyChallenge, describePolicyDiff, destroySandbox, discloseField, ed25519ToDIDKey, evaluateCedar, evaluateTier, exportC2PAManifestJSON, exportJSONL, exportMandateDisciplineRecord, formatReportMarkdown, formatSimulation, forwardReceipt, generateC2PACommand, generateCedarSchema, generateDatasetCard, generateHFMetadata, generateReport, generateSafetyTranscript, generateSchemaStub, getConnectorPilot, getPolicyPack, getScopeBlindBridge, getSignerInfo, getToolPolicy, hashReceipt, hashResponseBody, initSigning, initializeMandateRegistry, inspectEgress, isAgentId, isCedarAvailable, isDisclosureMode, isEvidenceType, isManifestStatus, isSigningEnabled, listCredentialLabels, loadCedarPolicies, loadGateSigner, loadMandateRegistry, loadPolicy, mandatePaths, manifestToVC, meetsMinTier, parseLogFile, parseNotificationConfigFromEnv, parseRateLimit, policyPackIds, policySetFromSource, publicMandateStatus, queryExternalPDP, readInstalledConnectorPilots, receiptHash, receiptIdentity, receiptToVP, receiptsToHFRows, redactFields, refreshManagedMandate, resolveCredential, revealField, runEgressSelfCheck, runEvaluatorSelfTest, runInSandbox, sendApprovalNotification, signCommittedDecision, signDecision, simulate, snapshotFromDirectory, toCredentialRequestOptions, toEgressSummary, toManifoldFormat, toMetaculusFormat, validateCredentials, validateEvidenceReceipt, validateManifest, verifyActaC2PAAssertions, verifyAllCommitments, verifyApprovalAssertion, verifyCommitment, verifyEvidenceAttestation, verifyMandateLifecycleExport, verifyMandateRegistry, verifyReceipt, verifyRekorAnchor, verifySelectiveDisclosurePackage, writeConnectorPilots };
+interface SnapshotReceipt {
+    type: 'scopeblind.coordination.public-snapshot.v1';
+    id: string;
+    kind: 'negotiation' | 'result';
+    room_id: string;
+    session_id?: string;
+    proposal_digest?: string;
+    target_digest: string;
+    evidence_sha256: string;
+    authorization_digest: string;
+    shared_by: string;
+    created_at: string;
+    expires_at: string;
+    purpose: 'public_read_only_snapshot';
+    historical: true;
+}
+interface SnapshotBase {
+    id: string;
+    created_at: string;
+    expires_at: string;
+    receipt: Signed<SnapshotReceipt>;
+    authorization: Signed<RpcRequest>;
+}
+type PublicSnapshot = (SnapshotBase & {
+    kind: 'negotiation';
+    evidence: NegotiationExport;
+}) | (SnapshotBase & {
+    kind: 'result';
+    evidence: EvidenceBundle;
+});
+interface SnapshotVerification {
+    valid: boolean;
+    checks: Array<{
+        name: string;
+        passed: boolean;
+    }>;
+    limitations: string[];
+}
+/** Verifies the saved historical bytes and explicit sharing signature. A link confers no authority. */
+declare function verifyPublicSnapshot(value: unknown, authorityKey: string): Promise<SnapshotVerification>;
+
+declare function verifyOwnerAgreement(agreement: Signed<Agreement>, negotiation?: NegotiationExport, depth?: number): Promise<boolean>;
+
+export { type ActaEnvelope, type ActaSignature, type ActionReceipt, type AdmissionResult, type AgentId, type AgentManifest, type ApprovalAssertion, type ApprovalChallenge, type ApprovalNotification, type ApprovalResult, type ArenaPayload, type ArenaReceipt, type AttestationDocument, type AttestationPayload, type AttestationProvider, type AttestationReceipt, type AttestationResult, type AuditBundle, type AuditBundleOptions, type BenchmarkPayload, type BenchmarkReceipt, type BuilderId, type C2PAAssertion, type C2PAIngredient, type C2PAManifest, type C2PAOptions, type CCRConnectorConfig, type CCRSessionContext, CONNECTOR_PILOTS, type CalibrationScore, type CedarEvalOptions, type CedarEvalRequest, type CedarPolicySet, type CedarSchema, type CedarSchemaResult, type CommittedFieldOpening, type CommittedSignResult, type ComplianceReport, ConfidentialGate, type ConfidentialGateConfig, type ConfidentialInferenceConfig, type ConnectorAction, type ConnectorEnvVar, type ConnectorPilot, type ConnectorPilotId, CoordinationClient, type CoordinationConfig, CoordinationError, type CoordinationPayment, type CoordinationPaymentResult, type CredentialConfig, type DecisionContext, type DecisionLog, type DelegationReceipt, type DeviceAuthorization, type DevicePermission, type DeviceUse, type DirectController, type DisclosureMode, EGRESS_SUMMARY_FIELDS, type Ed25519PublicKey, type EvidenceAttestation, type EvidenceAttestationInput, type EvidenceIssuer, type EvidenceReceipt, type EvidenceReceiptBase, type EvidenceSummary, type EvidenceSummaryEntry, type EvidenceType, type ExternalDecision, type ExternalPDPConfig, type GateSigner, type HFDatasetMetadata, type HFReceiptRow, type HookEventName, type HookInput, type HookResponse, type HumanContext, type InstalledConnectorPilot, type IssuerType, type JsonRpcRequest, type JsonRpcResponse, type LeaseCompatibility, type MandateApproval, type MandateController, type MandateProposal, type MandateRegistry, type MandateTransition, type ManifestBuilder, type ManifestCapabilities, type ManifestConfig, type ManifestIdentity, type ManifestPresentation, type ManifestSignature, type ManifestStatus, type McpToolDescription, type MinimalDisclosure, type NegotiationExport, type NegotiationMandate, type NegotiationProposal, type NegotiationReport, type NegotiationVerification, type NotificationConfig, POLICY_PACKS, type PassportTokenClaims, type PayloadDigest, type PlanReceipt, type PolicyDiff, type PolicyEngineMode, type PolicyPack, type PolicySnapshot, type PredictionReceipt, type PredictionResolution, type PropagatorConfig, type ProtectConfig, ProtectGateway, type ProtectPolicy, type PublicSnapshot, type RateLimit, ReceiptPropagator, type ReceiptShape, type ReceiptVerification, type RedactedResult, type RedactionSalt, type RegistryCheck, type RehearsalExport, type RehearsalVerification, type RekorAnchor, type RekorVerification, type RepositoryAcceptance, type RepositoryApproval, type RepositoryClaim, type RepositoryEvidence, type RepositoryExecution, type RepositoryOutcome, type RepositoryProposal, type RepositoryState, type RepositoryTask, type RestraintPayload, type RestraintReceipt, type SHA256Hash, type SafetyTranscript, type Sandbox, type SandboxConfig, type SandboxReceipt, type SandboxResult, type SandboxToolCall, type SchemaGeneratorConfig, ScopeBlindBridge, type SelectiveDisclosurePackageV0, type SelectiveDisclosureVerification, type SelfTestCase, type SelfTestReport, type SigningConfig, type SimulationResult, type SimulationSummary, type SnapshotReceipt, type SnapshotVerification, type SwarmContext, type TierOverrides, type TimingMetrics, type ToolPolicy, type TrustTier, type WebAuthnController, type WorkPayload, type WorkReceipt, anchorToRekor, approvePolicyProposalWithDirectSignature, approvePolicyProposalWithWebAuthn, assertEgressSafe, buildDecisionContext, checkRateLimit, collectSignedReceipts, computeCalibration, computeSbIssuerKid, confidentialInference, connectorDirectory, connectorDoctor, connectorPilotIds, coordinationConfigFromArgs, createApprovalChallenge, createApprovalReceiptPayload, createAttestationField, createAuditBundle, createC2PAManifest, createDirectControllerApproval, createDisclosurePackage, createEvidenceAttestation, createLogAnchorField, createPolicyProposal, createReceiptChannel, createReceiptEnvelope, createSandbox, createSelectiveDisclosurePackage, createWebAuthnPolicyChallenge, describePolicyDiff, destroySandbox, discloseField, ed25519ToDIDKey, evaluateCedar, evaluateTier, exportC2PAManifestJSON, exportJSONL, exportMandateDisciplineRecord, formatReportMarkdown, formatSimulation, forwardReceipt, generateC2PACommand, generateCedarSchema, generateDatasetCard, generateHFMetadata, generateReport, generateSafetyTranscript, generateSchemaStub, getConnectorPilot, getPolicyPack, getScopeBlindBridge, getSignerInfo, getToolPolicy, hashReceipt, hashResponseBody, humanPrincipal, initSigning, initializeMandateRegistry, inspectEgress, isAgentId, isCedarAvailable, isDisclosureMode, isEvidenceType, isManifestStatus, isSigningEnabled, listCredentialLabels, loadCedarPolicies, loadGateSigner, loadMandateRegistry, loadPolicy, mandatePaths, manifestToVC, meetsMinTier, parseLogFile, parseNotificationConfigFromEnv, parseRateLimit, policyPackIds, policySetFromSource, publicMandateStatus, queryExternalPDP, readInstalledConnectorPilots, receiptHash, receiptIdentity, receiptToVP, receiptsToHFRows, redactFields, refreshManagedMandate, repositorySnapshotDigest, resolveCredential, revealField, runEgressSelfCheck, runEvaluatorSelfTest, runInSandbox, sendApprovalNotification, signCommittedDecision, signDecision, simulate, snapshotFromDirectory, toCredentialRequestOptions, toEgressSummary, toManifoldFormat, toMetaculusFormat, validateCoordinationConfig, validateCoordinationPayment, validateCredentials, validateEvidenceReceipt, validateManifest, verifyActaC2PAAssertions, verifyAllCommitments, verifyApprovalAssertion, verifyCommitment, verifyDeviceAuthorization, verifyEvidenceAttestation, verifyHuman, verifyMandateLifecycleExport, verifyMandateRegistry, verifyNegotiationEvidence, verifyOwnerAgreement, verifyPublicSnapshot, verifyReceipt, verifyRehearsalEvidence, verifyRekorAnchor, verifyRepositoryEvidence, verifySelectiveDisclosurePackage, writeConnectorPilots };

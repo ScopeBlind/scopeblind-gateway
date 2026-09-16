@@ -41,7 +41,55 @@ var import_node_path = require("path");
 var import_ed25519 = require("@noble/curves/ed25519");
 var import_sha256 = require("@noble/hashes/sha256");
 var import_utils = require("@noble/hashes/utils");
+
+// src/coordination-protocol.ts
+function validUnicode(value) {
+  for (let i = 0; i < value.length; i++) {
+    const c = value.charCodeAt(i);
+    if (c >= 55296 && c <= 56319) {
+      const n = value.charCodeAt(++i);
+      if (!(n >= 56320 && n <= 57343)) return false;
+    } else if (c >= 56320 && c <= 57343) return false;
+  }
+  return true;
+}
+function canonical(value) {
+  if (value === null) return "null";
+  if (typeof value === "string") {
+    if (!validUnicode(value)) throw new Error("Invalid Unicode");
+    return JSON.stringify(value);
+  }
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("Non-finite number");
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) if (!Object.hasOwn(value, i)) throw new Error("Sparse arrays are not JSON");
+    return "[" + value.map(canonical).join(",") + "]";
+  }
+  if (typeof value === "object") {
+    if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new Error("Expected a plain JSON object");
+    const object = value;
+    return "{" + Object.keys(object).sort().map((k) => canonical(k) + ":" + canonical(object[k])).join(",") + "}";
+  }
+  throw new Error("Not a JSON value");
+}
+
+// src/acta-envelope.ts
 function canonicalize(obj) {
+  if (Array.isArray(obj)) return "[" + Array.from(obj, canonicalize).join(",") + "]";
+  if (obj !== null && typeof obj === "object") {
+    if (Object.getPrototypeOf(obj) !== Object.prototype && Object.getPrototypeOf(obj) !== null) throw new Error("Expected a plain JSON object");
+    const record = obj;
+    return "{" + Object.keys(record).sort().map((key) => {
+      if (!/^[\x20-\x7E]*$/.test(key)) throw new Error(`Non-ASCII key "${key}" in receipt payload. Only ASCII keys are permitted.`);
+      return JSON.stringify(key) + ":" + canonicalize(record[key]);
+    }).join(",") + "}";
+  }
+  return canonical(obj);
+}
+function legacyCanonicalize(obj) {
   return JSON.stringify(obj, (_key, value) => {
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const sorted = {};
@@ -55,6 +103,33 @@ function canonicalize(obj) {
     }
     return value;
   });
+}
+function hasLegacyUnsafeKey(value) {
+  if (!value || typeof value !== "object") return false;
+  if (Object.prototype.hasOwnProperty.call(value, "__proto__")) return true;
+  return Object.values(value).some(hasLegacyUnsafeKey);
+}
+function verifyEncoding(payload, envelope, signature, publicKeyHex, shape, allowLegacy) {
+  const jcs = canonicalize(payload);
+  if (import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(jcs), (0, import_utils.hexToBytes)(publicKeyHex))) {
+    return { valid: true, shape, hash: receiptHash(envelope), canonicalization: "jcs" };
+  }
+  if (!hasLegacyUnsafeKey(envelope)) {
+    const legacy = legacyCanonicalize(payload);
+    if (legacy !== jcs && import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(legacy), (0, import_utils.hexToBytes)(publicKeyHex))) {
+      const legacyHash = (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(legacyCanonicalize(envelope))));
+      return {
+        valid: allowLegacy,
+        shape,
+        canonicalization: "legacy-numeric-key-order",
+        legacy_signature_valid: true,
+        legacy_hash: legacyHash,
+        ...allowLegacy ? { hash: legacyHash } : { error: "legacy_non_jcs_signature" },
+        warning: "Historical signature verifies only with pre-fix integer-key ordering. This is not JCS-conformant; preserve its original bytes and chain hashes."
+      };
+    }
+  }
+  return { valid: false, shape, error: "invalid_signature" };
 }
 function receiptHash(obj) {
   return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
@@ -88,7 +163,7 @@ function createReceiptEnvelope(fields, privateKeyHex, kid, issuedAt) {
   const envelope = { payload, signature: { alg: "EdDSA", kid, sig } };
   return { envelope, hash: receiptHash(envelope) };
 }
-function verifyReceipt(envelope, publicKeyHex) {
+function verifyReceipt(envelope, publicKeyHex, options = {}) {
   try {
     if (!envelope || typeof envelope !== "object") {
       return { valid: false, shape: null, error: "not_an_object" };
@@ -103,17 +178,13 @@ function verifyReceipt(envelope, publicKeyHex) {
       if (typeof sigObj.sig !== "string" || !env.payload || typeof env.payload !== "object") {
         return { valid: false, shape: "acta-02", error: "malformed_envelope" };
       }
-      const message = (0, import_utils.utf8ToBytes)(canonicalize(env.payload));
-      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(sigObj.sig), message, (0, import_utils.hexToBytes)(publicKeyHex));
-      return valid ? { valid: true, shape: "acta-02", hash: receiptHash(env) } : { valid: false, shape: "acta-02", error: "invalid_signature" };
+      return verifyEncoding(env.payload, env, sigObj.sig, publicKeyHex, "acta-02", options.allowLegacyNumericKeys === true);
     }
     if (typeof signature === "string") {
-      const rest = {};
+      const rest = /* @__PURE__ */ Object.create(null);
       for (const k of Object.keys(env)) if (k !== "signature") rest[k] = env[k];
-      const message = (0, import_utils.utf8ToBytes)(canonicalize(rest));
-      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), message, (0, import_utils.hexToBytes)(publicKeyHex));
       const shape = env.v === 2 ? "legacy-v2" : "legacy-v1";
-      return valid ? { valid: true, shape, hash: receiptHash(env) } : { valid: false, shape, error: "invalid_signature" };
+      return verifyEncoding(rest, env, signature, publicKeyHex, shape, options.allowLegacyNumericKeys === true);
     }
     return { valid: false, shape: null, error: "missing_signature" };
   } catch (err) {
@@ -1243,7 +1314,7 @@ function actionFor(tool, input) {
 }
 function buildActionReadback(tool, input) {
   const normalized = input && typeof input === "object" && !Array.isArray(input) ? input : { value: input };
-  const canonical = stableStringify(normalized);
+  const canonical2 = stableStringify(normalized);
   const redactedFields = [];
   const disclosedFields = [];
   const payloadPreview = redact(normalized, [], redactedFields, disclosedFields);
@@ -1255,8 +1326,8 @@ function buildActionReadback(tool, input) {
     action,
     destination,
     payload_preview: payloadPreview,
-    payload_hash: (0, import_node_crypto5.createHash)("sha256").update(canonical).digest("hex"),
-    payload_bytes: Buffer.byteLength(canonical, "utf-8"),
+    payload_hash: (0, import_node_crypto5.createHash)("sha256").update(canonical2).digest("hex"),
+    payload_bytes: Buffer.byteLength(canonical2, "utf-8"),
     disclosed_fields: [...new Set(disclosedFields)].slice(0, 80),
     redacted_fields: [...new Set(redactedFields)].slice(0, 80),
     summary

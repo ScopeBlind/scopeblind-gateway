@@ -67,14 +67,14 @@ var require_util = __commonJS({
           return obj[e];
         });
       };
-      util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object) => {
-        const keys = [];
-        for (const key in object) {
-          if (Object.prototype.hasOwnProperty.call(object, key)) {
-            keys.push(key);
+      util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object3) => {
+        const keys2 = [];
+        for (const key in object3) {
+          if (Object.prototype.hasOwnProperty.call(object3, key)) {
+            keys2.push(key);
           }
         }
-        return keys;
+        return keys2;
       };
       util2.find = (arr, checker) => {
         for (const item of arr) {
@@ -2403,8 +2403,8 @@ var require_types = __commonJS({
         if (this._cached !== null)
           return this._cached;
         const shape = this._def.shape();
-        const keys = util_js_1.util.objectKeys(shape);
-        this._cached = { shape, keys };
+        const keys2 = util_js_1.util.objectKeys(shape);
+        this._cached = { shape, keys: keys2 };
         return this._cached;
       }
       _parse(input) {
@@ -4232,9 +4232,9 @@ var require_core = __commonJS({
         inst._zod.traits.add(name);
         initializer(inst, def);
         const proto = _.prototype;
-        const keys = Object.keys(proto);
-        for (let i = 0; i < keys.length; i++) {
-          const k = keys[i];
+        const keys2 = Object.keys(proto);
+        for (let i = 0; i < keys2.length; i++) {
+          const k = keys2[i];
           if (!(k in inst)) {
             inst[k] = proto[k].bind(inst);
           }
@@ -4411,9 +4411,9 @@ var require_util2 = __commonJS({
       return valInt % stepInt / 10 ** decCount;
     }
     var EVALUATING = /* @__PURE__ */ Symbol("evaluating");
-    function defineLazy(object, key, getter) {
+    function defineLazy(object3, key, getter) {
       let value = void 0;
-      Object.defineProperty(object, key, {
+      Object.defineProperty(object3, key, {
         get() {
           if (value === EVALUATING) {
             return void 0;
@@ -4425,7 +4425,7 @@ var require_util2 = __commonJS({
           return value;
         },
         set(v) {
-          Object.defineProperty(object, key, {
+          Object.defineProperty(object3, key, {
             value: v
             // configurable: true,
           });
@@ -4461,12 +4461,12 @@ var require_util2 = __commonJS({
       return path.reduce((acc, key) => acc?.[key], obj);
     }
     function promiseAllObject(promisesObj) {
-      const keys = Object.keys(promisesObj);
-      const promises = keys.map((key) => promisesObj[key]);
+      const keys2 = Object.keys(promisesObj);
+      const promises = keys2.map((key) => promisesObj[key]);
       return Promise.all(promises).then((results) => {
         const resolvedObj = {};
-        for (let i = 0; i < keys.length; i++) {
-          resolvedObj[keys[i]] = results[i];
+        for (let i = 0; i < keys2.length; i++) {
+          resolvedObj[keys2[i]] = results[i];
         }
         return resolvedObj;
       });
@@ -4943,8 +4943,8 @@ var require_util2 = __commonJS({
     function uint8ArrayToBase64url(bytes) {
       return uint8ArrayToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
     }
-    function hexToUint8Array(hex) {
-      const cleanHex = hex.replace(/^0x/, "");
+    function hexToUint8Array(hex2) {
+      const cleanHex = hex2.replace(/^0x/, "");
       if (cleanHex.length % 2 !== 0) {
         throw new Error("Invalid hex string length");
       }
@@ -5314,7 +5314,7 @@ var require_regexes = __commonJS({
     exports2.sha384_hex = exports2.sha256_base64url = exports2.sha256_base64 = exports2.sha256_hex = exports2.sha1_base64url = exports2.sha1_base64 = exports2.sha1_hex = exports2.md5_base64url = exports2.md5_base64 = exports2.md5_hex = exports2.hex = exports2.uppercase = exports2.lowercase = exports2.undefined = exports2.null = exports2.boolean = exports2.number = exports2.integer = exports2.bigint = exports2.string = exports2.date = exports2.e164 = exports2.domain = exports2.hostname = exports2.base64url = exports2.base64 = exports2.cidrv6 = exports2.cidrv4 = exports2.mac = exports2.ipv6 = exports2.ipv4 = exports2.browserEmail = exports2.idnEmail = exports2.unicodeEmail = exports2.rfc5322Email = exports2.html5Email = exports2.email = exports2.uuid7 = exports2.uuid6 = exports2.uuid4 = exports2.uuid = exports2.guid = exports2.extendedDuration = exports2.duration = exports2.nanoid = exports2.ksuid = exports2.xid = exports2.ulid = exports2.cuid2 = exports2.cuid = void 0;
     exports2.sha512_base64url = exports2.sha512_base64 = exports2.sha512_hex = exports2.sha384_base64url = exports2.sha384_base64 = void 0;
     exports2.emoji = emoji;
-    exports2.time = time;
+    exports2.time = time4;
     exports2.datetime = datetime;
     var util = __importStar(require_util2());
     exports2.cuid = /^[cC][^\s-]{8,}$/;
@@ -5366,17 +5366,17 @@ var require_regexes = __commonJS({
       const regex = typeof args.precision === "number" ? args.precision === -1 ? `${hhmm}` : args.precision === 0 ? `${hhmm}:[0-5]\\d` : `${hhmm}:[0-5]\\d\\.\\d{${args.precision}}` : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
       return regex;
     }
-    function time(args) {
+    function time4(args) {
       return new RegExp(`^${timeSource(args)}$`);
     }
     function datetime(args) {
-      const time2 = timeSource({ precision: args.precision });
+      const time5 = timeSource({ precision: args.precision });
       const opts = ["Z"];
       if (args.local)
         opts.push("");
       if (args.offset)
         opts.push(`([+-](?:[01]\\d|2[0-3]):[0-5]\\d)`);
-      const timeRegex = `${time2}(?:${opts.join("|")})`;
+      const timeRegex = `${time5}(?:${opts.join("|")})`;
       return new RegExp(`^${dateSource}T(?:${timeRegex})$`);
     }
     var string = (params) => {
@@ -6767,8 +6767,8 @@ var require_schemas = __commonJS({
       }
     }
     function normalizeDef(def) {
-      const keys = Object.keys(def.shape);
-      for (const k of keys) {
+      const keys2 = Object.keys(def.shape);
+      for (const k of keys2) {
         if (!def.shape?.[k]?._zod?.traits?.has("$ZodType")) {
           throw new Error(`Invalid element at key "${k}": expected a Zod schema`);
         }
@@ -6776,9 +6776,9 @@ var require_schemas = __commonJS({
       const okeys = util.optionalKeys(def.shape);
       return {
         ...def,
-        keys,
-        keySet: new Set(keys),
-        numKeys: keys.length,
+        keys: keys2,
+        keySet: new Set(keys2),
+        numKeys: keys2.length,
         optionalKeys: new Set(okeys)
       };
     }
@@ -6898,46 +6898,46 @@ var require_schemas = __commonJS({
         }
         doc.write(`const newResult = {};`);
         for (const key of normalized.keys) {
-          const id = ids[key];
+          const id3 = ids[key];
           const k = util.esc(key);
           const schema = shape[key];
           const isOptionalOut = schema?._zod?.optout === "optional";
-          doc.write(`const ${id} = ${parseStr(key)};`);
+          doc.write(`const ${id3} = ${parseStr(key)};`);
           if (isOptionalOut) {
             doc.write(`
-        if (${id}.issues.length) {
+        if (${id3}.issues.length) {
           if (${k} in input) {
-            payload.issues = payload.issues.concat(${id}.issues.map(iss => ({
+            payload.issues = payload.issues.concat(${id3}.issues.map(iss => ({
               ...iss,
               path: iss.path ? [${k}, ...iss.path] : [${k}]
             })));
           }
         }
         
-        if (${id}.value === undefined) {
+        if (${id3}.value === undefined) {
           if (${k} in input) {
             newResult[${k}] = undefined;
           }
         } else {
-          newResult[${k}] = ${id}.value;
+          newResult[${k}] = ${id3}.value;
         }
         
       `);
           } else {
             doc.write(`
-        if (${id}.issues.length) {
-          payload.issues = payload.issues.concat(${id}.issues.map(iss => ({
+        if (${id3}.issues.length) {
+          payload.issues = payload.issues.concat(${id3}.issues.map(iss => ({
             ...iss,
             path: iss.path ? [${k}, ...iss.path] : [${k}]
           })));
         }
         
-        if (${id}.value === undefined) {
+        if (${id3}.value === undefined) {
           if (${k} in input) {
             newResult[${k}] = undefined;
           }
         } else {
-          newResult[${k}] = ${id}.value;
+          newResult[${k}] = ${id3}.value;
         }
         
       `);
@@ -11989,8 +11989,8 @@ var require_lt = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = default_1;
     var util = __importStar(require_util2());
-    var capitalizeFirstCharacter = (text) => {
-      return text.charAt(0).toUpperCase() + text.slice(1);
+    var capitalizeFirstCharacter = (text3) => {
+      return text3.charAt(0).toUpperCase() + text3.slice(1);
     };
     function getUnitTypeFromNumber(number) {
       const abs = Math.abs(number);
@@ -16877,26 +16877,26 @@ var require_to_json_schema = __commonJS({
         throw new Error("Unprocessed schema. This is a bug in Zod.");
       const idToSchema = /* @__PURE__ */ new Map();
       for (const entry of ctx.seen.entries()) {
-        const id = ctx.metadataRegistry.get(entry[0])?.id;
-        if (id) {
-          const existing = idToSchema.get(id);
+        const id3 = ctx.metadataRegistry.get(entry[0])?.id;
+        if (id3) {
+          const existing = idToSchema.get(id3);
           if (existing && existing !== entry[0]) {
-            throw new Error(`Duplicate schema id "${id}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`);
+            throw new Error(`Duplicate schema id "${id3}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`);
           }
-          idToSchema.set(id, entry[0]);
+          idToSchema.set(id3, entry[0]);
         }
       }
       const makeURI = (entry) => {
         const defsSegment = ctx.target === "draft-2020-12" ? "$defs" : "definitions";
         if (ctx.external) {
           const externalId = ctx.external.registry.get(entry[0])?.id;
-          const uriGenerator = ctx.external.uri ?? ((id2) => id2);
+          const uriGenerator = ctx.external.uri ?? ((id4) => id4);
           if (externalId) {
             return { ref: uriGenerator(externalId) };
           }
-          const id = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
-          entry[1].defId = id;
-          return { defId: id, ref: `${uriGenerator("__shared")}#/${defsSegment}/${id}` };
+          const id3 = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
+          entry[1].defId = id3;
+          return { defId: id3, ref: `${uriGenerator("__shared")}#/${defsSegment}/${id3}` };
         }
         if (entry[1] === root) {
           return { ref: "#" };
@@ -16944,8 +16944,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
             continue;
           }
         }
-        const id = ctx.metadataRegistry.get(entry[0])?.id;
-        if (id) {
+        const id3 = ctx.metadataRegistry.get(entry[0])?.id;
+        if (id3) {
           extractToDef(entry);
           continue;
         }
@@ -17041,10 +17041,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
       } else {
       }
       if (ctx.external?.uri) {
-        const id = ctx.external.registry.get(schema)?.id;
-        if (!id)
+        const id3 = ctx.external.registry.get(schema)?.id;
+        if (!id3)
           throw new Error("Schema is missing an `id` property");
-        result.$id = ctx.external.uri(id);
+        result.$id = ctx.external.uri(id3);
       }
       Object.assign(result, root.def ?? root.schema);
       const defs = ctx.external?.defs ?? {};
@@ -18012,7 +18012,7 @@ var require_schemas2 = __commonJS({
     exports2.jwt = jwt;
     exports2.stringFormat = stringFormat;
     exports2.hostname = hostname;
-    exports2.hex = hex;
+    exports2.hex = hex2;
     exports2.hash = hash;
     exports2.number = number;
     exports2.int = int;
@@ -18034,7 +18034,7 @@ var require_schemas2 = __commonJS({
     exports2.date = date;
     exports2.array = array;
     exports2.keyof = keyof;
-    exports2.object = object;
+    exports2.object = object3;
     exports2.strictObject = strictObject;
     exports2.looseObject = looseObject;
     exports2.extend = extend;
@@ -18322,7 +18322,7 @@ var require_schemas2 = __commonJS({
       return core._stringFormat(exports2.ZodMiniCustomStringFormat, "hostname", core.regexes.hostname, _params);
     }
     // @__NO_SIDE_EFFECTS__
-    function hex(_params) {
+    function hex2(_params) {
       return core._stringFormat(exports2.ZodMiniCustomStringFormat, "hex", core.regexes.hex, _params);
     }
     // @__NO_SIDE_EFFECTS__
@@ -18481,7 +18481,7 @@ var require_schemas2 = __commonJS({
       util.defineLazy(inst, "shape", () => def.shape);
     });
     // @__NO_SIDE_EFFECTS__
-    function object(shape, params) {
+    function object3(shape, params) {
       const def = {
         type: "object",
         shape: shape ?? {},
@@ -19101,7 +19101,7 @@ var require_iso = __commonJS({
     exports2.ZodMiniISODuration = exports2.ZodMiniISOTime = exports2.ZodMiniISODate = exports2.ZodMiniISODateTime = void 0;
     exports2.datetime = datetime;
     exports2.date = date;
-    exports2.time = time;
+    exports2.time = time4;
     exports2.duration = duration;
     var core = __importStar(require_core2());
     var schemas = __importStar(require_schemas2());
@@ -19126,7 +19126,7 @@ var require_iso = __commonJS({
       schemas.ZodMiniStringFormat.init(inst, def);
     });
     // @__NO_SIDE_EFFECTS__
-    function time(params) {
+    function time4(params) {
       return core._isoTime(exports2.ZodMiniISOTime, params);
     }
     exports2.ZodMiniISODuration = core.$constructor("ZodMiniISODuration", (inst, def) => {
@@ -19674,7 +19674,7 @@ var require_iso2 = __commonJS({
     exports2.ZodISODuration = exports2.ZodISOTime = exports2.ZodISODate = exports2.ZodISODateTime = void 0;
     exports2.datetime = datetime;
     exports2.date = date;
-    exports2.time = time;
+    exports2.time = time4;
     exports2.duration = duration;
     var core = __importStar(require_core2());
     var schemas = __importStar(require_schemas3());
@@ -19696,7 +19696,7 @@ var require_iso2 = __commonJS({
       core.$ZodISOTime.init(inst, def);
       schemas.ZodStringFormat.init(inst, def);
     });
-    function time(params) {
+    function time4(params) {
       return core._isoTime(exports2.ZodISOTime, params);
     }
     exports2.ZodISODuration = core.$constructor("ZodISODuration", (inst, def) => {
@@ -19897,7 +19897,7 @@ var require_schemas3 = __commonJS({
     exports2.jwt = jwt;
     exports2.stringFormat = stringFormat;
     exports2.hostname = hostname;
-    exports2.hex = hex;
+    exports2.hex = hex2;
     exports2.hash = hash;
     exports2.number = number;
     exports2.int = int;
@@ -19919,7 +19919,7 @@ var require_schemas3 = __commonJS({
     exports2.date = date;
     exports2.array = array;
     exports2.keyof = keyof;
-    exports2.object = object;
+    exports2.object = object3;
     exports2.strictObject = strictObject;
     exports2.looseObject = looseObject;
     exports2.union = union;
@@ -20282,7 +20282,7 @@ var require_schemas3 = __commonJS({
     function hostname(_params) {
       return core._stringFormat(exports2.ZodCustomStringFormat, "hostname", core.regexes.hostname, _params);
     }
-    function hex(_params) {
+    function hex2(_params) {
       return core._stringFormat(exports2.ZodCustomStringFormat, "hex", core.regexes.hex, _params);
     }
     function hash(alg, params) {
@@ -20496,7 +20496,7 @@ var require_schemas3 = __commonJS({
       inst.partial = (...args) => index_js_1.util.partial(exports2.ZodOptional, inst, args[0]);
       inst.required = (...args) => index_js_1.util.required(exports2.ZodNonOptional, inst, args[0]);
     });
-    function object(shape, params) {
+    function object3(shape, params) {
       const def = {
         type: "object",
         shape: shape ?? {},
@@ -20666,11 +20666,11 @@ var require_schemas3 = __commonJS({
       inst._zod.processJSONSchema = (ctx, json2, params) => processors.enumProcessor(inst, ctx, json2, params);
       inst.enum = def.entries;
       inst.options = Object.values(def.entries);
-      const keys = new Set(Object.keys(def.entries));
+      const keys2 = new Set(Object.keys(def.entries));
       inst.extract = (values, params) => {
         const newEntries = {};
         for (const value of values) {
-          if (keys.has(value)) {
+          if (keys2.has(value)) {
             newEntries[value] = def.entries[value];
           } else
             throw new Error(`Key ${value} not found in enum`);
@@ -20685,7 +20685,7 @@ var require_schemas3 = __commonJS({
       inst.exclude = (values, params) => {
         const newEntries = { ...def.entries };
         for (const value of values) {
-          if (keys.has(value)) {
+          if (keys2.has(value)) {
             delete newEntries[value];
           } else
             throw new Error(`Key ${value} not found in enum`);
@@ -24377,7 +24377,7 @@ var require_map = __commonJS({
       if (refs.mapStrategy === "record") {
         return (0, record_js_1.parseRecordDef)(def, refs);
       }
-      const keys = (0, parseDef_js_1.parseDef)(def.keyType._def, {
+      const keys2 = (0, parseDef_js_1.parseDef)(def.keyType._def, {
         ...refs,
         currentPath: [...refs.currentPath, "items", "items", "0"]
       }) || (0, any_js_1.parseAnyDef)(refs);
@@ -24390,7 +24390,7 @@ var require_map = __commonJS({
         maxItems: 125,
         items: {
           type: "array",
-          items: [keys, values],
+          items: [keys2, values],
           minItems: 2,
           maxItems: 2
         }
@@ -24407,11 +24407,11 @@ var require_nativeEnum = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.parseNativeEnumDef = void 0;
     function parseNativeEnumDef(def) {
-      const object = def.values;
+      const object3 = def.values;
       const actualKeys = Object.keys(def.values).filter((key) => {
-        return typeof object[object[key]] !== "number";
+        return typeof object3[object3[key]] !== "number";
       });
-      const actualValues = actualKeys.map((key) => object[key]);
+      const actualValues = actualKeys.map((key) => object3[key]);
       const parsedTypes = Array.from(new Set(actualValues.map((values) => typeof values)));
       return {
         type: parsedTypes.length === 1 ? parsedTypes[0] === "string" ? "string" : "number" : ["string", "number"],
@@ -28289,7 +28289,7 @@ var require_fast_deep_equal = __commonJS({
       if (a === b) return true;
       if (a && b && typeof a == "object" && typeof b == "object") {
         if (a.constructor !== b.constructor) return false;
-        var length, i, keys;
+        var length, i, keys2;
         if (Array.isArray(a)) {
           length = a.length;
           if (length != b.length) return false;
@@ -28300,13 +28300,13 @@ var require_fast_deep_equal = __commonJS({
         if (a.constructor === RegExp) return a.source === b.source && a.flags === b.flags;
         if (a.valueOf !== Object.prototype.valueOf) return a.valueOf() === b.valueOf();
         if (a.toString !== Object.prototype.toString) return a.toString() === b.toString();
-        keys = Object.keys(a);
-        length = keys.length;
+        keys2 = Object.keys(a);
+        length = keys2.length;
         if (length !== Object.keys(b).length) return false;
         for (i = length; i-- !== 0; )
-          if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false;
+          if (!Object.prototype.hasOwnProperty.call(b, keys2[i])) return false;
         for (i = length; i-- !== 0; ) {
-          var key = keys[i];
+          var key = keys2[i];
           if (!equal(a[key], b[key])) return false;
         }
         return true;
@@ -28476,10 +28476,10 @@ var require_resolve = __commonJS({
       }
       return count;
     }
-    function getFullPath(resolver, id = "", normalize2) {
+    function getFullPath(resolver, id3 = "", normalize2) {
       if (normalize2 !== false)
-        id = normalizeId(id);
-      const p = resolver.parse(id);
+        id3 = normalizeId(id3);
+      const p = resolver.parse(id3);
       return _getFullPath(resolver, p);
     }
     exports2.getFullPath = getFullPath;
@@ -28489,13 +28489,13 @@ var require_resolve = __commonJS({
     }
     exports2._getFullPath = _getFullPath;
     var TRAILING_SLASH_HASH = /#\/?$/;
-    function normalizeId(id) {
-      return id ? id.replace(TRAILING_SLASH_HASH, "") : "";
+    function normalizeId(id3) {
+      return id3 ? id3.replace(TRAILING_SLASH_HASH, "") : "";
     }
     exports2.normalizeId = normalizeId;
-    function resolveUrl(resolver, baseId, id) {
-      id = normalizeId(id);
-      return resolver.resolve(baseId, id);
+    function resolveUrl(resolver, baseId, id3) {
+      id3 = normalizeId(id3);
+      return resolver.resolve(baseId, id3);
     }
     exports2.resolveUrl = resolveUrl;
     var ANCHOR = /^[a-z_][-a-z0-9._]*$/i;
@@ -29265,8 +29265,8 @@ var require_compile = __commonJS({
       if (Object.keys(root.schema).length > 0 && refPath === baseId) {
         return getJsonPointer.call(this, p, root);
       }
-      const id = (0, resolve_1.normalizeId)(refPath);
-      const schOrRef = this.refs[id] || this.schemas[id];
+      const id3 = (0, resolve_1.normalizeId)(refPath);
+      const schOrRef = this.refs[id3] || this.schemas[id3];
       if (typeof schOrRef == "string") {
         const sch = resolveSchema.call(this, root, schOrRef);
         if (typeof (sch === null || sch === void 0 ? void 0 : sch.schema) !== "object")
@@ -29277,7 +29277,7 @@ var require_compile = __commonJS({
         return;
       if (!schOrRef.validate)
         compileSchema.call(this, schOrRef);
-      if (id === (0, resolve_1.normalizeId)(ref)) {
+      if (id3 === (0, resolve_1.normalizeId)(ref)) {
         const { schema } = schOrRef;
         const { schemaId } = this.opts;
         const schId = schema[schemaId];
@@ -29593,9 +29593,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex = input.slice(i + 1, i + 3);
-          if (isHexPair(hex)) {
-            const normalizedHex = hex.toUpperCase();
+          const hex2 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex2)) {
+            const normalizedHex = hex2.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (decodeUnreserved && isUnreserved(decoded)) {
               output += decoded;
@@ -29615,9 +29615,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex = input.slice(i + 1, i + 3);
-          if (isHexPair(hex)) {
-            const normalizedHex = hex.toUpperCase();
+          const hex2 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex2)) {
+            const normalizedHex = hex2.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (decoded !== "." && isUnreserved(decoded)) {
               output += decoded;
@@ -29657,9 +29657,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex = input.slice(i + 1, i + 3);
-          if (isHexPair(hex)) {
-            output += "%" + hex.toUpperCase();
+          const hex2 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex2)) {
+            output += "%" + hex2.toUpperCase();
             i += 2;
             continue;
           }
@@ -29695,9 +29695,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex = input.slice(i + 1, i + 3);
-          if (isHexPair(hex)) {
-            output += "%" + hex.toUpperCase();
+          const hex2 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex2)) {
+            output += "%" + hex2.toUpperCase();
             i += 2;
             continue;
           }
@@ -29742,9 +29742,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex = input.slice(i + 1, i + 3);
-          if (isHexPair(hex)) {
-            const normalizedHex = hex.toUpperCase();
+          const hex2 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex2)) {
+            const normalizedHex = hex2.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (isUnreserved(decoded)) {
               output += decoded;
@@ -29782,9 +29782,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex = input.slice(i + 1, i + 3);
-          if (isHexPair(hex)) {
-            output += "%" + hex.toUpperCase();
+          const hex2 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex2)) {
+            output += "%" + hex2.toUpperCase();
             i += 2;
             continue;
           }
@@ -30703,15 +30703,15 @@ var require_core3 = __commonJS({
             this.addSchema(sch, void 0, _meta, _validateSchema);
           return this;
         }
-        let id;
+        let id3;
         if (typeof schema === "object") {
           const { schemaId } = this.opts;
-          id = schema[schemaId];
-          if (id !== void 0 && typeof id != "string") {
+          id3 = schema[schemaId];
+          if (id3 !== void 0 && typeof id3 != "string") {
             throw new Error(`schema ${schemaId} must be string`);
           }
         }
-        key = (0, resolve_1.normalizeId)(key || id);
+        key = (0, resolve_1.normalizeId)(key || id3);
         this._checkUnique(key);
         this.schemas[key] = this._addSchema(schema, _meta, key, _validateSchema, true);
         return this;
@@ -30790,11 +30790,11 @@ var require_core3 = __commonJS({
           case "object": {
             const cacheKey = schemaKeyRef;
             this._cache.delete(cacheKey);
-            let id = schemaKeyRef[this.opts.schemaId];
-            if (id) {
-              id = (0, resolve_1.normalizeId)(id);
-              delete this.schemas[id];
-              delete this.refs[id];
+            let id3 = schemaKeyRef[this.opts.schemaId];
+            if (id3) {
+              id3 = (0, resolve_1.normalizeId)(id3);
+              delete this.schemas[id3];
+              delete this.refs[id3];
             }
             return this;
           }
@@ -30865,7 +30865,7 @@ var require_core3 = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text, msg) => text + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text3, msg) => text3 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -30901,10 +30901,10 @@ var require_core3 = __commonJS({
         }
       }
       _addSchema(schema, meta, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
-        let id;
+        let id3;
         const { schemaId } = this.opts;
         if (typeof schema == "object") {
-          id = schema[schemaId];
+          id3 = schema[schemaId];
         } else {
           if (this.opts.jtd)
             throw new Error("schema must be object");
@@ -30914,7 +30914,7 @@ var require_core3 = __commonJS({
         let sch = this._cache.get(schema);
         if (sch !== void 0)
           return sch;
-        baseId = (0, resolve_1.normalizeId)(id || baseId);
+        baseId = (0, resolve_1.normalizeId)(id3 || baseId);
         const localRefs = resolve_1.getSchemaRefs.call(this, schema, baseId);
         sch = new compile_1.SchemaEnv({ schema, schemaId, meta, baseId, localRefs });
         this._cache.set(sch.schema, sch);
@@ -30927,9 +30927,9 @@ var require_core3 = __commonJS({
           this.validateSchema(schema, true);
         return sch;
       }
-      _checkUnique(id) {
-        if (this.schemas[id] || this.refs[id]) {
-          throw new Error(`schema with key or id "${id}" already exists`);
+      _checkUnique(id3) {
+        if (this.schemas[id3] || this.refs[id3]) {
+          throw new Error(`schema with key or id "${id3}" already exists`);
         }
       }
       _compileSchemaEnv(sch) {
@@ -33219,7 +33219,7 @@ var require_formats = __commonJS({
     }
     var TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
     function getTime(strictTimeZone) {
-      return function time(str2) {
+      return function time4(str2) {
         const matches = TIME.exec(str2);
         if (!matches)
           return false;
@@ -33265,10 +33265,10 @@ var require_formats = __commonJS({
     }
     var DATE_TIME_SEPARATOR = /t|\s/i;
     function getDateTime(strictTimeZone) {
-      const time = getTime(strictTimeZone);
+      const time4 = getTime(strictTimeZone);
       return function date_time(str2) {
         const dateTime = str2.split(DATE_TIME_SEPARATOR);
-        return dateTime.length === 2 && date(dateTime[0]) && time(dateTime[1]);
+        return dateTime.length === 2 && date(dateTime[0]) && time4(dateTime[1]);
       };
     }
     function compareDateTime(dt1, dt2) {
@@ -33612,7 +33612,7 @@ var require_server = __commonJS({
           if (hasPreviousToolUse) {
             const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
             const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
-            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id) => toolResultIds.has(id))) {
+            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id3) => toolResultIds.has(id3))) {
               throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
             }
           }
@@ -34068,7 +34068,7 @@ var require_server2 = __commonJS({
           if (hasPreviousToolUse) {
             const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
             const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
-            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id) => toolResultIds.has(id))) {
+            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id3) => toolResultIds.has(id3))) {
               throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
             }
           }
@@ -35417,6 +35417,8 @@ __export(index_exports, {
   BUILTIN_PATTERNS: () => BUILTIN_PATTERNS,
   CONNECTOR_PILOTS: () => CONNECTOR_PILOTS,
   ConfidentialGate: () => ConfidentialGate,
+  CoordinationClient: () => CoordinationClient,
+  CoordinationError: () => CoordinationError,
   EGRESS_SUMMARY_FIELDS: () => EGRESS_SUMMARY_FIELDS,
   POLICY_PACKS: () => POLICY_PACKS,
   ProtectGateway: () => ProtectGateway,
@@ -35435,6 +35437,7 @@ __export(index_exports, {
   connectorDirectory: () => connectorDirectory,
   connectorDoctor: () => connectorDoctor,
   connectorPilotIds: () => connectorPilotIds,
+  coordinationConfigFromArgs: () => coordinationConfigFromArgs,
   createApprovalChallenge: () => createApprovalChallenge,
   createApprovalReceiptPayload: () => createApprovalReceiptPayload,
   createAttestationField: () => createAttestationField,
@@ -35480,6 +35483,7 @@ __export(index_exports, {
   getToolPolicy: () => getToolPolicy,
   hashReceipt: () => hashReceipt,
   hashResponseBody: () => hashResponseBody,
+  humanPrincipal: () => humanPrincipal,
   initSigning: () => initSigning,
   initializeMandateRegistry: () => initializeMandateRegistry,
   inspectEgress: () => inspectEgress,
@@ -35511,6 +35515,7 @@ __export(index_exports, {
   receiptsToHFRows: () => receiptsToHFRows,
   redactFields: () => redactFields,
   refreshManagedMandate: () => refreshManagedMandate,
+  repositorySnapshotDigest: () => repositorySnapshotDigest,
   resolveCredential: () => resolveCredential,
   revealField: () => revealField,
   runEgressSelfCheck: () => runEgressSelfCheck,
@@ -35526,6 +35531,8 @@ __export(index_exports, {
   toEgressSummary: () => toEgressSummary,
   toManifoldFormat: () => toManifoldFormat,
   toMetaculusFormat: () => toMetaculusFormat,
+  validateCoordinationConfig: () => validateCoordinationConfig,
+  validateCoordinationPayment: () => validateCoordinationPayment,
   validateCredentials: () => validateCredentials,
   validateEvidenceReceipt: () => validateEvidenceReceipt,
   validateManifest: () => validateManifest,
@@ -35533,11 +35540,18 @@ __export(index_exports, {
   verifyAllCommitments: () => verifyAllCommitments,
   verifyApprovalAssertion: () => verifyApprovalAssertion,
   verifyCommitment: () => verifyCommitment,
+  verifyDeviceAuthorization: () => verifyDeviceAuthorization,
   verifyEvidenceAttestation: () => verifyEvidenceAttestation,
+  verifyHuman: () => verifyHuman,
   verifyMandateLifecycleExport: () => verifyMandateLifecycleExport,
   verifyMandateRegistry: () => verifyMandateRegistry,
+  verifyNegotiationEvidence: () => verifyNegotiationEvidence,
+  verifyOwnerAgreement: () => verifyOwnerAgreement,
+  verifyPublicSnapshot: () => verifyPublicSnapshot,
   verifyReceipt: () => verifyReceipt,
+  verifyRehearsalEvidence: () => verifyRehearsalEvidence,
   verifyRekorAnchor: () => verifyRekorAnchor,
+  verifyRepositoryEvidence: () => verifyRepositoryEvidence,
   verifySelectiveDisclosurePackage: () => verifySelectiveDisclosurePackage,
   writeConnectorPilots: () => writeConnectorPilots
 });
@@ -35553,7 +35567,85 @@ var import_node_fs8 = require("fs");
 var import_ed25519 = require("@noble/curves/ed25519");
 var import_sha256 = require("@noble/hashes/sha256");
 var import_utils = require("@noble/hashes/utils");
+
+// src/coordination-protocol.ts
+var COORDINATION_DOMAIN = "scopeblind.coordination.v1\n";
+function invoiceMatchesPurchaseOrder(invoice, fixtures) {
+  const order = fixtures.purchase_orders.find((p) => p.id === invoice.purchase_order_id);
+  return !!order && order.amount_minor === invoice.amount_minor && order.destination === invoice.destination && order.vendor === invoice.vendor && order.currency === "USD";
+}
+function bytesToHex(bytes) {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+function hexToBytes(hex2) {
+  if (!/^(?:[0-9a-f]{2})+$/i.test(hex2)) throw new Error("Invalid hexadecimal data");
+  return Uint8Array.from(hex2.match(/../g).map((x) => parseInt(x, 16)));
+}
+function validUnicode(value) {
+  for (let i = 0; i < value.length; i++) {
+    const c = value.charCodeAt(i);
+    if (c >= 55296 && c <= 56319) {
+      const n = value.charCodeAt(++i);
+      if (!(n >= 56320 && n <= 57343)) return false;
+    } else if (c >= 56320 && c <= 57343) return false;
+  }
+  return true;
+}
+function canonical(value) {
+  if (value === null) return "null";
+  if (typeof value === "string") {
+    if (!validUnicode(value)) throw new Error("Invalid Unicode");
+    return JSON.stringify(value);
+  }
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("Non-finite number");
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) if (!Object.hasOwn(value, i)) throw new Error("Sparse arrays are not JSON");
+    return "[" + value.map(canonical).join(",") + "]";
+  }
+  if (typeof value === "object") {
+    if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new Error("Expected a plain JSON object");
+    const object3 = value;
+    return "{" + Object.keys(object3).sort().map((k) => canonical(k) + ":" + canonical(object3[k])).join(",") + "}";
+  }
+  throw new Error("Not a JSON value");
+}
+async function sha256(value) {
+  return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))));
+}
+async function payloadHash(input) {
+  return sha256(canonical(input));
+}
+async function verify(envelope, expectedSigner) {
+  try {
+    if (!envelope || !/^[0-9a-f]{64}$/.test(envelope.signer) || !/^[0-9a-f]{64}$/.test(envelope.digest) || !/^[0-9a-f]{128}$/.test(envelope.signature)) return false;
+    if (expectedSigner && expectedSigner !== envelope.signer) return false;
+    const preimage = COORDINATION_DOMAIN + canonical(envelope.payload);
+    if (await sha256(preimage) !== envelope.digest) return false;
+    const key = await crypto.subtle.importKey("raw", hexToBytes(envelope.signer), { name: "Ed25519" }, false, ["verify"]);
+    return await crypto.subtle.verify("Ed25519", key, hexToBytes(envelope.signature), new TextEncoder().encode(preimage));
+  } catch {
+    return false;
+  }
+}
+
+// src/acta-envelope.ts
 function canonicalize(obj) {
+  if (Array.isArray(obj)) return "[" + Array.from(obj, canonicalize).join(",") + "]";
+  if (obj !== null && typeof obj === "object") {
+    if (Object.getPrototypeOf(obj) !== Object.prototype && Object.getPrototypeOf(obj) !== null) throw new Error("Expected a plain JSON object");
+    const record = obj;
+    return "{" + Object.keys(record).sort().map((key) => {
+      if (!/^[\x20-\x7E]*$/.test(key)) throw new Error(`Non-ASCII key "${key}" in receipt payload. Only ASCII keys are permitted.`);
+      return JSON.stringify(key) + ":" + canonicalize(record[key]);
+    }).join(",") + "}";
+  }
+  return canonical(obj);
+}
+function legacyCanonicalize(obj) {
   return JSON.stringify(obj, (_key, value) => {
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const sorted = {};
@@ -35567,6 +35659,33 @@ function canonicalize(obj) {
     }
     return value;
   });
+}
+function hasLegacyUnsafeKey(value) {
+  if (!value || typeof value !== "object") return false;
+  if (Object.prototype.hasOwnProperty.call(value, "__proto__")) return true;
+  return Object.values(value).some(hasLegacyUnsafeKey);
+}
+function verifyEncoding(payload, envelope, signature, publicKeyHex, shape, allowLegacy) {
+  const jcs2 = canonicalize(payload);
+  if (import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(jcs2), (0, import_utils.hexToBytes)(publicKeyHex))) {
+    return { valid: true, shape, hash: receiptHash(envelope), canonicalization: "jcs" };
+  }
+  if (!hasLegacyUnsafeKey(envelope)) {
+    const legacy = legacyCanonicalize(payload);
+    if (legacy !== jcs2 && import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(legacy), (0, import_utils.hexToBytes)(publicKeyHex))) {
+      const legacyHash = (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(legacyCanonicalize(envelope))));
+      return {
+        valid: allowLegacy,
+        shape,
+        canonicalization: "legacy-numeric-key-order",
+        legacy_signature_valid: true,
+        legacy_hash: legacyHash,
+        ...allowLegacy ? { hash: legacyHash } : { error: "legacy_non_jcs_signature" },
+        warning: "Historical signature verifies only with pre-fix integer-key ordering. This is not JCS-conformant; preserve its original bytes and chain hashes."
+      };
+    }
+  }
+  return { valid: false, shape, error: "invalid_signature" };
 }
 function receiptHash(obj) {
   return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
@@ -35603,7 +35722,7 @@ function createReceiptEnvelope(fields, privateKeyHex, kid, issuedAt) {
   const envelope = { payload, signature: { alg: "EdDSA", kid, sig } };
   return { envelope, hash: receiptHash(envelope) };
 }
-function verifyReceipt(envelope, publicKeyHex) {
+function verifyReceipt(envelope, publicKeyHex, options = {}) {
   try {
     if (!envelope || typeof envelope !== "object") {
       return { valid: false, shape: null, error: "not_an_object" };
@@ -35618,17 +35737,13 @@ function verifyReceipt(envelope, publicKeyHex) {
       if (typeof sigObj.sig !== "string" || !env.payload || typeof env.payload !== "object") {
         return { valid: false, shape: "acta-02", error: "malformed_envelope" };
       }
-      const message = (0, import_utils.utf8ToBytes)(canonicalize(env.payload));
-      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(sigObj.sig), message, (0, import_utils.hexToBytes)(publicKeyHex));
-      return valid ? { valid: true, shape: "acta-02", hash: receiptHash(env) } : { valid: false, shape: "acta-02", error: "invalid_signature" };
+      return verifyEncoding(env.payload, env, sigObj.sig, publicKeyHex, "acta-02", options.allowLegacyNumericKeys === true);
     }
     if (typeof signature === "string") {
-      const rest = {};
+      const rest = /* @__PURE__ */ Object.create(null);
       for (const k of Object.keys(env)) if (k !== "signature") rest[k] = env[k];
-      const message = (0, import_utils.utf8ToBytes)(canonicalize(rest));
-      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), message, (0, import_utils.hexToBytes)(publicKeyHex));
       const shape = env.v === 2 ? "legacy-v2" : "legacy-v1";
-      return valid ? { valid: true, shape, hash: receiptHash(env) } : { valid: false, shape, error: "invalid_signature" };
+      return verifyEncoding(rest, env, signature, publicKeyHex, shape, options.allowLegacyNumericKeys === true);
     }
     return { valid: false, shape: null, error: "missing_signature" };
   } catch (err) {
@@ -35777,8 +35892,8 @@ var EvidenceStore = class {
   /**
    * Record a receipt observation for an agent.
    */
-  record(agentId, issuer, timestamp) {
-    const ts = timestamp || (/* @__PURE__ */ new Date()).toISOString();
+  record(agentId, issuer, timestamp2) {
+    const ts = timestamp2 || (/* @__PURE__ */ new Date()).toISOString();
     const epochHour = Math.floor(new Date(ts).getTime() / (3600 * 1e3));
     const existing = this.agents.get(agentId);
     const observation = {
@@ -35831,8 +35946,8 @@ var EvidenceStore = class {
   save() {
     if (!this.dirty) return;
     const data = {};
-    for (const [id, record] of this.agents) {
-      data[id] = record;
+    for (const [id3, record] of this.agents) {
+      data[id3] = record;
     }
     try {
       (0, import_node_fs3.writeFileSync)(this.filePath, JSON.stringify({ v: 1, agents: data }, null, 2) + "\n");
@@ -35849,8 +35964,8 @@ var EvidenceStore = class {
       const raw = (0, import_node_fs3.readFileSync)(this.filePath, "utf-8");
       const parsed = JSON.parse(raw);
       if (parsed.agents && typeof parsed.agents === "object") {
-        for (const [id, record] of Object.entries(parsed.agents)) {
-          this.agents.set(id, record);
+        for (const [id3, record] of Object.entries(parsed.agents)) {
+          this.agents.set(id3, record);
         }
       }
     } catch {
@@ -35867,8 +35982,8 @@ var EvidenceStore = class {
    */
   allSummaries() {
     const result = [];
-    for (const [id] of this.agents) {
-      result.push({ agent_id: id, summary: this.getSummary(id) });
+    for (const [id3] of this.agents) {
+      result.push({ agent_id: id3, summary: this.getSummary(id3) });
     }
     return result;
   }
@@ -36788,8 +36903,8 @@ function startStatusServer(config, receiptBuffer, approvalStore, approvalNonce) 
       } else if (path === "/receipts/latest") {
         handleReceiptLatest(res, receiptBuffer);
       } else if (path.startsWith("/receipts/")) {
-        const id = path.slice("/receipts/".length);
-        handleReceiptById(res, receiptBuffer, id);
+        const id3 = path.slice("/receipts/".length);
+        handleReceiptById(res, receiptBuffer, id3);
       } else if (path === "/approve" && req.method === "POST") {
         handleApprove(req, res, approvalStore, approvalNonce);
       } else if (path === "/approvals" && req.method === "GET") {
@@ -36883,11 +36998,11 @@ function handleReceiptLatest(res, buffer) {
   res.writeHead(200);
   res.end(JSON.stringify(latest));
 }
-function handleReceiptById(res, buffer, id) {
-  const receipt = buffer.getById(id);
+function handleReceiptById(res, buffer, id3) {
+  const receipt = buffer.getById(id3);
   if (!receipt) {
     res.writeHead(404);
-    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id }));
+    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id3 }));
     return;
   }
   res.writeHead(200);
@@ -37011,8 +37126,8 @@ function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   }
   return out;
 }
-function firstStringValue(input, keys) {
-  for (const key of keys) {
+function firstStringValue(input, keys2) {
+  for (const key of keys2) {
     const value = input[key];
     if (typeof value === "string" && value.trim()) return value.trim();
     if (typeof value === "number" || typeof value === "boolean") return String(value);
@@ -37026,7 +37141,7 @@ function actionFor(tool, input) {
 }
 function buildActionReadback(tool, input) {
   const normalized = input && typeof input === "object" && !Array.isArray(input) ? input : { value: input };
-  const canonical = stableStringify(normalized);
+  const canonical2 = stableStringify(normalized);
   const redactedFields = [];
   const disclosedFields = [];
   const payloadPreview = redact(normalized, [], redactedFields, disclosedFields);
@@ -37038,8 +37153,8 @@ function buildActionReadback(tool, input) {
     action,
     destination,
     payload_preview: payloadPreview,
-    payload_hash: (0, import_node_crypto2.createHash)("sha256").update(canonical).digest("hex"),
-    payload_bytes: Buffer.byteLength(canonical, "utf-8"),
+    payload_hash: (0, import_node_crypto2.createHash)("sha256").update(canonical2).digest("hex"),
+    payload_bytes: Buffer.byteLength(canonical2, "utf-8"),
     disclosed_fields: [...new Set(disclosedFields)].slice(0, 80),
     redacted_fields: [...new Set(redactedFields)].slice(0, 80),
     summary
@@ -37099,8 +37214,8 @@ function personRequired(gate, input) {
   if (amount.minor > gate.required_above.minor) return { required: true, detail: `${fmt(amount)} is above ${fmt(gate.required_above)}, so a named person approves it` };
   return { required: false };
 }
-function heldIdFor(sid, tool, payloadHash) {
-  return (0, import_node_crypto3.createHash)("sha256").update(`scopeblind.held_action.v1\0${sid}\0${tool}\0${payloadHash}`).digest("hex").slice(0, 24);
+function heldIdFor(sid, tool, payloadHash2) {
+  return (0, import_node_crypto3.createHash)("sha256").update(`scopeblind.held_action.v1\0${sid}\0${tool}\0${payloadHash2}`).digest("hex").slice(0, 24);
 }
 function sidFromReportUrl(url) {
   try {
@@ -37653,30 +37768,30 @@ var ProtectGateway = class {
     } catch {
     }
     if (isSigningEnabled()) {
-      const signed = signDecision(log, this.lastReceiptHash || void 0);
-      if (signed.signed) {
-        process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}
+      const signed2 = signDecision(log, this.lastReceiptHash || void 0);
+      if (signed2.signed) {
+        process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed2.signed}
 `);
         try {
-          (0, import_node_fs8.appendFileSync)(this.receiptFilePath, signed.signed + "\n");
-          if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
+          (0, import_node_fs8.appendFileSync)(this.receiptFilePath, signed2.signed + "\n");
+          if (signed2.receipt_hash) this.lastReceiptHash = signed2.receipt_hash;
         } catch {
         }
-        this.reporter?.record(signed.signed, callLine);
-        this.receiptBuffer.add(log.request_id, signed.signed);
+        this.reporter?.record(signed2.signed, callLine);
+        this.receiptBuffer.add(log.request_id, signed2.signed);
         if (this.admissionResult?.agent_id) {
           this.evidenceStore.record(this.admissionResult.agent_id, this.config.signing?.issuer || "protect-mcp");
           if (this.evidenceStore.getSummary(this.admissionResult.agent_id).receipt_count % 10 === 0) {
             this.evidenceStore.save();
           }
         }
-      } else if (signed.error) {
+      } else if (signed2.error) {
         const tombstone = JSON.stringify({
           type: "scopeblind.signing_failure.v1",
           request_id: log.request_id,
           tool: log.tool,
           decision: log.decision,
-          error: signed.error,
+          error: signed2.error,
           at: new Date(log.timestamp).toISOString()
         });
         try {
@@ -37690,8 +37805,8 @@ var ProtectGateway = class {
       this.reporter.record(void 0, callLine);
     }
   }
-  makeErrorResponse(id, code2, message) {
-    return { jsonrpc: "2.0", id, error: { code: code2, message } };
+  makeErrorResponse(id3, code2, message) {
+    return { jsonrpc: "2.0", id: id3, error: { code: code2, message } };
   }
   sendToChild(message) {
     if (this.child?.stdin?.writable) this.child.stdin.write(message + "\n");
@@ -37788,22 +37903,22 @@ var ProtectGateway = class {
       }
     }
     return new Promise((resolve2, reject) => {
-      const id = jsonRpc.id;
-      if (id === void 0 || id === null) {
+      const id3 = jsonRpc.id;
+      if (id3 === void 0 || id3 === null) {
         const modified2 = this.injectParamsCredentials(jsonRpc);
         this.sendToChild(JSON.stringify(modified2));
         resolve2(JSON.stringify({ jsonrpc: "2.0", result: {}, id: null }));
         return;
       }
       const timeout = setTimeout(() => {
-        this.pendingResponses.delete(id);
+        this.pendingResponses.delete(id3);
         resolve2(JSON.stringify({
           jsonrpc: "2.0",
           error: { code: -32e3, message: "Request timeout (30s)" },
-          id
+          id: id3
         }));
       }, REQUEST_TIMEOUT_MS);
-      this.pendingResponses.set(id, { resolve: resolve2, timeout });
+      this.pendingResponses.set(id3, { resolve: resolve2, timeout });
       const modified = this.injectParamsCredentials(jsonRpc);
       this.sendToChild(JSON.stringify(modified));
     });
@@ -37820,6 +37935,1287 @@ var ProtectGateway = class {
       this.child = null;
     }
     process.exit(0);
+  }
+};
+
+// src/coordination-devices.ts
+var DEVICE_AUTHORIZATION_DOMAIN = "scopeblind.coordination.device-authorization.v1\n";
+var DEVICE_ACTIONS = ["inspect", "decision_inbox", "negotiation_get", "decide", "accept", "negotiation_mandate", "negotiation_approve"];
+var DEVICE_LINK_TTL_MS = 10 * 60 * 1e3;
+var DEVICE_MAX_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
+var hex = (value) => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+var id = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(value);
+var object = (value) => !!value && typeof value === "object" && !Array.isArray(value);
+var time = (value) => typeof value === "string" ? Date.parse(value) : NaN;
+var exact = (value, fields) => Object.keys(value).sort().join(" ") === fields.split(" ").sort().join(" ");
+function deviceAuthorizationPreimage(payloadDigest, authorizationDigest) {
+  return DEVICE_AUTHORIZATION_DOMAIN + payloadDigest + "\n" + authorizationDigest;
+}
+function humanPrincipal(value) {
+  return value.authorization?.payload.principal_key ?? value.signer;
+}
+async function verifyDeviceAuthorization(value) {
+  try {
+    const g = value.payload;
+    return exact(value, "payload signer digest signature") && await verify(value, g.principal_key) && exact(g, "type id link_id room_id agreement_digest principal_key device_key device_name actions issued_at expires_at authority_key") && g.type === "scopeblind.coordination.device-authorization.v1" && id(g.id) && id(g.link_id) && id(g.room_id) && hex(g.agreement_digest) && hex(g.principal_key) && hex(g.device_key) && g.device_key !== g.principal_key && hex(g.authority_key) && typeof g.device_name === "string" && g.device_name.trim() === g.device_name && g.device_name.length > 0 && g.device_name.length <= 60 && Array.isArray(g.actions) && g.actions.length > 0 && g.actions.length <= DEVICE_ACTIONS.length && new Set(g.actions).size === g.actions.length && g.actions.every((action) => DEVICE_ACTIONS.includes(action)) && Number.isFinite(time(g.issued_at)) && time(g.expires_at) > time(g.issued_at) && time(g.expires_at) - time(g.issued_at) <= DEVICE_MAX_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+async function contextProposal(context, g) {
+  const proposal = context.proposal, p = proposal?.payload;
+  return proposal && p && await verify(proposal, g.authority_key) && p.type === "scopeblind.coordination.negotiation-proposal.v1" && p.room_id === g.room_id && p.agreement_digest === g.agreement_digest ? proposal : null;
+}
+async function humanPermission(value, context = {}) {
+  const p = value.payload, g = value.authorization?.payload;
+  if (!g || !object(p)) return null;
+  const direct = (action) => typeof p.issued_at === "string" && p.room_id === g.room_id && (p.agreement_digest === void 0 || p.agreement_digest === g.agreement_digest) ? { action, at: p.issued_at } : null;
+  switch (p.type) {
+    case "scopeblind.coordination.request.v1":
+      return typeof p.action === "string" && DEVICE_ACTIONS.includes(p.action) ? direct(p.action) : null;
+    case "scopeblind.coordination.approval.v1":
+      return direct("decide");
+    case "scopeblind.coordination.acceptance.v1":
+      return direct("accept");
+    case "scopeblind.coordination.negotiation-mandate.v1":
+      return p.principal_key === g.principal_key ? direct("negotiation_mandate") : null;
+    case "scopeblind.coordination.negotiation-approval.v1": {
+      const proposal = await contextProposal(context, g), q = proposal?.payload;
+      return q && p.principal_key === g.principal_key && p.session_id === q.session_id && p.proposal_digest === proposal.digest && p.next_agreement_digest === q.next_agreement_digest && canonical(p.mandate_digests) === canonical(q.mandate_digests) && typeof p.issued_at === "string" ? { action: "negotiation_approve", at: p.issued_at } : null;
+    }
+    case "scopeblind.coordination.agreement.v1":
+    case "scopeblind.coordination.grant.v1":
+    case "scopeblind.coordination.claim.v1": {
+      const proposal = await contextProposal(context, g), q = proposal?.payload, approval = context.approval;
+      if (!q || !approval || approval.payload.decision !== "approve" || approval.authorization?.digest !== value.authorization?.digest || !await verifyHuman(approval, g.principal_key, { proposal, requireRecordedUse: context.requireRecordedUse, authorityKey: context.authorityKey })) return null;
+      const exactPayload = p.type === "scopeblind.coordination.agreement.v1" ? q.next_agreement.owner_key === g.principal_key && canonical(p) === canonical(q.next_agreement) : p.type === "scopeblind.coordination.grant.v1" ? q.reviewer_grant.issuer === g.principal_key && canonical(p) === canonical(q.reviewer_grant) : p.guest_key === g.principal_key && p.room_id === q.next_agreement.id && p.grant_id === q.reviewer_grant.grant_id && typeof p.issued_at === "string" && time(p.issued_at) >= time(approval.payload.issued_at) - 3e5 && time(p.issued_at) <= time(approval.payload.expires_at);
+      return exactPayload ? { action: "negotiation_approve", at: approval.payload.issued_at } : null;
+    }
+    default:
+      return null;
+  }
+}
+async function verifyHuman(value, expectedPrincipal, context = {}) {
+  try {
+    if (!value || !object(value) || Object.keys(value).some((key2) => !["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"].includes(key2))) return false;
+    if (!value.authorization) return !value.authorization_signature && !value.authorization_use && await verify(value, expectedPrincipal);
+    const authorization = value.authorization, g = authorization.payload;
+    if (context.authorityKey !== void 0 && g.authority_key !== context.authorityKey) return false;
+    if (!await verify(value) || !await verifyDeviceAuthorization(authorization) || g.principal_key !== expectedPrincipal || g.device_key !== value.signer || typeof value.authorization_signature !== "string" || !/^[0-9a-f]{128}$/.test(value.authorization_signature)) return false;
+    const key = await crypto.subtle.importKey("raw", hexToBytes(value.signer), { name: "Ed25519" }, false, ["verify"]);
+    if (!await crypto.subtle.verify("Ed25519", key, hexToBytes(value.authorization_signature), new TextEncoder().encode(deviceAuthorizationPreimage(value.digest, authorization.digest)))) return false;
+    const permission = await humanPermission(value, context);
+    if (!permission || !g.actions.includes(permission.action) || time(permission.at) < time(g.issued_at) - 3e5 || time(permission.at) >= time(g.expires_at)) return false;
+    const p = value.payload;
+    if (p.expires_at !== void 0 && !["scopeblind.coordination.grant.v1", "scopeblind.coordination.agreement.v1"].includes(String(p.type)) && (!Number.isFinite(time(p.expires_at)) || time(p.expires_at) > time(g.expires_at))) return false;
+    const use = value.authorization_use;
+    if (!use) return !context.requireRecordedUse;
+    const u = use.payload;
+    return exact(use, "payload signer digest signature") && await verify(use, g.authority_key) && exact(u, "type authorization_digest principal_key device_key room_id payload_digest action recorded_at") && u.type === "scopeblind.coordination.device-use.v1" && u.authorization_digest === authorization.digest && u.principal_key === g.principal_key && u.device_key === g.device_key && u.room_id === g.room_id && u.payload_digest === value.digest && u.action === permission.action && time(u.recorded_at) >= time(g.issued_at) && time(u.recorded_at) < time(g.expires_at) && time(u.recorded_at) >= time(permission.at) - 3e5;
+  } catch {
+    return false;
+  }
+}
+
+// src/coordination-rehearsal.ts
+var kinds = /* @__PURE__ */ new Set(["invoice", "approved_invoice", "duplicate_invoice", "changed_approval", "changed_destination", "expired_approval", "budget_cap"]);
+var outcomes = /* @__PURE__ */ new Set(["allow", "ask", "refuse", "invariant"]);
+function parseRehearsalCase(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid_rehearsal_case");
+  const v = value;
+  if (Object.keys(v).some((k) => !["id", "title", "kind", "invoice_id", "amount_minor", "expected", "requirement", "required"].includes(k)) || typeof v.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(v.id) || typeof v.title !== "string" || !v.title.trim() || v.title.length > 120 || typeof v.kind !== "string" || !kinds.has(v.kind) || typeof v.invoice_id !== "string" || !/^[A-Za-z0-9_-]{1,60}$/.test(v.invoice_id) || typeof v.expected !== "string" || !outcomes.has(v.expected) || typeof v.requirement !== "string" || !v.requirement.trim() || v.requirement.length > 400 || v.amount_minor !== void 0 && (!Number.isSafeInteger(v.amount_minor) || Number(v.amount_minor) < 1 || Number(v.amount_minor) > 1e7) || v.required !== void 0 && typeof v.required !== "boolean") throw new Error("invalid_rehearsal_case");
+  if (v.kind === "invoice" === (v.expected === "invariant")) throw new Error("invalid_rehearsal_expectation");
+  if (v.amount_minor !== void 0 && ["changed_approval", "expired_approval", "budget_cap"].includes(v.kind)) throw new Error("rehearsal_amount_not_supported");
+  return {
+    id: v.id,
+    title: v.title.trim(),
+    kind: v.kind,
+    invoice_id: v.invoice_id,
+    ...v.amount_minor !== void 0 ? { amount_minor: Number(v.amount_minor) } : {},
+    expected: v.expected,
+    requirement: v.requirement.trim(),
+    ...v.required !== void 0 ? { required: v.required } : {}
+  };
+}
+function parseRepairProposal(value, budget) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid_repair_proposal");
+  const v = value;
+  if (Object.keys(v).some((k) => !["id", "approval_above_minor", "rationale"].includes(k)) || typeof v.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(v.id) || !Number.isSafeInteger(v.approval_above_minor) || Number(v.approval_above_minor) < 0 || Number(v.approval_above_minor) > budget || typeof v.rationale !== "string" || !v.rationale.trim() || v.rationale.length > 600) throw new Error("invalid_repair_proposal");
+  return { id: v.id, approval_above_minor: Number(v.approval_above_minor), rationale: v.rationale.trim() };
+}
+function defaultRehearsalCases(fixtures) {
+  const invoice = fixtures.invoices.find((i) => !i.duplicate_of);
+  const make = (id3, title, kind, requirement) => ({ id: `required-${id3}`, title, kind, invoice_id: invoice.invoice_id, expected: "invariant", requirement, required: true });
+  return [
+    make("valid", "A legitimate payment can complete", "approved_invoice", "An exact, authorized invoice can be paid once. Required review must not prevent approved work from completing."),
+    make("duplicate", "Submit the same invoice twice", "duplicate_invoice", "A second operation for an already-paid invoice must not create another payment."),
+    make("changed", "Change the amount after approval", "changed_approval", "Approval for one exact request must not authorize a changed amount."),
+    make("destination", "Change the payment destination", "changed_destination", "A payment to a destination outside the approved vendor record must be refused."),
+    make("expired", "Use an expired approval", "expired_approval", "An expired exact approval cannot authorize a payment that needs review."),
+    make("budget", "Go over the total budget", "budget_cap", "The aggregate budget cannot be exceeded, even with separate operations and exact approvals.")
+  ];
+}
+async function rehearsalDigest(value) {
+  return sha256(canonical(value));
+}
+async function verifyRehearsalEvidence(bundle, pin) {
+  const checks = [];
+  const add = (label, ok) => checks.push({ label, ok: !!ok });
+  try {
+    add("Recognized rehearsal evidence", bundle.type === "scopeblind.coordination.rehearsal-evidence.v1");
+    const a = bundle.agreement.payload, r = bundle.report.payload;
+    add("Bounded invoice agreement and case set", a.type === "scopeblind.coordination.agreement.v1" && a.currency === "USD" && Number.isSafeInteger(a.budget_minor) && a.budget_minor > 0 && a.budget_minor <= 1e7 && Number.isSafeInteger(a.approval_above_minor) && a.approval_above_minor >= 0 && a.approval_above_minor <= a.budget_minor && Array.isArray(bundle.cases) && bundle.cases.length >= 6 && bundle.cases.length <= 30 && new Set(bundle.cases.map((c) => c.id)).size === bundle.cases.length && bundle.cases.every((c) => canonical(parseRehearsalCase(c)) === canonical(c)));
+    add("Owner signed the source agreement", await verifyOwnerAgreement(bundle.agreement, bundle.source_negotiation) && (bundle.agreement.authorization ? !!bundle.source_negotiation : bundle.source_negotiation === void 0));
+    add("Named authority signed the report", await verify(bundle.report, pin || a.registrar_key));
+    add("Report authority matches the agreement", bundle.report.signer === a.registrar_key);
+    add("Report binds this agreement and room", r.type === "scopeblind.coordination.rehearsal-report.v1" && r.agreement_digest === bundle.agreement.digest && r.room_id === a.id);
+    add("Exact source fixtures and included cases are present", r.fixture_digest === await rehearsalDigest(bundle.fixtures) && r.cases_digest === await rehearsalDigest(bundle.cases));
+    add("Report includes each case exactly once", r.results.length === bundle.cases.length && canonical(r.results.map((x) => x.case)) === canonical(bundle.cases));
+    add("Declared isolation and adapter are explicit", r.isolation === "separate-fixture-ledgers" && r.adapter === "coordination-d1-sandbox" && r.runtime_revision.length > 0);
+    add("Source threshold matches the tested version", r.before_approval_above_minor === a.approval_above_minor);
+    if (bundle.proposal) {
+      const p = bundle.proposal.payload;
+      add("Authority recorded the exact proposed change", await verify(bundle.proposal, a.registrar_key) && p.type === "scopeblind.coordination.repair-proposal.v1");
+      add("Proposal and report share the same source and cases", r.proposal_digest === bundle.proposal.digest && p.room_id === a.id && p.agreement_digest === bundle.agreement.digest && p.fixture_digest === r.fixture_digest && p.cases_digest === r.cases_digest);
+      add("Proposed threshold matches the comparison", p.previous_approval_above_minor === a.approval_above_minor && p.approval_above_minor === r.after_approval_above_minor && Number.isSafeInteger(p.approval_above_minor) && p.approval_above_minor >= 0 && p.approval_above_minor <= a.budget_minor);
+    } else add("Baseline report claims no proposed version", r.proposal_digest === void 0 && r.after_approval_above_minor === void 0);
+    const selected = r.results.map((x) => bundle.proposal ? x.after : x.before);
+    add("Every compared case has an observation", selected.every(Boolean) && r.results.every((x) => !!x.before && (!bundle.proposal ? x.after === void 0 : true)));
+    const sound = (c, o) => o && typeof o.reason === "string" && o.reason.length <= 2e3 && Array.isArray(o.steps) && o.steps.length > 0 && o.steps.length <= 50 && o.steps.every((s) => typeof s.action === "string" && s.action.length <= 200 && typeof s.reason === "string" && s.reason.length <= 2e3 && ["allow", "ask", "refuse", "confirmed", "rejected"].includes(s.decision)) && Number.isSafeInteger(o.payments) && o.payments >= 0 && Number.isSafeInteger(o.spent_minor) && o.spent_minor >= 0 && ["allow", "ask", "refuse", "error"].includes(o.actual) && !(o.actual === "error" && o.matched) && o.matched === (c.expected === "invariant" ? o.invariant_passed === true : o.actual === c.expected);
+    add("Observation summaries agree with stated expectations", r.results.every((x) => sound(x.case, x.before) && (!x.after || sound(x.case, x.after))));
+    add("Required safety cases remain included", defaultRehearsalCases(bundle.fixtures).every((c) => bundle.cases.some((x) => canonical(x) === canonical(c))));
+    add("Required-case and expectation totals match the observations", r.required_passed === r.results.every((x, i) => !x.case.required || selected[i]?.matched === true) && r.expectations_met === selected.every((x) => x?.matched === true));
+    if (bundle.adoption) {
+      const d = bundle.adoption.payload, authorization = bundle.adoption_authorization, next = bundle.adopted_agreement;
+      add("Authority recorded adoption of this exact report", await verify(bundle.adoption, a.registrar_key) && d.type === "scopeblind.coordination.rehearsal-adoption.v1" && d.source_room_id === a.id && d.source_agreement_digest === bundle.agreement.digest && d.report_digest === bundle.report.digest && d.proposal_digest === bundle.proposal?.digest && d.fixture_digest === r.fixture_digest && d.cases_digest === r.cases_digest && d.owner_key === a.owner_key && d.scope === "new-separate-sample-task");
+      add("Owner signed adoption of the exact report and new agreement", authorization && next && await verify(authorization, a.owner_key) && await verify(next, a.owner_key) && authorization.digest === d.authorization_digest && authorization.payload.type === "scopeblind.coordination.request.v1" && authorization.payload.action === "rehearsal_adopt" && authorization.payload.room_id === a.id && authorization.payload.body.report_digest === bundle.report.digest && authorization.payload.body.proposal_id === bundle.proposal?.payload.id && canonical(authorization.payload.body.agreement) === canonical(next) && next.digest === d.agreement_digest && next.payload.id === d.room_id && next.payload.id !== a.id);
+      add("Only the tested threshold changed in the new task", next && bundle.proposal && canonical(next.payload) === canonical({ ...a, id: next.payload.id, issued_at: next.payload.issued_at, approval_above_minor: bundle.proposal.payload.approval_above_minor }) && r.required_passed && r.expectations_met);
+    } else add("No unbound adoption claims are present", !bundle.adoption_authorization && !bundle.adopted_agreement);
+  } catch {
+    add("Complete, well-formed rehearsal evidence", false);
+  }
+  return { valid: checks.every((x) => x.ok), checks, errors: checks.filter((x) => !x.ok).map((x) => x.label), limitations: [
+    "These are concrete checks against isolated sample ledgers, not proof for every possible input or another deployment.",
+    "The named ScopeBlind authority attests to observed gate behavior. Signatures establish integrity and key control, not independent observation or legal identity.",
+    "Proposed changes grant no authority by themselves. A new sample task has its own ledger; earlier work and payments remain unchanged."
+  ] };
+}
+
+// src/coordination-negotiation.ts
+var NEGOTIATION_MAX_PROPOSALS = 3;
+var NEGOTIATION_MAX_MODEL_STEPS = 6;
+var NEGOTIATION_AGENT_ACTIONS = ["negotiation_get", "negotiation_propose", "negotiation_respond", "negotiation_compare"];
+var NEGOTIATION_ACTIONS = [
+  ...NEGOTIATION_AGENT_ACTIONS,
+  "negotiation_create",
+  "negotiation_claim",
+  "negotiation_mandate",
+  "negotiation_approve",
+  "negotiation_adopt",
+  "negotiation_pair_create",
+  "negotiation_pair_claim",
+  "negotiation_pair_revoke",
+  "negotiation_step",
+  "negotiation_cancel"
+];
+var negotiationDigest = (value) => sha256(canonical(value));
+var negotiationPayloadDigest = (value) => sha256(COORDINATION_DOMAIN + canonical(value));
+async function privateBriefCommitment(brief) {
+  return sha256("scopeblind.negotiation.private-brief.v1\n" + canonical(brief));
+}
+function parseNegotiationBrief(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid_private_brief");
+  const v = value;
+  if (!["preference,salt,text", "budget_preference,preference,salt,text"].includes(Object.keys(v).sort().join(",")) || v.budget_preference !== void 0 && !["preserve_budget", "lower_budget", "more_capacity"].includes(String(v.budget_preference)) || typeof v.text !== "string" || v.text.length > 2e3 || !["fewer_reviews", "more_review", "balanced"].includes(String(v.preference)) || typeof v.salt !== "string" || !/^[0-9a-f]{64}$/.test(v.salt)) throw new Error("invalid_private_brief");
+  canonical(v);
+  return v;
+}
+function mandateCases(mandates, fixtures) {
+  return [...defaultRehearsalCases(fixtures), ...mandates.some((m) => m.payload.min_budget_minor !== void 0) ? fixtures.invoices.filter((i) => !i.duplicate_of).map((i, index) => ({ id: `sample-invoice-${index}`, title: `${i.invoice_id} \xB7 sample outcome`, kind: "invoice", invoice_id: i.invoice_id, expected: "allow", required: false, requirement: "Observe this sample invoice in isolation; its outcome is not a hard requirement." })) : [], ...mandates.flatMap((m, side) => m.payload.required_invoices.map((r, index) => ({
+    id: `principal-${side}-${index}`,
+    title: `${r.invoice_id} \xB7 ${r.expected === "allow" ? "keep moving" : "needs review"}`,
+    kind: "invoice",
+    invoice_id: r.invoice_id,
+    expected: r.expected,
+    requirement: `Required by ${side === 0 ? "the organizer" : "the partner"}.`,
+    required: true
+  })))];
+}
+function mandateBudget(m, sourceBudget) {
+  return { min: m.min_budget_minor ?? sourceBudget, max: m.max_budget_minor ?? sourceBudget };
+}
+function negotiationPlanWithinMandate(m, threshold, budget, sourceBudget) {
+  const range = mandateBudget(m, sourceBudget);
+  return Number.isSafeInteger(threshold) && Number.isSafeInteger(budget) && budget >= range.min && budget <= range.max && threshold >= m.min_threshold_minor && threshold <= m.max_threshold_minor && threshold <= budget;
+}
+var HEX = /^[0-9a-f]{64}$/;
+var id2 = (v, max = 100) => typeof v === "string" && /^[A-Za-z0-9_-]+$/.test(v) && v.length >= 8 && v.length <= max;
+var integer = (v, min, max) => Number.isSafeInteger(v) && Number(v) >= min && Number(v) <= max;
+var time2 = (v) => typeof v === "string" ? Date.parse(v) : NaN;
+var exact2 = (v, required, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+var same = (a, b) => canonical(a) === canonical(b);
+var keys = (s) => s.split(" ");
+var text = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max;
+async function signed(v, key) {
+  return exact2(v, keys("payload signer digest signature")) && HEX.test(key) && await verify(v, key);
+}
+function boundedAgreement(a) {
+  return exact2(a, keys("type id version title owner_key registrar_key currency budget_minor approval_above_minor approval_ttl_seconds allowed_destinations issued_at"), keys("mode brief preferences assumptions require_po_match")) && a.type === "scopeblind.coordination.agreement.v1" && id2(a.id) && a.version === 1 && text(a.title, 200) && HEX.test(a.owner_key) && HEX.test(a.registrar_key) && a.currency === "USD" && integer(a.budget_minor, 1, 1e7) && integer(a.approval_above_minor, 0, a.budget_minor) && integer(a.approval_ttl_seconds, 30, 900) && Number.isFinite(time2(a.issued_at)) && Array.isArray(a.allowed_destinations) && a.allowed_destinations.length > 0 && a.allowed_destinations.length <= 100 && new Set(a.allowed_destinations).size === a.allowed_destinations.length && a.allowed_destinations.every((d) => text(d, 500)) && (a.mode === void 0 || ["guided", "live"].includes(a.mode)) && (a.require_po_match === void 0 || typeof a.require_po_match === "boolean") && (a.brief === void 0 || typeof a.brief === "string" && a.brief.length <= 1e4) && [a.preferences, a.assumptions].every((v) => v === void 0 || Array.isArray(v) && v.length <= 100 && v.every((t) => typeof t === "string" && t.length <= 2e3));
+}
+function boundedFixtures(f) {
+  return exact2(f, keys("revision invoices purchase_orders")) && integer(f.revision, 1, 1e7) && Array.isArray(f.invoices) && f.invoices.length > 0 && f.invoices.length <= 100 && f.invoices.some((i) => !i.duplicate_of) && new Set(f.invoices.filter((i) => !i.duplicate_of).map((i) => i.invoice_id)).size === f.invoices.filter((i) => !i.duplicate_of).length && f.invoices.every((i) => !i.duplicate_of || f.invoices.some((base) => !base.duplicate_of && base.id === i.duplicate_of && base.invoice_id === i.invoice_id && base.amount_minor === i.amount_minor && base.destination === i.destination && base.vendor === i.vendor)) && new Set(f.invoices.map((i) => i.id)).size === f.invoices.length && f.invoices.every((i) => exact2(i, keys("id invoice_id vendor description amount_minor destination"), keys("duplicate_of purchase_order_id")) && text(i.id, 100) && text(i.invoice_id, 60) && text(i.vendor, 300) && typeof i.description === "string" && i.description.length <= 2e3 && integer(i.amount_minor, 1, 1e7) && text(i.destination, 500) && (i.duplicate_of === void 0 || text(i.duplicate_of, 60)) && (i.purchase_order_id === void 0 || text(i.purchase_order_id, 100))) && Array.isArray(f.purchase_orders) && f.purchase_orders.length <= 100 && new Set(f.purchase_orders.map((p) => p.id)).size === f.purchase_orders.length && f.purchase_orders.every((p) => exact2(p, keys("id vendor destination amount_minor currency")) && text(p.id, 100) && text(p.vendor, 300) && text(p.destination, 500) && integer(p.amount_minor, 1, 1e7) && p.currency === "USD");
+}
+function observationConsistent(c, o, a, f) {
+  if (!exact2(o, keys("actual matched reason steps payments spent_minor"), ["invariant_passed"]) || !["allow", "ask", "refuse", "error"].includes(o.actual) || typeof o.matched !== "boolean" || typeof o.reason !== "string" || o.reason.length > 2e3 || !integer(o.payments, 0, 2) || !integer(o.spent_minor, 0, 2e7) || !Array.isArray(o.steps) || o.steps.length < 1 || o.steps.length > 50 || !o.steps.every((s) => exact2(s, keys("action decision reason"), keys("operation_id payload_hash")) && ["setup", "admit", "submit_changed_request", "approve_exact", "submit_expired_approval", "execute"].includes(s.action) && ["allow", "ask", "refuse", "confirmed", "rejected"].includes(s.decision) && typeof s.reason === "string" && s.reason.length <= 2e3 && (s.operation_id === void 0 || id2(s.operation_id)) && (s.payload_hash === void 0 || HEX.test(s.payload_hash)))) return false;
+  if (c.expected === "invariant" ? typeof o.invariant_passed !== "boolean" : o.invariant_passed !== void 0) return false;
+  if (o.matched !== (c.expected === "invariant" ? o.invariant_passed === true : o.actual === c.expected)) return false;
+  if (o.actual === "error") return !o.matched && o.invariant_passed !== true;
+  const original = f.invoices.find((i) => i.invoice_id === c.invoice_id);
+  if (!original) return false;
+  let amount = c.amount_minor ?? original.amount_minor;
+  if (c.kind !== "invoice" && c.amount_minor === void 0) amount = Math.min(amount, a.budget_minor);
+  if (c.kind === "budget_cap") amount = Math.floor(a.budget_minor / 2) + 1;
+  if (["changed_approval", "expired_approval"].includes(c.kind) && a.mode !== "live" && !a.require_po_match && a.approval_above_minor < a.budget_minor) amount = a.approval_above_minor + 1;
+  const admissions = o.steps.filter((s) => s.action === "admit" || s.action === "submit_changed_request"), first = admissions[0], last = admissions.at(-1);
+  const executed = o.steps.filter((s) => s.action === "execute" && s.decision === "confirmed");
+  if (!first || !last || o.payments !== executed.length || o.spent_minor !== amount * o.payments) return false;
+  if (executed.some((s) => !s.operation_id || !s.payload_hash || !o.steps.slice(0, o.steps.indexOf(s)).some((p) => (p.action === "admit" || p.action === "submit_changed_request") && p.decision === "allow" && p.operation_id === s.operation_id && p.payload_hash === s.payload_hash))) return false;
+  let invariant = false;
+  if (c.kind === "invoice") {
+    const order = f.purchase_orders.find((p) => p.id === original.purchase_order_id);
+    const poMatches = c.amount_minor !== void 0 || !!order && order.amount_minor === amount && order.vendor === original.vendor && order.destination === original.destination && order.currency === "USD";
+    const expectedGate = !a.allowed_destinations.includes(original.destination) || amount > a.budget_minor ? "refuse" : amount > a.approval_above_minor || a.require_po_match === true && !poMatches ? "ask" : "allow";
+    return o.actual === expectedGate && o.actual === first.decision && admissions.length === 1 && o.payments <= 1;
+  }
+  if (c.kind === "approved_invoice") {
+    invariant = o.payments === 1 && o.spent_minor === amount;
+    if (o.actual !== (executed.length ? "allow" : "refuse")) return false;
+  } else if (c.kind === "duplicate_invoice" || c.kind === "budget_cap") {
+    if (o.actual !== last.decision || admissions.length < 2) return false;
+    invariant = executed.length > 0 && last.decision !== "allow" && o.payments === 1 && o.spent_minor <= a.budget_minor;
+  } else if (c.kind === "changed_destination") {
+    if (o.actual !== last.decision) return false;
+    invariant = last.decision === "refuse" && o.payments === 0;
+  } else if (c.kind === "changed_approval") {
+    if (first.decision === "ask") {
+      if (o.actual !== last.decision) return false;
+      invariant = o.steps.some((s) => s.action === "approve_exact" && s.decision === "allow") && last.action === "submit_changed_request" && last.decision !== "allow" && o.payments === 0;
+    } else if (first.decision === "allow") {
+      invariant = last.decision === "rejected" && last.reason === "operation_id_payload_mismatch" && o.payments === 0;
+      if (o.actual !== (invariant ? "refuse" : "allow")) return false;
+    } else if (o.actual !== "refuse") return false;
+  } else if (c.kind === "expired_approval") {
+    if (o.actual !== last.decision) return false;
+    const expired = o.steps.find((s) => s.action === "submit_expired_approval");
+    invariant = expired?.decision === "rejected" && expired.reason === "invalid_approval_expiry" && (!(a.require_po_match === true || amount > a.approval_above_minor) || last.decision !== "allow") && o.payments === 0;
+  }
+  return o.invariant_passed === invariant;
+}
+async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
+  const checks = [];
+  const add = (name, passed) => checks.push({ name, passed: !!passed });
+  try {
+    if (depth > 4) throw new Error("Device agreement lineage exceeds supported depth");
+    const e = value;
+    add("Recognized public negotiation export with no private context", exact2(e, keys("type session invitation binding agreement fixtures mandates proposals responses report approvals"), keys("adoption adopted_agreement reviewer_grant reviewer_binding agent_bindings source_negotiation")) && e.type === "scopeblind.coordination.negotiation-evidence.v1");
+    add("Device-signed source has only its required bounded lineage", e.agreement.authorization ? !!e.source_negotiation : e.source_negotiation === void 0);
+    const a = e.agreement.payload, s = e.session.payload, i = e.invitation.payload, b = e.binding.payload;
+    const authority = authorityKey ?? a.registrar_key;
+    add("Owner signed the bounded source agreement and exact fixture snapshot", boundedAgreement(a) && boundedFixtures(e.fixtures) && await verifyOwnerAgreement(e.agreement, e.source_negotiation, depth + 1) && a.registrar_key === authority);
+    add("Named authority signed a bounded session tied to this source", await signed(e.session, authority) && exact2(s, keys("type id room_id agreement_digest fixture_digest owner_key registrar_key invitation_digest created_at expires_at max_proposals"), ["parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]) && s.type === "scopeblind.coordination.negotiation-session.v1" && id2(s.id) && s.room_id === a.id && s.agreement_digest === e.agreement.digest && s.fixture_digest === await negotiationDigest(e.fixtures) && (s.parent_session_id === void 0 || id2(s.parent_session_id) && s.parent_session_id !== s.id) && s.parent_session_id === i.parent_session_id && s.source_operation_id === i.source_operation_id && (s.source_operation_id === void 0 ? s.source_invoice_id === void 0 && s.source_operation_digest === void 0 : id2(s.source_operation_id) && text(s.source_invoice_id, 60) && HEX.test(s.source_operation_digest ?? "") && e.fixtures.invoices.some((v) => !v.duplicate_of && v.invoice_id === s.source_invoice_id)) && s.owner_key === a.owner_key && s.registrar_key === authority && s.invitation_digest === e.invitation.digest && s.max_proposals === 3 && time2(s.created_at) >= time2(a.issued_at) - 3e5 && time2(s.expires_at) > time2(s.created_at) && time2(s.expires_at) <= time2(s.created_at) + 864e5);
+    const during = (at) => time2(at) >= time2(s.created_at) - 3e5 && time2(at) < time2(s.expires_at);
+    add("Owner invited one counterparty for this exact session", await signed(e.invitation, a.owner_key) && exact2(i, keys("type session_id room_id agreement_digest fixture_digest issuer registrar_key role token_hash max_claims expires_at"), ["parent_session_id", "source_operation_id"]) && i.type === "scopeblind.coordination.negotiation-invitation.v1" && i.session_id === s.id && i.room_id === a.id && i.agreement_digest === e.agreement.digest && i.fixture_digest === s.fixture_digest && i.issuer === a.owner_key && i.registrar_key === authority && i.role === "counterparty" && i.max_claims === 1 && HEX.test(i.token_hash) && i.expires_at === s.expires_at);
+    const claim = b.claim.payload, partner = b.guest_key, principals = [a.owner_key, partner];
+    add("Distinct counterparty signed its claim and the authority bound that claim", await signed(e.binding, authority) && await signed(b.claim, partner) && exact2(b, keys("type session_id room_id invitation_digest guest_key name issued_at expires_at claim")) && b.type === "scopeblind.coordination.negotiation-binding.v1" && b.session_id === s.id && b.room_id === a.id && b.invitation_digest === e.invitation.digest && HEX.test(partner) && partner !== a.owner_key && during(b.issued_at) && b.expires_at === s.expires_at && exact2(claim, keys("type session_id room_id guest_key name issued_at nonce")) && claim.type === "scopeblind.coordination.negotiation-claim.v1" && claim.session_id === s.id && claim.room_id === a.id && claim.guest_key === partner && text(claim.name, 60) && claim.name === b.name && id2(claim.nonce) && Math.abs(time2(claim.issued_at) - time2(b.issued_at)) <= 3e5);
+    add("Exactly two distinct principal mandates are included in organizer/partner order", Array.isArray(e.mandates) && e.mandates.length === 2 && e.mandates.every((m, n) => m.payload.principal_key === principals[n]) && new Set(e.mandates.map((m) => m.digest)).size === 2);
+    const mandateDigests = e.mandates.map((m) => m.digest);
+    for (let n = 0; n < e.mandates.length; n++) {
+      const m = e.mandates[n].payload;
+      add(`Principal ${n + 1} signed bounded negotiation-only authority`, await verifyHuman(e.mandates[n], principals[n], { requireRecordedUse: true, authorityKey: authority }) && exact2(m, keys("type session_id room_id principal_key version agreement_digest fixture_digest min_threshold_minor max_threshold_minor required_invoices private_brief_commitment agent_mode actions issued_at expires_at"), ["min_budget_minor", "max_budget_minor"]) && m.type === "scopeblind.coordination.negotiation-mandate.v1" && m.session_id === s.id && m.room_id === a.id && m.principal_key === principals[n] && m.agreement_digest === e.agreement.digest && m.fixture_digest === s.fixture_digest && integer(m.version, 1, 1e6) && (m.min_budget_minor === void 0 && m.max_budget_minor === void 0 || integer(m.min_budget_minor, 1, 1e7) && integer(m.max_budget_minor, m.min_budget_minor, 1e7)) && integer(m.min_threshold_minor, 0, mandateBudget(m, a.budget_minor).max) && integer(m.max_threshold_minor, m.min_threshold_minor, mandateBudget(m, a.budget_minor).max) && Array.isArray(m.required_invoices) && m.required_invoices.length <= 2 && new Set(m.required_invoices.map((r2) => r2.invoice_id)).size === m.required_invoices.length && m.required_invoices.every((r2) => exact2(r2, keys("invoice_id expected")) && ["allow", "ask"].includes(r2.expected) && e.fixtures.invoices.some((v) => v.invoice_id === r2.invoice_id && !v.duplicate_of)) && (s.source_invoice_id === void 0 || m.required_invoices.some((r2) => r2.invoice_id === s.source_invoice_id)) && HEX.test(m.private_brief_commitment) && ["hosted", "own", "manual"].includes(m.agent_mode) && same(m.actions, NEGOTIATION_AGENT_ACTIONS) && during(m.issued_at) && time2(m.expires_at) > time2(m.issued_at) && time2(m.expires_at) <= time2(s.expires_at));
+    }
+    const validAt = (principal, at) => {
+      const m = e.mandates.find((m2) => m2.payload.principal_key === principal)?.payload;
+      return !!m && during(at) && time2(at) >= time2(m.issued_at) - 3e5 && time2(at) < time2(m.expires_at);
+    };
+    const agentBindings = e.agent_bindings ?? [];
+    add("Installed agent bindings are bounded and independently scoped per principal", Array.isArray(agentBindings) && agentBindings.length <= 12 && new Set(agentBindings.map((v) => v.payload.pair_id)).size === agentBindings.length);
+    for (const binding of agentBindings) {
+      const g = binding.payload, auth = g.owner_authorization, q = auth.payload, body = q.body, principal = g.principal_key;
+      add("Principal signed the installed agent pairing authorization", await signed(binding, authority) && await signed(auth, principal) && exact2(g, keys("type pair_id room_id session_id principal_key agreement_digest owner_key agent_key name scope audience issued_at expires_at owner_authorization")) && g.type === "scopeblind.coordination.agent-binding.v1" && g.audience === "scopeblind.coordination.negotiation" && id2(g.pair_id) && g.room_id === a.id && g.session_id === s.id && principals.includes(principal) && g.owner_key === principal && HEX.test(g.agent_key) && !principals.includes(g.agent_key) && g.agreement_digest === e.agreement.digest && same(g.scope, NEGOTIATION_AGENT_ACTIONS) && validAt(principal, g.issued_at) && time2(g.expires_at) > time2(g.issued_at) && time2(g.expires_at) <= time2(e.mandates.find((m) => m.payload.principal_key === principal).payload.expires_at) && exact2(q, keys("type action room_id body issued_at nonce")) && q.type === "scopeblind.coordination.request.v1" && q.action === "negotiation_pair_create" && q.room_id === a.id && id2(q.nonce) && exact2(body, keys("session_id pair_id secret_hash name expires_at token_expires_at scope"), ["expected_agent_key"]) && (body.expected_agent_key === void 0 || body.expected_agent_key === g.agent_key) && body.session_id === s.id && body.pair_id === g.pair_id && HEX.test(String(body.secret_hash)) && text(body.name, 60) && text(g.name, 60) && same(body.scope, NEGOTIATION_AGENT_ACTIONS) && body.token_expires_at === g.expires_at && validAt(principal, q.issued_at) && time2(body.expires_at) > time2(q.issued_at) && time2(body.expires_at) <= time2(q.issued_at) + 9e5 && time2(g.issued_at) < time2(body.expires_at) && time2(g.issued_at) >= time2(q.issued_at) - 3e5 && time2(body.expires_at) <= time2(g.expires_at) && !agentBindings.some((other) => other.payload.agent_key === g.agent_key && other.payload.principal_key !== principal));
+    }
+    const actorBound = (p2) => {
+      const mandate = e.mandates.find((m) => m.payload.principal_key === p2.principal_key)?.payload;
+      if (!mandate || !validAt(p2.principal_key, p2.issued_at)) return false;
+      if (p2.agent_mode === "manual") return p2.agent_key === void 0;
+      if (p2.agent_mode === "hosted") return mandate.agent_mode === "hosted" && p2.agent_key === void 0;
+      return p2.agent_mode === "own" && mandate.agent_mode === "own" && agentBindings.some((v) => v.payload.agent_key === p2.agent_key && v.payload.principal_key === p2.principal_key && time2(p2.issued_at) >= time2(v.payload.issued_at) && time2(p2.issued_at) < time2(v.payload.expires_at));
+    };
+    add("At most three uniquely identified proposals are included", Array.isArray(e.proposals) && e.proposals.length >= 1 && e.proposals.length <= 3 && new Set(e.proposals.map((p2) => p2.payload.id)).size === e.proposals.length);
+    for (let n = 0; n < e.proposals.length; n++) {
+      const envelope = e.proposals[n], p2 = envelope.payload, mine = e.mandates.find((m) => m.payload.principal_key === p2.principal_key)?.payload, g = p2.reviewer_grant;
+      add(`Candidate ${n + 1} has a signed source, parent and principal authority`, await signed(envelope, authority) && exact2(p2, keys("type id approval_above_minor session_id room_id round principal_key agent_mode agreement_digest fixture_digest mandate_digests next_agreement next_agreement_digest reviewer_grant reviewer_grant_digest issued_at"), keys("parent_digest agent_key budget_minor exploration")) && p2.type === "scopeblind.coordination.negotiation-proposal.v1" && typeof p2.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(p2.id) && p2.session_id === s.id && p2.room_id === a.id && p2.round === n + 1 && p2.parent_digest === e.proposals[n - 1]?.digest && p2.agreement_digest === e.agreement.digest && p2.fixture_digest === s.fixture_digest && same(p2.mandate_digests, mandateDigests) && (p2.exploration === void 0 || p2.exploration === true && p2.agent_mode === "manual" && !p2.agent_key) && !!mine && negotiationPlanWithinMandate(mine, p2.approval_above_minor, p2.budget_minor ?? a.budget_minor, a.budget_minor) && actorBound(p2) && (n === 0 || time2(p2.issued_at) >= time2(e.proposals[n - 1].payload.issued_at)));
+      add(`Candidate ${n + 1} changes only the tested threshold and authorized budget in a separate task`, boundedAgreement(p2.next_agreement) && p2.next_agreement.id !== a.id && same(p2.next_agreement, { ...a, id: p2.next_agreement.id, issued_at: p2.issued_at, approval_above_minor: p2.approval_above_minor, budget_minor: p2.budget_minor ?? a.budget_minor }) && p2.next_agreement_digest === await negotiationPayloadDigest(p2.next_agreement));
+      add(`Candidate ${n + 1} fixes the partner's future reviewer role before approval`, exact2(g, keys("type grant_id room_id agreement_digest issuer registrar_key role actions expires_at token_hash max_claims")) && g.type === "scopeblind.coordination.grant.v1" && id2(g.grant_id) && g.room_id === p2.next_agreement.id && g.agreement_digest === p2.next_agreement_digest && g.issuer === a.owner_key && g.registrar_key === authority && g.role === "reviewer" && same(g.actions, ["decide", "accept"]) && HEX.test(g.token_hash) && g.max_claims === 1 && g.expires_at === s.expires_at && p2.reviewer_grant_digest === await negotiationPayloadDigest(g));
+    }
+    add("Recommendations are distinct from human approvals and uniquely bound", Array.isArray(e.responses) && e.responses.length <= 6 && new Set(e.responses.map((r2) => `${r2.payload.proposal_digest}:${r2.payload.principal_key}`)).size === e.responses.length);
+    for (const response of e.responses) {
+      const r2 = response.payload, p2 = e.proposals.find((p3) => p3.digest === r2.proposal_digest), mine = e.mandates.find((m) => m.payload.principal_key === r2.principal_key);
+      add("Authority recorded an exactly scoped principal recommendation", await signed(response, authority) && exact2(r2, keys("type session_id principal_key proposal_digest mandate_digest decision agent_mode issued_at"), ["agent_key"]) && r2.type === "scopeblind.coordination.negotiation-response.v1" && r2.session_id === s.id && !!p2 && !!mine && r2.mandate_digest === mine.digest && ["support", "no_agreement"].includes(r2.decision) && actorBound(r2) && time2(r2.issued_at) >= time2(p2.payload.issued_at) && (r2.decision !== "support" || negotiationPlanWithinMandate(mine.payload, p2.payload.approval_above_minor, p2.payload.budget_minor ?? a.budget_minor, a.budget_minor)));
+    }
+    const r = e.report.payload, selected = e.proposals.find((p2) => p2.digest === r.proposal_digest), p = selected.payload;
+    add("Named authority signed the exact comparison and full union of required cases", await signed(e.report, authority) && exact2(r, keys("type session_id room_id proposal_digest agreement_digest fixture_digest mandate_digests cases_digest runtime_revision adapter isolation issued_at before_approval_above_minor after_approval_above_minor results required_passed expectations_met mandates_met"), ["before_budget_minor", "after_budget_minor"]) && r.type === "scopeblind.coordination.negotiation-report.v1" && r.session_id === s.id && r.room_id === a.id && !!selected && r.agreement_digest === e.agreement.digest && r.fixture_digest === s.fixture_digest && same(r.mandate_digests, mandateDigests) && r.adapter === "coordination-d1-sandbox" && r.isolation === "separate-fixture-ledgers" && typeof r.runtime_revision === "string" && (r.runtime_revision === "development-unbound" || /^scopeblind\.invoice-rehearsal\.v1:[0-9a-f]{64}$/.test(r.runtime_revision)) && time2(r.issued_at) >= time2(p.issued_at) && principals.every((key) => validAt(key, r.issued_at)) && (p.budget_minor === void 0 ? r.before_budget_minor === void 0 && r.after_budget_minor === void 0 : r.before_budget_minor === a.budget_minor && r.after_budget_minor === p.budget_minor) && r.before_approval_above_minor === a.approval_above_minor && r.after_approval_above_minor === p.approval_above_minor && Array.isArray(r.results) && r.results.length <= 110 && r.results.every((x) => exact2(x, keys("case before after"))) && same(r.results.map((x) => x.case), mandateCases(e.mandates, e.fixtures)) && r.cases_digest === await negotiationDigest(mandateCases(e.mandates, e.fixtures)));
+    add("Both gate traces and payment totals support every observation summary", r.results.every((x) => observationConsistent(x.case, x.before, a, e.fixtures) && observationConsistent(x.case, x.after, p.next_agreement, e.fixtures)));
+    const rangeMet = e.mandates.every((m) => negotiationPlanWithinMandate(m.payload, p.approval_above_minor, p.budget_minor ?? a.budget_minor, a.budget_minor));
+    add("Required cases, expectations and both mandates match the reported calculations", r.required_passed === r.results.every((x) => !x.case.required || x.after.matched) && r.expectations_met === r.results.every((x) => x.case.id.startsWith("sample-invoice-") || x.after.matched) && r.mandates_met === (rangeMet && r.results.filter((x) => x.case.id.startsWith("principal-")).every((x) => x.after.matched)));
+    add("Human decisions are at most one per principal", Array.isArray(e.approvals) && e.approvals.length <= 2 && new Set(e.approvals.map((v) => v.payload.principal_key)).size === e.approvals.length);
+    for (const approval of e.approvals) {
+      const v = approval.payload;
+      add("Human signed a decision over these exact rules, report and mandates", await verifyHuman(approval, v.principal_key, { proposal: selected, requireRecordedUse: true, authorityKey: authority }) && exact2(v, keys("type session_id principal_key proposal_digest report_digest next_agreement_digest mandate_digests decision issued_at expires_at"), ["selection_basis"]) && v.type === "scopeblind.coordination.negotiation-approval.v1" && principals.includes(v.principal_key) && v.session_id === s.id && v.proposal_digest === selected.digest && v.report_digest === e.report.digest && (v.selection_basis === void 0 || v.selection_basis === "human-selected-tested-plan") && v.next_agreement_digest === p.next_agreement_digest && same(v.mandate_digests, mandateDigests) && ["approve", "reject"].includes(v.decision) && validAt(v.principal_key, v.issued_at) && time2(v.issued_at) >= time2(r.issued_at) - 3e5 && time2(v.expires_at) > time2(v.issued_at) && time2(v.expires_at) <= time2(s.expires_at));
+    }
+    if (e.reviewer_grant) add("Organizer signed the exact proposed reviewer grant", await verifyHuman(e.reviewer_grant, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(e.reviewer_grant.payload, p.reviewer_grant) && e.reviewer_grant.digest === p.reviewer_grant_digest);
+    if (e.adoption) {
+      const d = e.adoption.payload, next = e.adopted_agreement, g = e.reviewer_grant, binding = e.reviewer_binding, rb = binding.payload, claim2 = rb.claim.payload;
+      add("Both unexpired human approvals authorize adoption of this exact tested candidate", e.approvals.length === 2 && e.approvals.every((v) => v.payload.decision === "approve" && time2(d.issued_at) >= time2(v.payload.issued_at) - 3e5 && time2(d.issued_at) < time2(v.payload.expires_at)) && selected.digest === e.proposals.at(-1).digest && principals.every((key) => validAt(key, d.issued_at)) && r.required_passed && r.expectations_met && r.mandates_met && (e.approvals.every((v) => v.payload.selection_basis === "human-selected-tested-plan") || principals.every((key) => e.responses.some((v) => v.payload.principal_key === key && v.payload.proposal_digest === selected.digest && v.payload.decision === "support"))));
+      add("Authority recorded exact lineage into a new separately authorized sample task", await signed(e.adoption, authority) && exact2(d, keys("type session_id source_room_id room_id source_agreement_digest agreement_digest proposal_digest report_digest approval_digests issued_at scope")) && d.type === "scopeblind.coordination.negotiation-adoption.v1" && d.session_id === s.id && d.source_room_id === a.id && d.room_id === p.next_agreement.id && d.room_id !== a.id && d.source_agreement_digest === e.agreement.digest && d.agreement_digest === p.next_agreement_digest && d.proposal_digest === selected.digest && d.report_digest === e.report.digest && same(d.approval_digests, principals.map((key) => e.approvals.find((v) => v.payload.principal_key === key).digest)) && d.scope === "new-separate-sample-task" && await verifyHuman(next, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(next.payload, p.next_agreement) && next.digest === d.agreement_digest);
+      add("Partner independently claimed the fixed reviewer role in the new task", await signed(binding, authority) && await verifyHuman(rb.claim, partner, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === partner), requireRecordedUse: true, authorityKey: authority }) && exact2(rb, keys("type grant_id grant_digest room_id guest_key name issued_at expires_at claim")) && rb.type === "scopeblind.coordination.binding.v1" && rb.grant_id === g.payload.grant_id && rb.grant_digest === g.digest && rb.room_id === d.room_id && rb.guest_key === partner && rb.expires_at === g.payload.expires_at && time2(rb.issued_at) >= time2(d.issued_at) && time2(rb.issued_at) < time2(rb.expires_at) && exact2(claim2, keys("type grant_id room_id guest_key name issued_at nonce")) && claim2.type === "scopeblind.coordination.claim.v1" && claim2.grant_id === rb.grant_id && claim2.room_id === d.room_id && claim2.guest_key === partner && text(claim2.name, 60) && claim2.name === rb.name && id2(claim2.nonce) && time2(claim2.issued_at) >= time2(r.issued_at) - 3e5 && time2(claim2.issued_at) <= time2(rb.issued_at) + 3e5);
+    } else add("No unbound adopted agreement or reviewer binding is present", !e.adopted_agreement && !e.reviewer_binding);
+  } catch {
+    add("Complete, well-formed negotiation evidence", false);
+  }
+  return { valid: checks.length > 0 && checks.every((c) => c.passed), checks, limitations: [
+    "Signatures establish record integrity and control of keys. Display names are not authenticated legal identities.",
+    "The named service attests to gate traces and sample-ledger effects. These records do not independently prove execution or safety for every input or deployment.",
+    "Private briefs are omitted; signed commitments do not reveal or validate their contents. Recommendations are separate from human approval and adoption.",
+    "Comparisons test each case in a separate ledger; observing several payable invoices does not establish that all fit one shared run budget.",
+    "Expiry is checked at recorded actions. An export does not establish present authorization, revocation status, or permission to make a payment."
+  ] };
+}
+
+// src/coordination-evidence.ts
+async function verifyOwnerAgreement(agreement, negotiation, depth = 0) {
+  try {
+    if (!agreement.authorization) return await verifyHuman(agreement, agreement.payload.owner_key);
+    if (depth > 4 || !negotiation?.adoption || !negotiation.adopted_agreement || canonical(negotiation.adopted_agreement) !== canonical(agreement) || negotiation.adoption.payload.room_id !== agreement.payload.id) return false;
+    return (await verifyNegotiationEvidence(negotiation, agreement.payload.registrar_key, depth)).valid;
+  } catch {
+    return false;
+  }
+}
+var integer2 = (n) => Number.isSafeInteger(n) && Number(n) >= 0;
+var timestamp = (s) => typeof s === "string" ? Date.parse(s) : NaN;
+async function verifyEvidence(value, expectedAuthority) {
+  const checks = [];
+  const check = (label, ok) => {
+    checks.push({ label, ok: ok === true });
+  };
+  let accepted = false;
+  try {
+    const b = value;
+    if (!b || b.type !== "scopeblind.coordination.evidence.v1" || !Array.isArray(b.grants) || !Array.isArray(b.acceptances)) throw new Error("Unrecognized coordination evidence.");
+    const a = b.agreement.payload, m = b.manifest.payload, authority = a.registrar_key;
+    check("Agreement signed by its author", a.type === "scopeblind.coordination.agreement.v1" && await verifyOwnerAgreement(b.agreement, b.negotiation));
+    check("Agreement parameters are supported", a.version === 1 && (a.mode === void 0 || a.mode === "guided" || a.mode === "live") && a.currency === "USD" && integer2(a.budget_minor) && integer2(a.approval_above_minor) && integer2(a.approval_ttl_seconds) && a.approval_ttl_seconds > 0 && Array.isArray(a.allowed_destinations) && a.allowed_destinations.every((x) => typeof x === "string") && Number.isFinite(timestamp(a.issued_at)));
+    if (expectedAuthority) check("Authority matches the independently supplied key", authority === expectedAuthority);
+    if (b.negotiation) {
+      const negotiated = await verifyNegotiationEvidence(b.negotiation, expectedAuthority);
+      check("Two-person agreement history is intact", negotiated.valid && !!b.negotiation.adoption && b.negotiation.adopted_agreement?.digest === b.agreement.digest && b.negotiation.adoption.payload.room_id === a.id);
+    }
+    check("Finalized manifest signed by the agreed authority", m.type === "scopeblind.coordination.manifest.v1" && await verify(b.manifest, authority));
+    check("Manifest binds this agreement and run", m.room_id === a.id && m.agreement_digest === b.agreement.digest && typeof m.run_id === "string" && m.run_id.length > 0 && Number.isFinite(timestamp(m.finalized_at)) && timestamp(m.finalized_at) >= timestamp(a.issued_at));
+    if (!Array.isArray(m.operations) || m.operations.length > 500 || b.grants.length > 100 || b.acceptances.length > 100) throw new Error("Evidence exceeds supported bounds.");
+    check("Result explanation is bounded text", m.summary === void 0 || typeof m.summary === "string" && m.summary.length <= 600);
+    const prior = b.prior_attempts ?? [];
+    if (!Array.isArray(prior) || prior.length > 9) throw new Error("Too many prior attempts.");
+    const history = m.historical_operations ?? [];
+    check("Revision lineage is complete", prior.length > 0 ? m.previous_manifest_digest === prior.at(-1).manifest.digest : !m.previous_manifest_digest && history.length === 0);
+    const priorRuns = /* @__PURE__ */ new Set();
+    for (let index = 0; index < prior.length; index++) {
+      const attempt = prior[index], link = attempt.revision.payload;
+      check(`Prior attempt ${index + 1} \xB7 no unresolved authority released by revision`, attempt.manifest.payload.budget.reserved_minor === 0 && attempt.manifest.payload.operations.every((op) => !["held", "request_changes", "admitted", "unknown"].includes(op.status)));
+      if (index === prior.length - 1) {
+        const checked = await verifyEvidence({ ...b, manifest: attempt.manifest, acceptances: attempt.acceptances, acceptance_records: attempt.acceptance_records, prior_attempts: prior.slice(0, index) }, expectedAuthority);
+        check(`Prior attempt ${index + 1} \xB7 signatures and accounting`, checked.valid);
+      }
+      check(`Prior attempt ${index + 1} \xB7 authorized continuation`, await verify(attempt.revision, authority) && link.type === "scopeblind.coordination.revision.v1" && link.room_id === a.id && link.previous_run_id === attempt.manifest.payload.run_id && link.run_id === (prior[index + 1]?.manifest.payload.run_id ?? m.run_id) && link.previous_manifest_digest === attempt.manifest.digest && link.agreement_digest === b.agreement.digest && link.requested_by === a.owner_key && !priorRuns.has(link.previous_run_id) && link.previous_run_id !== m.run_id && timestamp(link.issued_at) >= timestamp(attempt.manifest.payload.finalized_at));
+      priorRuns.add(link.previous_run_id);
+    }
+    const expectedHistory = prior.flatMap((attempt) => attempt.manifest.payload.operations.filter((op) => op.status === "confirmed"));
+    check("Earlier payments are preserved exactly once", canonical([...history].sort((x, y) => x.operation_id.localeCompare(y.operation_id))) === canonical(expectedHistory.sort((x, y) => x.operation_id.localeCompare(y.operation_id))));
+    if (prior.length && m.fixtures) check("Invoice records remain unchanged across attempts", prior.every((attempt) => attempt.manifest.payload.fixtures ? canonical(attempt.manifest.payload.fixtures) === canonical(m.fixtures) : a.mode !== "live"));
+    if (a.mode === "live") check("Live agreement requires matching frozen purchase-order records", a.require_po_match === true && !!m.fixtures && integer2(m.fixtures.revision) && m.fixtures.revision > 0 && Array.isArray(m.fixtures.invoices) && Array.isArray(m.fixtures.purchase_orders));
+    const proposal = b.negotiation?.proposals.find((p) => p.digest === b.negotiation?.adoption?.payload.proposal_digest);
+    const deviceContext = (principal) => ({ proposal, approval: b.negotiation?.approvals.find((v) => v.payload.principal_key === principal), requireRecordedUse: true, authorityKey: authority });
+    const grants = /* @__PURE__ */ new Map();
+    for (const v of b.grants) {
+      const g = v.grant.payload;
+      let ok = !grants.has(g.grant_id) && g.type === "scopeblind.coordination.grant.v1" && await verifyHuman(v.grant, a.owner_key, deviceContext(a.owner_key)) && g.issuer === a.owner_key && g.registrar_key === authority && g.room_id === a.id && g.agreement_digest === b.agreement.digest && g.role === "reviewer" && g.max_claims === 1 && Array.isArray(g.actions) && g.actions.every((x) => ["decide", "accept"].includes(x)) && Number.isFinite(timestamp(g.expires_at));
+      if (v.binding) {
+        const p = v.binding.payload, c = p.claim.payload;
+        ok = ok && p.type === "scopeblind.coordination.binding.v1" && await verify(v.binding, authority) && p.grant_id === g.grant_id && p.grant_digest === v.grant.digest && p.room_id === a.id && p.expires_at === g.expires_at && timestamp(p.issued_at) < timestamp(g.expires_at) && c.type === "scopeblind.coordination.claim.v1" && await verifyHuman(p.claim, p.guest_key, deviceContext(p.guest_key)) && c.guest_key === p.guest_key && c.grant_id === g.grant_id && c.room_id === a.id && c.name === p.name;
+      }
+      check(`Invitation and guest key binding \xB7 ${g.grant_id}`, ok);
+      grants.set(g.grant_id, v);
+    }
+    async function reviewer(s, action) {
+      const p = s.payload, v = grants.get(p.grant_id), binding = v?.binding?.payload;
+      return !!v && !!binding && v.grant.payload.actions.includes(action) && await verifyHuman(s, binding.guest_key, { requireRecordedUse: true, authorityKey: authority }) && p.room_id === a.id && p.run_id === m.run_id && p.agreement_digest === b.agreement.digest && timestamp(p.issued_at) >= timestamp(binding.issued_at) - 3e5 && timestamp(p.issued_at) < timestamp(binding.expires_at);
+    }
+    const ids = /* @__PURE__ */ new Set(), paidInvoices = /* @__PURE__ */ new Set();
+    let spent = 0, reserved = 0;
+    for (const op of history) {
+      const businessKey = op.input.invoice_id;
+      check(`Earlier payment ${op.operation_id} \xB7 unique invoice`, !paidInvoices.has(businessKey) && !ids.has(op.operation_id));
+      paidInvoices.add(businessKey);
+      ids.add(op.operation_id);
+      spent += op.input.amount_minor;
+    }
+    for (const op of m.operations) {
+      const label = `Operation ${op.operation_id}`;
+      const hash = await payloadHash(op.input);
+      check(`${label} \xB7 exact input and unique identity`, op.tool === "ledger.pay" && op.run_id === m.run_id && typeof op.operation_id === "string" && !ids.has(op.operation_id) && hash === op.payload_hash && integer2(op.input.amount_minor) && op.input.amount_minor > 0 && op.input.currency === a.currency && typeof op.input.invoice_id === "string");
+      ids.add(op.operation_id);
+      if (op.admission) {
+        const p = op.admission.payload;
+        check(`${label} \xB7 signed gate decision`, p.type === "scopeblind.coordination.admission.v1" && await verify(op.admission, authority) && p.room_id === a.id && p.run_id === m.run_id && p.operation_id === op.operation_id && p.agreement_digest === b.agreement.digest && p.payload_hash === hash && await payloadHash(p.input) === hash && p.destination === op.input.destination && ["admitted", "held", "refused"].includes(p.decision));
+      }
+      if (op.decision) {
+        const p = op.decision.payload;
+        check(`${label} \xB7 recipient decision binds exact input`, p.type === "scopeblind.coordination.approval.v1" && await reviewer(op.decision, "decide") && p.operation_id === op.operation_id && p.payload_hash === hash && ["approve", "deny", "request_changes"].includes(p.decision) && timestamp(p.expires_at) > timestamp(p.issued_at) && timestamp(p.expires_at) - timestamp(p.issued_at) <= a.approval_ttl_seconds * 1e3);
+      }
+      const invoice = m.fixtures?.invoices.find((i) => i.invoice_id === op.input.invoice_id);
+      const needsApproval = op.input.amount_minor > a.approval_above_minor || a.require_po_match === true && (!invoice || !m.fixtures || !invoiceMatchesPurchaseOrder(invoice, m.fixtures));
+      if (["admitted", "confirmed", "unknown"].includes(op.status)) {
+        if (a.mode === "live") check(`${label} \xB7 frozen invoice input`, !!invoice && op.input.fixture_revision === m.fixtures?.revision && op.input.amount_minor === invoice.amount_minor && op.input.destination === invoice.destination);
+        const p = op.admission?.payload;
+        check(`${label} \xB7 authorized destination and admission`, p?.decision === "admitted" && a.allowed_destinations.includes(op.input.destination));
+        if (needsApproval) {
+          const d = op.decision?.payload;
+          check(`${label} \xB7 fresh approval at admission`, !!d && d.decision === "approve" && !!p && timestamp(d.issued_at) <= timestamp(p.issued_at) + 6e4 && timestamp(d.expires_at) > timestamp(p.issued_at));
+        }
+        const businessKey = op.input.invoice_id;
+        check(`${label} \xB7 invoice paid or reserved once`, !paidInvoices.has(businessKey));
+        paidInvoices.add(businessKey);
+      }
+      if (op.receipt) {
+        const p = op.receipt.payload;
+        check(`${label} \xB7 signed outcome binds exact input`, p.type === "scopeblind.coordination.outcome.v1" && await verify(op.receipt, authority) && p.room_id === a.id && p.run_id === m.run_id && p.operation_id === op.operation_id && p.payload_hash === hash && p.amount_minor === op.input.amount_minor && p.destination === op.input.destination && p.status === op.status);
+      }
+      if (op.status === "confirmed") {
+        check(`${label} \xB7 sandbox destination confirmation`, op.receipt?.payload.status === "confirmed" && op.receipt.payload.observed_by === "sandbox-ledger" && !!op.receipt.payload.transaction_id);
+        const gate = op.admission?.payload, effectAt = timestamp(op.receipt.payload.issued_at);
+        check(`${label} \xB7 effect within admission validity`, !!gate && effectAt >= timestamp(gate.issued_at) && effectAt < timestamp(gate.expires_at));
+        if (needsApproval) check(`${label} \xB7 approval still fresh at effect`, !!op.decision && effectAt < timestamp(op.decision.payload.expires_at));
+        spent += op.input.amount_minor;
+      } else if (op.status === "admitted" || op.status === "unknown") reserved += op.input.amount_minor;
+      else check(`${label} \xB7 recognized final state`, ["held", "refused", "declined", "request_changes", "superseded", "failed"].includes(op.status));
+    }
+    const budget = m.budget;
+    check("Budget reconciles with signed outcomes and reservations", integer2(budget.limit_minor) && integer2(budget.spent_minor) && integer2(budget.reserved_minor) && integer2(budget.remaining_minor) && budget.limit_minor === a.budget_minor && budget.spent_minor === spent && budget.reserved_minor === reserved && budget.limit_minor === spent + reserved + budget.remaining_minor);
+    const records = b.acceptance_records ?? [];
+    const acceptanceIds = /* @__PURE__ */ new Set();
+    for (const s of b.acceptances) {
+      const p = s.payload;
+      const ok = !acceptanceIds.has(s.digest) && p.type === "scopeblind.coordination.acceptance.v1" && await reviewer(s, "accept") && p.manifest_digest === b.manifest.digest && ["accept", "request_changes"].includes(p.decision) && timestamp(p.issued_at) >= timestamp(m.finalized_at) - 3e5;
+      acceptanceIds.add(s.digest);
+      check("Recipient decision signs this finalized manifest", ok);
+      const record = records.find((r) => r.payload.acceptance_digest === s.digest);
+      check("Authority recorded recipient authority at acceptance", !!record && record.payload.type === "scopeblind.coordination.acceptance-record.v1" && await verify(record, authority) && record.payload.room_id === a.id && record.payload.run_id === m.run_id && record.payload.manifest_digest === b.manifest.digest && record.payload.reviewer_key === humanPrincipal(s) && timestamp(record.payload.recorded_at) >= timestamp(m.finalized_at));
+    }
+    check("Acceptance records refer only to supplied decisions", records.length === b.acceptances.length && records.every((r) => acceptanceIds.has(r.payload.acceptance_digest)));
+    const recordedAt = new Map(records.map((r) => [r.payload.acceptance_digest, timestamp(r.payload.recorded_at)]));
+    accepted = b.acceptances.length > 0 && [...b.acceptances].sort((x, y) => (recordedAt.get(x.digest) ?? 0) - (recordedAt.get(y.digest) ?? 0)).at(-1)?.payload.decision === "accept";
+  } catch (e) {
+    check(e instanceof Error ? e.message : "Malformed evidence", false);
+  }
+  const errors = checks.filter((x) => !x.ok).map((x) => x.label);
+  return {
+    valid: errors.length === 0,
+    checks,
+    errors,
+    accepted: accepted && errors.length === 0,
+    authorityPinned: !!expectedAuthority && errors.length === 0,
+    limitations: [
+      "Signatures bind these records to keys; they do not establish a person\u2019s legal identity.",
+      "The authority attests to gate state, enrollment, and the sandbox ledger. These records do not prove real payments, agent reasoning, or activity outside this gate.",
+      "The manifest binds the included operations. An offline file cannot establish that an operator disclosed every run or that access is still active.",
+      ...!expectedAuthority ? ["No independent authority key was supplied. Integrity was checked against the authority named in the signed agreement."] : []
+    ]
+  };
+}
+
+// src/coordination-config.ts
+function validateCoordinationConfig(config) {
+  if (config.purpose !== void 0 && !["execution", "rehearsal", "negotiation"].includes(config.purpose)) throw new Error("Unknown coordination connection purpose.");
+  if (config.purpose === "negotiation") {
+    if (!config.sessionId || !/^[A-Za-z0-9_-]{8,100}$/.test(config.sessionId)) throw new Error("A negotiation connection requires its exact paired session ID.");
+    if (!config.principalKey || !/^[0-9a-f]{64}$/.test(config.principalKey)) throw new Error("A negotiation connection requires its paired principal public key.");
+  } else if (config.sessionId !== void 0 || config.principalKey !== void 0) throw new Error("Negotiation session and principal fields require a negotiation connection.");
+  let endpoint;
+  try {
+    endpoint = new URL(config.endpoint);
+  } catch {
+    throw new Error("Coordination endpoint must be an absolute URL.");
+  }
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(endpoint.hostname);
+  if (endpoint.protocol !== "https:" && !(endpoint.protocol === "http:" && local)) {
+    throw new Error("Coordination endpoint requires HTTPS (HTTP is permitted only on loopback for local trials).");
+  }
+  if (endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
+    throw new Error("Coordination endpoint must not contain credentials, query parameters, or a fragment.");
+  }
+  if (!/^[a-fA-F0-9]{64}$/.test(config.authorityKey)) {
+    throw new Error("An explicitly pinned 32-byte Ed25519 authority public key is required (64 hexadecimal characters).");
+  }
+  if (!/^[A-Za-z0-9_-]{8,100}$/.test(config.roomId)) throw new Error("Room ID must use 8\u2013100 letters, numbers, underscores, or hyphens.");
+  if (!config.token || /[\r\n]/.test(config.token)) throw new Error("An executor token is required in the configured environment variable.");
+  if (config.runId !== void 0 && !/^run-[A-Za-z0-9_-]{8,100}$/.test(config.runId)) throw new Error("Run ID must be run- followed by the room ID.");
+  if (config.timeoutMs !== void 0 && (!Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1 || config.timeoutMs > 12e4)) {
+    throw new Error("Coordination timeout must be an integer from 1 to 120000 milliseconds.");
+  }
+  return { ...config, endpoint: endpoint.href, authorityKey: config.authorityKey.toLowerCase() };
+}
+function coordinationConfigFromArgs(args, env = process.env) {
+  const values = /* @__PURE__ */ new Map();
+  const flags = /* @__PURE__ */ new Set(["--endpoint", "--room", "--authority-key", "--token-env", "--run"]);
+  for (let i = 0; i < args.length; i += 2) {
+    const flag = args[i];
+    if (!flags.has(flag)) throw new Error("Unknown coordination option. Use --endpoint, --room, --authority-key, --token-env, and optionally --run.");
+    if (values.has(flag)) throw new Error("Coordination options may only be supplied once.");
+    const value = args[i + 1];
+    if (!value || value.startsWith("--")) throw new Error("Every coordination option requires a value.");
+    values.set(flag, value);
+  }
+  const variable = values.get("--token-env") || "PROTECT_MCP_COORDINATION_TOKEN";
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(variable)) throw new Error("--token-env must name an environment variable.");
+  return validateCoordinationConfig({
+    endpoint: values.get("--endpoint") || "",
+    roomId: values.get("--room") || "",
+    authorityKey: values.get("--authority-key") || "",
+    token: env[variable] || "",
+    runId: values.get("--run")
+  });
+}
+
+// src/coordination-client.ts
+var import_node_crypto5 = require("crypto");
+if (!globalThis.crypto) Object.defineProperty(globalThis, "crypto", { value: import_node_crypto5.webcrypto, configurable: true });
+var CoordinationError = class extends Error {
+  constructor(code2, message) {
+    super(message);
+    this.code = code2;
+    this.name = "CoordinationError";
+  }
+};
+var CoordinationTransport = class {
+  constructor(config, fetchImpl = fetch) {
+    this.fetchImpl = fetchImpl;
+    this.#config = validateCoordinationConfig(config);
+  }
+  #config;
+  async get(op, operationId) {
+    const url = new URL(this.#config.endpoint);
+    url.searchParams.set("op", op);
+    url.searchParams.set("room_id", this.#config.roomId);
+    if (operationId !== void 0) url.searchParams.set("operation_id", operationId);
+    return this.request(url.href, { method: "GET" });
+  }
+  async post(action, body, signal) {
+    if (this.#config.purpose === "negotiation" && !NEGOTIATION_AGENT_ACTIONS.includes(action)) throw new CoordinationError("tool_outside_grant", "This negotiation connection cannot access execution or rehearsal actions.");
+    return this.request(this.#config.endpoint, {
+      method: "POST",
+      body: JSON.stringify({ action, room_id: this.#config.roomId, body }),
+      signal
+    }, action === "rehearsal_run" || action === "negotiation_compare" ? 6e4 : void 0);
+  }
+  async request(url, init, defaultTimeout) {
+    const abort = new AbortController();
+    const cancel = () => abort.abort();
+    if (init.signal?.aborted) cancel();
+    else init.signal?.addEventListener("abort", cancel, { once: true });
+    const timeout = setTimeout(() => abort.abort(), this.#config.timeoutMs ?? defaultTimeout ?? 15e3);
+    try {
+      const response = await this.fetchImpl(url, {
+        ...init,
+        signal: abort.signal,
+        redirect: "error",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.#config.token}` }
+      });
+      const raw = await response.text();
+      if (raw.length > 2e6) throw new CoordinationError("invalid_response", "Coordination response exceeds the supported size.");
+      let result;
+      try {
+        result = JSON.parse(raw);
+      } catch {
+        throw new CoordinationError("invalid_response", "Coordination service returned invalid JSON.");
+      }
+      if (!response.ok) {
+        const code2 = result && typeof result === "object" && "error" in result && typeof result.error === "string" && /^[a-z_]{3,80}$/.test(result.error) ? result.error : "service_rejected";
+        const guidance = { rehearsal_in_progress: "This exact test is still running. Wait before inspecting reports or retrying with the same test id.", rehearsal_run_failed: "This exact test ended without a completed report. Inspect the source and cases; a new deliberately requested test needs a new id.", proposal_stale: "Cases or source records changed. Inspect the rehearsal and propose a newly identified repair against the current snapshot.", executor_action_not_permitted: "This action is outside the owner\u2019s explicit grant. Ask for a separate connection with the required scope.", rehearsal_id_conflict: "This stable ID already names different content. Inspect the existing record; use a new ID only for a new intended case, proposal, or test.", executor_token_invalid: "This agent connection expired or was revoked. Ask the owner for a fresh pairing.", room_paused: "The owner paused this task. Wait for resume; retain all operation IDs.", run_has_unresolved_operations: "Resolve held or unknown operations before delivering the result.", run_finalized: "This attempt is already delivered. Wait for an owner-authorized revision.", rate_limited: "The room request limit was reached. Pause and retry later with unchanged operation IDs." };
+        throw new CoordinationError(code2, guidance[code2] || `Coordination service rejected the request (${code2}; HTTP ${response.status}). Inspect current room state before retrying.`);
+      }
+      if (!result || typeof result !== "object" || Array.isArray(result) || result.ok !== true) {
+        throw new CoordinationError("invalid_response", "Coordination service did not return a successful protocol response.");
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof CoordinationError) throw error;
+      if (init.signal?.aborted) throw new CoordinationError("cancelled", "The wait was cancelled. No action or approval was performed.");
+      throw new CoordinationError("service_unavailable", "Coordination service could not be reached or the request timed out.");
+    } finally {
+      clearTimeout(timeout);
+      init.signal?.removeEventListener("abort", cancel);
+    }
+  }
+};
+function waitDelay(ms, signal) {
+  return new Promise((resolve2, reject) => {
+    const cancelled = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", cancelled);
+      reject(new CoordinationError("cancelled", "The wait was cancelled. No action or approval was performed."));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", cancelled);
+      resolve2();
+    }, Math.ceil(ms));
+    if (signal.aborted) cancelled();
+    else signal.addEventListener("abort", cancelled, { once: true });
+  });
+}
+var operationIdentifier = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(value);
+function validateCoordinationPayment(payment) {
+  if (!payment || !operationIdentifier(payment.operation_id)) throw new CoordinationError("invalid_operation", "A stable operation_id of 8\u2013100 letters, numbers, underscores, or hyphens is required; retain it when retrying the same intended payment.");
+  if (Object.keys(payment).sort().join(",") !== "input,operation_id") throw new CoordinationError("invalid_operation", "The executor accepts operation_id and input only; revisions must be made by the room owner.");
+  const input = payment.input;
+  if (!input || typeof input.invoice_id !== "string" || !input.invoice_id.length || input.invoice_id.length > 60 || !Number.isSafeInteger(input.amount_minor) || input.amount_minor <= 0 || input.amount_minor > 1e7 || input.currency !== "USD" || typeof input.destination !== "string" || !input.destination.length || input.destination.length > 100) {
+    throw new CoordinationError("invalid_input", "Payment requires invoice_id, a positive integer amount_minor, currency USD, and a sample destination.");
+  }
+  if (input.fixture_revision !== void 0 && (!Number.isSafeInteger(input.fixture_revision) || input.fixture_revision < 1)) throw new CoordinationError("invalid_input", "fixture_revision must be a positive integer from coordination.inspect.");
+  if (Object.keys(input).filter((key) => key !== "fixture_revision").sort().join(",") !== "amount_minor,currency,destination,invoice_id") {
+    throw new CoordinationError("invalid_input", "Payment input contains unsupported fields.");
+  }
+}
+var CoordinationClient = class {
+  #config;
+  #transport;
+  #acknowledgedContexts = /* @__PURE__ */ new Set();
+  constructor(config, fetchImpl = fetch) {
+    this.#config = validateCoordinationConfig(config);
+    this.#transport = new CoordinationTransport(this.#config, fetchImpl);
+  }
+  /** Tool visibility is a local convenience; every RPC also checks the persisted grant. */
+  get purpose() {
+    return this.#config.purpose || "execution";
+  }
+  /** Acknowledge only a context that this adapter has already verified. Pairing and MCP initialization do not call this. */
+  async acknowledgeInspection(response, action, contextDigest, signal) {
+    const key = `${action}:${contextDigest}`;
+    if (response.agent_inspection_supported !== true || this.#acknowledgedContexts.has(key)) return;
+    const acknowledgment = await this.#transport.post(action, { ...action === "negotiation_get" ? { session_id: this.#config.sessionId } : {}, observed_context_digest: contextDigest }, signal);
+    if (typeof acknowledgment.agent_inspection_acknowledged !== "boolean") throw new CoordinationError("agent_inspection_unconfirmed", "The room could not confirm this inspection. Inspect again before continuing.");
+    this.#acknowledgedContexts.add(key);
+  }
+  negotiationConfig() {
+    if (this.purpose !== "negotiation" || !this.#config.sessionId || !this.#config.principalKey) throw new CoordinationError("tool_outside_grant", "Use a separate principal-authorized negotiation pairing for these tools.");
+    return { sessionId: this.#config.sessionId, principalKey: this.#config.principalKey };
+  }
+  /** Inspect only the scoped negotiation response. Never read the public room to obtain a mandate. */
+  async checkedNegotiation(response) {
+    const { sessionId, principalKey } = this.negotiationConfig();
+    const state = response.negotiation;
+    const invalid = () => {
+      throw new CoordinationError("invalid_negotiation", "The negotiation identity, source records, mandate, or signed candidate could not be verified. No approval or authority was granted.");
+    };
+    const keys2 = (value, allowed) => {
+      if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !allowed.includes(key))) invalid();
+    };
+    const envelope = (value) => keys2(value, ["payload", "signer", "digest", "signature"]);
+    const humanEnvelope = (value) => keys2(value, ["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"]);
+    try {
+      keys2(state, ["session", "invitation", "binding", "agreement", "fixtures", "principals", "status", "proposals", "responses", "reports", "approvals", "adoption", "adopted_agreement", "run", "feasibility", "next_principal_key", "model_steps", "max_model_steps", "error", "viewer", "started", "reviewer_grant", "reviewer_binding", "agent_bindings", "selected_proposal_digest", "runtime_changed", "source_negotiation"]);
+      const session = state.session?.payload, agreement = state.agreement?.payload;
+      if (!session || !agreement || session.type !== "scopeblind.coordination.negotiation-session.v1" || session.id !== sessionId || session.room_id !== this.#config.roomId || session.registrar_key !== this.#config.authorityKey || !await verify(state.session, this.#config.authorityKey) || agreement.type !== "scopeblind.coordination.agreement.v1" || agreement.id !== this.#config.roomId || agreement.owner_key !== session.owner_key || agreement.registrar_key !== this.#config.authorityKey || !await verifyOwnerAgreement(state.agreement, state.source_negotiation) || state.agreement.digest !== session.agreement_digest || session.max_proposals !== NEGOTIATION_MAX_PROPOSALS || state.max_model_steps !== NEGOTIATION_MAX_MODEL_STEPS || !Number.isSafeInteger(state.model_steps) || state.model_steps < 0 || state.model_steps > NEGOTIATION_MAX_MODEL_STEPS || !state.fixtures || await negotiationDigest(state.fixtures) !== session.fixture_digest) invalid();
+      if (!Number.isFinite(Date.parse(session.created_at)) || !Number.isFinite(Date.parse(session.expires_at)) || Date.parse(session.expires_at) <= Date.parse(session.created_at) || Date.parse(session.expires_at) > Date.parse(session.created_at) + 864e5) invalid();
+      envelope(state.session);
+      keys2(session, ["type", "id", "room_id", "agreement_digest", "fixture_digest", "owner_key", "registrar_key", "invitation_digest", "created_at", "expires_at", "max_proposals", "parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]);
+      const invitation = state.invitation?.payload;
+      if (!invitation || !await verify(state.invitation, session.owner_key) || invitation.type !== "scopeblind.coordination.negotiation-invitation.v1" || state.invitation.digest !== session.invitation_digest || invitation.session_id !== sessionId || invitation.room_id !== session.room_id || invitation.agreement_digest !== session.agreement_digest || invitation.fixture_digest !== session.fixture_digest || invitation.issuer !== session.owner_key || invitation.registrar_key !== this.#config.authorityKey) invalid();
+      if (invitation.role !== "counterparty" || invitation.max_claims !== 1 || invitation.expires_at !== session.expires_at || !/^[0-9a-f]{64}$/.test(invitation.token_hash)) invalid();
+      envelope(state.invitation);
+      keys2(invitation, ["type", "session_id", "room_id", "agreement_digest", "fixture_digest", "issuer", "registrar_key", "role", "token_hash", "max_claims", "expires_at", "parent_session_id", "source_operation_id"]);
+      if (!Array.isArray(state.principals) || state.principals.length < 1 || state.principals.length > 2 || new Set(state.principals.map((p) => p.key)).size !== state.principals.length || new Set(state.principals.map((p) => p.side)).size !== state.principals.length) invalid();
+      if (state.binding) {
+        const binding = state.binding.payload;
+        envelope(state.binding);
+        keys2(binding, ["type", "session_id", "room_id", "invitation_digest", "guest_key", "name", "issued_at", "expires_at", "claim"]);
+        if (!await verify(state.binding, this.#config.authorityKey) || binding.type !== "scopeblind.coordination.negotiation-binding.v1" || binding.session_id !== sessionId || binding.room_id !== session.room_id || binding.invitation_digest !== state.invitation.digest || !await verify(binding.claim, binding.guest_key) || binding.claim.payload.session_id !== sessionId || binding.claim.payload.room_id !== session.room_id || binding.claim.payload.guest_key !== binding.guest_key || binding.guest_key === session.owner_key) invalid();
+        envelope(binding.claim);
+        keys2(binding.claim.payload, ["type", "session_id", "room_id", "guest_key", "name", "issued_at", "nonce"]);
+      }
+      for (const principal of state.principals) {
+        keys2(principal, ["side", "key", "name", "mandate", "agent_status"]);
+        if (principal.side === "organizer" ? principal.key !== session.owner_key : principal.side !== "partner" || principal.key !== state.binding?.payload.guest_key) invalid();
+        if (principal.mandate) {
+          humanEnvelope(principal.mandate);
+          const mandate = principal.mandate.payload;
+          keys2(mandate, ["type", "session_id", "room_id", "principal_key", "version", "agreement_digest", "fixture_digest", "min_threshold_minor", "max_threshold_minor", "min_budget_minor", "max_budget_minor", "required_invoices", "private_brief_commitment", "agent_mode", "actions", "issued_at", "expires_at"]);
+          if (!await verifyHuman(principal.mandate, principal.key, { requireRecordedUse: true, authorityKey: this.#config.authorityKey }) || mandate.type !== "scopeblind.coordination.negotiation-mandate.v1" || mandate.session_id !== sessionId || mandate.room_id !== session.room_id || mandate.principal_key !== principal.key || mandate.agreement_digest !== session.agreement_digest || mandate.fixture_digest !== session.fixture_digest || canonical(mandate.actions) !== canonical(NEGOTIATION_AGENT_ACTIONS) || !Number.isSafeInteger(mandate.version) || mandate.version < 1 || !["hosted", "own", "manual"].includes(mandate.agent_mode) || !Number.isSafeInteger(mandate.min_threshold_minor) || !Number.isSafeInteger(mandate.max_threshold_minor) || mandate.min_threshold_minor < 0 || mandate.max_threshold_minor < mandate.min_threshold_minor || mandate.max_threshold_minor > mandateBudget(mandate, agreement.budget_minor).max || !Array.isArray(mandate.required_invoices) || !/^[0-9a-f]{64}$/.test(mandate.private_brief_commitment)) invalid();
+          if (mandate.min_budget_minor === void 0 !== (mandate.max_budget_minor === void 0) || mandate.min_budget_minor !== void 0 && (!Number.isSafeInteger(mandate.min_budget_minor) || !Number.isSafeInteger(mandate.max_budget_minor) || mandate.min_budget_minor < 1 || mandate.max_budget_minor < mandate.min_budget_minor || mandate.max_budget_minor > 1e7)) invalid();
+          if (!Number.isFinite(Date.parse(mandate.issued_at)) || !Number.isFinite(Date.parse(mandate.expires_at)) || Date.parse(mandate.expires_at) <= Date.parse(mandate.issued_at) || Date.parse(mandate.expires_at) > Date.parse(session.expires_at) || mandate.required_invoices.length > 2 || new Set(mandate.required_invoices.map((r) => r.invoice_id)).size !== mandate.required_invoices.length) invalid();
+          for (const required of mandate.required_invoices) {
+            keys2(required, ["invoice_id", "expected"]);
+            if (!["allow", "ask"].includes(required.expected) || !state.fixtures.invoices.some((invoice) => invoice.invoice_id === required.invoice_id && !invoice.duplicate_of)) invalid();
+          }
+        }
+      }
+      const own = state.principals.find((p) => p.key === principalKey);
+      keys2(state.viewer, ["principal_key", "side", "brief", "pairs", "is_agent"]);
+      if (!own?.mandate || own.mandate.payload.agent_mode !== "own" || state.viewer.principal_key !== principalKey || state.viewer.side !== own.side || state.viewer.is_agent !== true || !state.viewer.brief || await privateBriefCommitment(parseNegotiationBrief(state.viewer.brief)) !== own.mandate.payload.private_brief_commitment || !Array.isArray(state.viewer.pairs)) invalid();
+      for (const pair of state.viewer.pairs) {
+        keys2(pair, ["pair_id", "name", "principal_key", "session_id", "status", "code_expires_at", "expires_at", "agent_key", "readiness", "profile_bound"]);
+        if (pair.session_id !== sessionId || pair.principal_key !== principalKey || pair.profile_bound !== void 0 && pair.profile_bound !== true) invalid();
+        if (pair.readiness) {
+          keys2(pair.readiness, ["observed_at", "context_digest"]);
+          if (!Number.isFinite(Date.parse(pair.readiness.observed_at)) || !/^[0-9a-f]{64}$/.test(pair.readiness.context_digest)) invalid();
+        }
+      }
+      if (typeof state.started !== "boolean" || state.runtime_changed !== void 0 && typeof state.runtime_changed !== "boolean") invalid();
+      if (!["waiting_partner", "setting_limits", "ready", "working", "waiting_agent", "needs_decision", "agreed", "no_overlap", "round_limit", "failed", "cancelled", "adopted"].includes(state.status) || state.next_principal_key !== void 0 && !state.principals.some((p) => p.key === state.next_principal_key)) invalid();
+      if (!Array.isArray(state.proposals) || state.proposals.length > NEGOTIATION_MAX_PROPOSALS || !Array.isArray(state.responses) || !Array.isArray(state.reports) || !Array.isArray(state.approvals)) invalid();
+      const mandates = ["organizer", "partner"].map((side) => state.principals.find((p) => p.side === side)?.mandate);
+      const mandateDigests = mandates.filter(Boolean).map((m) => m.digest);
+      const agentBindings = state.agent_bindings ?? [];
+      if (!Array.isArray(agentBindings) || agentBindings.length > 12) invalid();
+      for (const signed2 of agentBindings) {
+        envelope(signed2);
+        const b = signed2.payload, auth = b.owner_authorization, q = auth?.payload;
+        keys2(b, ["type", "pair_id", "room_id", "session_id", "principal_key", "agreement_digest", "owner_key", "agent_key", "name", "scope", "audience", "issued_at", "expires_at", "owner_authorization"]);
+        if (!await verify(signed2, this.#config.authorityKey) || b.type !== "scopeblind.coordination.agent-binding.v1" || b.audience !== "scopeblind.coordination.negotiation" || b.session_id !== sessionId || b.room_id !== session.room_id || b.agreement_digest !== session.agreement_digest || b.owner_key !== b.principal_key || !state.principals.some((p) => p.key === b.principal_key) || state.principals.some((p) => p.key === b.agent_key) || canonical(b.scope) !== canonical(NEGOTIATION_AGENT_ACTIONS) || !await verify(auth, b.principal_key) || q.type !== "scopeblind.coordination.request.v1" || q.action !== "negotiation_pair_create" || q.room_id !== session.room_id || q.body.session_id !== sessionId || q.body.pair_id !== b.pair_id || q.body.token_expires_at !== b.expires_at || canonical(q.body.scope) !== canonical(NEGOTIATION_AGENT_ACTIONS)) invalid();
+        envelope(auth);
+        keys2(q, ["type", "action", "room_id", "body", "issued_at", "nonce"]);
+        keys2(q.body, ["session_id", "pair_id", "secret_hash", "name", "expires_at", "token_expires_at", "scope", "expected_agent_key"]);
+        if (q.body.expected_agent_key !== void 0 && q.body.expected_agent_key !== b.agent_key) invalid();
+        if (!/^[0-9a-f]{64}$/.test(b.agent_key) || !Number.isFinite(Date.parse(b.issued_at)) || Date.parse(b.expires_at) <= Date.parse(b.issued_at) || Date.parse(b.expires_at) > Date.parse(session.expires_at) || agentBindings.some((other) => other.payload.agent_key === b.agent_key && other.payload.principal_key !== b.principal_key)) invalid();
+      }
+      const actorBound = (record) => {
+        const mandate = state.principals.find((p) => p.key === record.principal_key)?.mandate?.payload;
+        if (!mandate || !Number.isFinite(Date.parse(record.issued_at)) || Date.parse(record.issued_at) >= Date.parse(mandate.expires_at)) return false;
+        if (record.agent_mode === "manual") return record.agent_key === void 0;
+        if (record.agent_mode === "hosted") return mandate.agent_mode === "hosted" && record.agent_key === void 0;
+        return record.agent_mode === "own" && mandate.agent_mode === "own" && agentBindings.some((b) => b.payload.agent_key === record.agent_key && b.payload.principal_key === record.principal_key && Date.parse(record.issued_at) >= Date.parse(b.payload.issued_at) && Date.parse(record.issued_at) < Date.parse(b.payload.expires_at));
+      };
+      for (let index = 0; index < state.proposals.length; index++) {
+        const signed2 = state.proposals[index], proposal = signed2.payload;
+        envelope(signed2);
+        keys2(proposal, ["type", "id", "approval_above_minor", "budget_minor", "exploration", "parent_digest", "session_id", "room_id", "round", "principal_key", "agent_key", "agent_mode", "agreement_digest", "fixture_digest", "mandate_digests", "next_agreement", "next_agreement_digest", "reviewer_grant", "reviewer_grant_digest", "issued_at"]);
+        if (!actorBound(proposal) || !await verify(signed2, this.#config.authorityKey) || proposal.type !== "scopeblind.coordination.negotiation-proposal.v1" || proposal.session_id !== sessionId || proposal.room_id !== session.room_id || proposal.round !== index + 1 || proposal.agreement_digest !== session.agreement_digest || proposal.fixture_digest !== session.fixture_digest || mandateDigests.length !== 2 || canonical(proposal.mandate_digests) !== canonical(mandateDigests) || !state.principals.some((p) => p.key === proposal.principal_key) || !Number.isSafeInteger(proposal.approval_above_minor) || proposal.approval_above_minor < 0 || proposal.approval_above_minor > (proposal.budget_minor ?? agreement.budget_minor) || proposal.next_agreement?.approval_above_minor !== proposal.approval_above_minor || await negotiationPayloadDigest(proposal.next_agreement) !== proposal.next_agreement_digest || (index === 0 ? proposal.parent_digest !== void 0 : proposal.parent_digest !== state.proposals[index - 1].digest)) invalid();
+      }
+      if (state.selected_proposal_digest !== void 0 && !state.proposals.some((p) => p.digest === state.selected_proposal_digest)) invalid();
+      for (const { payload: p } of state.proposals) {
+        const g = p.reviewer_grant;
+        const authorMandate = state.principals.find((principal) => principal.key === p.principal_key).mandate.payload;
+        if (!negotiationPlanWithinMandate(authorMandate, p.approval_above_minor, p.budget_minor ?? agreement.budget_minor, agreement.budget_minor) || p.exploration !== void 0 && (p.exploration !== true || p.agent_mode !== "manual")) invalid();
+        keys2(g, ["type", "grant_id", "room_id", "agreement_digest", "issuer", "registrar_key", "role", "actions", "expires_at", "token_hash", "max_claims"]);
+        if (canonical(p.next_agreement) !== canonical({ ...agreement, id: p.next_agreement.id, issued_at: p.issued_at, approval_above_minor: p.approval_above_minor, budget_minor: p.budget_minor ?? agreement.budget_minor }) || p.next_agreement.id === agreement.id || g.type !== "scopeblind.coordination.grant.v1" || g.room_id !== p.next_agreement.id || g.agreement_digest !== p.next_agreement_digest || g.issuer !== agreement.owner_key || g.registrar_key !== this.#config.authorityKey || g.role !== "reviewer" || canonical(g.actions) !== canonical(["decide", "accept"]) || g.max_claims !== 1 || g.expires_at !== session.expires_at || await negotiationPayloadDigest(g) !== p.reviewer_grant_digest) invalid();
+      }
+      for (const signed2 of state.responses) {
+        const response2 = signed2.payload;
+        envelope(signed2);
+        keys2(response2, ["type", "session_id", "principal_key", "proposal_digest", "mandate_digest", "decision", "agent_key", "agent_mode", "issued_at"]);
+        if (!actorBound(response2) || !await verify(signed2, this.#config.authorityKey) || response2.type !== "scopeblind.coordination.negotiation-response.v1" || response2.session_id !== sessionId || !["support", "no_agreement"].includes(response2.decision) || !state.proposals.some((p) => p.digest === response2.proposal_digest) || state.principals.find((p) => p.key === response2.principal_key)?.mandate?.digest !== response2.mandate_digest) invalid();
+      }
+      for (const signed2 of state.reports) {
+        const report = signed2.payload;
+        envelope(signed2);
+        keys2(report, ["type", "session_id", "room_id", "proposal_digest", "agreement_digest", "fixture_digest", "mandate_digests", "cases_digest", "runtime_revision", "adapter", "isolation", "issued_at", "before_approval_above_minor", "after_approval_above_minor", "before_budget_minor", "after_budget_minor", "results", "required_passed", "expectations_met", "mandates_met"]);
+        if (!await verify(signed2, this.#config.authorityKey) || report.type !== "scopeblind.coordination.negotiation-report.v1" || report.session_id !== sessionId || report.room_id !== session.room_id || report.agreement_digest !== session.agreement_digest || report.fixture_digest !== session.fixture_digest || canonical(report.mandate_digests) !== canonical(mandateDigests) || !state.proposals.some((p) => p.digest === report.proposal_digest) || report.adapter !== "coordination-d1-sandbox" || report.isolation !== "separate-fixture-ledgers") invalid();
+      }
+      for (const signed2 of state.approvals) {
+        const approval = signed2.payload;
+        humanEnvelope(signed2);
+        keys2(approval, ["type", "session_id", "principal_key", "proposal_digest", "report_digest", "next_agreement_digest", "mandate_digests", "decision", "issued_at", "expires_at", "selection_basis"]);
+        if (!state.principals.some((p) => p.key === approval.principal_key) || !await verifyHuman(signed2, approval.principal_key, { proposal: state.proposals.find((p) => p.digest === approval.proposal_digest), requireRecordedUse: true, authorityKey: this.#config.authorityKey }) || approval.type !== "scopeblind.coordination.negotiation-approval.v1" || approval.session_id !== sessionId || !["approve", "reject"].includes(approval.decision) || canonical(approval.mandate_digests) !== canonical(mandateDigests) || !state.reports.some((r) => r.digest === approval.report_digest && r.payload.proposal_digest === approval.proposal_digest) || !state.proposals.some((p) => p.digest === approval.proposal_digest && p.payload.next_agreement_digest === approval.next_agreement_digest)) invalid();
+      }
+      if (state.run) {
+        keys2(state.run, ["proposal_digest", "status", "completed_cases", "total_cases", "error"]);
+        const total = mandateDigests.length === 2 ? mandateCases(mandates, state.fixtures).length : 0;
+        if (!state.proposals.some((p) => p.digest === state.run.proposal_digest) || !["running", "completed", "failed"].includes(state.run.status) || !Number.isSafeInteger(state.run.completed_cases) || state.run.completed_cases < 0 || state.run.total_cases !== total || state.run.completed_cases > total) invalid();
+      }
+      if (state.error !== void 0 && !/^[a-z_]{3,80}$/.test(state.error)) invalid();
+      if (state.run?.error !== void 0 && !/^[a-z_]{3,80}$/.test(state.run.error)) invalid();
+      return state;
+    } catch (error) {
+      if (error instanceof CoordinationError) throw error;
+      return invalid();
+    }
+  }
+  async negotiationResult(response) {
+    const negotiation = await this.checkedNegotiation(response);
+    let evidenceVerification;
+    if (response.evidence !== void 0) {
+      const evidence = response.evidence;
+      evidenceVerification = await verifyNegotiationEvidence(evidence, this.#config.authorityKey);
+      if (!evidenceVerification.valid || evidence.session?.digest !== negotiation.session.digest || !negotiation.reports.some((report) => report.digest === evidence.report?.digest)) throw new CoordinationError("invalid_negotiation_evidence", "The exact negotiation comparison evidence could not be verified. Do not treat it as a passing agreement or approval.");
+    }
+    return {
+      negotiation,
+      state_digest: await negotiationDigest(negotiation),
+      ...response.evidence !== void 0 ? { evidence: response.evidence, evidence_verification: evidenceVerification } : {},
+      signatures_verified: true,
+      scope: "One principal\u2019s bounded negotiation. Its own private brief is for this agent only. Public proposals and signed mandate constraints are shared. The gate operator records isolated test observations; these are not independent execution observation or payment authority. Support is an agent recommendation, not a human approval.",
+      next_steps: negotiation.runtime_changed ? ["These signed records remain historical evidence. Ask the people to start a fresh linked discussion for the current runtime; prior mandates and approvals do not carry over."] : ["Keep the private brief private. Work within your principal\u2019s signed limits; at most three candidates exist per session. Compare the exact supported candidate, stop on no agreement, and leave approval and adoption to both people."]
+    };
+  }
+  async inspectNegotiation(reportDigest, signal) {
+    const { sessionId } = this.negotiationConfig();
+    if (reportDigest !== void 0 && (typeof reportDigest !== "string" || !/^[0-9a-f]{64}$/.test(reportDigest))) throw new CoordinationError("invalid_input", "report_digest must name an exact negotiation report.");
+    const response = await this.#transport.post("negotiation_get", { session_id: sessionId, ...reportDigest ? { report_digest: reportDigest } : {} }, signal);
+    if (reportDigest && response.evidence?.report?.digest !== reportDigest) throw new CoordinationError("invalid_negotiation_evidence", "The requested exact report was not returned.");
+    const result = await this.negotiationResult(response);
+    const state = result.negotiation;
+    const mandate = state.principals.find((principal) => principal.key === this.#config.principalKey).mandate;
+    if (!state.runtime_changed) await this.acknowledgeInspection(response, "negotiation_get", mandate.digest, signal);
+    return result;
+  }
+  async proposeCandidate(value) {
+    const { sessionId, principalKey } = this.negotiationConfig();
+    if (!value || Object.keys(value).some((key) => !["id", "approval_above_minor", "budget_minor", "parent_digest"].includes(key)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.id) || !Number.isSafeInteger(value.approval_above_minor) || value.approval_above_minor < 0 || value.approval_above_minor > 1e7 || value.budget_minor !== void 0 && (!Number.isSafeInteger(value.budget_minor) || value.budget_minor < 1 || value.budget_minor > 1e7) || value.parent_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.parent_digest)) throw new CoordinationError("invalid_input", "Provide a stable candidate id, a threshold and optional total budget in USD cents, and the current parent_digest for a counterproposal. Private notes and additional powers are not accepted.");
+    const proposal = { ...value };
+    const result = await this.inspectNegotiation(), before = result.negotiation;
+    if (before.runtime_changed) throw new CoordinationError("negotiation_runtime_changed", "This discussion belongs to an earlier runtime. Ask the people to start a fresh linked discussion; do not reuse its mandate.");
+    const existing = before.proposals.find((p) => p.payload.id === proposal.id);
+    if (existing) {
+      if (existing.payload.principal_key !== principalKey || existing.payload.approval_above_minor !== proposal.approval_above_minor || (existing.payload.budget_minor ?? before.agreement.payload.budget_minor) !== (proposal.budget_minor ?? before.agreement.payload.budget_minor) || existing.payload.exploration !== void 0 || existing.payload.parent_digest !== proposal.parent_digest) throw new CoordinationError("negotiation_id_conflict", "This stable candidate id already names different terms. Inspect it before proposing anything else.");
+      return result;
+    }
+    const own = before.principals.find((p) => p.key === principalKey).mandate.payload;
+    if (Date.parse(own.expires_at) <= Date.now() || Date.parse(before.session.payload.expires_at) <= Date.now()) throw new CoordinationError("negotiation_expired", "This session or your signed mandate has expired. Ask your principal to review it.");
+    if (before.proposals.length >= NEGOTIATION_MAX_PROPOSALS) throw new CoordinationError("negotiation_round_limit", "The three-candidate limit has been reached. Stop and explain the remaining disagreement to your principal.");
+    if (["needs_decision", "agreed", "no_overlap", "round_limit", "failed", "cancelled", "adopted"].includes(before.status) || before.next_principal_key !== principalKey) throw new CoordinationError("negotiation_not_your_turn", "This session does not currently invite your agent to propose. Inspect its status; leave human decisions to the people.");
+    if (!negotiationPlanWithinMandate(own, proposal.approval_above_minor, proposal.budget_minor ?? before.agreement.payload.budget_minor, before.agreement.payload.budget_minor) || proposal.parent_digest !== before.proposals.at(-1)?.digest) throw new CoordinationError("invalid_candidate", "The candidate must fit your signed range and name the current parent candidate.");
+    for (const requirement of own.required_invoices) {
+      const invoice = before.fixtures.invoices.find((invoice2) => invoice2.invoice_id === requirement.invoice_id);
+      const budget = proposal.budget_minor ?? before.agreement.payload.budget_minor;
+      const matching = !before.agreement.payload.require_po_match || before.fixtures.purchase_orders.some((po) => po.id === invoice.purchase_order_id && po.vendor === invoice.vendor && po.destination === invoice.destination && po.amount_minor === invoice.amount_minor && po.currency === "USD");
+      const expected = invoice.amount_minor > budget || !before.agreement.payload.allowed_destinations.includes(invoice.destination) ? "refuse" : !matching || invoice.amount_minor > proposal.approval_above_minor ? "ask" : "allow";
+      if (expected !== requirement.expected) throw new CoordinationError("invalid_candidate", "The candidate does not meet your principal\u2019s required invoice decision.");
+    }
+    const response = await this.#transport.post("negotiation_propose", { session_id: sessionId, proposal });
+    const checked = await this.negotiationResult(response), after = checked.negotiation;
+    if (!after.proposals.some((p) => p.payload.id === proposal.id && p.payload.principal_key === principalKey && p.payload.approval_above_minor === proposal.approval_above_minor && (p.payload.budget_minor ?? before.agreement.payload.budget_minor) === (proposal.budget_minor ?? before.agreement.payload.budget_minor) && p.payload.exploration === void 0 && p.payload.parent_digest === proposal.parent_digest)) throw new CoordinationError("invalid_negotiation", "The service did not record the exact candidate submitted. Inspect before retrying with the same id.");
+    return checked;
+  }
+  async respondCandidate(value) {
+    const { sessionId, principalKey } = this.negotiationConfig();
+    if (!value || Object.keys(value).sort().join(",") !== "decision,proposal_digest" || !/^[0-9a-f]{64}$/.test(value.proposal_digest) || !["support", "no_agreement"].includes(value.decision)) throw new CoordinationError("invalid_input", "Respond only support or no_agreement to an exact proposal_digest. A response does not approve or adopt it.");
+    const submitted = { ...value };
+    const response = await this.#transport.post("negotiation_respond", { session_id: sessionId, ...submitted });
+    const result = await this.negotiationResult(response), state = result.negotiation;
+    if (!state.responses.some((r) => r.payload.principal_key === principalKey && r.payload.proposal_digest === submitted.proposal_digest && r.payload.decision === submitted.decision)) throw new CoordinationError("invalid_negotiation", "The returned record does not contain your exact response. Inspect before retrying.");
+    return result;
+  }
+  async compareCandidate(value, signal) {
+    const { sessionId } = this.negotiationConfig();
+    if (!value || Object.keys(value).join(",") !== "proposal_digest" || !/^[0-9a-f]{64}$/.test(value.proposal_digest)) throw new CoordinationError("invalid_input", "Compare takes only the exact supported proposal_digest. It cannot adopt or approve a proposal.");
+    const proposalDigest = value.proposal_digest;
+    const abort = new AbortController(), cancel = () => abort.abort();
+    if (signal?.aborted) cancel();
+    else signal?.addEventListener("abort", cancel, { once: true });
+    const deadline = performance.now() + 18e4, timer = setTimeout(cancel, 18e4);
+    let latest, completedCases = 0, advancingChunks = 0, busyWaits = 0;
+    const pending = () => ({ ...latest, comparison_status: "pending", proposal_digest: proposalDigest, ...signal?.aborted ? { cancelled: true } : {}, next_steps: ["No verified final comparison is available yet. Inspect negotiation status, then resume compare_candidate with the SAME proposal_digest. The server retains its fixed test identity and completed chunks. No approval, payment, or adoption occurred."] });
+    try {
+      while (!abort.signal.aborted && performance.now() < deadline && advancingChunks < 8) {
+        let response;
+        try {
+          response = await this.#transport.post("negotiation_compare", { session_id: sessionId, proposal_digest: proposalDigest }, abort.signal);
+        } catch (error) {
+          if (error instanceof CoordinationError && ["negotiation_in_progress", "rehearsal_in_progress"].includes(error.code) && busyWaits++ < 6) {
+            await waitDelay(1e3, abort.signal);
+            continue;
+          }
+          throw error;
+        }
+        latest = await this.negotiationResult(response);
+        const state = latest.negotiation;
+        const report = state.reports.find((report2) => report2.payload.proposal_digest === proposalDigest);
+        if (report) {
+          if (response.evidence?.report?.digest !== report.digest) latest = await this.inspectNegotiation(report.digest, abort.signal);
+          return { ...latest, comparison_status: "completed", proposal_digest: proposalDigest };
+        }
+        const run = state.run;
+        if (!run || run.proposal_digest !== proposalDigest || run.status !== "running") throw new CoordinationError("invalid_negotiation", "The comparison did not return a matching checkpoint or verified report. Inspect before resuming the same candidate.");
+        if (run.completed_cases <= completedCases) {
+          if (busyWaits++ >= 6) return pending();
+          await waitDelay(1e3, abort.signal);
+        } else {
+          completedCases = run.completed_cases;
+          advancingChunks++;
+        }
+      }
+      return pending();
+    } catch (error) {
+      if (abort.signal.aborted || error instanceof CoordinationError && ["negotiation_in_progress", "rehearsal_in_progress"].includes(error.code)) return pending();
+      if (error instanceof CoordinationError && error.code === "service_unavailable") throw new CoordinationError("negotiation_outcome_unknown", "The comparison response was lost or timed out. Inspect and resume the SAME proposal_digest; do not create another candidate or assume the test failed. No approval or adoption was requested.");
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", cancel);
+    }
+  }
+  async waitNegotiation(value, signal) {
+    this.negotiationConfig();
+    if (!value || Object.keys(value).some((key) => !["after_digest", "timeout_ms"].includes(key)) || value.after_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.after_digest)) throw new CoordinationError("invalid_wait", "Use the state_digest from inspect_negotiation as after_digest, with an optional timeout_ms.");
+    const timeoutMs = value.timeout_ms ?? 3e4;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1e3 || timeoutMs > 3e4) throw new CoordinationError("invalid_wait", "timeout_ms must be an integer from 1000 to 30000.");
+    const abort = new AbortController(), cancel = () => abort.abort();
+    if (signal?.aborted) cancel();
+    else signal?.addEventListener("abort", cancel, { once: true });
+    const deadline = performance.now() + timeoutMs;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      abort.abort();
+    }, timeoutMs);
+    let latest;
+    const result = (waitStatus) => ({ ...latest, wait_status: waitStatus });
+    try {
+      for (; ; ) {
+        if (abort.signal.aborted) throw new CoordinationError("cancelled", "The negotiation wait was cancelled.");
+        latest = await this.inspectNegotiation(void 0, abort.signal);
+        const state = latest.negotiation;
+        if (state.runtime_changed) return result("blocked");
+        if (["agreed", "adopted"].includes(state.status)) return result("completed");
+        if (["no_overlap", "round_limit", "failed", "cancelled"].includes(state.status)) return result("blocked");
+        if (state.status === "needs_decision") return result("awaiting_human_decision");
+        if (state.next_principal_key === this.#config.principalKey) return result("action_required");
+        if (value.after_digest && latest.state_digest !== value.after_digest) return result("changed");
+        const remaining = deadline - performance.now();
+        if (remaining <= 0) return result("waiting");
+        const finalInterval = remaining <= 2e3;
+        await waitDelay(Math.min(2e3, remaining), abort.signal);
+        if (finalInterval || timedOut || performance.now() >= deadline) return result("waiting");
+      }
+    } catch (error) {
+      if (!signal?.aborted && timedOut && error instanceof CoordinationError && error.code === "cancelled") {
+        if (latest) return result("waiting");
+        throw new CoordinationError("wait_timeout", "No current negotiation state was retrieved before the timeout. Inspect before retrying.");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", cancel);
+    }
+  }
+  async checkedRehearsal(response) {
+    const agreement = response.agreement, fixtures = response.fixtures, rehearsal = response.rehearsal;
+    if (response.room_id !== this.#config.roomId || response.authority_key !== this.#config.authorityKey || !agreement || agreement.payload?.type !== "scopeblind.coordination.agreement.v1" || agreement.payload.id !== this.#config.roomId || agreement.payload.registrar_key !== this.#config.authorityKey || !await verifyOwnerAgreement(agreement, response.source_negotiation) || !fixtures || !rehearsal || rehearsal.agreement_digest !== agreement.digest || rehearsal.fixture_digest !== await rehearsalDigest(fixtures) || !Array.isArray(rehearsal.cases) || rehearsal.cases_digest !== await rehearsalDigest(rehearsal.cases)) {
+      throw new CoordinationError("invalid_rehearsal", "The rehearsal source agreement, sample records, or case snapshot could not be verified against the pinned authority.");
+    }
+    if (!Array.isArray(rehearsal.proposals) || !Array.isArray(rehearsal.reports)) throw new CoordinationError("invalid_rehearsal", "The rehearsal record is incomplete.");
+    for (const proposal of rehearsal.proposals) {
+      if (!await verify(proposal, this.#config.authorityKey) || proposal.payload.type !== "scopeblind.coordination.repair-proposal.v1" || proposal.payload.room_id !== this.#config.roomId || proposal.payload.agreement_digest !== agreement.digest) {
+        throw new CoordinationError("invalid_rehearsal", "A proposed repair does not verify against this source agreement and the pinned authority.");
+      }
+    }
+    for (const report of rehearsal.reports) {
+      if (!await verify(report, this.#config.authorityKey) || report.payload.type !== "scopeblind.coordination.rehearsal-report.v1" || report.payload.room_id !== this.#config.roomId || report.payload.agreement_digest !== agreement.digest) {
+        throw new CoordinationError("invalid_rehearsal", "A rehearsal report does not verify against this source agreement and the pinned authority.");
+      }
+    }
+    return { agreement, fixtures, rehearsal };
+  }
+  async rehearsalResult(response) {
+    const source = await this.checkedRehearsal(response);
+    if (response.proposal && !source.rehearsal.proposals.some((p) => canonical(p) === canonical(response.proposal))) throw new CoordinationError("invalid_rehearsal", "The returned proposal is absent from the verified rehearsal record.");
+    if (response.report && !source.rehearsal.reports.some((r) => canonical(r) === canonical(response.report))) throw new CoordinationError("invalid_rehearsal", "The returned report is absent from the verified rehearsal record.");
+    let evidenceVerification;
+    if (response.evidence !== void 0) {
+      const evidence = response.evidence;
+      evidenceVerification = await verifyRehearsalEvidence(evidence, this.#config.authorityKey);
+      if (!evidenceVerification.valid || evidence.agreement.digest !== source.agreement.digest || response.report && canonical(evidence.report) !== canonical(response.report)) throw new CoordinationError("invalid_rehearsal_evidence", "The isolated test evidence could not be verified. No authority has been activated.");
+    }
+    return {
+      room_id: this.#config.roomId,
+      ...source,
+      ...response.run ? { run: response.run } : {},
+      ...response.proposal ? { proposal: response.proposal } : {},
+      ...response.report ? { report: response.report } : {},
+      ...response.evidence ? { evidence: response.evidence, evidence_verification: evidenceVerification } : {},
+      source_signature_verified: true,
+      scope: "Test-only coordination. The named gate operator attests to observed outcomes in separate sample ledgers. Signed records establish integrity, not proof for every input or independent execution observation. Proposals do not change this agreement or authorize payments; adoption belongs to the owner.",
+      next_steps: ["Inspect cases and their human expectations. Keep stable IDs for retries. Compare a proposed repair against required safety cases. Explain the observed tradeoffs; leave adoption to the owner."]
+    };
+  }
+  async inspectRehearsal(reportDigest) {
+    if (reportDigest !== void 0 && (typeof reportDigest !== "string" || !/^[0-9a-f]{64}$/.test(reportDigest))) throw new CoordinationError("invalid_input", "report_digest must identify an exact signed rehearsal report.");
+    const response = await this.#transport.post("rehearsal_get", reportDigest ? { report_digest: reportDigest } : {});
+    if (reportDigest && response.evidence?.report?.digest !== reportDigest) throw new CoordinationError("invalid_rehearsal_evidence", "The returned evidence does not identify the requested report.");
+    const result = await this.rehearsalResult(response);
+    await this.acknowledgeInspection(response, "rehearsal_get", result.agreement.digest);
+    return result;
+  }
+  async proposeCase(value) {
+    let testCase;
+    try {
+      if (value && ("required" in value || value.id?.startsWith("required-"))) throw new Error();
+      testCase = parseRehearsalCase(value);
+    } catch {
+      throw new CoordinationError("invalid_input", "Provide a bounded case with a stable id and explicit expectation. The required safety cases are reserved and cannot be reassigned.");
+    }
+    const response = await this.#transport.post("rehearsal_case", { case: testCase });
+    const result = await this.rehearsalResult(response);
+    if (![...response.rehearsal.cases, ...response.rehearsal.excluded_cases || []].some((c) => canonical(c) === canonical(testCase))) throw new CoordinationError("invalid_rehearsal", "The returned cases do not contain the exact submitted expectation.");
+    return result;
+  }
+  async proposeRepair(value) {
+    let snapshot;
+    try {
+      snapshot = parseRepairProposal(value, 1e7);
+    } catch {
+      throw new CoordinationError("invalid_input", "Provide only a stable id, review threshold in USD cents, and a rationale of at most 600 characters.");
+    }
+    const before = await this.checkedRehearsal(await this.#transport.post("rehearsal_get", {}));
+    let proposal;
+    try {
+      proposal = parseRepairProposal(snapshot, before.agreement.payload.budget_minor);
+    } catch {
+      throw new CoordinationError("invalid_input", "Propose only a review threshold within the source budget, a stable id, and a rationale of at most 600 characters.");
+    }
+    const response = await this.#transport.post("rehearsal_propose", { proposal });
+    const result = await this.rehearsalResult(response);
+    const recorded = response.proposal;
+    if (!recorded || recorded.payload.id !== proposal.id || recorded.payload.approval_above_minor !== proposal.approval_above_minor || recorded.payload.rationale !== proposal.rationale) throw new CoordinationError("invalid_rehearsal", "The signed repair does not match the exact proposed threshold and rationale.");
+    return result;
+  }
+  async runRehearsal(value, signal) {
+    if (!value || Object.keys(value).some((k) => !["id", "proposal_id"].includes(k)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.id) || value.proposal_id !== void 0 && (typeof value.proposal_id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.proposal_id))) throw new CoordinationError("invalid_input", "Use a stable test id and optional exact proposal_id. Retain the same id if the response is lost.");
+    const snapshot = { ...value }, abort = new AbortController(), cancel = () => abort.abort();
+    if (signal?.aborted) cancel();
+    else signal?.addEventListener("abort", cancel, { once: true });
+    const deadline = performance.now() + 18e4, timer = setTimeout(cancel, 18e4);
+    let latest, chunks = 0, busyWaits = 0, completedCases = 0;
+    const pending = () => ({
+      ...latest,
+      status: "pending",
+      run: latest?.run || { id: snapshot.id, status: "unknown" },
+      ...signal?.aborted ? { cancelled: true } : {},
+      next_steps: [`The comparison has no verified final report yet. Inspect rehearsal progress, then resume coordination.run_rehearsal with the SAME id '${snapshot.id}'${snapshot.proposal_id ? ` and proposal_id '${snapshot.proposal_id}'` : ""}. Completed case chunks are retained; do not create a replacement test id. No source payment or rule change was authorized.`]
+    });
+    try {
+      while (chunks < 6 && performance.now() < deadline && !abort.signal.aborted) {
+        let response;
+        try {
+          response = await this.#transport.post("rehearsal_run", snapshot, abort.signal);
+        } catch (error) {
+          if (error instanceof CoordinationError && error.code === "rehearsal_in_progress" && busyWaits++ < 6) {
+            await waitDelay(1e3, abort.signal);
+            continue;
+          }
+          throw error;
+        }
+        latest = await this.rehearsalResult(response);
+        const report = response.report;
+        if (report) {
+          const proposal = response.rehearsal.proposals.find((p) => p.payload.id === snapshot.proposal_id);
+          if (report.payload.id !== snapshot.id || (snapshot.proposal_id ? !proposal || report.payload.proposal_digest !== proposal.digest : report.payload.proposal_digest !== void 0)) throw new CoordinationError("invalid_rehearsal", "The report does not match the requested test ID and proposal.");
+          if (!response.evidence) {
+            const historical = await this.#transport.post("rehearsal_get", { report_digest: report.digest }, abort.signal);
+            if (historical.evidence?.report?.digest !== report.digest) throw new CoordinationError("invalid_rehearsal_evidence", "The completed report\u2019s exact evidence snapshot could not be retrieved.");
+            latest = { ...await this.rehearsalResult(historical), report };
+          }
+          return { ...latest, status: "completed" };
+        }
+        const run = response.run;
+        if (!run || run.id !== snapshot.id || run.status !== "running" || !Number.isSafeInteger(run.completed_cases) || !Number.isSafeInteger(run.total_cases) || Number(run.completed_cases) < 0 || Number(run.completed_cases) > Number(run.total_cases) || Number(run.total_cases) < 1 || Number(run.total_cases) > 10) {
+          throw new CoordinationError("invalid_rehearsal", "The service did not return a usable test checkpoint or final report. Inspect before resuming the same test id.");
+        }
+        if (Number(run.completed_cases) <= completedCases) {
+          if (busyWaits++ >= 6) return pending();
+          await waitDelay(1e3, abort.signal);
+        } else {
+          completedCases = Number(run.completed_cases);
+          chunks++;
+        }
+      }
+      return pending();
+    } catch (error) {
+      if (abort.signal.aborted || error instanceof CoordinationError && error.code === "rehearsal_in_progress") return pending();
+      if (error instanceof CoordinationError && error.code === "service_unavailable") throw new CoordinationError("rehearsal_outcome_unknown", "The test response was lost or timed out. Inspect reports and retry with the SAME test id to recover its result. Do not assume failure or create another test id. No source payment or rule change was authorized.");
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", cancel);
+    }
+  }
+  async room(signal) {
+    const response = await this.#transport.post("inspect", {}, signal);
+    const room = response.room;
+    const agreement = room?.agreement;
+    if (!room || room.room_id !== this.#config.roomId || typeof room.run_id !== "string" || room.authority_key !== this.#config.authorityKey || !agreement || agreement.payload?.type !== "scopeblind.coordination.agreement.v1" || agreement.payload.id !== this.#config.roomId || agreement.payload.version !== 1 || agreement.payload.currency !== "USD" || !/^[0-9a-f]{64}$/.test(agreement.payload.owner_key) || agreement.payload.registrar_key !== this.#config.authorityKey || !await verifyOwnerAgreement(agreement, room.negotiation_evidence)) {
+      throw new CoordinationError("invalid_agreement", "The room agreement or its pinned registrar binding could not be verified.");
+    }
+    if (room.run_id !== `run-${room.room_id}`) {
+      const revisions = room.attempts || [];
+      let prior = `run-${room.room_id}`;
+      for (const attempt of revisions) {
+        const r = attempt.revision;
+        if (!r || !await verify(r, this.#config.authorityKey) || r.payload.type !== "scopeblind.coordination.revision.v1" || r.payload.room_id !== room.room_id || r.payload.previous_run_id !== prior || r.payload.previous_manifest_digest !== attempt.manifest.digest || attempt.manifest.payload.room_id !== room.room_id || attempt.manifest.payload.run_id !== prior || r.payload.requested_by !== agreement.payload.owner_key || r.payload.agreement_digest !== agreement.digest || !await verify(attempt.manifest, this.#config.authorityKey)) throw new CoordinationError("invalid_revision", "The signed chain of authorized result revisions could not be verified.");
+        prior = r.payload.run_id;
+      }
+      if (prior !== room.run_id) throw new CoordinationError("invalid_revision", "The current run does not follow the signed revision history.");
+    }
+    if (this.#config.runId && room.run_id !== this.#config.runId) throw new CoordinationError("run_mismatch", "The configured run does not match this room.");
+    await this.acknowledgeInspection(response, "inspect", agreement.digest, signal);
+    return room;
+  }
+  /** Live room state is informational; only signed artifacts establish signed claims. */
+  async inspect() {
+    const room = await this.room();
+    return {
+      room_id: room.room_id,
+      run_id: room.run_id,
+      cursor: room.revision,
+      agreement: room.agreement,
+      authority_key: this.#config.authorityKey,
+      paused: room.paused,
+      budget: room.budget,
+      invoices: room.invoices,
+      operations: room.operations,
+      fixtures: room.fixtures,
+      historical_operations: room.historical_operations,
+      revision_note: room.revision_note,
+      result: room.manifest,
+      acceptance: room.acceptances,
+      next_steps: room.manifest ? ["Result is delivered. Wait for recipient acceptance or an owner-authorized revision."] : room.paused ? ["Wait for the owner to resume."] : ["Inspect invoices and purchase orders. Reuse operation IDs for retries. Await a reviewer for held requests; continue other permitted work. Deliver when all items have a recorded disposition."],
+      agreement_signature_verified: true,
+      scope: "Sample ledger only. No real money moves. Budget and operation lists are service-reported state; ledger.pay verifies each exact admission and outcome independently."
+    };
+  }
+  /** Poll inside the tool, without model calls, for at most thirty seconds. */
+  async wait(input, signal) {
+    if (!input || Object.keys(input).some((key) => !["after_cursor", "run_id", "timeout_ms"].includes(key)) || !Number.isSafeInteger(input.after_cursor) || input.after_cursor < 0 || input.run_id !== void 0 && (typeof input.run_id !== "string" || !/^run-[A-Za-z0-9_-]{8,100}$/.test(input.run_id))) {
+      throw new CoordinationError("invalid_wait", "Pass after_cursor and optionally run_id from coordination.inspect.");
+    }
+    const timeoutMs = input.timeout_ms === void 0 ? 3e4 : input.timeout_ms;
+    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1e3 || timeoutMs > 3e4) throw new CoordinationError("invalid_wait", "timeout_ms must be an integer from 1000 to 30000.");
+    const abort = new AbortController(), cancel = () => abort.abort();
+    if (signal?.aborted) cancel();
+    else signal?.addEventListener("abort", cancel, { once: true });
+    const deadline = performance.now() + timeoutMs;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      abort.abort();
+    }, timeoutMs);
+    let latest;
+    const response = (room, status) => {
+      const operations = room.operations || [];
+      const ready = operations.filter((op) => op.status === "admitted" || op.status === "held" && op.decision?.payload.decision === "approve" && Date.parse(op.decision.payload.expires_at) > Date.now()).map((op) => op.operation_id);
+      return {
+        status,
+        cursor: room.revision,
+        run_id: room.run_id,
+        paused: room.paused,
+        result_ready: !!room.manifest,
+        attention: {
+          ready_to_retry: ready,
+          awaiting_reviewer: operations.filter((op) => op.status === "held" && !ready.includes(op.operation_id)).map((op) => op.operation_id),
+          changes_requested: operations.filter((op) => op.status === "request_changes").map((op) => op.operation_id),
+          unknown_outcomes: operations.filter((op) => op.status === "unknown").map((op) => op.operation_id)
+        },
+        events: (room.events || []).filter((event) => event.id > input.after_cursor).slice(-30),
+        next_steps: status === "waiting" ? ["No change was observed before the timeout. If the client session is still active, call coordination.wait again with this cursor; otherwise resume the session and inspect. This is bounded polling, not a push notification."] : ["Inspect the updated room. Retry approved operations with their existing IDs and exact input; unknown outcomes keep their reservations. A new run requires reviewing its revision instructions."],
+        scope: "Authenticated service-reported state. A decision notification does not itself authorize execution; ledger.pay independently verifies each exact admission and outcome."
+      };
+    };
+    try {
+      for (; ; ) {
+        if (abort.signal.aborted) throw new CoordinationError("cancelled", "The wait was cancelled. No action or approval was performed.");
+        latest = await this.room(abort.signal);
+        if (abort.signal.aborted) throw new CoordinationError("cancelled", "The wait was cancelled. No action or approval was performed.");
+        if (!Number.isSafeInteger(latest.revision) || latest.revision < 0) throw new CoordinationError("invalid_cursor", "The room did not provide a usable event cursor.");
+        if (latest.revision !== input.after_cursor || input.run_id !== void 0 && latest.run_id !== input.run_id) return response(latest, "changed");
+        const remaining = deadline - performance.now();
+        if (remaining <= 0) return response(latest, "waiting");
+        const finalInterval = remaining <= 2e3;
+        await waitDelay(Math.min(2e3, remaining), abort.signal);
+        if (finalInterval || timedOut || performance.now() >= deadline) return response(latest, "waiting");
+      }
+    } catch (error) {
+      if (!signal?.aborted && (timedOut || performance.now() >= deadline) && latest && error instanceof CoordinationError && error.code === "cancelled") return response(latest, latest.revision !== input.after_cursor || input.run_id !== void 0 && latest.run_id !== input.run_id ? "changed" : "waiting");
+      if (!signal?.aborted && (timedOut || performance.now() >= deadline) && !latest && error instanceof CoordinationError && error.code === "cancelled") throw new CoordinationError("wait_timeout", "No current room state could be retrieved before the wait timed out. Inspect the room before retrying.");
+      throw error;
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", cancel);
+    }
+  }
+  async deliver(runId) {
+    if (typeof runId !== "string" || !/^run-[A-Za-z0-9_-]{8,100}$/.test(runId)) throw new CoordinationError("invalid_run", "Pass the exact run_id from coordination.inspect when delivering.");
+    const before = await this.room();
+    if (before.run_id !== runId) throw new CoordinationError("run_mismatch", "This attempt has changed. Inspect the revised instructions and work before delivering.");
+    const response = await this.#transport.post("deliver", { run_id: before.run_id });
+    const room = response.room;
+    const manifest = room?.manifest;
+    if (!manifest || !await verify(manifest, this.#config.authorityKey) || manifest.payload.type !== "scopeblind.coordination.manifest.v1" || manifest.payload.room_id !== this.#config.roomId || manifest.payload.run_id !== before.run_id || manifest.payload.agreement_digest !== before.agreement.digest) throw new CoordinationError("invalid_manifest", "The delivered result did not verify against this room and attempt. Inspect the room before retrying.");
+    return { manifest, manifest_signature_verified: true, next_step: "The recipient can accept this exact result or request changes in the shared room. Delivery does not imply their acceptance." };
+  }
+  async checkAdmission(value, request, agreement, hash, fresh) {
+    const envelope = value;
+    if (!await verify(envelope, this.#config.authorityKey)) throw new CoordinationError("invalid_admission", "Admission signature does not match the pinned authority. No execution was requested.");
+    const a = envelope.payload;
+    if (a.type !== "scopeblind.coordination.admission.v1" || a.room_id !== this.#config.roomId || a.run_id !== request.run_id || a.operation_id !== request.operation_id || a.agreement_digest !== agreement.digest || a.payload_hash !== hash || canonical(a.input) !== canonical(request.input) || a.destination !== request.input.destination || !["admitted", "held", "refused"].includes(a.decision)) {
+      throw new CoordinationError("invalid_admission", "Admission does not authorize these exact operation terms. No execution was requested.");
+    }
+    const issued = Date.parse(a.issued_at), expiry = Date.parse(a.expires_at);
+    if (!Number.isFinite(issued) || !Number.isFinite(expiry) || expiry <= issued || issued > Date.now() + 3e4 || fresh && expiry <= Date.now()) {
+      throw new CoordinationError("expired_admission", "Admission validity could not be established. No execution was requested.");
+    }
+    return envelope;
+  }
+  async checkOutcome(value, request, hash) {
+    const envelope = value;
+    if (!await verify(envelope, this.#config.authorityKey)) throw new CoordinationError("invalid_outcome", "Destination outcome signature does not match the pinned authority.");
+    const o = envelope.payload;
+    if (o.type !== "scopeblind.coordination.outcome.v1" || o.room_id !== this.#config.roomId || o.run_id !== request.run_id || o.operation_id !== request.operation_id || o.payload_hash !== hash || o.amount_minor !== request.input.amount_minor || o.destination !== request.input.destination || !["confirmed", "failed", "unknown"].includes(o.status) || o.observed_by !== "sandbox-ledger" && !(o.status === "unknown" && o.observed_by === "gateway-report") || !Number.isFinite(Date.parse(o.issued_at)) || Date.parse(o.issued_at) > Date.now() + 3e4 || o.status === "confirmed" && !o.transaction_id) {
+      throw new CoordinationError("invalid_outcome", "Destination outcome does not establish the result of these exact operation terms.");
+    }
+    return envelope;
+  }
+  async pay(payment) {
+    validateCoordinationPayment(payment);
+    const input = JSON.parse(canonical(payment.input));
+    const operationId = payment.operation_id;
+    const room = await this.room();
+    const request = { operation_id: operationId, run_id: room.run_id, tool: "ledger.pay", input };
+    const hash = await payloadHash(input);
+    const response = await this.#transport.post("admit", { operation: request });
+    const receipt = response.operation?.receipt;
+    const admission = await this.checkAdmission(response.admission, request, room.agreement, hash, !receipt);
+    if (response.decision !== admission.payload.decision) throw new CoordinationError("invalid_admission", "Admission response contradicts its signed decision. No execution was requested.");
+    if (receipt) {
+      const outcome = await this.checkOutcome(receipt, request, hash);
+      if (outcome.payload.status === "confirmed" && admission.payload.decision !== "admitted") {
+        throw new CoordinationError("invalid_outcome", "A confirmed outcome contradicts the signed admission decision. No new execution was requested.");
+      }
+      if (outcome.payload.status === "unknown" && outcome.payload.observed_by === "gateway-report") {
+        return { operation_id: operationId, status: "unknown", reason: outcome.payload.note || "A gateway reported an unknown outcome. Authority remains reserved; no new execution was requested.", admission, outcome, replay: true };
+      }
+      if (outcome.payload.status !== "unknown") return { operation_id: operationId, status: outcome.payload.status, reason: outcome.payload.note || "Previously observed destination outcome.", admission, outcome, replay: true };
+      await this.checkAdmission(response.admission, request, room.agreement, hash, true);
+    }
+    if (admission.payload.decision !== "admitted") {
+      return { operation_id: operationId, status: admission.payload.decision, reason: admission.payload.reason, admission };
+    }
+    try {
+      const execution = await this.#transport.post("execute", { operation_id: operationId });
+      const outcome = await this.checkOutcome(execution.outcome, request, hash);
+      return { operation_id: operationId, status: outcome.payload.status, reason: outcome.payload.note || "Signed sample-ledger outcome.", admission, outcome, replay: execution.replay === true };
+    } catch {
+      return { operation_id: operationId, status: "unknown", reason: "Execution was requested, but its outcome could not be verified. Retain this operation_id and inspect or retry the same operation to reconcile; do not create a replacement payment.", admission };
+    }
   }
 };
 
@@ -37953,8 +39349,8 @@ function jcs(value) {
   if (Array.isArray(value))
     return "[" + value.map(jcs).join(",") + "]";
   const obj = value;
-  const keys = Object.keys(obj).sort();
-  return "{" + keys.map((k) => JSON.stringify(k) + ":" + jcs(obj[k])).join(",") + "}";
+  const keys2 = Object.keys(obj).sort();
+  return "{" + keys2.map((k) => JSON.stringify(k) + ":" + jcs(obj[k])).join(",") + "}";
 }
 
 // src/commitments/leaf.ts
@@ -37979,8 +39375,8 @@ function encodeLeaf(field) {
     salt: base64urlNoPad(field.salt),
     value: field.value
   };
-  const canonical = jcs(obj);
-  return new TextEncoder().encode(canonical);
+  const canonical2 = jcs(obj);
+  return new TextEncoder().encode(canonical2);
 }
 function sortFields(fields) {
   const encoder = new TextEncoder();
@@ -38062,8 +39458,8 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     payload.committed_fields_root = committedFieldsRoot;
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
-  const canonical = jcs(payload);
-  const signatureBytes = import_ed255192.ed25519.sign(new TextEncoder().encode(canonical), (0, import_utils4.hexToBytes)(signingKey));
+  const canonical2 = jcs(payload);
+  const signatureBytes = import_ed255192.ed25519.sign(new TextEncoder().encode(canonical2), (0, import_utils4.hexToBytes)(signingKey));
   const signedReceipt = {
     payload,
     signature: {
@@ -38222,10 +39618,10 @@ function verifyCommittedReceiptSignature(receipt, publicKeyHex) {
   if (sig.alg !== "EdDSA" || typeof sig.sig !== "string") return null;
   const key = publicKeyHex ?? (typeof sig.public_key === "string" ? sig.public_key : void 0);
   if (!key) return null;
-  const signed = committedPayload(receipt);
+  const signed2 = committedPayload(receipt);
   const sigBytes = /^[0-9a-f]+$/i.test(sig.sig) && sig.sig.length % 2 === 0 ? (0, import_utils4.hexToBytes)(sig.sig) : base64urlDecode(sig.sig);
   try {
-    return import_ed255192.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed)), (0, import_utils4.hexToBytes)(key));
+    return import_ed255192.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed2)), (0, import_utils4.hexToBytes)(key));
   } catch {
     return false;
   }
@@ -38624,11 +40020,11 @@ function validateManifest(manifest) {
   if (!m.identity || typeof m.identity !== "object") {
     errors.push("identity is required");
   } else {
-    const id = m.identity;
-    if (typeof id.public_key !== "string" || !id.public_key.startsWith("ed25519:")) {
+    const id3 = m.identity;
+    if (typeof id3.public_key !== "string" || !id3.public_key.startsWith("ed25519:")) {
       errors.push("identity.public_key must be an ed25519: prefixed key");
     }
-    if (id.key_algorithm !== "Ed25519") {
+    if (id3.key_algorithm !== "Ed25519") {
       errors.push('identity.key_algorithm must be "Ed25519"');
     }
   }
@@ -38738,18 +40134,18 @@ function validateEvidenceReceipt(receipt) {
 
 // src/hook-server.ts
 var import_node_http2 = require("http");
-var import_node_crypto9 = require("crypto");
+var import_node_crypto10 = require("crypto");
 var import_node_fs13 = require("fs");
 var import_node_path8 = require("path");
 
 // src/scopeblind-bridge.ts
-var import_node_crypto6 = require("crypto");
+var import_node_crypto7 = require("crypto");
 var import_node_fs11 = require("fs");
 var import_node_os = require("os");
 var import_node_path6 = require("path");
 
 // src/egress-guard.ts
-var import_node_crypto5 = require("crypto");
+var import_node_crypto6 = require("crypto");
 var EGRESS_SUMMARY_TYPE = "scopeblind.egress_summary.v1";
 var EGRESS_SUMMARY_VERSION = 1;
 var EGRESS_SUMMARY_FIELDS = /* @__PURE__ */ new Set([
@@ -38794,11 +40190,11 @@ var REASON_CODES = /* @__PURE__ */ new Set([
 function str(v) {
   return typeof v === "string" && v.length ? v : void 0;
 }
-function integer(v) {
+function integer3(v) {
   return typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : void 0;
 }
 function hmacCommitment(domain, value, opts) {
-  return `hmac-sha256:${(0, import_node_crypto5.createHmac)("sha256", opts.pseudonymKey).update(`${domain}\0${opts.tenantScope || ""}\0${String(value ?? "")}`).digest("hex")}`;
+  return `hmac-sha256:${(0, import_node_crypto6.createHmac)("sha256", opts.pseudonymKey).update(`${domain}\0${opts.tenantScope || ""}\0${String(value ?? "")}`).digest("hex")}`;
 }
 function isReceiptCommitment(value) {
   return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value);
@@ -38850,7 +40246,7 @@ function toEgressSummary(envelope, opts) {
     ...ar && str(ar.payload_hash) ? { action_commitment: hmacCommitment("scopeblind.egress.action.v1", ar.payload_hash, opts) } : {},
     ...pd && str(pd.output_hash) ? { output_commitment: hmacCommitment("scopeblind.egress.output.v1", pd.output_hash, opts) } : {},
     ...disclosed !== void 0 ? { disclosed_field_count: disclosed } : {},
-    ...integer(p.deny_iteration) !== void 0 ? { deny_iteration: integer(p.deny_iteration) } : {}
+    ...integer3(p.deny_iteration) !== void 0 ? { deny_iteration: integer3(p.deny_iteration) } : {}
   };
   return summary;
 }
@@ -39009,15 +40405,15 @@ var ScopeBlindBridge = class {
           this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
           continue;
         }
-        const signed = signGenericArtifact("scopeblind.egress_summary.v1", summary);
-        if (!signed.ok || !signed.signed) {
+        const signed2 = signGenericArtifact("scopeblind.egress_summary.v1", summary);
+        if (!signed2.ok || !signed2.signed) {
           this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
-          process.stderr.write(`[PROTECT_MCP] egress summary dropped: a locally signed summary is required (${signed.error || signed.warning || "signer unavailable"})
+          process.stderr.write(`[PROTECT_MCP] egress summary dropped: a locally signed summary is required (${signed2.error || signed2.warning || "signer unavailable"})
 `);
           continue;
         }
         try {
-          const envelope = JSON.parse(signed.signed);
+          const envelope = JSON.parse(signed2.signed);
           const signedGuard = inspectEgress(envelope?.payload, { signed: true });
           if (!signedGuard.safe || envelope?.signature?.alg !== "EdDSA") {
             throw new Error(signedGuard.violations.slice(0, 2).map((v) => v.path).join(", "));
@@ -39083,8 +40479,8 @@ var ScopeBlindBridge = class {
         })
       });
       if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        this.stats.last_error = `brass-issue: HTTP ${res.status} ${text.slice(0, 160)}`;
+        const text3 = await res.text().catch(() => "");
+        this.stats.last_error = `brass-issue: HTTP ${res.status} ${text3.slice(0, 160)}`;
         return null;
       }
       const body = await res.json();
@@ -39124,7 +40520,7 @@ function parseConfiguredPseudonymKey(value) {
 }
 function loadOrCreatePseudonymKey(env, base, slug) {
   const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path6.join)((0, import_node_os.homedir)(), ".protect-mcp", "egress-keys");
-  const scopeDigest = (0, import_node_crypto6.createHash)("sha256").update(`${base}\0${slug}`).digest("hex");
+  const scopeDigest = (0, import_node_crypto7.createHash)("sha256").update(`${base}\0${slug}`).digest("hex");
   const path = (0, import_node_path6.join)(dir, `${scopeDigest}.key`);
   (0, import_node_fs11.mkdirSync)(dir, { recursive: true, mode: 448 });
   (0, import_node_fs11.chmodSync)(dir, 448);
@@ -39136,7 +40532,7 @@ function loadOrCreatePseudonymKey(env, base, slug) {
   } catch (err) {
     if (err?.code !== "ENOENT") throw err;
   }
-  const fresh = (0, import_node_crypto6.randomBytes)(32);
+  const fresh = (0, import_node_crypto7.randomBytes)(32);
   try {
     (0, import_node_fs11.writeFileSync)(path, fresh, { mode: 384, flag: "wx" });
     return fresh;
@@ -39205,15 +40601,15 @@ var RULES = [
 ];
 function deriveCapabilities(tool, input) {
   const t = String(tool || "").toLowerCase();
-  let text = "";
+  let text3 = "";
   try {
-    text = canonicalJson(input).toLowerCase();
+    text3 = canonicalJson(input).toLowerCase();
   } catch {
   }
   const caps = /* @__PURE__ */ new Set();
   for (const r of RULES) {
     if (r.tool && r.tool.test(t)) caps.add(r.cap);
-    if (r.text && r.text.test(text)) caps.add(r.cap);
+    if (r.text && r.text.test(text3)) caps.add(r.cap);
   }
   return Array.from(caps).sort();
 }
@@ -39238,11 +40634,11 @@ function deriveResource(input) {
 function findField(input, names, depth = 0) {
   if (depth > 4 || input === null || typeof input !== "object") return void 0;
   const o = input;
-  const keys = Object.keys(o).sort();
-  for (const k of keys) {
+  const keys2 = Object.keys(o).sort();
+  for (const k of keys2) {
     if (names.indexOf(k.toLowerCase()) >= 0 && o[k] !== void 0 && o[k] !== null) return o[k];
   }
-  for (const k of keys) {
+  for (const k of keys2) {
     const v = findField(o[k], names, depth + 1);
     if (v !== void 0) return v;
   }
@@ -39276,19 +40672,19 @@ function buildEnrichment(tool, input) {
 }
 
 // src/mandate-lifecycle.ts
-var import_node_crypto8 = require("crypto");
+var import_node_crypto9 = require("crypto");
 var import_node_fs12 = require("fs");
 var import_node_path7 = require("path");
 
 // src/webauthn-approval.ts
-var import_node_crypto7 = require("crypto");
+var import_node_crypto8 = require("crypto");
 var import_p256 = require("@noble/curves/p256");
 var import_ed255193 = require("@noble/curves/ed25519");
 var import_sha2566 = require("@noble/hashes/sha256");
 var import_utils6 = require("@noble/hashes/utils");
 function createApprovalChallenge(requestId, toolName, agentId, rpId = "scopeblind.com", timeoutSeconds = 300, boundChallenge) {
-  const challenge = boundChallenge ?? base64urlEncode((0, import_node_crypto7.randomBytes)(32));
-  const contextHash = (0, import_node_crypto7.createHash)("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
+  const challenge = boundChallenge ?? base64urlEncode((0, import_node_crypto8.randomBytes)(32));
+  const contextHash = (0, import_node_crypto8.createHash)("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
   return {
     challenge,
     requestId,
@@ -39397,7 +40793,7 @@ function createApprovalReceiptPayload(challenge, result) {
     context_hash: result.contextHash,
     approved_at: result.approvedAt,
     // Hash the credential ID for privacy — don't store the raw ID
-    credential_id_hash: (0, import_node_crypto7.createHash)("sha256").update(result.credentialId).digest("hex").slice(0, 16)
+    credential_id_hash: (0, import_node_crypto8.createHash)("sha256").update(result.credentialId).digest("hex").slice(0, 16)
   };
 }
 function base64urlEncode(buffer) {
@@ -39416,20 +40812,20 @@ function concatBytes(a, b) {
 }
 function bytesEqual(a, b) {
   if (a.length !== b.length) return false;
-  return (0, import_node_crypto7.timingSafeEqual)(Buffer.from(a), Buffer.from(b));
+  return (0, import_node_crypto8.timingSafeEqual)(Buffer.from(a), Buffer.from(b));
 }
 function constantTimeStrEqual(a, b) {
   const ab = Buffer.from(a, "utf8");
   const bb = Buffer.from(b, "utf8");
   if (ab.length !== bb.length) return false;
-  return (0, import_node_crypto7.timingSafeEqual)(ab, bb);
+  return (0, import_node_crypto8.timingSafeEqual)(ab, bb);
 }
 
 // src/mandate-lifecycle.ts
 var MANDATE_REGISTRY_SCHEMA = "scopeblind.mandate-registry.v1";
 var MANDATE_PROPOSAL_SCHEMA = "scopeblind.mandate-proposal.v1";
 var MANDATE_APPROVAL_SCHEMA = "scopeblind.mandate-approval.v1";
-var SHA256 = (value) => (0, import_node_crypto8.createHash)("sha256").update(value).digest("hex");
+var SHA256 = (value) => (0, import_node_crypto9.createHash)("sha256").update(value).digest("hex");
 function nowIso(now) {
   return (now || /* @__PURE__ */ new Date()).toISOString();
 }
@@ -39455,7 +40851,7 @@ function controllerKeyMaterial(c) {
   return (c.type === "ed25519" ? c.public_key : c.credential_public_key?.publicKeyHex || "").toLowerCase();
 }
 function policyApprovalChallenge(proposal, controllerId) {
-  return (0, import_node_crypto8.createHash)("sha256").update(Buffer.from(canonicalize({
+  return (0, import_node_crypto9.createHash)("sha256").update(Buffer.from(canonicalize({
     purpose: "scopeblind:policy-change",
     proposed_by: proposal.proposed_by,
     proposal_id: proposal.proposal_id,
@@ -39535,7 +40931,7 @@ function verifyGateEnvelope(envelope, gate) {
 function writeAtomic(path, contents) {
   const parent = (0, import_node_path7.dirname)(path);
   (0, import_node_fs12.mkdirSync)(parent, { recursive: true });
-  const temp = (0, import_node_path7.join)(parent, `.${(0, import_node_path7.basename)(path)}.${process.pid}.${(0, import_node_crypto8.randomUUID)()}.tmp`);
+  const temp = (0, import_node_path7.join)(parent, `.${(0, import_node_path7.basename)(path)}.${process.pid}.${(0, import_node_crypto9.randomUUID)()}.tmp`);
   try {
     (0, import_node_fs12.writeFileSync)(temp, contents, { encoding: "utf-8", mode: 384 });
     (0, import_node_fs12.renameSync)(temp, path);
@@ -39880,8 +41276,8 @@ function installSnapshotAtomically(cedarDir, snapshot) {
   const parent = (0, import_node_path7.dirname)(target);
   const base = (0, import_node_path7.basename)(target);
   if (!(0, import_node_fs12.existsSync)(target) || !(0, import_node_fs12.statSync)(target).isDirectory()) throw new Error(`managed Cedar directory is missing: ${target}`);
-  const stage = (0, import_node_path7.join)(parent, `.${base}.scopeblind-stage-${process.pid}-${(0, import_node_crypto8.randomUUID)()}`);
-  const backup = (0, import_node_path7.join)(parent, `.${base}.scopeblind-backup-${process.pid}-${(0, import_node_crypto8.randomUUID)()}`);
+  const stage = (0, import_node_path7.join)(parent, `.${base}.scopeblind-stage-${process.pid}-${(0, import_node_crypto9.randomUUID)()}`);
+  const backup = (0, import_node_path7.join)(parent, `.${base}.scopeblind-backup-${process.pid}-${(0, import_node_crypto9.randomUUID)()}`);
   (0, import_node_fs12.mkdirSync)(stage, { recursive: true, mode: 448 });
   try {
     for (const file of snapshot.files) (0, import_node_fs12.writeFileSync)((0, import_node_path7.join)(stage, file.name), file.content, { encoding: "utf-8", mode: 384 });
@@ -39941,7 +41337,7 @@ function createPolicyProposal(input) {
   }
   const draftBase = {
     schema: MANDATE_PROPOSAL_SCHEMA,
-    proposal_id: `proposal-${(0, import_node_crypto8.randomUUID)()}`,
+    proposal_id: `proposal-${(0, import_node_crypto9.randomUUID)()}`,
     created_at: createdAt,
     expires_at: input.expiresAt,
     proposed_by: { gate_kid: input.signer.kid, gate_public_key: input.signer.publicKey },
@@ -40280,7 +41676,7 @@ function computePayloadDigest(input) {
     return void 0;
   }
   return {
-    input_hash: (0, import_node_crypto9.createHash)("sha256").update(content).digest("hex"),
+    input_hash: (0, import_node_crypto10.createHash)("sha256").update(content).digest("hex"),
     input_size: size,
     truncated: true,
     preview: content.slice(0, 256)
@@ -40293,7 +41689,7 @@ function computeOutputDigest(output) {
     return void 0;
   }
   return {
-    output_hash: (0, import_node_crypto9.createHash)("sha256").update(content).digest("hex"),
+    output_hash: (0, import_node_crypto10.createHash)("sha256").update(content).digest("hex"),
     output_size: size
   };
 }
@@ -40316,7 +41712,7 @@ function detectSandboxState() {
 async function handlePreToolUse(input, state) {
   const hookStart = Date.now();
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto9.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto10.randomUUID)().slice(0, 12);
   state.inflightTools.set(requestId, {
     tool: toolName,
     startedAt: hookStart,
@@ -40593,7 +41989,7 @@ async function handlePreToolUse(input, state) {
 }
 async function handlePostToolUse(input, state) {
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto9.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto10.randomUUID)().slice(0, 12);
   const now = Date.now();
   const inflight = state.inflightTools.get(requestId);
   const timing = {
@@ -40605,7 +42001,7 @@ async function handlePostToolUse(input, state) {
     state.inflightTools.delete(requestId);
   }
   const outputDigest = computeOutputDigest(input.toolResult);
-  const receiptId = (0, import_node_crypto9.randomUUID)().slice(0, 8);
+  const receiptId = (0, import_node_crypto10.randomUUID)().slice(0, 8);
   const policyName = state.cedarPolicies ? `cedar:${state.policyDigest}` : state.policyDigest;
   const additionalContext = `[ScopeBlind] Tool call receipted. Policy: ${policyName}. Decision: allow. Receipt: #${receiptId}.` + (timing.tool_duration_ms !== void 0 ? ` Duration: ${timing.tool_duration_ms}ms.` : "") + (timing.hook_latency_ms !== void 0 ? ` Overhead: ${timing.hook_latency_ms}ms.` : "");
   emitDecisionLog(state, {
@@ -40637,7 +42033,7 @@ function handleSubagentStart(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_started",
-    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
     hook_event: "SubagentStart",
     swarm: {
       ...state.swarmContext,
@@ -40658,7 +42054,7 @@ function handleSubagentStop(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_stopped",
-    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
     hook_event: "SubagentStop",
     swarm: {
       ...state.swarmContext,
@@ -40673,7 +42069,7 @@ function handleTaskCreated(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_created",
-    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
     hook_event: "TaskCreated",
     swarm: {
       ...state.swarmContext,
@@ -40687,7 +42083,7 @@ function handleTaskCompleted(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_completed",
-    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
     hook_event: "TaskCompleted",
     swarm: state.swarmContext
   });
@@ -40698,7 +42094,7 @@ function handleSessionStart(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_started",
-    request_id: input.sessionId || (0, import_node_crypto9.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto10.randomUUID)().slice(0, 12),
     hook_event: "SessionStart",
     swarm: state.swarmContext,
     sandbox_state: detectSandboxState()
@@ -40721,7 +42117,7 @@ function handleSessionEnd(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_ended",
-    request_id: input.sessionId || (0, import_node_crypto9.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto10.randomUUID)().slice(0, 12),
     hook_event: "SessionEnd",
     swarm: state.swarmContext
   });
@@ -40732,7 +42128,7 @@ function handleTeammateIdle(input, state) {
     tool: `teammate:${input.agentId || "unknown"}`,
     decision: "allow",
     reason_code: "teammate_idle",
-    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
     hook_event: "TeammateIdle",
     swarm: {
       ...state.swarmContext,
@@ -40760,7 +42156,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "deny",
       reason_code: "config_tamper_detected",
-      request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange",
       swarm: state.swarmContext
     });
@@ -40769,7 +42165,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "allow",
       reason_code: "config_changed",
-      request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange"
     });
   }
@@ -40791,7 +42187,7 @@ function handleStop(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "agent_stopped",
-    request_id: (0, import_node_crypto9.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
     hook_event: "Stop",
     swarm: state.swarmContext
   });
@@ -40799,8 +42195,8 @@ function handleStop(input, state) {
 }
 function emitDecisionLog(state, entry) {
   const mode = state.enforce ? "enforce" : "shadow";
-  const otelTraceId = (0, import_node_crypto9.randomBytes)(16).toString("hex");
-  const otelSpanId = (0, import_node_crypto9.randomBytes)(8).toString("hex");
+  const otelTraceId = (0, import_node_crypto10.randomBytes)(16).toString("hex");
+  const otelSpanId = (0, import_node_crypto10.randomBytes)(8).toString("hex");
   const log = {
     v: 2,
     tool: entry.tool || "unknown",
@@ -40808,7 +42204,7 @@ function emitDecisionLog(state, entry) {
     reason_code: entry.reason_code || "default_allow",
     policy_digest: state.policyDigest,
     policy_engine: state.cedarPolicies ? "cedar" : "built-in",
-    request_id: entry.request_id || (0, import_node_crypto9.randomUUID)().slice(0, 12),
+    request_id: entry.request_id || (0, import_node_crypto10.randomUUID)().slice(0, 12),
     timestamp: Date.now(),
     mode,
     otel_trace_id: otelTraceId,
@@ -40847,32 +42243,32 @@ function emitDecisionLog(state, entry) {
   } catch {
   }
   if (isSigningEnabled()) {
-    const signed = signDecision(log, state.lastReceiptHash || void 0);
-    if (signed.signed) {
+    const signed2 = signDecision(log, state.lastReceiptHash || void 0);
+    if (signed2.signed) {
       try {
-        (0, import_node_fs13.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
-        if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
+        (0, import_node_fs13.appendFileSync)(state.receiptFilePath, signed2.signed + "\n");
+        if (signed2.receipt_hash) state.lastReceiptHash = signed2.receipt_hash;
       } catch {
       }
-      state.receiptBuffer.add(log.request_id, signed.signed);
-      state.reporter?.record(signed.signed, callLine);
+      state.receiptBuffer.add(log.request_id, signed2.signed);
+      state.reporter?.record(signed2.signed, callLine);
       try {
         const bridge = getScopeBlindBridge();
         if (bridge.enabled()) {
-          const parsed = typeof signed.signed === "string" ? JSON.parse(signed.signed) : signed.signed;
+          const parsed = typeof signed2.signed === "string" ? JSON.parse(signed2.signed) : signed2.signed;
           bridge.forward(parsed);
         }
       } catch (err) {
         process.stderr.write(`[PROTECT_MCP] ScopeBlind forward error: ${err instanceof Error ? err.message : err}
 `);
       }
-    } else if (signed.error) {
+    } else if (signed2.error) {
       const tombstoneObj = {
         type: "scopeblind.signing_failure.v1",
         request_id: log.request_id,
         tool: log.tool,
         decision: log.decision,
-        error: signed.error,
+        error: signed2.error,
         at: new Date(log.timestamp).toISOString(),
         ...state.lastReceiptHash ? { previousReceiptHash: state.lastReceiptHash } : {}
       };
@@ -42193,7 +43589,7 @@ function generateSchemaStub(namespace = "ScopeBlind") {
 }
 
 // src/policy-packs.ts
-var header = (id, description) => `// ScopeBlind protect-mcp policy pack: ${id}
+var header = (id3, description) => `// ScopeBlind protect-mcp policy pack: ${id3}
 // ${description}
 // Start in shadow mode, review receipts, then run with --enforce.
 
@@ -42413,8 +43809,8 @@ var POLICY_PACKS = [
     files: [{ path: "finance-mandate-safe.cedar", contents: financeMandateSafe }]
   }
 ];
-function getPolicyPack(id) {
-  return POLICY_PACKS.find((pack) => pack.id === id);
+function getPolicyPack(id3) {
+  return POLICY_PACKS.find((pack) => pack.id === id3);
 }
 function policyPackIds() {
   return POLICY_PACKS.map((pack) => pack.id);
@@ -43009,8 +44405,8 @@ when { context.tool == "nautilus.strategy.deploy" && context.strategy_pack_signe
 function connectorPilotIds() {
   return CONNECTOR_PILOTS.map((pilot) => pilot.id);
 }
-function getConnectorPilot(id) {
-  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id);
+function getConnectorPilot(id3) {
+  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id3);
 }
 function connectorDirectory(dir) {
   return (0, import_node_path9.join)(dir, ".protect-mcp", "connectors");
@@ -43018,9 +44414,9 @@ function connectorDirectory(dir) {
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
   (0, import_node_fs14.mkdirSync)(directory, { recursive: true });
-  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id) => {
-    const pilot = getConnectorPilot(id);
-    if (!pilot) throw new Error(`Unknown connector pilot: ${id}`);
+  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id3) => {
+    const pilot = getConnectorPilot(id3);
+    if (!pilot) throw new Error(`Unknown connector pilot: ${id3}`);
     return pilot;
   }) : CONNECTOR_PILOTS;
   const written = [];
@@ -43061,15 +44457,15 @@ function readInstalledConnectorPilots(dir) {
     const configPath = (0, import_node_path9.join)(directory, name);
     try {
       const parsed = JSON.parse((0, import_node_fs14.readFileSync)(configPath, "utf-8"));
-      const id = String(parsed.id || name.replace(/\.json$/, ""));
-      const pilot = getConnectorPilot(id);
+      const id3 = String(parsed.id || name.replace(/\.json$/, ""));
+      const pilot = getConnectorPilot(id3);
       return {
-        id,
-        name: String(parsed.name || pilot?.name || id),
+        id: id3,
+        name: String(parsed.name || pilot?.name || id3),
         category: String(parsed.category || pilot?.category || "unknown"),
         status: String(parsed.status || parsed.type || "installed"),
         config_path: configPath,
-        policy_path: (0, import_node_path9.join)(directory, `${id}.cedar`)
+        policy_path: (0, import_node_path9.join)(directory, `${id3}.cedar`)
       };
     } catch {
       return null;
@@ -43127,7 +44523,7 @@ Next: run \`npx protect-mcp dashboard --open\` and review tool inventory, policy
 }
 
 // src/rekor-anchor.ts
-var import_node_crypto10 = require("crypto");
+var import_node_crypto11 = require("crypto");
 var REKOR_API = "https://rekor.sigstore.dev/api/v1";
 async function anchorToRekor(receiptHash2, signature, publicKeyPem) {
   const entry = {
@@ -43195,8 +44591,8 @@ async function verifyRekorAnchor(logIndex, expectedHash) {
   };
 }
 function hashReceipt(receipt) {
-  const canonical = JSON.stringify(receipt, Object.keys(receipt).sort());
-  return (0, import_node_crypto10.createHash)("sha256").update(canonical).digest("hex");
+  const canonical2 = JSON.stringify(receipt, Object.keys(receipt).sort());
+  return (0, import_node_crypto11.createHash)("sha256").update(canonical2).digest("hex");
 }
 function createLogAnchorField(anchor) {
   return {
@@ -43209,7 +44605,7 @@ function createLogAnchorField(anchor) {
 }
 
 // src/selective-disclosure.ts
-var import_node_crypto11 = require("crypto");
+var import_node_crypto12 = require("crypto");
 function redactFields(receipt, fieldsToRedact) {
   const redacted = JSON.parse(JSON.stringify(receipt));
   const salts = [];
@@ -43225,7 +44621,7 @@ function redactFields(receipt, fieldsToRedact) {
       if (i === parts.length - 1) {
         if (key in current) {
           const originalValue = current[key];
-          const salt = (0, import_node_crypto11.randomBytes)(16).toString("hex");
+          const salt = (0, import_node_crypto12.randomBytes)(16).toString("hex");
           const commitment = computeCommitment(salt, originalValue);
           salts.push({ field: fieldPath, salt, originalValue });
           current[key] = `sha256(salt + ${typeof originalValue === "string" ? "..." : JSON.stringify(originalValue).slice(0, 20) + "..."})`;
@@ -43297,11 +44693,11 @@ function createDisclosurePackage(allSalts, fieldsToDisclose) {
 }
 function computeCommitment(salt, value) {
   const serialized = typeof value === "string" ? value : JSON.stringify(value);
-  return (0, import_node_crypto11.createHash)("sha256").update(salt + serialized).digest("hex");
+  return (0, import_node_crypto12.createHash)("sha256").update(salt + serialized).digest("hex");
 }
 function hashObject(obj) {
-  const canonical = JSON.stringify(obj, Object.keys(obj).sort());
-  return (0, import_node_crypto11.createHash)("sha256").update(canonical).digest("hex");
+  const canonical2 = JSON.stringify(obj, Object.keys(obj).sort());
+  return (0, import_node_crypto12.createHash)("sha256").update(canonical2).digest("hex");
 }
 
 // src/huggingface-export.ts
@@ -43525,13 +44921,13 @@ async function createSandbox(config) {
   return createDockerSandbox(config);
 }
 async function runInSandbox(sandbox, toolCall, policy) {
-  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  const timestamp2 = (/* @__PURE__ */ new Date()).toISOString();
   const decision = evaluatePolicy(toolCall.tool, policy);
   const receipt = {
     tool: toolCall.tool,
     decision,
     executed: decision === "allow",
-    timestamp
+    timestamp: timestamp2
   };
   if (decision === "allow") {
     try {
@@ -43618,20 +45014,20 @@ async function createE2BSandbox(config) {
 async function createDockerSandbox(config) {
   const { execSync } = await import("child_process");
   const { randomUUID: randomUUID5 } = await import("crypto");
-  const id = `scopeblind-sandbox-${randomUUID5().slice(0, 8)}`;
+  const id3 = `scopeblind-sandbox-${randomUUID5().slice(0, 8)}`;
   const image = config.template.includes(":") ? config.template : `node:${config.template.replace("node-", "")}`;
   const memoryFlag = config.memoryMB ? `--memory=${config.memoryMB}m` : "";
   const timeout = config.timeoutSeconds || 300;
   try {
     execSync(
-      `docker run -d --name ${id} ${memoryFlag} --network=none --stop-timeout=${timeout} ${image} sleep ${timeout}`,
+      `docker run -d --name ${id3} ${memoryFlag} --network=none --stop-timeout=${timeout} ${image} sleep ${timeout}`,
       { stdio: "pipe" }
     );
   } catch (err) {
     throw new Error(`Docker sandbox creation failed: ${err instanceof Error ? err.message : err}`);
   }
   return {
-    id,
+    id: id3,
     runtime: "docker",
     createdAt: (/* @__PURE__ */ new Date()).toISOString(),
     status: "running",
@@ -43683,7 +45079,7 @@ function evaluatePolicy(tool, policy) {
 }
 
 // src/evidence-authenticity.ts
-var import_node_crypto12 = require("crypto");
+var import_node_crypto13 = require("crypto");
 async function createEvidenceAttestation(input) {
   const tlsNotaryAvailable = await isTLSNotaryAvailable();
   if (tlsNotaryAvailable) {
@@ -43743,14 +45139,14 @@ async function verifyEvidenceAttestation(attestation) {
   }
 }
 function hashResponseBody(body) {
-  return (0, import_node_crypto12.createHash)("sha256").update(typeof body === "string" ? body : body).digest("hex");
+  return (0, import_node_crypto13.createHash)("sha256").update(typeof body === "string" ? body : body).digest("hex");
 }
 function createAttestationField(attestation) {
   return {
     evidence_authenticity: {
       version: attestation.version,
       method: attestation.method,
-      url_hash: (0, import_node_crypto12.createHash)("sha256").update(attestation.url).digest("hex").slice(0, 16),
+      url_hash: (0, import_node_crypto13.createHash)("sha256").update(attestation.url).digest("hex").slice(0, 16),
       response_hash: attestation.responseHash,
       fetched_at: attestation.fetchedAt,
       verified: attestation.verified,
@@ -43781,7 +45177,7 @@ async function createTLSNotaryAttestation(input) {
 }
 
 // src/c2pa-credentials.ts
-var import_node_crypto13 = require("crypto");
+var import_node_crypto14 = require("crypto");
 function createC2PAManifest(receipts, options) {
   const generator = options.generator || "protect-mcp";
   const version = options.version || "0.3.3";
@@ -43795,7 +45191,7 @@ function createC2PAManifest(receipts, options) {
     (r) => r.payload?.decision === "deny"
   );
   const receiptHashes = receipts.map(
-    (r) => (0, import_node_crypto13.createHash)("sha256").update(JSON.stringify(r)).digest("hex")
+    (r) => (0, import_node_crypto14.createHash)("sha256").update(JSON.stringify(r)).digest("hex")
   );
   const merkleRoot2 = computeMerkleRoot(receiptHashes);
   const assertions = [
@@ -43937,7 +45333,7 @@ function computeMerkleRoot(hashes) {
     const left = hashes[i];
     const right = i + 1 < hashes.length ? hashes[i + 1] : left;
     nextLevel.push(
-      (0, import_node_crypto13.createHash)("sha256").update(left + right).digest("hex")
+      (0, import_node_crypto14.createHash)("sha256").update(left + right).digest("hex")
     );
   }
   return computeMerkleRoot(nextLevel);
@@ -43990,7 +45386,7 @@ function toManifoldFormat(prediction) {
 }
 
 // src/agent-exchange.ts
-var import_node_crypto14 = require("crypto");
+var import_node_crypto15 = require("crypto");
 var ReceiptPropagator = class {
   issuer;
   signer;
@@ -44011,7 +45407,7 @@ var ReceiptPropagator = class {
   delegate(delegateId, options) {
     const now = /* @__PURE__ */ new Date();
     const receipt = {
-      receipt_id: `del_${(0, import_node_crypto14.randomUUID)().slice(0, 12)}`,
+      receipt_id: `del_${(0, import_node_crypto15.randomUUID)().slice(0, 12)}`,
       receipt_type: "delegation",
       issuer_id: this.issuer,
       event_time: now.toISOString(),
@@ -44027,8 +45423,8 @@ var ReceiptPropagator = class {
       parent_receipts: options.parentReceipts || []
     };
     if (this.signer) {
-      const signed = this.signer(receipt);
-      Object.assign(receipt, signed);
+      const signed2 = this.signer(receipt);
+      Object.assign(receipt, signed2);
     }
     this.receipts.set(receipt.receipt_id, receipt);
     this.delegationCallCounts.set(receipt.receipt_id, 0);
@@ -44068,7 +45464,7 @@ var ReceiptPropagator = class {
     const currentCount = this.delegationCallCounts.get(options.delegation_receipt) || 0;
     this.delegationCallCounts.set(options.delegation_receipt, currentCount + 1);
     const receipt = {
-      receipt_id: `act_${(0, import_node_crypto14.randomUUID)().slice(0, 12)}`,
+      receipt_id: `act_${(0, import_node_crypto15.randomUUID)().slice(0, 12)}`,
       receipt_type: "execution",
       issuer_id: this.issuer,
       event_time: (/* @__PURE__ */ new Date()).toISOString(),
@@ -44082,8 +45478,8 @@ var ReceiptPropagator = class {
       parent_receipts: [options.delegation_receipt]
     };
     if (this.signer) {
-      const signed = this.signer(receipt);
-      Object.assign(receipt, signed);
+      const signed2 = this.signer(receipt);
+      Object.assign(receipt, signed2);
     }
     this.receipts.set(receipt.receipt_id, receipt);
     return receipt;
@@ -44099,10 +45495,10 @@ var ReceiptPropagator = class {
   traceChain(receiptId) {
     const chain = [];
     const visited = /* @__PURE__ */ new Set();
-    const walk = (id) => {
-      if (visited.has(id)) return;
-      visited.add(id);
-      const receipt = this.receipts.get(id);
+    const walk = (id3) => {
+      if (visited.has(id3)) return;
+      visited.add(id3);
+      const receipt = this.receipts.get(id3);
       if (!receipt) return;
       for (const parentId of receipt.parent_receipts) {
         walk(parentId);
@@ -44160,7 +45556,7 @@ function createReceiptChannel(orchestratorId) {
     async withDelegation(delegateId, tools, fn, options) {
       const delegation = propagator.delegate(delegateId, {
         tools,
-        scope: options?.scope || `task-${(0, import_node_crypto14.randomUUID)().slice(0, 8)}`,
+        scope: options?.scope || `task-${(0, import_node_crypto15.randomUUID)().slice(0, 8)}`,
         ttl: options?.ttl || 3600,
         maxCalls: options?.maxCalls
       });
@@ -44509,11 +45905,125 @@ function createSandboxServer() {
   }));
   return server;
 }
+
+// src/coordination-sharing.ts
+var SNAPSHOT_RETENTION_MS = 30 * 24 * 60 * 60 * 1e3;
+var SNAPSHOT_MAX_BYTES = 512 * 1024;
+var exact3 = (v, names) => !!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).sort().join(",") === [...names].sort().join(",");
+async function verifyPublicSnapshot(value, authorityKey) {
+  const checks = [], add = (name, passed) => checks.push({ name, passed: passed === true });
+  try {
+    const s = value, r = s.receipt.payload, a = s.authorization.payload, created = Date.parse(r.created_at), expires = Date.parse(r.expires_at);
+    add("Recognized immutable snapshot", exact3(s, ["kind", "id", "created_at", "expires_at", "evidence", "receipt", "authorization"]) && ["negotiation", "result"].includes(s.kind) && /^[0-9a-f]{64}$/.test(s.id));
+    add("Pinned authority signed the historical sharing receipt", /^[0-9a-f]{64}$/.test(authorityKey) && await verify(s.receipt, authorityKey) && r.type === "scopeblind.coordination.public-snapshot.v1" && r.purpose === "public_read_only_snapshot" && r.historical === true);
+    add("Receipt names these exact bytes and retention dates", exact3(r, ["type", "id", "kind", "room_id", "target_digest", "evidence_sha256", "authorization_digest", "shared_by", "created_at", "expires_at", "purpose", "historical", ...s.kind === "negotiation" ? ["session_id", "proposal_digest"] : []]) && r.id === s.id && r.kind === s.kind && r.created_at === s.created_at && r.expires_at === s.expires_at && Number.isFinite(created) && expires - created === SNAPSHOT_RETENTION_MS && r.evidence_sha256 === await sha256(canonical(s.evidence)) && new TextEncoder().encode(canonical(s.evidence)).byteLength <= SNAPSHOT_MAX_BYTES);
+    add("A person explicitly signed public sharing of this target", exact3(s.authorization, ["payload", "signer", "digest", "signature"]) && exact3(a, ["type", "action", "room_id", "issued_at", "nonce", "body"]) && await verify(s.authorization, r.shared_by) && r.authorization_digest === s.authorization.digest && a.type === "scopeblind.coordination.request.v1" && a.room_id === r.room_id && Math.abs(created - Date.parse(a.issued_at)) <= 3e5 && typeof a.nonce === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(a.nonce));
+    if (s.kind === "negotiation") {
+      const e = s.evidence, checked = await verifyNegotiationEvidence(e, authorityKey);
+      add("Exact verified negotiation report", checked.valid && a.action === "negotiation_share" && exact3(a.body, ["session_id", "proposal_digest", "report_digest"]) && a.body.session_id === r.session_id && a.body.proposal_digest === r.proposal_digest && a.body.report_digest === r.target_digest && r.room_id === e.session.payload.room_id && r.session_id === e.session.payload.id && r.proposal_digest === e.report.payload.proposal_digest && r.proposal_digest === e.proposals.at(-1)?.digest && r.target_digest === e.report.digest);
+      add("Sharing person is one of the two principals", r.shared_by === e.session.payload.owner_key || r.shared_by === e.binding.payload.guest_key);
+    } else {
+      const e = s.evidence, checked = await verifyEvidence(e, authorityKey);
+      add("Exact verified completed result", checked.valid && a.action === "result_share" && exact3(a.body, ["manifest_digest"]) && a.body.manifest_digest === r.target_digest && r.room_id === e.agreement.payload.id && r.target_digest === e.manifest.digest);
+      add("Sharing person was organizer or a current reviewer", r.shared_by === e.agreement.payload.owner_key || e.grants.some((g) => !g.revoked && g.binding?.payload.guest_key === r.shared_by && Date.parse(g.grant.payload.expires_at) > created && g.grant.payload.actions.some((x) => x === "decide" || x === "accept")));
+    }
+  } catch {
+    add("Snapshot structure is complete", false);
+  }
+  return { valid: checks.length > 0 && checks.every((c) => c.passed), checks, limitations: ["This is a historical snapshot of the exact shared export. It does not establish current task status, current approval, or payment authority.", "The public link permits reading only. Its hosted copy is available for 30 days; downloaded evidence can be retained separately."] };
+}
+
+// src/coordination-repository.ts
+var REPOSITORY_HEX = /^[0-9a-f]{64}$/;
+var REPOSITORY_SHA = /^[0-9a-f]{40}$/;
+var REPOSITORY_ID = /^[A-Za-z0-9_-]{8,100}$/;
+var object2 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var text2 = (v, n) => typeof v === "string" && v.length > 0 && v.length <= n && !/[\u0000-\u001f\u007f]/.test(v);
+var time3 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v));
+var exact4 = (v, required, optional = []) => required.every((k) => k in v) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+function repositoryPath(path) {
+  return text2(path, 300) && !path.startsWith("/") && !path.endsWith("/") && !path.includes("\\") && !path.split("/").some((p) => !p || p === "." || p === ".." || p.toLowerCase() === ".git");
+}
+function repositoryBranch(branch) {
+  return text2(branch, 150) && !branch.includes("..") && !/[~^:?*\[\\\s]/.test(branch) && !branch.startsWith("/") && !branch.endsWith("/") && !branch.endsWith(".lock") && !branch.includes("@{") && !branch.split("/").some((p) => !p || p.startsWith(".") || p.endsWith("."));
+}
+function pathAllowed(path, allowed) {
+  if (!repositoryPath(path) || /^\.github(?:\/|$)/i.test(path) || /(^|\/)(?:\.gitmodules|CODEOWNERS)$/i.test(path)) return false;
+  return allowed.some((rule) => rule.endsWith("/**") ? path.startsWith(rule.slice(0, -2)) : path === rule);
+}
+function validRepositoryTask(v) {
+  if (!object2(v) || !exact4(v, ["type", "id", "title", "repository", "pull_number", "base_branch", "owner_key", "receiver_key", "authority_key", "allowed_paths", "required_checks", "reviewer_secret_hash", "issued_at", "expires_at"])) return false;
+  return v.type === "scopeblind.repository.task.v1" && REPOSITORY_ID.test(String(v.id)) && text2(v.title, 140) && typeof v.repository === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v.repository) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every((x) => typeof x === "string" && REPOSITORY_HEX.test(x)) && v.owner_key !== v.receiver_key && v.owner_key !== v.authority_key && v.receiver_key !== v.authority_key && Array.isArray(v.allowed_paths) && v.allowed_paths.length > 0 && v.allowed_paths.length <= 12 && new Set(v.allowed_paths).size === v.allowed_paths.length && v.allowed_paths.every((p) => typeof p === "string" && repositoryPath(p.endsWith("/**") ? p.slice(0, -3) : p) && pathAllowed(p.endsWith("/**") ? p.slice(0, -2) + "placeholder" : p, [p])) && Array.isArray(v.required_checks) && v.required_checks.length > 0 && v.required_checks.length <= 12 && v.required_checks.every((c) => object2(c) && exact4(c, ["name", "app_id"]) && text2(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0) && new Set(v.required_checks.map((c) => canonical(c))).size === v.required_checks.length && time3(v.issued_at) && time3(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 7 * 864e5;
+}
+function validRepositoryProposal(v, task, taskDigest) {
+  if (!object2(v) || !exact4(v, ["type", "id", "task_id", "task_digest", "repository_id", "base_ref", "head_ref", "base_sha", "head_sha", "merge_sha", "tree_sha", "files", "checks", "observed_at"])) return false;
+  if (v.type !== "scopeblind.repository.proposal.v1" || !REPOSITORY_ID.test(String(v.id)) || v.task_id !== task.id || v.task_digest !== taskDigest || !text2(v.repository_id, 100) || v.base_ref !== `refs/heads/${task.base_branch}` || typeof v.head_ref !== "string" || !v.head_ref.startsWith("refs/heads/") || !repositoryBranch(v.head_ref.slice(11)) || v.head_ref === v.base_ref || ![v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every((s) => typeof s === "string" && REPOSITORY_SHA.test(s)) || v.base_sha === v.head_sha || v.merge_sha === v.base_sha || !time3(v.observed_at)) return false;
+  if (!Array.isArray(v.files) || !v.files.length || v.files.length > 50 || new Set(v.files.map((f) => object2(f) ? f.path : null)).size !== v.files.length || !v.files.every((f) => object2(f) && exact4(f, ["path", "status", "mode", "additions", "deletions"], ["previous_path", "patch", "patch_truncated"]) && typeof f.path === "string" && pathAllowed(f.path, task.allowed_paths) && ["added", "modified", "removed", "renamed"].includes(String(f.status)) && ["100644", "100755"].includes(String(f.mode)) && Number.isSafeInteger(f.additions) && Number(f.additions) >= 0 && Number.isSafeInteger(f.deletions) && Number(f.deletions) >= 0 && (f.patch === void 0 || typeof f.patch === "string" && f.patch.length <= 400) && (f.patch_truncated === void 0 || f.patch_truncated === true) && (f.status === "renamed" ? typeof f.previous_path === "string" && pathAllowed(f.previous_path, task.allowed_paths) : f.previous_path === void 0))) return false;
+  return Array.isArray(v.checks) && v.checks.length === task.required_checks.length && v.checks.every((c) => object2(c) && exact4(c, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(c.id) && Number(c.id) > 0 && c.head_sha === v.head_sha && c.conclusion === "success" && task.required_checks.some((r) => r.name === c.name && r.app_id === c.app_id)) && new Set(v.checks.map((c) => `${c.name}:${c.app_id}`)).size === v.checks.length;
+}
+async function repositorySnapshotDigest(p) {
+  const { id: id3, observed_at, ...snapshot } = p;
+  return sha256(canonical(snapshot));
+}
+function validRepositoryRecord(v, kind) {
+  if (!object2(v) || v.type !== `scopeblind.repository.${kind}.v1` || !REPOSITORY_ID.test(String(v.task_id)) || !REPOSITORY_HEX.test(String(v.task_digest))) return false;
+  const common = ["type", "task_id", "task_digest"];
+  if (kind === "claim") return exact4(v, [...common, "reviewer_key", "name", "issued_at"]) && REPOSITORY_HEX.test(String(v.reviewer_key)) && text2(v.name, 60) && time3(v.issued_at);
+  const note = (v2) => typeof v2 === "string" && v2.length <= 600;
+  if (kind === "approval") return exact4(v, [...common, "proposal_digest", "role", "principal_key", "decision", "issued_at", "expires_at", "note"]) && REPOSITORY_HEX.test(String(v.proposal_digest)) && REPOSITORY_HEX.test(String(v.principal_key)) && ["owner", "reviewer"].includes(String(v.role)) && ["approve", "reject"].includes(String(v.decision)) && time3(v.issued_at) && time3(v.expires_at) && note(v.note) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 9e5;
+  if (kind === "execution") return exact4(v, [...common, "operation_id", "receiver_attempt_id", "proposal_digest", "owner_approval_digest", "reviewer_approval_digest", "receiver_key", "action", "issued_at", "expires_at"]) && [v.operation_id, v.receiver_attempt_id].every((x) => REPOSITORY_ID.test(String(x))) && [v.proposal_digest, v.owner_approval_digest, v.reviewer_approval_digest, v.receiver_key].every((x) => REPOSITORY_HEX.test(String(x))) && v.action === "github.updateRefs" && time3(v.issued_at) && time3(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 12e4;
+  if (kind === "outcome") return exact4(v, [...common, "operation_id", "proposal_digest", "execution_digest", "status", "observed_base_sha", "readback", "observed_at", "note"], ["github_request_id"]) && REPOSITORY_ID.test(String(v.operation_id)) && [v.proposal_digest, v.execution_digest].every((x) => REPOSITORY_HEX.test(String(x))) && ["confirmed", "failed", "unknown"].includes(String(v.status)) && (v.observed_base_sha === null || REPOSITORY_SHA.test(String(v.observed_base_sha))) && ["exact_ref", "descendant_ref", "not_confirmed"].includes(String(v.readback)) && (v.status === "confirmed" ? v.readback !== "not_confirmed" && v.observed_base_sha !== null : v.readback === "not_confirmed") && time3(v.observed_at) && note(v.note) && (v.github_request_id === void 0 || text2(v.github_request_id, 200));
+  return exact4(v, [...common, "outcome_digest", "reviewer_key", "decision", "issued_at", "note"]) && [v.outcome_digest, v.reviewer_key].every((x) => REPOSITORY_HEX.test(String(x))) && ["accept", "request_changes"].includes(String(v.decision)) && time3(v.issued_at) && note(v.note);
+}
+var validRepositoryEnvelope = (e) => object2(e) && exact4(e, ["payload", "signer", "digest", "signature"]);
+async function verifyRepositoryEvidence(value, pin) {
+  const pins = typeof pin === "string" ? { authority_key: pin } : pin ?? { authority_key: value?.state?.payload?.task?.payload?.authority_key };
+  const errors = [];
+  let accepted = false;
+  const check = (condition, message) => {
+    if (!condition) errors.push(message);
+  };
+  try {
+    const e = value, s = e.state?.payload, t = s?.task?.payload;
+    check(object2(e) && exact4(e, ["type", "state"]) && e.type === "scopeblind.repository.evidence.v1" && validRepositoryEnvelope(e.state) && !!s && s.type === "scopeblind.repository.state.v1" && exact4(s, ["type", "task", "reviewer", "proposal", "approvals", "execution", "outcome", "acceptance", "status", "revision", "observed_at"]) && Number.isSafeInteger(s.revision) && s.revision > 0 && time3(s.observed_at) && await verify(e.state, pins.authority_key), "Service state signature or shape is invalid");
+    check(validRepositoryEnvelope(s.task) && validRepositoryTask(t) && await verify(s.task, t.owner_key) && t.authority_key === pins.authority_key && (!pins.owner_key || pins.owner_key === t.owner_key) && (!pins.receiver_key || pins.receiver_key === t.receiver_key) && Date.parse(s.observed_at) >= Date.parse(t.issued_at), "Task or pinned owner/receiver is invalid");
+    const reviewer = s.reviewer?.payload;
+    if (s.reviewer) check(validRepositoryEnvelope(s.reviewer) && validRepositoryRecord(reviewer, "claim") && reviewer.task_id === t.id && reviewer.task_digest === s.task.digest && ![t.owner_key, t.receiver_key, t.authority_key].includes(reviewer.reviewer_key) && await verify(s.reviewer, reviewer.reviewer_key) && (!pins.reviewer_key || pins.reviewer_key === reviewer.reviewer_key) && Date.parse(reviewer.issued_at) >= Date.parse(t.issued_at) && Date.parse(reviewer.issued_at) < Date.parse(t.expires_at), "Reviewer role is invalid");
+    if (s.proposal) check(!!reviewer && validRepositoryEnvelope(s.proposal) && validRepositoryProposal(s.proposal.payload, t, s.task.digest) && await verify(s.proposal, t.receiver_key) && Date.parse(s.proposal.payload.observed_at) >= Date.parse(reviewer.issued_at) && Date.parse(s.proposal.payload.observed_at) < Date.parse(t.expires_at), "Repository snapshot is invalid");
+    check(Array.isArray(s.approvals) && s.approvals.length <= 2 && new Set(s.approvals.map((a) => a.payload.role)).size === s.approvals.length, "Approval roles are invalid");
+    for (const approval of s.approvals) {
+      const a = approval.payload, key = a.role === "owner" ? t.owner_key : reviewer?.reviewer_key;
+      check(!!s.proposal && validRepositoryEnvelope(approval) && validRepositoryRecord(a, "approval") && a.principal_key === key && a.task_id === t.id && a.task_digest === s.task.digest && a.proposal_digest === s.proposal.digest && await verify(approval, key) && Date.parse(a.issued_at) >= Date.parse(s.proposal.payload.observed_at) && Date.parse(a.expires_at) <= Date.parse(t.expires_at), "Exact proposal approval is invalid");
+    }
+    if (s.execution) {
+      const x = s.execution.payload, owner = s.approvals.find((a) => a.payload.role === "owner"), review = s.approvals.find((a) => a.payload.role === "reviewer");
+      check(!!s.proposal && !!owner && !!review && validRepositoryEnvelope(s.execution) && validRepositoryRecord(x, "execution") && x.task_id === t.id && x.task_digest === s.task.digest && x.proposal_digest === s.proposal.digest && x.receiver_key === t.receiver_key && x.owner_approval_digest === owner?.digest && x.reviewer_approval_digest === review?.digest && owner?.payload.decision === "approve" && review?.payload.decision === "approve" && [owner, review].every((a) => a && Date.parse(a.payload.expires_at) >= Date.parse(x.expires_at) && Date.parse(a.payload.issued_at) <= Date.parse(x.issued_at)) && Date.parse(x.expires_at) <= Date.parse(t.expires_at) && await verify(s.execution, pins.authority_key), "Execution authority is invalid");
+    }
+    if (s.outcome) {
+      const o = s.outcome.payload;
+      check(!!s.execution && validRepositoryEnvelope(s.outcome) && validRepositoryRecord(o, "outcome") && o.task_id === t.id && o.task_digest === s.task.digest && o.proposal_digest === s.proposal?.digest && o.execution_digest === s.execution?.digest && o.operation_id === s.execution?.payload.operation_id && await verify(s.outcome, t.receiver_key) && Date.parse(o.observed_at) >= Date.parse(s.execution.payload.issued_at), "Receiver outcome is invalid");
+      check(o.status !== "confirmed" || o.readback !== "exact_ref" || o.observed_base_sha === s.proposal?.payload.merge_sha, "Confirmed readback is invalid");
+    }
+    if (s.acceptance) {
+      const a = s.acceptance.payload;
+      check(s.outcome?.payload.status === "confirmed" && validRepositoryEnvelope(s.acceptance) && validRepositoryRecord(a, "acceptance") && a.task_id === t.id && a.task_digest === s.task.digest && a.outcome_digest === s.outcome.digest && a.reviewer_key === reviewer?.reviewer_key && await verify(s.acceptance, reviewer?.reviewer_key) && Date.parse(a.issued_at) >= Date.parse(s.outcome.payload.observed_at), "Recipient acceptance is invalid");
+      accepted = a.decision === "accept";
+    }
+    const expected = s.acceptance ? s.acceptance.payload.decision === "accept" ? "accepted" : "changes_requested" : s.outcome ? s.outcome.payload.status : s.execution ? "executing" : !reviewer ? "awaiting_reviewer" : !s.proposal ? "awaiting_snapshot" : s.approvals.some((a) => a.payload.decision === "reject") ? "rejected" : s.approvals.length === 2 && s.approvals.every((a) => Date.parse(a.payload.expires_at) > Date.parse(s.observed_at)) ? "approved" : "review";
+    check(s.status === expected || s.status === "cancelled" && !s.execution && !s.outcome && !s.acceptance, "State status is inconsistent with the signed records");
+    for (const record of [s.reviewer, s.proposal, ...s.approvals, s.execution, s.outcome, s.acceptance]) if (record) check(Date.parse(record.payload.issued_at ?? record.payload.observed_at) <= Date.parse(s.observed_at), "A signed record is later than the state observation");
+  } catch {
+    errors.push("Malformed repository evidence");
+  }
+  return { valid: errors.length === 0, errors, accepted: accepted && errors.length === 0, authorityPinned: !!pin && errors.length === 0, limitations: ["The pinned receiver attests to GitHub API observations; this is not a GitHub-signed receipt.", "This controls the installed receiver\u2019s exact branch update. Other credentials and repository actions are outside its coverage.", "Destination readback establishes resulting repository state. After a lost reply it does not establish which actor caused that state.", "The checked files, commits and named checks do not prove the code is safe or universally correct.", "Signatures identify keys, not a person\u2019s legal identity.", ...!pin ? ["No independent authority key was supplied. Only consistency with the included authority was checked."] : []] };
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   BUILTIN_PATTERNS,
   CONNECTOR_PILOTS,
   ConfidentialGate,
+  CoordinationClient,
+  CoordinationError,
   EGRESS_SUMMARY_FIELDS,
   POLICY_PACKS,
   ProtectGateway,
@@ -44532,6 +46042,7 @@ function createSandboxServer() {
   connectorDirectory,
   connectorDoctor,
   connectorPilotIds,
+  coordinationConfigFromArgs,
   createApprovalChallenge,
   createApprovalReceiptPayload,
   createAttestationField,
@@ -44577,6 +46088,7 @@ function createSandboxServer() {
   getToolPolicy,
   hashReceipt,
   hashResponseBody,
+  humanPrincipal,
   initSigning,
   initializeMandateRegistry,
   inspectEgress,
@@ -44608,6 +46120,7 @@ function createSandboxServer() {
   receiptsToHFRows,
   redactFields,
   refreshManagedMandate,
+  repositorySnapshotDigest,
   resolveCredential,
   revealField,
   runEgressSelfCheck,
@@ -44623,6 +46136,8 @@ function createSandboxServer() {
   toEgressSummary,
   toManifoldFormat,
   toMetaculusFormat,
+  validateCoordinationConfig,
+  validateCoordinationPayment,
   validateCredentials,
   validateEvidenceReceipt,
   validateManifest,
@@ -44630,11 +46145,18 @@ function createSandboxServer() {
   verifyAllCommitments,
   verifyApprovalAssertion,
   verifyCommitment,
+  verifyDeviceAuthorization,
   verifyEvidenceAttestation,
+  verifyHuman,
   verifyMandateLifecycleExport,
   verifyMandateRegistry,
+  verifyNegotiationEvidence,
+  verifyOwnerAgreement,
+  verifyPublicSnapshot,
   verifyReceipt,
+  verifyRehearsalEvidence,
   verifyRekorAnchor,
+  verifyRepositoryEvidence,
   verifySelectiveDisclosurePackage,
   writeConnectorPilots
 });

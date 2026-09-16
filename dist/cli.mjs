@@ -8,7 +8,7 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-M4OCJURX.mjs";
+} from "./chunk-5KKNSXNI.mjs";
 import {
   POLICY_PACKS,
   getPolicyPack,
@@ -17,7 +17,7 @@ import {
 import {
   ProtectGateway,
   validateCredentials
-} from "./chunk-TORQ2QFI.mjs";
+} from "./chunk-6DMPXIYJ.mjs";
 import {
   approvePolicyProposalWithDirectSignature,
   createDirectControllerApproval,
@@ -30,7 +30,7 @@ import {
   publicMandateStatus,
   snapshotFromDirectory,
   verifyMandateRegistry
-} from "./chunk-XO3CXSSD.mjs";
+} from "./chunk-6WSDNYAH.mjs";
 import {
   RecordReporter,
   buildActionReadback,
@@ -38,11 +38,11 @@ import {
 } from "./chunk-MZOD6A6U.mjs";
 import {
   loadPolicy
-} from "./chunk-AROKUUGG.mjs";
+} from "./chunk-GADWK3VN.mjs";
 import {
   initSigning,
   signDecision
-} from "./chunk-WG5V64D7.mjs";
+} from "./chunk-VBLTBTAJ.mjs";
 import {
   buildPolicyBundle,
   digestCedarDir,
@@ -53,12 +53,13 @@ import {
   runEvaluatorSelfTest,
   shortPolicyLabel,
   verifyPolicyBundle
-} from "./chunk-PF7HOTBP.mjs";
+} from "./chunk-LVMGH3VC.mjs";
 import {
   canonicalize,
   chainLink,
   verifyReceipt
-} from "./chunk-EIRUB2BZ.mjs";
+} from "./chunk-6JTYFG2X.mjs";
+import "./chunk-VS4TVKA7.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/cli.ts
@@ -74,6 +75,13 @@ Usage:
   protect-mcp [options] -- <command> [args...]
   protect-mcp serve [--port <port>] [--enforce] [--policy <path>] [--cedar <dir>]
   protect-mcp mcp                                 # the gate as an MCP server (evaluate/sign/verify/self_test tools)
+  protect-mcp coordination pair [--config <private-file>] [--name <name>] [--code-env <variable>]
+  protect-mcp coordination setup [--config <private-file>] [--client claude-code|codex|json]
+  protect-mcp coordination agent setup --endpoint <url> --authority-key <hex> [--profile <private-file>] [--client claude-code|codex|json]
+  protect-mcp coordination agent [--profile <private-file>]
+  protect-mcp coordination agent import --config <existing-private-file> [--profile <private-file>]
+  protect-mcp coordination --config <private-file>
+  protect-mcp coordination --endpoint <url> --room <id> --authority-key <hex> [--token-env <name>] [--run <id>]
   protect-mcp init-hooks [--dir <path>] [--port <port>]
   protect-mcp quickstart [--connect]
   protect-mcp wrap [--write] [--claude-desktop] [-- <command>]
@@ -120,6 +128,7 @@ Options:
   --version         Print the installed version
 
 Commands:
+  coordination      Shared invoice MCP tools; verifies pinned admission before an idempotent sample-ledger action (token from environment)
   serve             Start HTTP hook server for Claude Code integration (port 9377)
   evaluate          Evaluate one tool call against a Cedar policy (PreToolUse gate; exit 2 = deny, fail-closed)
   sign              Sign one tool call into a receipt (PostToolUse)
@@ -4806,7 +4815,7 @@ ${dim("Allow a tool: npx protect-mcp policy allow <ToolName>  \xB7  Block one: p
 async function handleEgressCheck(argv) {
   const { readFileSync, existsSync, writeFileSync } = await import("fs");
   const { join } = await import("path");
-  const { inspectEgress, toEgressSummary, runEgressSelfCheck } = await import("./egress-guard-OGECRSRR.mjs");
+  const { inspectEgress, toEgressSummary, runEgressSelfCheck } = await import("./egress-guard-LKLYOG6H.mjs");
   let dir = process.cwd();
   const di = argv.indexOf("--dir");
   if (di !== -1 && argv[di + 1]) dir = argv[di + 1];
@@ -4876,6 +4885,26 @@ async function main() {
   }
   if (args[0] === "mcp") {
     await (await import("./mcp-server.mjs")).runMcpServer();
+    return;
+  }
+  if (args[0] === "repository") {
+    await (await import("./repository-receiver-QRN4UI7F.mjs")).runRepositoryReceiver(args.slice(1));
+    return;
+  }
+  if (args[0] === "coordination" && args[1] === "agent") {
+    await (await import("./coordination-agent-server-276BFZSG.mjs")).runCoordinationAgent(args.slice(2));
+    return;
+  }
+  if (args[0] === "coordination" && args[1] === "pair") {
+    await (await import("./coordination-pair-cli-SSVV6DEH.mjs")).runCoordinationPair(args.slice(2));
+    return;
+  }
+  if (args[0] === "coordination" && args[1] === "setup") {
+    (await import("./coordination-pair-cli-SSVV6DEH.mjs")).runCoordinationSetup(args.slice(2));
+    return;
+  }
+  if (args[0] === "coordination") {
+    await (await import("./coordination-server-PH5G3HTC.mjs")).runCoordinationServer(args.slice(1));
     return;
   }
   if (args[0] === "serve") {
@@ -4951,12 +4980,12 @@ async function main() {
     return;
   }
   if (args[0] === "onboard") {
-    const { handleOnboard } = await import("./onboard-O27KKHIT.mjs");
+    const { handleOnboard } = await import("./onboard-C5EVX5AW.mjs");
     await handleOnboard(args.slice(1));
     return;
   }
   if (args[0] === "offboard") {
-    const { handleOffboard } = await import("./onboard-O27KKHIT.mjs");
+    const { handleOffboard } = await import("./onboard-C5EVX5AW.mjs");
     await handleOffboard(args.slice(1));
     return;
   }
@@ -5017,7 +5046,7 @@ async function main() {
     return;
   }
   if (args[0] === "coverage") {
-    const { handleCoverage } = await import("./coverage-X2D4XVUJ.mjs");
+    const { handleCoverage } = await import("./coverage-PSS3KII6.mjs");
     await handleCoverage(args.slice(1));
     process.exit(process.exitCode || 0);
   }
@@ -5192,7 +5221,7 @@ async function main() {
   if (useHttp) {
     const portIdx = args.indexOf("--port");
     const httpPort = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 3e3;
-    const { startHttpTransport } = await import("./http-transport-ZEJXJ736.mjs");
+    const { startHttpTransport } = await import("./http-transport-NCFAXV7C.mjs");
     startHttpTransport({ port: httpPort, config, serverCommand: childCommand, cedarPolicySet: cedarPolicySet ?? void 0 });
     return;
   }
@@ -5400,7 +5429,7 @@ async function handleReport(args) {
       dir = args[++i];
     }
   }
-  const { generateReport, formatReportMarkdown } = await import("./report-OEWH72P4.mjs");
+  const { generateReport, formatReportMarkdown } = await import("./report-AMDAI6ZB.mjs");
   const { join } = await import("path");
   const logPath = join(dir, ".protect-mcp-log.jsonl");
   const receiptPath = join(dir, ".protect-mcp-receipts.jsonl");

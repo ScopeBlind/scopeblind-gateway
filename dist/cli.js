@@ -30,8 +30,108 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
+// src/coordination-protocol.ts
+function bytesToHex(bytes) {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+function hexToBytes(hex3) {
+  if (!/^(?:[0-9a-f]{2})+$/i.test(hex3)) throw new Error("Invalid hexadecimal data");
+  return Uint8Array.from(hex3.match(/../g).map((x) => parseInt(x, 16)));
+}
+function validUnicode(value) {
+  for (let i = 0; i < value.length; i++) {
+    const c2 = value.charCodeAt(i);
+    if (c2 >= 55296 && c2 <= 56319) {
+      const n = value.charCodeAt(++i);
+      if (!(n >= 56320 && n <= 57343)) return false;
+    } else if (c2 >= 56320 && c2 <= 57343) return false;
+  }
+  return true;
+}
+function canonical(value) {
+  if (value === null) return "null";
+  if (typeof value === "string") {
+    if (!validUnicode(value)) throw new Error("Invalid Unicode");
+    return JSON.stringify(value);
+  }
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("Non-finite number");
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    for (let i = 0; i < value.length; i++) if (!Object.hasOwn(value, i)) throw new Error("Sparse arrays are not JSON");
+    return "[" + value.map(canonical).join(",") + "]";
+  }
+  if (typeof value === "object") {
+    if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new Error("Expected a plain JSON object");
+    const object3 = value;
+    return "{" + Object.keys(object3).sort().map((k) => canonical(k) + ":" + canonical(object3[k])).join(",") + "}";
+  }
+  throw new Error("Not a JSON value");
+}
+async function sha256(value) {
+  return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))));
+}
+async function payloadHash(input) {
+  return sha256(canonical(input));
+}
+async function importIdentity(pkcs8Hex, publicKey) {
+  if (!/^[0-9a-f]{64}$/.test(publicKey)) throw new Error("Invalid public key");
+  const privateKey = await crypto.subtle.importKey("pkcs8", hexToBytes(pkcs8Hex), { name: "Ed25519" }, false, ["sign"]);
+  const identity = { publicKey, privateKey };
+  const check = await sign({ type: "scopeblind.coordination.key-check.v1" }, identity);
+  if (!await verify(check, publicKey)) throw new Error("Signing key does not match authority key");
+  return identity;
+}
+async function sign(payload, identity) {
+  const preimage = COORDINATION_DOMAIN + canonical(payload);
+  const signature = await crypto.subtle.sign("Ed25519", identity.privateKey, new TextEncoder().encode(preimage));
+  const envelope2 = { payload, signer: identity.publicKey, digest: await sha256(preimage), signature: bytesToHex(new Uint8Array(signature)) };
+  if (identity.deviceAuthorization) {
+    envelope2.authorization = identity.deviceAuthorization;
+    const binding = "scopeblind.coordination.device-authorization.v1\n" + envelope2.digest + "\n" + identity.deviceAuthorization.digest;
+    envelope2.authorization_signature = bytesToHex(new Uint8Array(await crypto.subtle.sign("Ed25519", identity.privateKey, new TextEncoder().encode(binding))));
+  }
+  return envelope2;
+}
+async function verify(envelope2, expectedSigner) {
+  try {
+    if (!envelope2 || !/^[0-9a-f]{64}$/.test(envelope2.signer) || !/^[0-9a-f]{64}$/.test(envelope2.digest) || !/^[0-9a-f]{128}$/.test(envelope2.signature)) return false;
+    if (expectedSigner && expectedSigner !== envelope2.signer) return false;
+    const preimage = COORDINATION_DOMAIN + canonical(envelope2.payload);
+    if (await sha256(preimage) !== envelope2.digest) return false;
+    const key = await crypto.subtle.importKey("raw", hexToBytes(envelope2.signer), { name: "Ed25519" }, false, ["verify"]);
+    return await crypto.subtle.verify("Ed25519", key, hexToBytes(envelope2.signature), new TextEncoder().encode(preimage));
+  } catch {
+    return false;
+  }
+}
+function makeRequest(action, room_id, body) {
+  return { type: "scopeblind.coordination.request.v1", action, room_id, body, issued_at: (/* @__PURE__ */ new Date()).toISOString(), nonce: crypto.randomUUID() };
+}
+var COORDINATION_DOMAIN;
+var init_coordination_protocol = __esm({
+  "src/coordination-protocol.ts"() {
+    "use strict";
+    COORDINATION_DOMAIN = "scopeblind.coordination.v1\n";
+  }
+});
+
 // src/acta-envelope.ts
 function canonicalize(obj) {
+  if (Array.isArray(obj)) return "[" + Array.from(obj, canonicalize).join(",") + "]";
+  if (obj !== null && typeof obj === "object") {
+    if (Object.getPrototypeOf(obj) !== Object.prototype && Object.getPrototypeOf(obj) !== null) throw new Error("Expected a plain JSON object");
+    const record = obj;
+    return "{" + Object.keys(record).sort().map((key) => {
+      if (!/^[\x20-\x7E]*$/.test(key)) throw new Error(`Non-ASCII key "${key}" in receipt payload. Only ASCII keys are permitted.`);
+      return JSON.stringify(key) + ":" + canonicalize(record[key]);
+    }).join(",") + "}";
+  }
+  return canonical(obj);
+}
+function legacyCanonicalize(obj) {
   return JSON.stringify(obj, (_key, value) => {
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const sorted = {};
@@ -45,6 +145,33 @@ function canonicalize(obj) {
     }
     return value;
   });
+}
+function hasLegacyUnsafeKey(value) {
+  if (!value || typeof value !== "object") return false;
+  if (Object.prototype.hasOwnProperty.call(value, "__proto__")) return true;
+  return Object.values(value).some(hasLegacyUnsafeKey);
+}
+function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape, allowLegacy) {
+  const jcs2 = canonicalize(payload);
+  if (import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(jcs2), (0, import_utils.hexToBytes)(publicKeyHex))) {
+    return { valid: true, shape, hash: receiptHash(envelope2), canonicalization: "jcs" };
+  }
+  if (!hasLegacyUnsafeKey(envelope2)) {
+    const legacy = legacyCanonicalize(payload);
+    if (legacy !== jcs2 && import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(legacy), (0, import_utils.hexToBytes)(publicKeyHex))) {
+      const legacyHash = (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(legacyCanonicalize(envelope2))));
+      return {
+        valid: allowLegacy,
+        shape,
+        canonicalization: "legacy-numeric-key-order",
+        legacy_signature_valid: true,
+        legacy_hash: legacyHash,
+        ...allowLegacy ? { hash: legacyHash } : { error: "legacy_non_jcs_signature" },
+        warning: "Historical signature verifies only with pre-fix integer-key ordering. This is not JCS-conformant; preserve its original bytes and chain hashes."
+      };
+    }
+  }
+  return { valid: false, shape, error: "invalid_signature" };
 }
 function receiptHash(obj) {
   return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
@@ -77,15 +204,15 @@ function createReceiptEnvelope(fields, privateKeyHex, kid, issuedAt) {
     issuer_id: kid
   };
   const sig = (0, import_utils.bytesToHex)(import_ed25519.ed25519.sign((0, import_utils.utf8ToBytes)(canonicalize(payload)), (0, import_utils.hexToBytes)(privateKeyHex)));
-  const envelope = { payload, signature: { alg: "EdDSA", kid, sig } };
-  return { envelope, hash: receiptHash(envelope) };
+  const envelope2 = { payload, signature: { alg: "EdDSA", kid, sig } };
+  return { envelope: envelope2, hash: receiptHash(envelope2) };
 }
-function verifyReceipt(envelope, publicKeyHex) {
+function verifyReceipt(envelope2, publicKeyHex, options2 = {}) {
   try {
-    if (!envelope || typeof envelope !== "object") {
+    if (!envelope2 || typeof envelope2 !== "object") {
       return { valid: false, shape: null, error: "not_an_object" };
     }
-    const env = envelope;
+    const env = envelope2;
     const signature = env.signature;
     if (signature && typeof signature === "object" && !Array.isArray(signature)) {
       const sigObj = signature;
@@ -95,17 +222,13 @@ function verifyReceipt(envelope, publicKeyHex) {
       if (typeof sigObj.sig !== "string" || !env.payload || typeof env.payload !== "object") {
         return { valid: false, shape: "acta-02", error: "malformed_envelope" };
       }
-      const message = (0, import_utils.utf8ToBytes)(canonicalize(env.payload));
-      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(sigObj.sig), message, (0, import_utils.hexToBytes)(publicKeyHex));
-      return valid ? { valid: true, shape: "acta-02", hash: receiptHash(env) } : { valid: false, shape: "acta-02", error: "invalid_signature" };
+      return verifyEncoding(env.payload, env, sigObj.sig, publicKeyHex, "acta-02", options2.allowLegacyNumericKeys === true);
     }
     if (typeof signature === "string") {
-      const rest = {};
+      const rest = /* @__PURE__ */ Object.create(null);
       for (const k of Object.keys(env)) if (k !== "signature") rest[k] = env[k];
-      const message = (0, import_utils.utf8ToBytes)(canonicalize(rest));
-      const valid = import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), message, (0, import_utils.hexToBytes)(publicKeyHex));
       const shape = env.v === 2 ? "legacy-v2" : "legacy-v1";
-      return valid ? { valid: true, shape, hash: receiptHash(env) } : { valid: false, shape, error: "invalid_signature" };
+      return verifyEncoding(rest, env, signature, publicKeyHex, shape, options2.allowLegacyNumericKeys === true);
     }
     return { valid: false, shape: null, error: "missing_signature" };
   } catch (err) {
@@ -116,9 +239,9 @@ function verifyReceipt(envelope, publicKeyHex) {
     };
   }
 }
-function receiptIdentity(envelope) {
-  if (!envelope || typeof envelope !== "object") return { kid: null, issuer: null, type: null };
-  const env = envelope;
+function receiptIdentity(envelope2) {
+  if (!envelope2 || typeof envelope2 !== "object") return { kid: null, issuer: null, type: null };
+  const env = envelope2;
   if (env.signature && typeof env.signature === "object") {
     const payload = env.payload || {};
     const sig = env.signature;
@@ -141,6 +264,7 @@ var init_acta_envelope = __esm({
     import_ed25519 = require("@noble/curves/ed25519");
     import_sha256 = require("@noble/hashes/sha256");
     import_utils = require("@noble/hashes/utils");
+    init_coordination_protocol();
     B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
   }
 });
@@ -176,8 +300,8 @@ function digestCedarSource(source) {
 function digestBuiltinPolicy(policy) {
   return digestPolicyFiles("builtin", [{ name: "policy.json", content: canonicalize(policy) }]);
 }
-function shortPolicyLabel(result) {
-  return `${result.engine}:${result.policy_digest.replace(/^sha256:/, "").slice(0, 16)}`;
+function shortPolicyLabel(result2) {
+  return `${result2.engine}:${result2.policy_digest.replace(/^sha256:/, "").slice(0, 16)}`;
 }
 function buildPolicyBundle(engine, files, generatedAt) {
   const d = digestPolicyFiles(engine, files);
@@ -371,8 +495,8 @@ var init_evidence_store = __esm({
       save() {
         if (!this.dirty) return;
         const data = {};
-        for (const [id, record] of this.agents) {
-          data[id] = record;
+        for (const [id4, record] of this.agents) {
+          data[id4] = record;
         }
         try {
           (0, import_node_fs3.writeFileSync)(this.filePath, JSON.stringify({ v: 1, agents: data }, null, 2) + "\n");
@@ -389,8 +513,8 @@ var init_evidence_store = __esm({
           const raw = (0, import_node_fs3.readFileSync)(this.filePath, "utf-8");
           const parsed = JSON.parse(raw);
           if (parsed.agents && typeof parsed.agents === "object") {
-            for (const [id, record] of Object.entries(parsed.agents)) {
-              this.agents.set(id, record);
+            for (const [id4, record] of Object.entries(parsed.agents)) {
+              this.agents.set(id4, record);
             }
           }
         } catch {
@@ -406,11 +530,11 @@ var init_evidence_store = __esm({
        * Get all agent summaries (for status display).
        */
       allSummaries() {
-        const result = [];
-        for (const [id] of this.agents) {
-          result.push({ agent_id: id, summary: this.getSummary(id) });
+        const result2 = [];
+        for (const [id4] of this.agents) {
+          result2.push({ agent_id: id4, summary: this.getSummary(id4) });
         }
-        return result;
+        return result2;
       }
     };
   }
@@ -418,8 +542,8 @@ var init_evidence_store = __esm({
 
 // src/admission.ts
 function evaluateTier(manifest, opts) {
-  const options = opts && ("evidenceStore" in opts || "overrides" in opts || "thresholds" in opts) ? opts : { overrides: opts };
-  const { overrides, evidenceStore, thresholds } = options;
+  const options2 = opts && ("evidenceStore" in opts || "overrides" in opts || "thresholds" in opts) ? opts : { overrides: opts };
+  const { overrides, evidenceStore, thresholds } = options2;
   if (!manifest) {
     return {
       tier: "unknown",
@@ -659,7 +783,7 @@ function signDecision(entry, prevReceiptHash) {
     if (entry.mandate_registry) payload.mandate_registry = entry.mandate_registry;
     if (entry.standard) payload.standard = entry.standard;
     if (entry.approval) payload.approval = entry.approval;
-    const result = createReceiptEnvelope(
+    const result2 = createReceiptEnvelope(
       payload,
       signerState.privateKey,
       signerState.kid,
@@ -667,9 +791,9 @@ function signDecision(entry, prevReceiptHash) {
     );
     return {
       ok: true,
-      signed: JSON.stringify(result.envelope),
+      signed: JSON.stringify(result2.envelope),
       artifact_type: artifactType,
-      receipt_hash: result.hash
+      receipt_hash: result2.hash
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
@@ -702,8 +826,8 @@ function signGenericArtifact(_artifactType, payload) {
     if (signerState.issuer && signerState.issuer !== signerState.kid && full.type !== "scopeblind.egress_summary.v1") {
       full.issuer_name = signerState.issuer;
     }
-    const result = createReceiptEnvelope(full, signerState.privateKey, signerState.kid);
-    return { ok: true, signed: JSON.stringify(result.envelope) };
+    const result2 = createReceiptEnvelope(full, signerState.privateKey, signerState.kid);
+    return { ok: true, signed: JSON.stringify(result2.envelope) };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
     return { ok: false, signed: null, warning: `signing failed: ${message}`, error: message };
@@ -749,8 +873,8 @@ async function queryExternalPDP(context, config) {
     if (!response.ok) {
       return fallbackDecision(config, `PDP returned HTTP ${response.status}`);
     }
-    const result = await response.json();
-    return parseResponse(result, config.format || "generic");
+    const result2 = await response.json();
+    return parseResponse(result2, config.format || "generic");
   } catch (err) {
     clearTimeout(timer);
     if (err instanceof Error && err.name === "AbortError") {
@@ -815,14 +939,14 @@ function formatRequest(context, format) {
       return context;
   }
 }
-function parseResponse(result, format) {
+function parseResponse(result2, format) {
   switch (format) {
     case "opa":
-      if (typeof result.result === "boolean") {
-        return { allowed: result.result };
+      if (typeof result2.result === "boolean") {
+        return { allowed: result2.result };
       }
-      if (result.result && typeof result.result === "object") {
-        const r = result.result;
+      if (result2.result && typeof result2.result === "object") {
+        const r = result2.result;
         return {
           allowed: Boolean(r.allow),
           reason: r.reason,
@@ -831,8 +955,8 @@ function parseResponse(result, format) {
       }
       return { allowed: false, reason: "unrecognized OPA response" };
     case "cerbos":
-      if (Array.isArray(result.results) && result.results.length > 0) {
-        const actions = result.results[0].actions;
+      if (Array.isArray(result2.results) && result2.results.length > 0) {
+        const actions = result2.results[0].actions;
         if (actions) {
           const effect = Object.values(actions)[0];
           return { allowed: effect === "EFFECT_ALLOW" };
@@ -840,15 +964,15 @@ function parseResponse(result, format) {
       }
       return { allowed: false, reason: "unrecognized Cerbos response" };
     case "cedar":
-      if (typeof result.decision === "string") {
+      if (typeof result2.decision === "string") {
         return {
-          allowed: result.decision === "Allow",
-          reason: result.decision === "Deny" ? `cedar_deny${result.diagnostics ? ": " + JSON.stringify(result.diagnostics) : ""}` : void 0,
-          metadata: result.diagnostics
+          allowed: result2.decision === "Allow",
+          reason: result2.decision === "Deny" ? `cedar_deny${result2.diagnostics ? ": " + JSON.stringify(result2.diagnostics) : ""}` : void 0,
+          metadata: result2.diagnostics
         };
       }
-      if (Array.isArray(result.results) && result.results.length > 0) {
-        const first = result.results[0];
+      if (Array.isArray(result2.results) && result2.results.length > 0) {
+        const first = result2.results[0];
         return {
           allowed: first.decision === "Allow",
           reason: first.decision === "Deny" ? "cedar_deny" : void 0
@@ -858,9 +982,9 @@ function parseResponse(result, format) {
     case "generic":
     default:
       return {
-        allowed: Boolean(result.allowed),
-        reason: result.reason,
-        metadata: result.metadata
+        allowed: Boolean(result2.allowed),
+        reason: result2.reason,
+        metadata: result2.metadata
       };
   }
 }
@@ -971,8 +1095,8 @@ function onEvalError(reason, failClosed, extra) {
     metadata: { error: true, fail_closed: failClosed, would_deny: true, ...extra || {} }
   };
 }
-async function evaluateCedar(policySet, req, schema, options) {
-  const failClosed = options?.failClosed ?? true;
+async function evaluateCedar(policySet, req, schema, options2) {
+  const failClosed = options2?.failClosed ?? true;
   const available = await ensureCedarWasm();
   if (!available) {
     return onEvalError(`cedar_wasm_not_available: ${cedarWasmLoadError || "unknown load failure"}`, failClosed, { fallback: true });
@@ -994,9 +1118,9 @@ async function evaluateCedar(policySet, req, schema, options) {
     };
     const entities = buildEntities(req);
     const cedarSchema = schema?.schemaJson ?? null;
-    let result;
+    let result2;
     if (typeof cedarWasm.isAuthorized === "function") {
-      result = cedarWasm.isAuthorized({
+      result2 = cedarWasm.isAuthorized({
         policies: { staticPolicies: policySet.source },
         entities,
         principal: authRequest.principal,
@@ -1006,7 +1130,7 @@ async function evaluateCedar(policySet, req, schema, options) {
         schema: cedarSchema
       });
     } else if (typeof cedarWasm.checkAuthorization === "function") {
-      result = cedarWasm.checkAuthorization(
+      result2 = cedarWasm.checkAuthorization(
         policySet.source,
         JSON.stringify(entities),
         JSON.stringify(authRequest)
@@ -1014,7 +1138,7 @@ async function evaluateCedar(policySet, req, schema, options) {
     } else {
       const cedarEngine = cedarWasm.default || cedarWasm;
       if (typeof cedarEngine.isAuthorized === "function") {
-        result = cedarEngine.isAuthorized({
+        result2 = cedarEngine.isAuthorized({
           policies: { staticPolicies: policySet.source },
           entities,
           principal: authRequest.principal,
@@ -1027,8 +1151,8 @@ async function evaluateCedar(policySet, req, schema, options) {
         return onEvalError("cedar_wasm_api_unsupported", failClosed, { exports: Object.keys(cedarWasm) });
       }
     }
-    const parsed = parseWasmResult(result);
-    const policyErrors = extractPolicyErrors(result);
+    const parsed = parseWasmResult(result2);
+    const policyErrors = extractPolicyErrors(result2);
     if (parsed.kind === "error") {
       return onEvalError(`cedar_unparseable_result: ${parsed.diagnostics}`, failClosed);
     }
@@ -1051,27 +1175,27 @@ async function evaluateCedar(policySet, req, schema, options) {
     return onEvalError(`cedar_eval_error: ${err instanceof Error ? err.message : "unknown"}`, failClosed);
   }
 }
-function parseWasmResult(result) {
-  if (!result) return { kind: "error", diagnostics: "null result from Cedar WASM" };
-  if (result.type === "failure") {
-    return { kind: "error", diagnostics: `cedar failure: ${JSON.stringify(result.errors ?? [])}` };
+function parseWasmResult(result2) {
+  if (!result2) return { kind: "error", diagnostics: "null result from Cedar WASM" };
+  if (result2.type === "failure") {
+    return { kind: "error", diagnostics: `cedar failure: ${JSON.stringify(result2.errors ?? [])}` };
   }
-  if (result.type === "success" && result.response) {
-    const dec = result.response.decision;
-    const reasons = result.response.diagnostics?.reason;
+  if (result2.type === "success" && result2.response) {
+    const dec = result2.response.decision;
+    const reasons = result2.response.diagnostics?.reason;
     if (dec === "allow" || dec === "Allow") return { kind: "allow", matchedPolicies: reasons };
     if (dec === "deny" || dec === "Deny") {
-      return { kind: "deny", diagnostics: result.response.diagnostics ? JSON.stringify(result.response.diagnostics) : void 0, matchedPolicies: reasons };
+      return { kind: "deny", diagnostics: result2.response.diagnostics ? JSON.stringify(result2.response.diagnostics) : void 0, matchedPolicies: reasons };
     }
   }
-  if (result.type === "allow" || result.decision === "Allow") return { kind: "allow" };
-  if (result.type === "deny" || result.decision === "Deny") return { kind: "deny" };
-  if (typeof result === "boolean") return result ? { kind: "allow" } : { kind: "deny" };
-  return { kind: "error", diagnostics: `unknown result format: ${JSON.stringify(result)}` };
+  if (result2.type === "allow" || result2.decision === "Allow") return { kind: "allow" };
+  if (result2.type === "deny" || result2.decision === "Deny") return { kind: "deny" };
+  if (typeof result2 === "boolean") return result2 ? { kind: "allow" } : { kind: "deny" };
+  return { kind: "error", diagnostics: `unknown result format: ${JSON.stringify(result2)}` };
 }
-function extractPolicyErrors(result) {
-  if (!result || typeof result !== "object") return [];
-  const raw = result.errors ?? result.response?.diagnostics?.errors ?? result.diagnostics?.errors ?? [];
+function extractPolicyErrors(result2) {
+  if (!result2 || typeof result2 !== "object") return [];
+  const raw = result2.errors ?? result2.response?.diagnostics?.errors ?? result2.diagnostics?.errors ?? [];
   if (!Array.isArray(raw)) return [];
   return raw.map((e) => typeof e === "string" ? e : e?.message ?? e?.error ?? JSON.stringify(e)).filter(Boolean);
 }
@@ -1133,9 +1257,9 @@ async function sendApprovalNotification(config, notification) {
     promises.push(sendEmail(config.email, notification));
   }
   const results = await Promise.allSettled(promises);
-  for (const result of results) {
-    if (result.status === "rejected") {
-      console.error(`[protect-mcp] Notification failed: ${result.reason}`);
+  for (const result2 of results) {
+    if (result2.status === "rejected") {
+      console.error(`[protect-mcp] Notification failed: ${result2.reason}`);
     }
   }
 }
@@ -1331,8 +1455,8 @@ function startStatusServer(config, receiptBuffer, approvalStore, approvalNonce) 
       } else if (path === "/receipts/latest") {
         handleReceiptLatest(res, receiptBuffer);
       } else if (path.startsWith("/receipts/")) {
-        const id = path.slice("/receipts/".length);
-        handleReceiptById(res, receiptBuffer, id);
+        const id4 = path.slice("/receipts/".length);
+        handleReceiptById(res, receiptBuffer, id4);
       } else if (path === "/approve" && req.method === "POST") {
         handleApprove(req, res, approvalStore, approvalNonce);
       } else if (path === "/approvals" && req.method === "GET") {
@@ -1426,11 +1550,11 @@ function handleReceiptLatest(res, buffer) {
   res.writeHead(200);
   res.end(JSON.stringify(latest));
 }
-function handleReceiptById(res, buffer, id) {
-  const receipt = buffer.getById(id);
+function handleReceiptById(res, buffer, id4) {
+  const receipt = buffer.getById(id4);
   if (!receipt) {
     res.writeHead(404);
-    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id }));
+    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id4 }));
     return;
   }
   res.writeHead(200);
@@ -1566,8 +1690,8 @@ function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   }
   return out2;
 }
-function firstStringValue(input, keys) {
-  for (const key of keys) {
+function firstStringValue(input, keys2) {
+  for (const key of keys2) {
     const value = input[key];
     if (typeof value === "string" && value.trim()) return value.trim();
     if (typeof value === "number" || typeof value === "boolean") return String(value);
@@ -1581,7 +1705,7 @@ function actionFor(tool, input) {
 }
 function buildActionReadback(tool, input) {
   const normalized = input && typeof input === "object" && !Array.isArray(input) ? input : { value: input };
-  const canonical = stableStringify(normalized);
+  const canonical2 = stableStringify(normalized);
   const redactedFields = [];
   const disclosedFields = [];
   const payloadPreview = redact(normalized, [], redactedFields, disclosedFields);
@@ -1593,8 +1717,8 @@ function buildActionReadback(tool, input) {
     action,
     destination,
     payload_preview: payloadPreview,
-    payload_hash: (0, import_node_crypto2.createHash)("sha256").update(canonical).digest("hex"),
-    payload_bytes: Buffer.byteLength(canonical, "utf-8"),
+    payload_hash: (0, import_node_crypto2.createHash)("sha256").update(canonical2).digest("hex"),
+    payload_bytes: Buffer.byteLength(canonical2, "utf-8"),
     disclosed_fields: [...new Set(disclosedFields)].slice(0, 80),
     redacted_fields: [...new Set(redactedFields)].slice(0, 80),
     summary
@@ -1666,22 +1790,22 @@ function readAmount(input) {
 }
 function checkAmount(gate, input) {
   if (!gate.amount_max) return { ok: true };
-  const amount = readAmount(input);
-  if (!amount) return { ok: true };
-  if (amount.currency !== gate.amount_max.currency) return { ok: false, reason: "standard_currency_not_permitted", detail: `the standard permits ${gate.amount_max.currency} only; this call is in ${amount.currency || "no named currency"}` };
-  if (amount.minor > gate.amount_max.minor) return { ok: false, reason: "standard_amount_over_limit", detail: `${fmt(amount)} is over the standard's limit of ${fmt(gate.amount_max)} per instruction` };
+  const amount3 = readAmount(input);
+  if (!amount3) return { ok: true };
+  if (amount3.currency !== gate.amount_max.currency) return { ok: false, reason: "standard_currency_not_permitted", detail: `the standard permits ${gate.amount_max.currency} only; this call is in ${amount3.currency || "no named currency"}` };
+  if (amount3.minor > gate.amount_max.minor) return { ok: false, reason: "standard_amount_over_limit", detail: `${fmt(amount3)} is over the standard's limit of ${fmt(gate.amount_max)} per instruction` };
   return { ok: true };
 }
 function personRequired(gate, input) {
   if (!gate.required_above) return { required: false };
-  const amount = readAmount(input);
-  if (!amount) return { required: false };
-  if (amount.currency !== gate.required_above.currency) return { required: true, detail: `${fmt(amount)} cannot be compared with the standard's threshold of ${fmt(gate.required_above)}` };
-  if (amount.minor > gate.required_above.minor) return { required: true, detail: `${fmt(amount)} is above ${fmt(gate.required_above)}, so a named person approves it` };
+  const amount3 = readAmount(input);
+  if (!amount3) return { required: false };
+  if (amount3.currency !== gate.required_above.currency) return { required: true, detail: `${fmt(amount3)} cannot be compared with the standard's threshold of ${fmt(gate.required_above)}` };
+  if (amount3.minor > gate.required_above.minor) return { required: true, detail: `${fmt(amount3)} is above ${fmt(gate.required_above)}, so a named person approves it` };
   return { required: false };
 }
-function heldIdFor(sid, tool, payloadHash) {
-  return (0, import_node_crypto3.createHash)("sha256").update(`scopeblind.held_action.v1\0${sid}\0${tool}\0${payloadHash}`).digest("hex").slice(0, 24);
+function heldIdFor(sid, tool, payloadHash2) {
+  return (0, import_node_crypto3.createHash)("sha256").update(`scopeblind.held_action.v1\0${sid}\0${tool}\0${payloadHash2}`).digest("hex").slice(0, 24);
 }
 function sidFromReportUrl(url) {
   try {
@@ -1975,9 +2099,9 @@ var init_gateway = __esm({
         this.sendToChild(trimmed);
       }
       async interceptToolCallAsync(request, raw) {
-        const result = await this.interceptToolCall(request);
-        if (result) {
-          this.sendToClient(JSON.stringify(result));
+        const result2 = await this.interceptToolCall(request);
+        if (result2) {
+          this.sendToClient(JSON.stringify(result2));
         } else {
           const modified = this.injectParamsCredentials(request);
           this.sendToChild(JSON.stringify(modified));
@@ -2049,10 +2173,10 @@ var init_gateway = __esm({
             if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" is not among the tools the standard permits`);
             return null;
           }
-          const amount = checkAmount(std, toolInput);
-          if (!amount.ok) {
-            this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: amount.reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-            if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" refused by the standard: ${amount.detail}`);
+          const amount3 = checkAmount(std, toolInput);
+          if (!amount3.ok) {
+            this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: amount3.reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+            if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" refused by the standard: ${amount3.detail}`);
             return null;
           }
           const person = personRequired(std, toolInput);
@@ -2265,30 +2389,30 @@ var init_gateway = __esm({
         } catch {
         }
         if (isSigningEnabled()) {
-          const signed = signDecision(log, this.lastReceiptHash || void 0);
-          if (signed.signed) {
-            process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}
+          const signed2 = signDecision(log, this.lastReceiptHash || void 0);
+          if (signed2.signed) {
+            process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed2.signed}
 `);
             try {
-              (0, import_node_fs8.appendFileSync)(this.receiptFilePath, signed.signed + "\n");
-              if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
+              (0, import_node_fs8.appendFileSync)(this.receiptFilePath, signed2.signed + "\n");
+              if (signed2.receipt_hash) this.lastReceiptHash = signed2.receipt_hash;
             } catch {
             }
-            this.reporter?.record(signed.signed, callLine);
-            this.receiptBuffer.add(log.request_id, signed.signed);
+            this.reporter?.record(signed2.signed, callLine);
+            this.receiptBuffer.add(log.request_id, signed2.signed);
             if (this.admissionResult?.agent_id) {
               this.evidenceStore.record(this.admissionResult.agent_id, this.config.signing?.issuer || "protect-mcp");
               if (this.evidenceStore.getSummary(this.admissionResult.agent_id).receipt_count % 10 === 0) {
                 this.evidenceStore.save();
               }
             }
-          } else if (signed.error) {
+          } else if (signed2.error) {
             const tombstone = JSON.stringify({
               type: "scopeblind.signing_failure.v1",
               request_id: log.request_id,
               tool: log.tool,
               decision: log.decision,
-              error: signed.error,
+              error: signed2.error,
               at: new Date(log.timestamp).toISOString()
             });
             try {
@@ -2302,8 +2426,8 @@ var init_gateway = __esm({
           this.reporter.record(void 0, callLine);
         }
       }
-      makeErrorResponse(id, code2, message) {
-        return { jsonrpc: "2.0", id, error: { code: code2, message } };
+      makeErrorResponse(id4, code2, message) {
+        return { jsonrpc: "2.0", id: id4, error: { code: code2, message } };
       }
       sendToChild(message) {
         if (this.child?.stdin?.writable) this.child.stdin.write(message + "\n");
@@ -2399,23 +2523,23 @@ var init_gateway = __esm({
             return JSON.stringify(blocked);
           }
         }
-        return new Promise((resolve2, reject) => {
-          const id = jsonRpc.id;
-          if (id === void 0 || id === null) {
+        return new Promise((resolve5, reject) => {
+          const id4 = jsonRpc.id;
+          if (id4 === void 0 || id4 === null) {
             const modified2 = this.injectParamsCredentials(jsonRpc);
             this.sendToChild(JSON.stringify(modified2));
-            resolve2(JSON.stringify({ jsonrpc: "2.0", result: {}, id: null }));
+            resolve5(JSON.stringify({ jsonrpc: "2.0", result: {}, id: null }));
             return;
           }
           const timeout = setTimeout(() => {
-            this.pendingResponses.delete(id);
-            resolve2(JSON.stringify({
+            this.pendingResponses.delete(id4);
+            resolve5(JSON.stringify({
               jsonrpc: "2.0",
               error: { code: -32e3, message: "Request timeout (30s)" },
-              id
+              id: id4
             }));
           }, REQUEST_TIMEOUT_MS);
-          this.pendingResponses.set(id, { resolve: resolve2, timeout });
+          this.pendingResponses.set(id4, { resolve: resolve5, timeout });
           const modified = this.injectParamsCredentials(jsonRpc);
           this.sendToChild(JSON.stringify(modified));
         });
@@ -2438,8 +2562,8 @@ var init_gateway = __esm({
 });
 
 // src/policy-packs.ts
-function getPolicyPack(id) {
-  return POLICY_PACKS.find((pack) => pack.id === id);
+function getPolicyPack(id4) {
+  return POLICY_PACKS.find((pack) => pack.id === id4);
 }
 function policyPackIds() {
   return POLICY_PACKS.map((pack) => pack.id);
@@ -2448,7 +2572,7 @@ var header, defaultPermit, filesystemSafe, gitSafe, emailSafe, databaseSafe, clo
 var init_policy_packs = __esm({
   "src/policy-packs.ts"() {
     "use strict";
-    header = (id, description) => `// ScopeBlind protect-mcp policy pack: ${id}
+    header = (id4, description) => `// ScopeBlind protect-mcp policy pack: ${id4}
 // ${description}
 // Start in shadow mode, review receipts, then run with --enforce.
 
@@ -2688,7 +2812,7 @@ function createApprovalChallenge(requestId, toolName, agentId, rpId = "scopeblin
 }
 function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts = {}) {
   const now = opts.now ?? Date.now();
-  const fail = (reason, partial = {}) => ({
+  const fail2 = (reason, partial = {}) => ({
     valid: false,
     reason,
     credentialId: assertion.credentialId,
@@ -2700,32 +2824,32 @@ function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts
     ...partial
   });
   const createdAt = new Date(challenge.createdAt).getTime();
-  if (now - createdAt > challenge.timeoutSeconds * 1e3) return fail("challenge_expired");
-  if (!credentialPublicKey?.publicKeyHex) return fail("missing_credential_public_key");
+  if (now - createdAt > challenge.timeoutSeconds * 1e3) return fail2("challenge_expired");
+  if (!credentialPublicKey?.publicKeyHex) return fail2("missing_credential_public_key");
   const clientDataBytes = base64urlDecode(assertion.clientDataJSON);
   let clientData;
   try {
     clientData = JSON.parse(Buffer.from(clientDataBytes).toString("utf8"));
   } catch {
-    return fail("client_data_parse_error");
+    return fail2("client_data_parse_error");
   }
-  if (clientData.type !== "webauthn.get") return fail("wrong_client_data_type");
-  if (!constantTimeStrEqual(clientData.challenge ?? "", challenge.challenge)) return fail("challenge_mismatch");
+  if (clientData.type !== "webauthn.get") return fail2("wrong_client_data_type");
+  if (!constantTimeStrEqual(clientData.challenge ?? "", challenge.challenge)) return fail2("challenge_mismatch");
   const allowedOrigins = opts.expectedOrigin ? Array.isArray(opts.expectedOrigin) ? opts.expectedOrigin : [opts.expectedOrigin] : [`https://${challenge.rpId}`];
-  if (!clientData.origin || !allowedOrigins.includes(clientData.origin)) return fail("origin_mismatch");
+  if (!clientData.origin || !allowedOrigins.includes(clientData.origin)) return fail2("origin_mismatch");
   const authData = base64urlDecode(assertion.authenticatorData);
-  if (authData.length < 37) return fail("authenticator_data_too_short");
+  if (authData.length < 37) return fail2("authenticator_data_too_short");
   const rpIdHash = authData.slice(0, 32);
   const expectedRpIdHash = (0, import_sha2562.sha256)(new TextEncoder().encode(challenge.rpId));
-  if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail("rp_id_hash_mismatch");
+  if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail2("rp_id_hash_mismatch");
   const flags = authData[32];
   const userPresent = !!(flags & 1);
   const userVerified = !!(flags & 4);
-  if (!userPresent) return fail("user_not_present");
-  if ((opts.requireUserVerification ?? true) && !userVerified) return fail("user_verification_required", { userVerified });
+  if (!userPresent) return fail2("user_not_present");
+  if ((opts.requireUserVerification ?? true) && !userVerified) return fail2("user_verification_required", { userVerified });
   const signCount = authData[33] << 24 | authData[34] << 16 | authData[35] << 8 | authData[36];
   if (typeof opts.prevSignCount === "number" && signCount !== 0 && signCount <= opts.prevSignCount) {
-    return fail("sign_count_regression", { userVerified, signCount });
+    return fail2("sign_count_regression", { userVerified, signCount });
   }
   const signedData = concatBytes(authData, (0, import_sha2562.sha256)(clientDataBytes));
   const sigBytes = base64urlDecode(assertion.signature);
@@ -2736,12 +2860,12 @@ function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts
     } else if (credentialPublicKey.alg === -8) {
       sigOk = import_ed255192.ed25519.verify(sigBytes, signedData, (0, import_utils2.hexToBytes)(credentialPublicKey.publicKeyHex));
     } else {
-      return fail("unsupported_algorithm", { userVerified, signCount });
+      return fail2("unsupported_algorithm", { userVerified, signCount });
     }
   } catch {
     sigOk = false;
   }
-  if (!sigOk) return fail("invalid_signature", { userVerified, signCount });
+  if (!sigOk) return fail2("invalid_signature", { userVerified, signCount });
   return {
     valid: true,
     credentialId: assertion.credentialId,
@@ -2887,10 +3011,10 @@ function signLifecycleEvent(signer, fields, issuedAt) {
     ...signer.issuer ? { gate_issuer: signer.issuer } : {}
   }, signer.privateKey, signer.kid, issuedAt).envelope;
 }
-function verifyGateEnvelope(envelope, gate) {
-  const check = verifyReceipt(envelope, gate.public_key);
+function verifyGateEnvelope(envelope2, gate) {
+  const check = verifyReceipt(envelope2, gate.public_key);
   if (!check.valid) return false;
-  const payload = envelope.payload;
+  const payload = envelope2.payload;
   return payload.issuer_id === gate.kid && payload.gate_public_key === gate.public_key;
 }
 function writeAtomic(path, contents) {
@@ -3443,21 +3567,21 @@ function approvePolicyProposalWithWebAuthn(input) {
     throw new Error("pending WebAuthn challenge is not bound to this proposal");
   }
   const at = nowIso(input.now);
-  const result = verifyApprovalAssertion(pending.challenge, input.assertion, controller.credential_public_key, {
+  const result2 = verifyApprovalAssertion(pending.challenge, input.assertion, controller.credential_public_key, {
     expectedOrigin: input.expectedOrigin,
     requireUserVerification: true,
     prevSignCount: controller.sign_count,
     now: Date.parse(at)
   });
-  if (!result.valid || !result.userVerified) throw new Error(`WebAuthn approval rejected: ${result.reason || "user verification required"}`);
-  controller.sign_count = result.signCount;
+  if (!result2.valid || !result2.userVerified) throw new Error(`WebAuthn approval rejected: ${result2.reason || "user verification required"}`);
+  controller.sign_count = result2.signCount;
   const approval = {
     method: "webauthn",
     controller_id: controller.id,
     controller_label: controller.label,
     challenge: pending.challenge,
     assertion: input.assertion,
-    result,
+    result: result2,
     expected_origin: input.expectedOrigin,
     approved_at: at
   };
@@ -3792,8 +3916,8 @@ async function hostedAnchors(opts) {
     body: JSON.stringify(payload)
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`hosted anchor failed: HTTP ${res.status} ${text.slice(0, 200)}`);
+    const text4 = await res.text().catch(() => "");
+    throw new Error(`hosted anchor failed: HTTP ${res.status} ${text4.slice(0, 200)}`);
   }
   const response = await res.json().catch(() => ({}));
   const anchors = Array.isArray(response.anchors) ? response.anchors : [];
@@ -3990,15 +4114,15 @@ function sha256Hex2(s) {
 }
 function deriveCapabilities(tool, input) {
   const t = String(tool || "").toLowerCase();
-  let text = "";
+  let text4 = "";
   try {
-    text = canonicalJson(input).toLowerCase();
+    text4 = canonicalJson(input).toLowerCase();
   } catch {
   }
   const caps = /* @__PURE__ */ new Set();
   for (const r of RULES) {
     if (r.tool && r.tool.test(t)) caps.add(r.cap);
-    if (r.text && r.text.test(text)) caps.add(r.cap);
+    if (r.text && r.text.test(text4)) caps.add(r.cap);
   }
   return Array.from(caps).sort();
 }
@@ -4023,11 +4147,11 @@ function deriveResource(input) {
 function findField(input, names, depth = 0) {
   if (depth > 4 || input === null || typeof input !== "object") return void 0;
   const o = input;
-  const keys = Object.keys(o).sort();
-  for (const k of keys) {
+  const keys2 = Object.keys(o).sort();
+  for (const k of keys2) {
     if (names.indexOf(k.toLowerCase()) >= 0 && o[k] !== void 0 && o[k] !== null) return o[k];
   }
-  for (const k of keys) {
+  for (const k of keys2) {
     const v = findField(o[k], names, depth + 1);
     if (v !== void 0) return v;
   }
@@ -4240,7 +4364,7 @@ function claimDigest(pack) {
   return sha256Hex3(canonicalJson(pack));
 }
 function buildAnchorEnvelope(pack, key, issuedAt) {
-  const signed = {
+  const signed2 = {
     type: "evidence_pack",
     schema: ANCHOR_SCHEMA,
     anchors: "protect-mcp-claim",
@@ -4254,32 +4378,32 @@ function buildAnchorEnvelope(pack, key, issuedAt) {
     verification_key: key.publicKey,
     disclosure: "internal"
   };
-  const hash = (0, import_sha2564.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  const hash = (0, import_sha2564.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed2))));
   const digest = (0, import_utils4.bytesToHex)(hash);
   const signature = (0, import_utils4.bytesToHex)(import_ed255193.ed25519.sign(hash, (0, import_utils4.hexToBytes)(key.privateKey)));
-  return { ...signed, signature, digest };
+  return { ...signed2, signature, digest };
 }
-function verifyAnchorEnvelope(pack, envelope) {
+function verifyAnchorEnvelope(pack, envelope2) {
   const reasons = [];
-  if (!envelope || envelope.type !== "evidence_pack" || envelope.anchors !== "protect-mcp-claim") {
+  if (!envelope2 || envelope2.type !== "evidence_pack" || envelope2.anchors !== "protect-mcp-claim") {
     return { ok: false, reasons: ["sidecar does not contain a protect-mcp claim anchor envelope"] };
   }
   const expected = claimDigest(pack);
-  if (envelope.claim_digest !== expected) {
+  if (envelope2.claim_digest !== expected) {
     reasons.push("anchored envelope binds a DIFFERENT claim (claim_digest mismatch)");
   }
-  if (envelope.record_root !== pack.record.root) {
+  if (envelope2.record_root !== pack.record.root) {
     reasons.push("anchored envelope commits to a different record root");
   }
-  if (pack.issuer && envelope.verification_key !== pack.issuer.publicKey) {
+  if (pack.issuer && envelope2.verification_key !== pack.issuer.publicKey) {
     reasons.push("anchor was signed by a different key than the claim issuer");
   }
   try {
-    const { signature, digest, ...signed } = envelope;
-    const hash = (0, import_sha2564.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+    const { signature, digest, ...signed2 } = envelope2;
+    const hash = (0, import_sha2564.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed2))));
     if ((0, import_utils4.bytesToHex)(hash) !== String(digest).toLowerCase()) {
       reasons.push("envelope digest does not match its contents");
-    } else if (!import_ed255193.ed25519.verify((0, import_utils4.hexToBytes)(String(signature)), hash, (0, import_utils4.hexToBytes)(envelope.verification_key))) {
+    } else if (!import_ed255193.ed25519.verify((0, import_utils4.hexToBytes)(String(signature)), hash, (0, import_utils4.hexToBytes)(envelope2.verification_key))) {
       reasons.push("envelope signature does not verify");
     }
   } catch {
@@ -4289,11 +4413,11 @@ function verifyAnchorEnvelope(pack, envelope) {
 }
 async function checkClaimAnchor(pack, sidecar, opts) {
   const reasons = [];
-  const envelope = sidecar && sidecar.envelope;
-  if (!envelope) {
+  const envelope2 = sidecar && sidecar.envelope;
+  if (!envelope2) {
     return { local_ok: false, log_ok: null, reasons: ["sidecar has no anchor envelope"] };
   }
-  const local = verifyAnchorEnvelope(pack, envelope);
+  const local = verifyAnchorEnvelope(pack, envelope2);
   reasons.push(...local.reasons);
   const base = (sidecar.log || DEFAULT_LOG).replace(/\/+$/, "");
   const out2 = {
@@ -4308,7 +4432,7 @@ async function checkClaimAnchor(pack, sidecar, opts) {
   const doFetch = opts?.fetchImpl || globalThis.fetch;
   if (!doFetch) return out2;
   try {
-    const resp = await doFetch(`${base}/fn/log/digest/sha256:${envelope.digest}`, { headers: { accept: "application/json" } });
+    const resp = await doFetch(`${base}/fn/log/digest/sha256:${envelope2.digest}`, { headers: { accept: "application/json" } });
     const data = await resp.json().catch(() => null);
     if (!resp.ok || !data) {
       out2.log_ok = null;
@@ -4332,10 +4456,10 @@ async function checkClaimAnchor(pack, sidecar, opts) {
     return out2;
   }
 }
-async function submitEnvelope(envelope, base, fetchImpl) {
+async function submitEnvelope(envelope2, base, fetchImpl) {
   const doFetch = fetchImpl || globalThis.fetch;
   if (!doFetch) return { ok: false, error: "fetch_unavailable" };
-  const encoded = toBase64(new TextEncoder().encode(JSON.stringify(envelope)));
+  const encoded = toBase64(new TextEncoder().encode(JSON.stringify(envelope2)));
   try {
     const resp = await doFetch(`${base}/fn/log/anchor-pack`, {
       method: "POST",
@@ -4352,24 +4476,24 @@ async function submitEnvelope(envelope, base, fetchImpl) {
   }
 }
 async function anchorClaim(pack, key, opts) {
-  const envelope = buildAnchorEnvelope(pack, key, opts.issuedAt);
+  const envelope2 = buildAnchorEnvelope(pack, key, opts.issuedAt);
   const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
-  const out2 = await submitEnvelope(envelope, base, opts.fetchImpl);
-  if (!out2.ok) return { ok: false, claim_digest: envelope.claim_digest, error: out2.error, envelope };
+  const out2 = await submitEnvelope(envelope2, base, opts.fetchImpl);
+  if (!out2.ok) return { ok: false, claim_digest: envelope2.claim_digest, error: out2.error, envelope: envelope2 };
   return {
     ok: true,
-    claim_digest: envelope.claim_digest,
+    claim_digest: envelope2.claim_digest,
     seq: out2.seq,
     entry_url: `${base}/fn/log/${out2.seq}`,
     anchored_at: out2.anchored_at,
     already_anchored: out2.already_anchored,
-    envelope
+    envelope: envelope2
   };
 }
 function buildRecordCheckpoint(receipts, key, issuedAt) {
   const leaves = receipts.map(receiptToLeaf);
   const times = leaves.map((l) => l.t).filter(Boolean).sort();
-  const signed = {
+  const signed2 = {
     type: "evidence_pack",
     schema: CHECKPOINT_SCHEMA,
     anchors: "protect-mcp-record",
@@ -4381,10 +4505,10 @@ function buildRecordCheckpoint(receipts, key, issuedAt) {
     verification_key: key.publicKey,
     disclosure: "internal"
   };
-  const hash = (0, import_sha2564.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
+  const hash = (0, import_sha2564.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed2))));
   const digest = (0, import_utils4.bytesToHex)(hash);
   const signature = (0, import_utils4.bytesToHex)(import_ed255193.ed25519.sign(hash, (0, import_utils4.hexToBytes)(key.privateKey)));
-  return { ...signed, signature, digest };
+  return { ...signed2, signature, digest };
 }
 async function anchorRecordCheckpoint(receipts, key, opts) {
   const checkpoint = buildRecordCheckpoint(receipts, key, opts.issuedAt);
@@ -4407,7 +4531,7 @@ function buildMandateContinuityCheckpoint(state, key, issuedAt) {
     throw new Error("continuity state must contain sha256 commitments");
   }
   if (!Number.isSafeInteger(state.transition_count) || state.transition_count < 1) throw new Error("continuity state needs at least one transition");
-  const signed = {
+  const signed2 = {
     type: "evidence_pack",
     schema: MANDATE_CONTINUITY_SCHEMA,
     anchors: "protect-mcp-mandate-continuity",
@@ -4416,8 +4540,8 @@ function buildMandateContinuityCheckpoint(state, key, issuedAt) {
     verification_key: key.publicKey,
     disclosure: "internal"
   };
-  const hash = (0, import_sha2564.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed))));
-  return { ...signed, signature: (0, import_utils4.bytesToHex)(import_ed255193.ed25519.sign(hash, (0, import_utils4.hexToBytes)(key.privateKey))), digest: (0, import_utils4.bytesToHex)(hash) };
+  const hash = (0, import_sha2564.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed2))));
+  return { ...signed2, signature: (0, import_utils4.bytesToHex)(import_ed255193.ed25519.sign(hash, (0, import_utils4.hexToBytes)(key.privateKey))), digest: (0, import_utils4.bytesToHex)(hash) };
 }
 async function anchorMandateContinuityCheckpoint(checkpoint, opts) {
   const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
@@ -4523,9 +4647,9 @@ function verifyProof(expectedRootHex, leafHash2, proof) {
   if (proof.treeSize === 1) {
     return proof.siblings.length === 0 && (0, import_utils5.bytesToHex)(leafHash2).toLowerCase() === expectedRootHex.toLowerCase();
   }
-  let result;
+  let result2;
   try {
-    result = reconstructRoot(
+    result2 = reconstructRoot(
       leafHash2,
       proof.index,
       proof.treeSize,
@@ -4534,7 +4658,7 @@ function verifyProof(expectedRootHex, leafHash2, proof) {
   } catch {
     return false;
   }
-  return (0, import_utils5.bytesToHex)(result).toLowerCase() === expectedRootHex.toLowerCase();
+  return (0, import_utils5.bytesToHex)(result2).toLowerCase() === expectedRootHex.toLowerCase();
 }
 function reconstructRoot(leafHash2, index, treeSize, siblings) {
   if (treeSize === 1) {
@@ -4590,8 +4714,8 @@ function jcs(value) {
   if (Array.isArray(value))
     return "[" + value.map(jcs).join(",") + "]";
   const obj = value;
-  const keys = Object.keys(obj).sort();
-  return "{" + keys.map((k) => JSON.stringify(k) + ":" + jcs(obj[k])).join(",") + "}";
+  const keys2 = Object.keys(obj).sort();
+  return "{" + keys2.map((k) => JSON.stringify(k) + ":" + jcs(obj[k])).join(",") + "}";
 }
 var import_sha2566, import_hmac, import_utils6;
 var init_primitives = __esm({
@@ -4625,8 +4749,8 @@ function encodeLeaf(field) {
     salt: base64urlNoPad(field.salt),
     value: field.value
   };
-  const canonical = jcs(obj);
-  return new TextEncoder().encode(canonical);
+  const canonical2 = jcs(obj);
+  return new TextEncoder().encode(canonical2);
 }
 function sortFields(fields) {
   const encoder = new TextEncoder();
@@ -4721,8 +4845,8 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     payload.committed_fields_root = committedFieldsRoot;
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
-  const canonical = jcs(payload);
-  const signatureBytes = import_ed255194.ed25519.sign(new TextEncoder().encode(canonical), (0, import_utils7.hexToBytes)(signingKey));
+  const canonical2 = jcs(payload);
+  const signatureBytes = import_ed255194.ed25519.sign(new TextEncoder().encode(canonical2), (0, import_utils7.hexToBytes)(signingKey));
   const signedReceipt = {
     payload,
     signature: {
@@ -4881,10 +5005,10 @@ function verifyCommittedReceiptSignature(receipt, publicKeyHex) {
   if (sig.alg !== "EdDSA" || typeof sig.sig !== "string") return null;
   const key = publicKeyHex ?? (typeof sig.public_key === "string" ? sig.public_key : void 0);
   if (!key) return null;
-  const signed = committedPayload(receipt);
+  const signed2 = committedPayload(receipt);
   const sigBytes = /^[0-9a-f]+$/i.test(sig.sig) && sig.sig.length % 2 === 0 ? (0, import_utils7.hexToBytes)(sig.sig) : base64urlDecode2(sig.sig);
   try {
-    return import_ed255194.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed)), (0, import_utils7.hexToBytes)(key));
+    return import_ed255194.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed2)), (0, import_utils7.hexToBytes)(key));
   } catch {
     return false;
   }
@@ -5286,8 +5410,8 @@ function buildSampleKit(dir, opts) {
       payload
     }, privHex);
   };
-  const pay = (amount) => ({
-    payment: { amount, asset: "USDC", recipient_digest: sha256Hex4("sample-merchant"), scheme: "exact" }
+  const pay = (amount3) => ({
+    payment: { amount: amount3, asset: "USDC", recipient_digest: sha256Hex4("sample-merchant"), scheme: "exact" }
   });
   const rows = [
     receipt(0, "Read", "allow", ["fs.read"]),
@@ -5376,10 +5500,10 @@ function category(tool) {
   if (/(trade|order|pms|broker|position)/.test(value)) return "finance";
   return "other";
 }
-function toEgressSummary(envelope, opts) {
+function toEgressSummary(envelope2, opts) {
   if (!opts?.pseudonymKey || typeof opts.pseudonymKey === "string" && !opts.pseudonymKey.length || opts.pseudonymKey instanceof Uint8Array && !opts.pseudonymKey.length) return null;
-  if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) return null;
-  const env = envelope;
+  if (!envelope2 || typeof envelope2 !== "object" || Array.isArray(envelope2)) return null;
+  const env = envelope2;
   const p = env.payload;
   if (!p || typeof p !== "object" || typeof p.type !== "string" || !KNOWN_RECEIPT_TYPES.has(p.type)) return null;
   const ar = p.action_readback;
@@ -5389,7 +5513,7 @@ function toEgressSummary(envelope, opts) {
   const summary = {
     type: EGRESS_SUMMARY_TYPE,
     version: EGRESS_SUMMARY_VERSION,
-    source_receipt_commitment: `sha256:${receiptHash(envelope)}`,
+    source_receipt_commitment: `sha256:${receiptHash(envelope2)}`,
     request_pseudonym: hmacCommitment("scopeblind.egress.request.v1", p.request_id || p.scope || "", opts),
     decision: rawDecision && DECISIONS.has(rawDecision) ? rawDecision : "other",
     reason_code: code(p.reason),
@@ -5606,8 +5730,8 @@ async function callSign(args) {
     public_key: publicKey
   });
   const artifactType = decision === "deny" ? "gateway_restraint" : "decision_receipt";
-  const { envelope } = createReceiptEnvelope(payload, privateKey, computeSbIssuerKid(publicKey));
-  return { receipt: envelope, artifact_type: artifactType, public_key: publicKey, ephemeral };
+  const { envelope: envelope2 } = createReceiptEnvelope(payload, privateKey, computeSbIssuerKid(publicKey));
+  return { receipt: envelope2, artifact_type: artifactType, public_key: publicKey, ephemeral };
 }
 async function callVerify(args) {
   const receipt = args.receipt;
@@ -5618,11 +5742,11 @@ async function callVerify(args) {
   if (!key) {
     return { valid: false, error: "no_public_key", type: identity.type ?? "unknown", kid: identity.kid, issuer: identity.issuer };
   }
-  const result = verifyReceipt(receipt, key);
+  const result2 = verifyReceipt(receipt, key);
   return {
-    valid: result.valid,
-    error: result.valid ? null : result.error || "invalid_signature",
-    shape: result.shape,
+    valid: result2.valid,
+    error: result2.valid ? null : result2.error || "invalid_signature",
+    shape: result2.shape,
     type: identity.type ?? "unknown",
     kid: identity.kid,
     issuer: identity.issuer
@@ -5637,12 +5761,12 @@ async function callSelfTest() {
   details.safe_action = { tool: "Read", allowed: allowed.allowed };
   let signVerifyRoundtrip = false;
   try {
-    const signed = await callSign({ tool: "Bash", decision: "deny", reason_code: "self_test" });
-    if (signed.receipt && signed.public_key) {
-      const ok = await callVerify({ receipt: signed.receipt, public_key_hex: signed.public_key });
-      const tampered = JSON.parse(JSON.stringify(signed.receipt));
+    const signed2 = await callSign({ tool: "Bash", decision: "deny", reason_code: "self_test" });
+    if (signed2.receipt && signed2.public_key) {
+      const ok = await callVerify({ receipt: signed2.receipt, public_key_hex: signed2.public_key });
+      const tampered = JSON.parse(JSON.stringify(signed2.receipt));
       if (tampered.payload) tampered.payload.tool_name = "tampered";
-      const bad = await callVerify({ receipt: tampered, public_key_hex: signed.public_key });
+      const bad = await callVerify({ receipt: tampered, public_key_hex: signed2.public_key });
       signVerifyRoundtrip = ok.valid === true && bad.valid === false;
       details.sign_verify = { valid_verifies: ok.valid, tampered_rejected: bad.valid === false };
     }
@@ -5657,8 +5781,8 @@ async function callSelfTest() {
     note: "No network was contacted."
   };
 }
-function textResult(id, value) {
-  return JSON.stringify({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] } });
+function textResult(id4, value) {
+  return JSON.stringify({ jsonrpc: "2.0", id: id4, result: { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] } });
 }
 async function handleRequest(request) {
   if (request.method === "initialize") {
@@ -5723,7 +5847,7 @@ async function runMcpServer() {
     });
   });
   process.stderr.write("[PROTECT_MCP] gate MCP server started \u2014 4 tools: evaluate_action, sign_decision, verify_receipt, self_test\n");
-  await new Promise((resolve2) => rl.on("close", () => resolve2()));
+  await new Promise((resolve5) => rl.on("close", () => resolve5()));
   await chain;
 }
 var import_node_readline2, artifacts, RO, TOOLS, SELF_TEST_POLICY;
@@ -5801,6 +5925,2605 @@ forbid(principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash")
   }
 });
 
+// src/coordination-repository.ts
+function repositoryPath(path) {
+  return text(path, 300) && !path.startsWith("/") && !path.endsWith("/") && !path.includes("\\") && !path.split("/").some((p) => !p || p === "." || p === ".." || p.toLowerCase() === ".git");
+}
+function repositoryBranch(branch) {
+  return text(branch, 150) && !branch.includes("..") && !/[~^:?*\[\\\s]/.test(branch) && !branch.startsWith("/") && !branch.endsWith("/") && !branch.endsWith(".lock") && !branch.includes("@{") && !branch.split("/").some((p) => !p || p.startsWith(".") || p.endsWith("."));
+}
+function pathAllowed(path, allowed) {
+  if (!repositoryPath(path) || /^\.github(?:\/|$)/i.test(path) || /(^|\/)(?:\.gitmodules|CODEOWNERS)$/i.test(path)) return false;
+  return allowed.some((rule) => rule.endsWith("/**") ? path.startsWith(rule.slice(0, -2)) : path === rule);
+}
+function validRepositoryTask(v) {
+  if (!object(v) || !exact(v, ["type", "id", "title", "repository", "pull_number", "base_branch", "owner_key", "receiver_key", "authority_key", "allowed_paths", "required_checks", "reviewer_secret_hash", "issued_at", "expires_at"])) return false;
+  return v.type === "scopeblind.repository.task.v1" && REPOSITORY_ID.test(String(v.id)) && text(v.title, 140) && typeof v.repository === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v.repository) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every((x) => typeof x === "string" && REPOSITORY_HEX.test(x)) && v.owner_key !== v.receiver_key && v.owner_key !== v.authority_key && v.receiver_key !== v.authority_key && Array.isArray(v.allowed_paths) && v.allowed_paths.length > 0 && v.allowed_paths.length <= 12 && new Set(v.allowed_paths).size === v.allowed_paths.length && v.allowed_paths.every((p) => typeof p === "string" && repositoryPath(p.endsWith("/**") ? p.slice(0, -3) : p) && pathAllowed(p.endsWith("/**") ? p.slice(0, -2) + "placeholder" : p, [p])) && Array.isArray(v.required_checks) && v.required_checks.length > 0 && v.required_checks.length <= 12 && v.required_checks.every((c2) => object(c2) && exact(c2, ["name", "app_id"]) && text(c2.name, 100) && Number.isSafeInteger(c2.app_id) && Number(c2.app_id) > 0) && new Set(v.required_checks.map((c2) => canonical(c2))).size === v.required_checks.length && time(v.issued_at) && time(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 7 * 864e5;
+}
+function validRepositoryProposal(v, task, taskDigest) {
+  if (!object(v) || !exact(v, ["type", "id", "task_id", "task_digest", "repository_id", "base_ref", "head_ref", "base_sha", "head_sha", "merge_sha", "tree_sha", "files", "checks", "observed_at"])) return false;
+  if (v.type !== "scopeblind.repository.proposal.v1" || !REPOSITORY_ID.test(String(v.id)) || v.task_id !== task.id || v.task_digest !== taskDigest || !text(v.repository_id, 100) || v.base_ref !== `refs/heads/${task.base_branch}` || typeof v.head_ref !== "string" || !v.head_ref.startsWith("refs/heads/") || !repositoryBranch(v.head_ref.slice(11)) || v.head_ref === v.base_ref || ![v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every((s) => typeof s === "string" && REPOSITORY_SHA.test(s)) || v.base_sha === v.head_sha || v.merge_sha === v.base_sha || !time(v.observed_at)) return false;
+  if (!Array.isArray(v.files) || !v.files.length || v.files.length > 50 || new Set(v.files.map((f) => object(f) ? f.path : null)).size !== v.files.length || !v.files.every((f) => object(f) && exact(f, ["path", "status", "mode", "additions", "deletions"], ["previous_path", "patch", "patch_truncated"]) && typeof f.path === "string" && pathAllowed(f.path, task.allowed_paths) && ["added", "modified", "removed", "renamed"].includes(String(f.status)) && ["100644", "100755"].includes(String(f.mode)) && Number.isSafeInteger(f.additions) && Number(f.additions) >= 0 && Number.isSafeInteger(f.deletions) && Number(f.deletions) >= 0 && (f.patch === void 0 || typeof f.patch === "string" && f.patch.length <= 400) && (f.patch_truncated === void 0 || f.patch_truncated === true) && (f.status === "renamed" ? typeof f.previous_path === "string" && pathAllowed(f.previous_path, task.allowed_paths) : f.previous_path === void 0))) return false;
+  return Array.isArray(v.checks) && v.checks.length === task.required_checks.length && v.checks.every((c2) => object(c2) && exact(c2, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(c2.id) && Number(c2.id) > 0 && c2.head_sha === v.head_sha && c2.conclusion === "success" && task.required_checks.some((r) => r.name === c2.name && r.app_id === c2.app_id)) && new Set(v.checks.map((c2) => `${c2.name}:${c2.app_id}`)).size === v.checks.length;
+}
+async function repositorySnapshotDigest(p) {
+  const { id: id4, observed_at, ...snapshot } = p;
+  return sha256(canonical(snapshot));
+}
+function validRepositoryRecord(v, kind) {
+  if (!object(v) || v.type !== `scopeblind.repository.${kind}.v1` || !REPOSITORY_ID.test(String(v.task_id)) || !REPOSITORY_HEX.test(String(v.task_digest))) return false;
+  const common = ["type", "task_id", "task_digest"];
+  if (kind === "claim") return exact(v, [...common, "reviewer_key", "name", "issued_at"]) && REPOSITORY_HEX.test(String(v.reviewer_key)) && text(v.name, 60) && time(v.issued_at);
+  const note = (v2) => typeof v2 === "string" && v2.length <= 600;
+  if (kind === "approval") return exact(v, [...common, "proposal_digest", "role", "principal_key", "decision", "issued_at", "expires_at", "note"]) && REPOSITORY_HEX.test(String(v.proposal_digest)) && REPOSITORY_HEX.test(String(v.principal_key)) && ["owner", "reviewer"].includes(String(v.role)) && ["approve", "reject"].includes(String(v.decision)) && time(v.issued_at) && time(v.expires_at) && note(v.note) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 9e5;
+  if (kind === "execution") return exact(v, [...common, "operation_id", "receiver_attempt_id", "proposal_digest", "owner_approval_digest", "reviewer_approval_digest", "receiver_key", "action", "issued_at", "expires_at"]) && [v.operation_id, v.receiver_attempt_id].every((x) => REPOSITORY_ID.test(String(x))) && [v.proposal_digest, v.owner_approval_digest, v.reviewer_approval_digest, v.receiver_key].every((x) => REPOSITORY_HEX.test(String(x))) && v.action === "github.updateRefs" && time(v.issued_at) && time(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 12e4;
+  if (kind === "outcome") return exact(v, [...common, "operation_id", "proposal_digest", "execution_digest", "status", "observed_base_sha", "readback", "observed_at", "note"], ["github_request_id"]) && REPOSITORY_ID.test(String(v.operation_id)) && [v.proposal_digest, v.execution_digest].every((x) => REPOSITORY_HEX.test(String(x))) && ["confirmed", "failed", "unknown"].includes(String(v.status)) && (v.observed_base_sha === null || REPOSITORY_SHA.test(String(v.observed_base_sha))) && ["exact_ref", "descendant_ref", "not_confirmed"].includes(String(v.readback)) && (v.status === "confirmed" ? v.readback !== "not_confirmed" && v.observed_base_sha !== null : v.readback === "not_confirmed") && time(v.observed_at) && note(v.note) && (v.github_request_id === void 0 || text(v.github_request_id, 200));
+  return exact(v, [...common, "outcome_digest", "reviewer_key", "decision", "issued_at", "note"]) && [v.outcome_digest, v.reviewer_key].every((x) => REPOSITORY_HEX.test(String(x))) && ["accept", "request_changes"].includes(String(v.decision)) && time(v.issued_at) && note(v.note);
+}
+async function verifyRepositoryEvidence(value, pin) {
+  const pins = typeof pin === "string" ? { authority_key: pin } : pin ?? { authority_key: value?.state?.payload?.task?.payload?.authority_key };
+  const errors = [];
+  let accepted = false;
+  const check = (condition, message) => {
+    if (!condition) errors.push(message);
+  };
+  try {
+    const e = value, s = e.state?.payload, t = s?.task?.payload;
+    check(object(e) && exact(e, ["type", "state"]) && e.type === "scopeblind.repository.evidence.v1" && validRepositoryEnvelope(e.state) && !!s && s.type === "scopeblind.repository.state.v1" && exact(s, ["type", "task", "reviewer", "proposal", "approvals", "execution", "outcome", "acceptance", "status", "revision", "observed_at"]) && Number.isSafeInteger(s.revision) && s.revision > 0 && time(s.observed_at) && await verify(e.state, pins.authority_key), "Service state signature or shape is invalid");
+    check(validRepositoryEnvelope(s.task) && validRepositoryTask(t) && await verify(s.task, t.owner_key) && t.authority_key === pins.authority_key && (!pins.owner_key || pins.owner_key === t.owner_key) && (!pins.receiver_key || pins.receiver_key === t.receiver_key) && Date.parse(s.observed_at) >= Date.parse(t.issued_at), "Task or pinned owner/receiver is invalid");
+    const reviewer = s.reviewer?.payload;
+    if (s.reviewer) check(validRepositoryEnvelope(s.reviewer) && validRepositoryRecord(reviewer, "claim") && reviewer.task_id === t.id && reviewer.task_digest === s.task.digest && ![t.owner_key, t.receiver_key, t.authority_key].includes(reviewer.reviewer_key) && await verify(s.reviewer, reviewer.reviewer_key) && (!pins.reviewer_key || pins.reviewer_key === reviewer.reviewer_key) && Date.parse(reviewer.issued_at) >= Date.parse(t.issued_at) && Date.parse(reviewer.issued_at) < Date.parse(t.expires_at), "Reviewer role is invalid");
+    if (s.proposal) check(!!reviewer && validRepositoryEnvelope(s.proposal) && validRepositoryProposal(s.proposal.payload, t, s.task.digest) && await verify(s.proposal, t.receiver_key) && Date.parse(s.proposal.payload.observed_at) >= Date.parse(reviewer.issued_at) && Date.parse(s.proposal.payload.observed_at) < Date.parse(t.expires_at), "Repository snapshot is invalid");
+    check(Array.isArray(s.approvals) && s.approvals.length <= 2 && new Set(s.approvals.map((a) => a.payload.role)).size === s.approvals.length, "Approval roles are invalid");
+    for (const approval of s.approvals) {
+      const a = approval.payload, key = a.role === "owner" ? t.owner_key : reviewer?.reviewer_key;
+      check(!!s.proposal && validRepositoryEnvelope(approval) && validRepositoryRecord(a, "approval") && a.principal_key === key && a.task_id === t.id && a.task_digest === s.task.digest && a.proposal_digest === s.proposal.digest && await verify(approval, key) && Date.parse(a.issued_at) >= Date.parse(s.proposal.payload.observed_at) && Date.parse(a.expires_at) <= Date.parse(t.expires_at), "Exact proposal approval is invalid");
+    }
+    if (s.execution) {
+      const x = s.execution.payload, owner = s.approvals.find((a) => a.payload.role === "owner"), review = s.approvals.find((a) => a.payload.role === "reviewer");
+      check(!!s.proposal && !!owner && !!review && validRepositoryEnvelope(s.execution) && validRepositoryRecord(x, "execution") && x.task_id === t.id && x.task_digest === s.task.digest && x.proposal_digest === s.proposal.digest && x.receiver_key === t.receiver_key && x.owner_approval_digest === owner?.digest && x.reviewer_approval_digest === review?.digest && owner?.payload.decision === "approve" && review?.payload.decision === "approve" && [owner, review].every((a) => a && Date.parse(a.payload.expires_at) >= Date.parse(x.expires_at) && Date.parse(a.payload.issued_at) <= Date.parse(x.issued_at)) && Date.parse(x.expires_at) <= Date.parse(t.expires_at) && await verify(s.execution, pins.authority_key), "Execution authority is invalid");
+    }
+    if (s.outcome) {
+      const o = s.outcome.payload;
+      check(!!s.execution && validRepositoryEnvelope(s.outcome) && validRepositoryRecord(o, "outcome") && o.task_id === t.id && o.task_digest === s.task.digest && o.proposal_digest === s.proposal?.digest && o.execution_digest === s.execution?.digest && o.operation_id === s.execution?.payload.operation_id && await verify(s.outcome, t.receiver_key) && Date.parse(o.observed_at) >= Date.parse(s.execution.payload.issued_at), "Receiver outcome is invalid");
+      check(o.status !== "confirmed" || o.readback !== "exact_ref" || o.observed_base_sha === s.proposal?.payload.merge_sha, "Confirmed readback is invalid");
+    }
+    if (s.acceptance) {
+      const a = s.acceptance.payload;
+      check(s.outcome?.payload.status === "confirmed" && validRepositoryEnvelope(s.acceptance) && validRepositoryRecord(a, "acceptance") && a.task_id === t.id && a.task_digest === s.task.digest && a.outcome_digest === s.outcome.digest && a.reviewer_key === reviewer?.reviewer_key && await verify(s.acceptance, reviewer?.reviewer_key) && Date.parse(a.issued_at) >= Date.parse(s.outcome.payload.observed_at), "Recipient acceptance is invalid");
+      accepted = a.decision === "accept";
+    }
+    const expected = s.acceptance ? s.acceptance.payload.decision === "accept" ? "accepted" : "changes_requested" : s.outcome ? s.outcome.payload.status : s.execution ? "executing" : !reviewer ? "awaiting_reviewer" : !s.proposal ? "awaiting_snapshot" : s.approvals.some((a) => a.payload.decision === "reject") ? "rejected" : s.approvals.length === 2 && s.approvals.every((a) => Date.parse(a.payload.expires_at) > Date.parse(s.observed_at)) ? "approved" : "review";
+    check(s.status === expected || s.status === "cancelled" && !s.execution && !s.outcome && !s.acceptance, "State status is inconsistent with the signed records");
+    for (const record of [s.reviewer, s.proposal, ...s.approvals, s.execution, s.outcome, s.acceptance]) if (record) check(Date.parse(record.payload.issued_at ?? record.payload.observed_at) <= Date.parse(s.observed_at), "A signed record is later than the state observation");
+  } catch {
+    errors.push("Malformed repository evidence");
+  }
+  return { valid: errors.length === 0, errors, accepted: accepted && errors.length === 0, authorityPinned: !!pin && errors.length === 0, limitations: ["The pinned receiver attests to GitHub API observations; this is not a GitHub-signed receipt.", "This controls the installed receiver\u2019s exact branch update. Other credentials and repository actions are outside its coverage.", "Destination readback establishes resulting repository state. After a lost reply it does not establish which actor caused that state.", "The checked files, commits and named checks do not prove the code is safe or universally correct.", "Signatures identify keys, not a person\u2019s legal identity.", ...!pin ? ["No independent authority key was supplied. Only consistency with the included authority was checked."] : []] };
+}
+var REPOSITORY_HEX, REPOSITORY_SHA, REPOSITORY_ID, object, text, time, exact, validRepositoryEnvelope;
+var init_coordination_repository = __esm({
+  "src/coordination-repository.ts"() {
+    "use strict";
+    init_coordination_protocol();
+    REPOSITORY_HEX = /^[0-9a-f]{64}$/;
+    REPOSITORY_SHA = /^[0-9a-f]{40}$/;
+    REPOSITORY_ID = /^[A-Za-z0-9_-]{8,100}$/;
+    object = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+    text = (v, n) => typeof v === "string" && v.length > 0 && v.length <= n && !/[\u0000-\u001f\u007f]/.test(v);
+    time = (v) => typeof v === "string" && Number.isFinite(Date.parse(v));
+    exact = (v, required, optional = []) => required.every((k) => k in v) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+    validRepositoryEnvelope = (e) => object(e) && exact(e, ["payload", "signer", "digest", "signature"]);
+  }
+});
+
+// src/repository-receiver.ts
+var repository_receiver_exports = {};
+__export(repository_receiver_exports, {
+  RepositoryReceiver: () => RepositoryReceiver,
+  RepositoryReceiverError: () => RepositoryReceiverError,
+  parseRepositoryReceiverConfig: () => parseRepositoryReceiverConfig,
+  runRepositoryReceiver: () => runRepositoryReceiver
+});
+function requireValue(value, code2) {
+  if (!value) throw new RepositoryReceiverError(code2);
+}
+function parseRepositoryReceiverConfig(value) {
+  const c2 = value;
+  requireValue(c2 && typeof c2 === "object" && Object.keys(c2).sort().join(",") === "authority_key,base_branch,endpoint,owner_key,receiver_key,repository,reviewer_key,type" && c2.type === "scopeblind.repository.receiver-config.v1", "invalid_receiver_config");
+  let url;
+  try {
+    url = new URL(c2.endpoint);
+  } catch {
+    throw new RepositoryReceiverError("invalid_receiver_endpoint");
+  }
+  requireValue(url.protocol === "https:" && url.pathname === "/api/coordination" && !url.search && !url.hash && !url.username && !url.password && c2.endpoint === url.href, "invalid_receiver_endpoint");
+  requireValue(/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(c2.repository) && repositoryBranch(c2.base_branch) && [c2.authority_key, c2.owner_key, c2.reviewer_key, c2.receiver_key].every((k) => REPOSITORY_HEX.test(k)) && (/* @__PURE__ */ new Set([c2.authority_key, c2.owner_key, c2.reviewer_key, c2.receiver_key])).size === 4, "invalid_receiver_pins");
+  return c2;
+}
+async function json(response, max = 2e6) {
+  const reader = response.body?.getReader();
+  requireValue(reader, "empty_http_response");
+  let length = 0;
+  const chunks = [];
+  try {
+    for (; ; ) {
+      const part = await reader.read();
+      if (part.done) break;
+      length += part.value.byteLength;
+      if (length > max) {
+        await reader.cancel();
+        throw new RepositoryReceiverError("response_too_large");
+      }
+      chunks.push(part.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const combined = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(combined));
+  } catch {
+    throw new RepositoryReceiverError("invalid_json_response");
+  }
+}
+async function runRepositoryReceiver(args) {
+  const { readFile, writeFile } = await import("fs/promises");
+  const action = args[0], option = (name) => {
+    const index = args.indexOf(name);
+    return index >= 0 ? args[index + 1] : void 0;
+  };
+  if (action === "keygen") {
+    const output = option("--output");
+    requireValue(output, "receiver_key_output_required");
+    const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]), publicKey = bytesToHex(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))), privateKey2 = bytesToHex(new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey)));
+    const identity = { publicKey };
+    await writeFile(output, JSON.stringify({ type: "scopeblind.repository.receiver-key.v1", public_key: identity.publicKey, private_key: privateKey2 }, null, 2) + "\n", { mode: 384, flag: "wx" });
+    process.stdout.write(`Receiver public key: ${identity.publicKey}
+Private key saved to the requested owner-only file.
+`);
+    return;
+  }
+  requireValue(["inspect", "execute", "reconcile"].includes(action), "repository_command_required");
+  const file = option("--config"), task = option("--task");
+  requireValue(file && task && REPOSITORY_ID.test(task), "repository_config_and_task_required");
+  const config = parseRepositoryReceiverConfig(JSON.parse(await readFile(file, "utf8")));
+  let privateKey = process.env.SCOPEBLIND_RECEIVER_PRIVATE_KEY;
+  if (option("--key-file")) {
+    const key = JSON.parse(await readFile(option("--key-file"), "utf8"));
+    requireValue(key.type === "scopeblind.repository.receiver-key.v1" && key.public_key === config.receiver_key, "receiver_key_mismatch");
+    privateKey = key.private_key;
+  }
+  requireValue(privateKey && /^[0-9a-f]{96,300}$/.test(privateKey), "receiver_private_key_required");
+  if (process.env.GITHUB_ACTIONS === "true") requireValue(process.env.GITHUB_REPOSITORY === config.repository && process.env.GITHUB_EVENT_NAME === "workflow_dispatch" && process.env.GITHUB_REF === `refs/heads/${config.base_branch}`, "receiver_trusted_workflow_required");
+  const receiver = new RepositoryReceiver(config, await importIdentity(privateKey, config.receiver_key), process.env.GITHUB_TOKEN || ""), result2 = action === "inspect" ? await receiver.inspect(task) : action === "execute" ? await receiver.execute(task) : await receiver.reconcile(task);
+  const out2 = option("--output");
+  if (out2) await writeFile(out2, JSON.stringify({ type: "scopeblind.repository.evidence.v1", state: result2 }, null, 2) + "\n", { mode: 384 });
+  process.stdout.write(`Repository task ${task}: ${result2.payload.status}. No PR code was executed by this receiver.
+`);
+}
+var RepositoryReceiverError, RepositoryReceiver;
+var init_repository_receiver = __esm({
+  "src/repository-receiver.ts"() {
+    "use strict";
+    init_coordination_protocol();
+    init_coordination_repository();
+    RepositoryReceiverError = class extends Error {
+      constructor(code2, message = code2, uncertain = false) {
+        super(message);
+        this.code = code2;
+        this.uncertain = uncertain;
+      }
+    };
+    RepositoryReceiver = class {
+      constructor(config, identity, githubToken, fetchImpl = fetch) {
+        this.identity = identity;
+        this.githubToken = githubToken;
+        this.fetchImpl = fetchImpl;
+        this.config = parseRepositoryReceiverConfig(config);
+        requireValue(identity.publicKey === config.receiver_key && !identity.deviceAuthorization, "receiver_key_mismatch");
+        requireValue(typeof githubToken === "string" && githubToken.length > 0, "github_token_required");
+      }
+      config;
+      async rpc(action, taskId, body = {}) {
+        const request = await sign(makeRequest(action, taskId, body), this.identity);
+        let response;
+        try {
+          response = await this.fetchImpl(this.config.endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request }), redirect: "error", signal: AbortSignal.timeout(2e4) });
+        } catch {
+          throw new RepositoryReceiverError("repository_service_unavailable", "The signed request may have been recorded. Inspect its current state before continuing.", true);
+        }
+        const data = await json(response, 15e4);
+        requireValue(response.ok && data.ok === true, typeof data.error === "string" ? data.error : "repository_service_error");
+        const state = data.repository_task;
+        await this.validateState(state, taskId);
+        return state;
+      }
+      async validateState(state, taskId) {
+        const checked = await verifyRepositoryEvidence({ type: "scopeblind.repository.evidence.v1", state }, this.config);
+        requireValue(checked.valid, "repository_evidence_invalid");
+        const task = state.payload.task.payload;
+        requireValue(task.id === taskId && task.repository === this.config.repository && task.base_branch === this.config.base_branch && task.owner_key === this.config.owner_key && task.receiver_key === this.config.receiver_key && state.payload.reviewer?.payload.reviewer_key === this.config.reviewer_key, "repository_scope_mismatch");
+        requireValue(Math.abs(Date.now() - Date.parse(state.payload.observed_at)) <= 12e4, "repository_state_stale");
+      }
+      async github(path, init = {}) {
+        let response;
+        try {
+          response = await this.fetchImpl(`https://api.github.com${path}`, { ...init, headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${this.githubToken}`, "X-GitHub-Api-Version": "2026-03-10", "content-type": "application/json" }, redirect: "error", signal: AbortSignal.timeout(2e4) });
+        } catch {
+          throw new RepositoryReceiverError("github_connection_interrupted", "GitHub did not return a definite response.", init.method === "POST");
+        }
+        const body = await json(response);
+        if (!response.ok) throw new RepositoryReceiverError(`github_http_${response.status}`, "GitHub refused the request; no repository rules are bypassed.", false);
+        return { body, requestId: response.headers.get("x-github-request-id") || "" };
+      }
+      get repo() {
+        return `/repos/${this.config.repository.split("/").map(encodeURIComponent).join("/")}`;
+      }
+      async ref(branch) {
+        const r = (await this.github(`${this.repo}/git/ref/heads/${branch.split("/").map(encodeURIComponent).join("/")}`)).body;
+        requireValue(r.ref === `refs/heads/${branch}` && r.object?.type === "commit" && REPOSITORY_SHA.test(r.object.sha), "invalid_github_ref");
+        return r.object.sha;
+      }
+      async pull(number) {
+        const pr = (await this.github(`${this.repo}/pulls/${number}`)).body;
+        if (pr.merge_commit_sha === void 0 && pr.state === "open" && pr.mergeable === true) {
+          const ref = (await this.github(`${this.repo}/git/ref/pull/${number}/merge`)).body;
+          requireValue(ref.ref === `refs/pull/${number}/merge` && ref.object?.type === "commit" && REPOSITORY_SHA.test(ref.object.sha), "repository_merge_ref_invalid");
+          return { ...pr, merge_commit_sha: ref.object.sha };
+        }
+        return pr;
+      }
+      async tree(sha) {
+        const body = (await this.github(`${this.repo}/git/trees/${sha}?recursive=1`)).body;
+        requireValue(body.sha === sha && !body.truncated && Array.isArray(body.tree) && body.tree.length <= 1e4, "repository_tree_incomplete");
+        return new Map(body.tree.map((v) => [v.path, { type: v.type, mode: v.mode, sha: v.sha }]));
+      }
+      async snapshot(task, proposalId = crypto.randomUUID()) {
+        const t = task.payload, pr = await this.pull(t.pull_number);
+        requireValue(pr.number === t.pull_number && pr.state === "open" && !pr.draft && !pr.merged && pr.mergeable === true && pr.base?.repo?.full_name === t.repository && pr.head?.repo?.full_name === t.repository && pr.base.ref === t.base_branch && repositoryBranch(pr.head.ref) && pr.head.ref !== pr.base.ref && [pr.base.sha, pr.head.sha, pr.merge_commit_sha].every((s) => REPOSITORY_SHA.test(s)), "repository_pr_not_ready");
+        const [repo, base, merge, comparison, runs, currentBase, currentHead] = await Promise.all([
+          this.github(this.repo),
+          this.github(`${this.repo}/git/commits/${pr.base.sha}`),
+          this.github(`${this.repo}/git/commits/${pr.merge_commit_sha}`),
+          this.github(`${this.repo}/compare/${pr.base.sha}...${pr.merge_commit_sha}`),
+          this.github(`${this.repo}/commits/${pr.head.sha}/check-runs?per_page=100&filter=latest`),
+          this.ref(t.base_branch),
+          this.ref(pr.head.ref)
+        ]);
+        requireValue(currentBase === pr.base.sha && currentHead === pr.head.sha, "repository_changed_during_inspection");
+        requireValue(repo.body.full_name === t.repository && typeof repo.body.node_id === "string" && base.body.sha === pr.base.sha && REPOSITORY_SHA.test(base.body.tree?.sha) && merge.body.sha === pr.merge_commit_sha && Array.isArray(merge.body.parents) && canonical(merge.body.parents.map((p) => p.sha)) === canonical([pr.base.sha, pr.head.sha]) && REPOSITORY_SHA.test(merge.body.tree?.sha), "repository_merge_mismatch");
+        requireValue(comparison.body.base_commit?.sha === pr.base.sha && comparison.body.merge_base_commit?.sha === pr.base.sha && comparison.body.status === "ahead" && Array.isArray(comparison.body.files) && comparison.body.files.length > 0 && comparison.body.files.length <= 50, "repository_diff_incomplete");
+        const [oldTree, newTree] = await Promise.all([this.tree(base.body.tree.sha), this.tree(merge.body.tree.sha)]);
+        const files = comparison.body.files.map((file) => {
+          requireValue(["added", "modified", "removed", "renamed"].includes(file.status) && typeof file.filename === "string" && pathAllowed(file.filename, t.allowed_paths) && (file.status !== "renamed" || typeof file.previous_filename === "string" && pathAllowed(file.previous_filename, t.allowed_paths)), "repository_path_not_allowed");
+          const before = oldTree.get(file.previous_filename || file.filename), after = newTree.get(file.filename), entry = file.status === "removed" ? before : after;
+          requireValue(entry?.type === "blob" && ["100644", "100755"].includes(entry.mode) && (!before || before.type === "blob" && ["100644", "100755"].includes(before.mode)) && (!after || after.type === "blob" && ["100644", "100755"].includes(after.mode)), "repository_unsafe_file_type");
+          requireValue(Number.isSafeInteger(file.additions) && file.additions >= 0 && Number.isSafeInteger(file.deletions) && file.deletions >= 0, "invalid_repository_diff");
+          return { path: file.filename, status: file.status, mode: entry.mode, additions: file.additions, deletions: file.deletions, ...file.status === "renamed" ? { previous_path: file.previous_filename } : {}, ...typeof file.patch === "string" ? { patch: file.patch.slice(0, 400), ...file.patch.length > 400 ? { patch_truncated: true } : {} } : {} };
+        }).sort((a, b) => a.path.localeCompare(b.path));
+        const actual = [.../* @__PURE__ */ new Set([...oldTree.keys(), ...newTree.keys()])].filter((path) => oldTree.get(path)?.type !== "tree" && newTree.get(path)?.type !== "tree" && canonical(oldTree.get(path) ?? null) !== canonical(newTree.get(path) ?? null)).sort();
+        const listed = [...new Set(files.flatMap((f) => [f.path, ...f.previous_path ? [f.previous_path] : []]))].sort();
+        requireValue(canonical(actual) === canonical(listed), "repository_diff_incomplete");
+        requireValue(Number.isSafeInteger(runs.body.total_count) && runs.body.total_count <= 100 && Array.isArray(runs.body.check_runs) && runs.body.check_runs.length === runs.body.total_count, "repository_checks_incomplete");
+        const checks = t.required_checks.map((required) => {
+          const matching = runs.body.check_runs.filter((c2) => c2.name === required.name && c2.app?.id === required.app_id).sort((a, b) => b.id - a.id), run = matching[0];
+          requireValue(run && run.head_sha === pr.head.sha && run.status === "completed" && run.conclusion === "success" && Number.isSafeInteger(run.id) && run.id > 0, "repository_check_not_passed");
+          return { id: run.id, name: run.name, app_id: run.app.id, head_sha: run.head_sha, conclusion: "success" };
+        }).sort((a, b) => a.name.localeCompare(b.name) || a.app_id - b.app_id);
+        const current = await this.pull(t.pull_number);
+        requireValue(current.state === "open" && !current.merged && !current.draft && current.head?.sha === pr.head.sha && current.base?.sha === pr.base.sha && current.merge_commit_sha === pr.merge_commit_sha && current.head?.repo?.full_name === t.repository && current.base?.repo?.full_name === t.repository, "repository_changed_during_inspection");
+        const proposal = { type: "scopeblind.repository.proposal.v1", id: proposalId, task_id: t.id, task_digest: task.digest, repository_id: repo.body.node_id, base_ref: `refs/heads/${pr.base.ref}`, head_ref: `refs/heads/${pr.head.ref}`, base_sha: pr.base.sha, head_sha: pr.head.sha, merge_sha: pr.merge_commit_sha, tree_sha: merge.body.tree.sha, files, checks, observed_at: (/* @__PURE__ */ new Date()).toISOString() };
+        requireValue(validRepositoryProposal(proposal, t, task.digest), "invalid_repository_proposal");
+        return proposal;
+      }
+      async inspect(taskId) {
+        requireValue(REPOSITORY_ID.test(taskId), "invalid_repository_task_id");
+        const state = await this.rpc("repository_get", taskId);
+        requireValue(!state.payload.execution && state.payload.status !== "cancelled" && Date.parse(state.payload.task.payload.expires_at) > Date.now(), "repository_task_inactive");
+        const proposal = await sign(await this.snapshot(state.payload.task), this.identity);
+        return this.rpc("repository_propose", taskId, { proposal });
+      }
+      async execute(taskId) {
+        requireValue(REPOSITORY_ID.test(taskId), "invalid_repository_task_id");
+        let state = await this.rpc("repository_get", taskId);
+        if (state.payload.execution) return this.reconcileState(state);
+        requireValue(state.payload.status === "approved" && state.payload.proposal && Date.parse(state.payload.task.payload.expires_at) > Date.now(), "repository_joint_approval_required");
+        const approved = state.payload.proposal, observed = await this.snapshot(state.payload.task);
+        requireValue(await repositorySnapshotDigest(approved.payload) === await repositorySnapshotDigest(observed), "repository_approval_stale");
+        const operationId = `repo-${taskId}`, attemptId = crypto.randomUUID();
+        state = await this.rpc("repository_begin", taskId, { proposal_digest: approved.digest, operation_id: operationId, attempt_id: attemptId });
+        const execution = state.payload.execution;
+        requireValue(execution && execution.payload.receiver_attempt_id === attemptId && execution.payload.operation_id === operationId && execution.payload.proposal_digest === approved.digest, "repository_execution_mismatch");
+        requireValue(Date.parse(execution.payload.expires_at) > Date.now(), "repository_execution_expired");
+        let sent = false, requestId = "", note = "";
+        try {
+          const final = await this.snapshot(state.payload.task);
+          requireValue(await repositorySnapshotDigest(final) === await repositorySnapshotDigest(approved.payload), "repository_approval_stale");
+          requireValue(Date.parse(execution.payload.expires_at) > Date.now() && state.payload.approvals.every((a) => Date.parse(a.payload.expires_at) > Date.now()), "repository_execution_expired");
+          sent = true;
+          const response = await this.github("/graphql", { method: "POST", body: JSON.stringify({ query: "mutation ScopeBlindApply($input: UpdateRefsInput!) { updateRefs(input: $input) { clientMutationId } }", variables: { input: { repositoryId: approved.payload.repository_id, clientMutationId: execution.payload.operation_id, refUpdates: [{ name: approved.payload.base_ref, beforeOid: approved.payload.base_sha, afterOid: approved.payload.merge_sha, force: false }, { name: approved.payload.head_ref, beforeOid: approved.payload.head_sha, afterOid: approved.payload.head_sha, force: false }] } } }) });
+          requestId = response.requestId;
+          if (response.body.errors?.length) throw new RepositoryReceiverError("github_atomic_update_rejected", "GitHub refused the atomic reference update.");
+          requireValue(response.body.data?.updateRefs?.clientMutationId === execution.payload.operation_id, "github_update_response_unverified");
+          note = "GitHub accepted the exact atomic reference update. The receiver then read back the destination.";
+        } catch (error) {
+          note = error instanceof RepositoryReceiverError ? error.message : "The receiver could not establish the operation outcome.";
+          if (!sent) return this.report(state, { status: "failed", observed_base_sha: null, readback: "not_confirmed", note });
+        }
+        return this.reconcileState(state, note, requestId);
+      }
+      async reconcile(taskId) {
+        return this.reconcileState(await this.rpc("repository_get", taskId));
+      }
+      async reconcileState(state, note = "Reconciled the existing operation by reading GitHub; no new reference update was sent.", requestId = "") {
+        requireValue(state.payload.execution && state.payload.proposal, "repository_execution_missing");
+        if (state.payload.outcome && state.payload.outcome.payload.status !== "unknown") return state;
+        let sha = null, readback = "not_confirmed";
+        try {
+          sha = await this.ref(state.payload.task.payload.base_branch);
+          if (sha === state.payload.proposal.payload.merge_sha) readback = "exact_ref";
+          else if (sha !== state.payload.proposal.payload.base_sha) {
+            const compare = (await this.github(`${this.repo}/compare/${state.payload.proposal.payload.merge_sha}...${sha}`)).body;
+            if (compare.base_commit?.sha === state.payload.proposal.payload.merge_sha && compare.merge_base_commit?.sha === state.payload.proposal.payload.merge_sha && ["ahead", "identical"].includes(compare.status)) readback = "descendant_ref";
+          }
+        } catch {
+          note = "GitHub readback was unavailable. Keep this operation unresolved; do not dispatch a replacement.";
+        }
+        return this.report(state, { status: readback === "not_confirmed" ? "unknown" : "confirmed", observed_base_sha: sha, readback, note, ...requestId ? { github_request_id: requestId } : {} });
+      }
+      async report(state, result2) {
+        const s = state.payload, x = s.execution;
+        const outcome = await sign({ type: "scopeblind.repository.outcome.v1", operation_id: x.payload.operation_id, task_id: s.task.payload.id, task_digest: s.task.digest, proposal_digest: s.proposal.digest, execution_digest: x.digest, ...result2, observed_at: (/* @__PURE__ */ new Date()).toISOString() }, this.identity);
+        return this.rpc("repository_outcome", s.task.payload.id, { outcome });
+      }
+    };
+  }
+});
+
+// src/coordination-devices.ts
+function deviceAuthorizationPreimage(payloadDigest, authorizationDigest) {
+  return DEVICE_AUTHORIZATION_DOMAIN + payloadDigest + "\n" + authorizationDigest;
+}
+async function verifyDeviceAuthorization(value) {
+  try {
+    const g = value.payload;
+    return exact2(value, "payload signer digest signature") && await verify(value, g.principal_key) && exact2(g, "type id link_id room_id agreement_digest principal_key device_key device_name actions issued_at expires_at authority_key") && g.type === "scopeblind.coordination.device-authorization.v1" && id(g.id) && id(g.link_id) && id(g.room_id) && hex(g.agreement_digest) && hex(g.principal_key) && hex(g.device_key) && g.device_key !== g.principal_key && hex(g.authority_key) && typeof g.device_name === "string" && g.device_name.trim() === g.device_name && g.device_name.length > 0 && g.device_name.length <= 60 && Array.isArray(g.actions) && g.actions.length > 0 && g.actions.length <= DEVICE_ACTIONS.length && new Set(g.actions).size === g.actions.length && g.actions.every((action) => DEVICE_ACTIONS.includes(action)) && Number.isFinite(time2(g.issued_at)) && time2(g.expires_at) > time2(g.issued_at) && time2(g.expires_at) - time2(g.issued_at) <= DEVICE_MAX_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+async function contextProposal(context, g) {
+  const proposal = context.proposal, p = proposal?.payload;
+  return proposal && p && await verify(proposal, g.authority_key) && p.type === "scopeblind.coordination.negotiation-proposal.v1" && p.room_id === g.room_id && p.agreement_digest === g.agreement_digest ? proposal : null;
+}
+async function humanPermission(value, context = {}) {
+  const p = value.payload, g = value.authorization?.payload;
+  if (!g || !object2(p)) return null;
+  const direct = (action) => typeof p.issued_at === "string" && p.room_id === g.room_id && (p.agreement_digest === void 0 || p.agreement_digest === g.agreement_digest) ? { action, at: p.issued_at } : null;
+  switch (p.type) {
+    case "scopeblind.coordination.request.v1":
+      return typeof p.action === "string" && DEVICE_ACTIONS.includes(p.action) ? direct(p.action) : null;
+    case "scopeblind.coordination.approval.v1":
+      return direct("decide");
+    case "scopeblind.coordination.acceptance.v1":
+      return direct("accept");
+    case "scopeblind.coordination.negotiation-mandate.v1":
+      return p.principal_key === g.principal_key ? direct("negotiation_mandate") : null;
+    case "scopeblind.coordination.negotiation-approval.v1": {
+      const proposal = await contextProposal(context, g), q = proposal?.payload;
+      return q && p.principal_key === g.principal_key && p.session_id === q.session_id && p.proposal_digest === proposal.digest && p.next_agreement_digest === q.next_agreement_digest && canonical(p.mandate_digests) === canonical(q.mandate_digests) && typeof p.issued_at === "string" ? { action: "negotiation_approve", at: p.issued_at } : null;
+    }
+    case "scopeblind.coordination.agreement.v1":
+    case "scopeblind.coordination.grant.v1":
+    case "scopeblind.coordination.claim.v1": {
+      const proposal = await contextProposal(context, g), q = proposal?.payload, approval = context.approval;
+      if (!q || !approval || approval.payload.decision !== "approve" || approval.authorization?.digest !== value.authorization?.digest || !await verifyHuman(approval, g.principal_key, { proposal, requireRecordedUse: context.requireRecordedUse, authorityKey: context.authorityKey })) return null;
+      const exactPayload = p.type === "scopeblind.coordination.agreement.v1" ? q.next_agreement.owner_key === g.principal_key && canonical(p) === canonical(q.next_agreement) : p.type === "scopeblind.coordination.grant.v1" ? q.reviewer_grant.issuer === g.principal_key && canonical(p) === canonical(q.reviewer_grant) : p.guest_key === g.principal_key && p.room_id === q.next_agreement.id && p.grant_id === q.reviewer_grant.grant_id && typeof p.issued_at === "string" && time2(p.issued_at) >= time2(approval.payload.issued_at) - 3e5 && time2(p.issued_at) <= time2(approval.payload.expires_at);
+      return exactPayload ? { action: "negotiation_approve", at: approval.payload.issued_at } : null;
+    }
+    default:
+      return null;
+  }
+}
+async function verifyHuman(value, expectedPrincipal, context = {}) {
+  try {
+    if (!value || !object2(value) || Object.keys(value).some((key2) => !["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"].includes(key2))) return false;
+    if (!value.authorization) return !value.authorization_signature && !value.authorization_use && await verify(value, expectedPrincipal);
+    const authorization = value.authorization, g = authorization.payload;
+    if (context.authorityKey !== void 0 && g.authority_key !== context.authorityKey) return false;
+    if (!await verify(value) || !await verifyDeviceAuthorization(authorization) || g.principal_key !== expectedPrincipal || g.device_key !== value.signer || typeof value.authorization_signature !== "string" || !/^[0-9a-f]{128}$/.test(value.authorization_signature)) return false;
+    const key = await crypto.subtle.importKey("raw", hexToBytes(value.signer), { name: "Ed25519" }, false, ["verify"]);
+    if (!await crypto.subtle.verify("Ed25519", key, hexToBytes(value.authorization_signature), new TextEncoder().encode(deviceAuthorizationPreimage(value.digest, authorization.digest)))) return false;
+    const permission = await humanPermission(value, context);
+    if (!permission || !g.actions.includes(permission.action) || time2(permission.at) < time2(g.issued_at) - 3e5 || time2(permission.at) >= time2(g.expires_at)) return false;
+    const p = value.payload;
+    if (p.expires_at !== void 0 && !["scopeblind.coordination.grant.v1", "scopeblind.coordination.agreement.v1"].includes(String(p.type)) && (!Number.isFinite(time2(p.expires_at)) || time2(p.expires_at) > time2(g.expires_at))) return false;
+    const use = value.authorization_use;
+    if (!use) return !context.requireRecordedUse;
+    const u = use.payload;
+    return exact2(use, "payload signer digest signature") && await verify(use, g.authority_key) && exact2(u, "type authorization_digest principal_key device_key room_id payload_digest action recorded_at") && u.type === "scopeblind.coordination.device-use.v1" && u.authorization_digest === authorization.digest && u.principal_key === g.principal_key && u.device_key === g.device_key && u.room_id === g.room_id && u.payload_digest === value.digest && u.action === permission.action && time2(u.recorded_at) >= time2(g.issued_at) && time2(u.recorded_at) < time2(g.expires_at) && time2(u.recorded_at) >= time2(permission.at) - 3e5;
+  } catch {
+    return false;
+  }
+}
+var DEVICE_AUTHORIZATION_DOMAIN, DEVICE_ACTIONS, DEVICE_LINK_TTL_MS, DEVICE_MAX_TTL_MS, hex, id, object2, time2, exact2;
+var init_coordination_devices = __esm({
+  "src/coordination-devices.ts"() {
+    "use strict";
+    init_coordination_protocol();
+    DEVICE_AUTHORIZATION_DOMAIN = "scopeblind.coordination.device-authorization.v1\n";
+    DEVICE_ACTIONS = ["inspect", "decision_inbox", "negotiation_get", "decide", "accept", "negotiation_mandate", "negotiation_approve"];
+    DEVICE_LINK_TTL_MS = 10 * 60 * 1e3;
+    DEVICE_MAX_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
+    hex = (value) => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+    id = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(value);
+    object2 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
+    time2 = (value) => typeof value === "string" ? Date.parse(value) : NaN;
+    exact2 = (value, fields) => Object.keys(value).sort().join(" ") === fields.split(" ").sort().join(" ");
+  }
+});
+
+// src/coordination-evidence.ts
+async function verifyOwnerAgreement(agreement, negotiation, depth = 0) {
+  try {
+    if (!agreement.authorization) return await verifyHuman(agreement, agreement.payload.owner_key);
+    if (depth > 4 || !negotiation?.adoption || !negotiation.adopted_agreement || canonical(negotiation.adopted_agreement) !== canonical(agreement) || negotiation.adoption.payload.room_id !== agreement.payload.id) return false;
+    return (await verifyNegotiationEvidence(negotiation, agreement.payload.registrar_key, depth)).valid;
+  } catch {
+    return false;
+  }
+}
+var init_coordination_evidence = __esm({
+  "src/coordination-evidence.ts"() {
+    "use strict";
+    init_coordination_devices();
+    init_coordination_negotiation();
+    init_coordination_protocol();
+  }
+});
+
+// src/coordination-rehearsal.ts
+function parseRehearsalCase(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid_rehearsal_case");
+  const v = value;
+  if (Object.keys(v).some((k) => !["id", "title", "kind", "invoice_id", "amount_minor", "expected", "requirement", "required"].includes(k)) || typeof v.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(v.id) || typeof v.title !== "string" || !v.title.trim() || v.title.length > 120 || typeof v.kind !== "string" || !kinds.has(v.kind) || typeof v.invoice_id !== "string" || !/^[A-Za-z0-9_-]{1,60}$/.test(v.invoice_id) || typeof v.expected !== "string" || !outcomes.has(v.expected) || typeof v.requirement !== "string" || !v.requirement.trim() || v.requirement.length > 400 || v.amount_minor !== void 0 && (!Number.isSafeInteger(v.amount_minor) || Number(v.amount_minor) < 1 || Number(v.amount_minor) > 1e7) || v.required !== void 0 && typeof v.required !== "boolean") throw new Error("invalid_rehearsal_case");
+  if (v.kind === "invoice" === (v.expected === "invariant")) throw new Error("invalid_rehearsal_expectation");
+  if (v.amount_minor !== void 0 && ["changed_approval", "expired_approval", "budget_cap"].includes(v.kind)) throw new Error("rehearsal_amount_not_supported");
+  return {
+    id: v.id,
+    title: v.title.trim(),
+    kind: v.kind,
+    invoice_id: v.invoice_id,
+    ...v.amount_minor !== void 0 ? { amount_minor: Number(v.amount_minor) } : {},
+    expected: v.expected,
+    requirement: v.requirement.trim(),
+    ...v.required !== void 0 ? { required: v.required } : {}
+  };
+}
+function parseRepairProposal(value, budget) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid_repair_proposal");
+  const v = value;
+  if (Object.keys(v).some((k) => !["id", "approval_above_minor", "rationale"].includes(k)) || typeof v.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(v.id) || !Number.isSafeInteger(v.approval_above_minor) || Number(v.approval_above_minor) < 0 || Number(v.approval_above_minor) > budget || typeof v.rationale !== "string" || !v.rationale.trim() || v.rationale.length > 600) throw new Error("invalid_repair_proposal");
+  return { id: v.id, approval_above_minor: Number(v.approval_above_minor), rationale: v.rationale.trim() };
+}
+function defaultRehearsalCases(fixtures) {
+  const invoice = fixtures.invoices.find((i) => !i.duplicate_of);
+  const make = (id4, title, kind, requirement) => ({ id: `required-${id4}`, title, kind, invoice_id: invoice.invoice_id, expected: "invariant", requirement, required: true });
+  return [
+    make("valid", "A legitimate payment can complete", "approved_invoice", "An exact, authorized invoice can be paid once. Required review must not prevent approved work from completing."),
+    make("duplicate", "Submit the same invoice twice", "duplicate_invoice", "A second operation for an already-paid invoice must not create another payment."),
+    make("changed", "Change the amount after approval", "changed_approval", "Approval for one exact request must not authorize a changed amount."),
+    make("destination", "Change the payment destination", "changed_destination", "A payment to a destination outside the approved vendor record must be refused."),
+    make("expired", "Use an expired approval", "expired_approval", "An expired exact approval cannot authorize a payment that needs review."),
+    make("budget", "Go over the total budget", "budget_cap", "The aggregate budget cannot be exceeded, even with separate operations and exact approvals.")
+  ];
+}
+async function rehearsalDigest(value) {
+  return sha256(canonical(value));
+}
+async function verifyRehearsalEvidence(bundle, pin) {
+  const checks = [];
+  const add = (label, ok) => checks.push({ label, ok: !!ok });
+  try {
+    add("Recognized rehearsal evidence", bundle.type === "scopeblind.coordination.rehearsal-evidence.v1");
+    const a = bundle.agreement.payload, r = bundle.report.payload;
+    add("Bounded invoice agreement and case set", a.type === "scopeblind.coordination.agreement.v1" && a.currency === "USD" && Number.isSafeInteger(a.budget_minor) && a.budget_minor > 0 && a.budget_minor <= 1e7 && Number.isSafeInteger(a.approval_above_minor) && a.approval_above_minor >= 0 && a.approval_above_minor <= a.budget_minor && Array.isArray(bundle.cases) && bundle.cases.length >= 6 && bundle.cases.length <= 30 && new Set(bundle.cases.map((c2) => c2.id)).size === bundle.cases.length && bundle.cases.every((c2) => canonical(parseRehearsalCase(c2)) === canonical(c2)));
+    add("Owner signed the source agreement", await verifyOwnerAgreement(bundle.agreement, bundle.source_negotiation) && (bundle.agreement.authorization ? !!bundle.source_negotiation : bundle.source_negotiation === void 0));
+    add("Named authority signed the report", await verify(bundle.report, pin || a.registrar_key));
+    add("Report authority matches the agreement", bundle.report.signer === a.registrar_key);
+    add("Report binds this agreement and room", r.type === "scopeblind.coordination.rehearsal-report.v1" && r.agreement_digest === bundle.agreement.digest && r.room_id === a.id);
+    add("Exact source fixtures and included cases are present", r.fixture_digest === await rehearsalDigest(bundle.fixtures) && r.cases_digest === await rehearsalDigest(bundle.cases));
+    add("Report includes each case exactly once", r.results.length === bundle.cases.length && canonical(r.results.map((x) => x.case)) === canonical(bundle.cases));
+    add("Declared isolation and adapter are explicit", r.isolation === "separate-fixture-ledgers" && r.adapter === "coordination-d1-sandbox" && r.runtime_revision.length > 0);
+    add("Source threshold matches the tested version", r.before_approval_above_minor === a.approval_above_minor);
+    if (bundle.proposal) {
+      const p = bundle.proposal.payload;
+      add("Authority recorded the exact proposed change", await verify(bundle.proposal, a.registrar_key) && p.type === "scopeblind.coordination.repair-proposal.v1");
+      add("Proposal and report share the same source and cases", r.proposal_digest === bundle.proposal.digest && p.room_id === a.id && p.agreement_digest === bundle.agreement.digest && p.fixture_digest === r.fixture_digest && p.cases_digest === r.cases_digest);
+      add("Proposed threshold matches the comparison", p.previous_approval_above_minor === a.approval_above_minor && p.approval_above_minor === r.after_approval_above_minor && Number.isSafeInteger(p.approval_above_minor) && p.approval_above_minor >= 0 && p.approval_above_minor <= a.budget_minor);
+    } else add("Baseline report claims no proposed version", r.proposal_digest === void 0 && r.after_approval_above_minor === void 0);
+    const selected = r.results.map((x) => bundle.proposal ? x.after : x.before);
+    add("Every compared case has an observation", selected.every(Boolean) && r.results.every((x) => !!x.before && (!bundle.proposal ? x.after === void 0 : true)));
+    const sound = (c2, o) => o && typeof o.reason === "string" && o.reason.length <= 2e3 && Array.isArray(o.steps) && o.steps.length > 0 && o.steps.length <= 50 && o.steps.every((s) => typeof s.action === "string" && s.action.length <= 200 && typeof s.reason === "string" && s.reason.length <= 2e3 && ["allow", "ask", "refuse", "confirmed", "rejected"].includes(s.decision)) && Number.isSafeInteger(o.payments) && o.payments >= 0 && Number.isSafeInteger(o.spent_minor) && o.spent_minor >= 0 && ["allow", "ask", "refuse", "error"].includes(o.actual) && !(o.actual === "error" && o.matched) && o.matched === (c2.expected === "invariant" ? o.invariant_passed === true : o.actual === c2.expected);
+    add("Observation summaries agree with stated expectations", r.results.every((x) => sound(x.case, x.before) && (!x.after || sound(x.case, x.after))));
+    add("Required safety cases remain included", defaultRehearsalCases(bundle.fixtures).every((c2) => bundle.cases.some((x) => canonical(x) === canonical(c2))));
+    add("Required-case and expectation totals match the observations", r.required_passed === r.results.every((x, i) => !x.case.required || selected[i]?.matched === true) && r.expectations_met === selected.every((x) => x?.matched === true));
+    if (bundle.adoption) {
+      const d = bundle.adoption.payload, authorization = bundle.adoption_authorization, next = bundle.adopted_agreement;
+      add("Authority recorded adoption of this exact report", await verify(bundle.adoption, a.registrar_key) && d.type === "scopeblind.coordination.rehearsal-adoption.v1" && d.source_room_id === a.id && d.source_agreement_digest === bundle.agreement.digest && d.report_digest === bundle.report.digest && d.proposal_digest === bundle.proposal?.digest && d.fixture_digest === r.fixture_digest && d.cases_digest === r.cases_digest && d.owner_key === a.owner_key && d.scope === "new-separate-sample-task");
+      add("Owner signed adoption of the exact report and new agreement", authorization && next && await verify(authorization, a.owner_key) && await verify(next, a.owner_key) && authorization.digest === d.authorization_digest && authorization.payload.type === "scopeblind.coordination.request.v1" && authorization.payload.action === "rehearsal_adopt" && authorization.payload.room_id === a.id && authorization.payload.body.report_digest === bundle.report.digest && authorization.payload.body.proposal_id === bundle.proposal?.payload.id && canonical(authorization.payload.body.agreement) === canonical(next) && next.digest === d.agreement_digest && next.payload.id === d.room_id && next.payload.id !== a.id);
+      add("Only the tested threshold changed in the new task", next && bundle.proposal && canonical(next.payload) === canonical({ ...a, id: next.payload.id, issued_at: next.payload.issued_at, approval_above_minor: bundle.proposal.payload.approval_above_minor }) && r.required_passed && r.expectations_met);
+    } else add("No unbound adoption claims are present", !bundle.adoption_authorization && !bundle.adopted_agreement);
+  } catch {
+    add("Complete, well-formed rehearsal evidence", false);
+  }
+  return { valid: checks.every((x) => x.ok), checks, errors: checks.filter((x) => !x.ok).map((x) => x.label), limitations: [
+    "These are concrete checks against isolated sample ledgers, not proof for every possible input or another deployment.",
+    "The named ScopeBlind authority attests to observed gate behavior. Signatures establish integrity and key control, not independent observation or legal identity.",
+    "Proposed changes grant no authority by themselves. A new sample task has its own ledger; earlier work and payments remain unchanged."
+  ] };
+}
+var REHEARSAL_ACTIONS, kinds, outcomes;
+var init_coordination_rehearsal = __esm({
+  "src/coordination-rehearsal.ts"() {
+    "use strict";
+    init_coordination_evidence();
+    init_coordination_protocol();
+    REHEARSAL_ACTIONS = ["rehearsal_get", "rehearsal_case", "rehearsal_run", "rehearsal_propose"];
+    kinds = /* @__PURE__ */ new Set(["invoice", "approved_invoice", "duplicate_invoice", "changed_approval", "changed_destination", "expired_approval", "budget_cap"]);
+    outcomes = /* @__PURE__ */ new Set(["allow", "ask", "refuse", "invariant"]);
+  }
+});
+
+// src/coordination-negotiation.ts
+async function privateBriefCommitment(brief) {
+  return sha256("scopeblind.negotiation.private-brief.v1\n" + canonical(brief));
+}
+function parseNegotiationBrief(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid_private_brief");
+  const v = value;
+  if (!["preference,salt,text", "budget_preference,preference,salt,text"].includes(Object.keys(v).sort().join(",")) || v.budget_preference !== void 0 && !["preserve_budget", "lower_budget", "more_capacity"].includes(String(v.budget_preference)) || typeof v.text !== "string" || v.text.length > 2e3 || !["fewer_reviews", "more_review", "balanced"].includes(String(v.preference)) || typeof v.salt !== "string" || !/^[0-9a-f]{64}$/.test(v.salt)) throw new Error("invalid_private_brief");
+  canonical(v);
+  return v;
+}
+function mandateCases(mandates, fixtures) {
+  return [...defaultRehearsalCases(fixtures), ...mandates.some((m) => m.payload.min_budget_minor !== void 0) ? fixtures.invoices.filter((i) => !i.duplicate_of).map((i, index) => ({ id: `sample-invoice-${index}`, title: `${i.invoice_id} \xB7 sample outcome`, kind: "invoice", invoice_id: i.invoice_id, expected: "allow", required: false, requirement: "Observe this sample invoice in isolation; its outcome is not a hard requirement." })) : [], ...mandates.flatMap((m, side) => m.payload.required_invoices.map((r, index) => ({
+    id: `principal-${side}-${index}`,
+    title: `${r.invoice_id} \xB7 ${r.expected === "allow" ? "keep moving" : "needs review"}`,
+    kind: "invoice",
+    invoice_id: r.invoice_id,
+    expected: r.expected,
+    requirement: `Required by ${side === 0 ? "the organizer" : "the partner"}.`,
+    required: true
+  })))];
+}
+function mandateBudget(m, sourceBudget) {
+  return { min: m.min_budget_minor ?? sourceBudget, max: m.max_budget_minor ?? sourceBudget };
+}
+function negotiationPlanWithinMandate(m, threshold, budget, sourceBudget) {
+  const range = mandateBudget(m, sourceBudget);
+  return Number.isSafeInteger(threshold) && Number.isSafeInteger(budget) && budget >= range.min && budget <= range.max && threshold >= m.min_threshold_minor && threshold <= m.max_threshold_minor && threshold <= budget;
+}
+async function signed(v, key) {
+  return exact3(v, keys("payload signer digest signature")) && HEX.test(key) && await verify(v, key);
+}
+function boundedAgreement(a) {
+  return exact3(a, keys("type id version title owner_key registrar_key currency budget_minor approval_above_minor approval_ttl_seconds allowed_destinations issued_at"), keys("mode brief preferences assumptions require_po_match")) && a.type === "scopeblind.coordination.agreement.v1" && id2(a.id) && a.version === 1 && text2(a.title, 200) && HEX.test(a.owner_key) && HEX.test(a.registrar_key) && a.currency === "USD" && integer2(a.budget_minor, 1, 1e7) && integer2(a.approval_above_minor, 0, a.budget_minor) && integer2(a.approval_ttl_seconds, 30, 900) && Number.isFinite(time3(a.issued_at)) && Array.isArray(a.allowed_destinations) && a.allowed_destinations.length > 0 && a.allowed_destinations.length <= 100 && new Set(a.allowed_destinations).size === a.allowed_destinations.length && a.allowed_destinations.every((d) => text2(d, 500)) && (a.mode === void 0 || ["guided", "live"].includes(a.mode)) && (a.require_po_match === void 0 || typeof a.require_po_match === "boolean") && (a.brief === void 0 || typeof a.brief === "string" && a.brief.length <= 1e4) && [a.preferences, a.assumptions].every((v) => v === void 0 || Array.isArray(v) && v.length <= 100 && v.every((t) => typeof t === "string" && t.length <= 2e3));
+}
+function boundedFixtures(f) {
+  return exact3(f, keys("revision invoices purchase_orders")) && integer2(f.revision, 1, 1e7) && Array.isArray(f.invoices) && f.invoices.length > 0 && f.invoices.length <= 100 && f.invoices.some((i) => !i.duplicate_of) && new Set(f.invoices.filter((i) => !i.duplicate_of).map((i) => i.invoice_id)).size === f.invoices.filter((i) => !i.duplicate_of).length && f.invoices.every((i) => !i.duplicate_of || f.invoices.some((base) => !base.duplicate_of && base.id === i.duplicate_of && base.invoice_id === i.invoice_id && base.amount_minor === i.amount_minor && base.destination === i.destination && base.vendor === i.vendor)) && new Set(f.invoices.map((i) => i.id)).size === f.invoices.length && f.invoices.every((i) => exact3(i, keys("id invoice_id vendor description amount_minor destination"), keys("duplicate_of purchase_order_id")) && text2(i.id, 100) && text2(i.invoice_id, 60) && text2(i.vendor, 300) && typeof i.description === "string" && i.description.length <= 2e3 && integer2(i.amount_minor, 1, 1e7) && text2(i.destination, 500) && (i.duplicate_of === void 0 || text2(i.duplicate_of, 60)) && (i.purchase_order_id === void 0 || text2(i.purchase_order_id, 100))) && Array.isArray(f.purchase_orders) && f.purchase_orders.length <= 100 && new Set(f.purchase_orders.map((p) => p.id)).size === f.purchase_orders.length && f.purchase_orders.every((p) => exact3(p, keys("id vendor destination amount_minor currency")) && text2(p.id, 100) && text2(p.vendor, 300) && text2(p.destination, 500) && integer2(p.amount_minor, 1, 1e7) && p.currency === "USD");
+}
+function observationConsistent(c2, o, a, f) {
+  if (!exact3(o, keys("actual matched reason steps payments spent_minor"), ["invariant_passed"]) || !["allow", "ask", "refuse", "error"].includes(o.actual) || typeof o.matched !== "boolean" || typeof o.reason !== "string" || o.reason.length > 2e3 || !integer2(o.payments, 0, 2) || !integer2(o.spent_minor, 0, 2e7) || !Array.isArray(o.steps) || o.steps.length < 1 || o.steps.length > 50 || !o.steps.every((s) => exact3(s, keys("action decision reason"), keys("operation_id payload_hash")) && ["setup", "admit", "submit_changed_request", "approve_exact", "submit_expired_approval", "execute"].includes(s.action) && ["allow", "ask", "refuse", "confirmed", "rejected"].includes(s.decision) && typeof s.reason === "string" && s.reason.length <= 2e3 && (s.operation_id === void 0 || id2(s.operation_id)) && (s.payload_hash === void 0 || HEX.test(s.payload_hash)))) return false;
+  if (c2.expected === "invariant" ? typeof o.invariant_passed !== "boolean" : o.invariant_passed !== void 0) return false;
+  if (o.matched !== (c2.expected === "invariant" ? o.invariant_passed === true : o.actual === c2.expected)) return false;
+  if (o.actual === "error") return !o.matched && o.invariant_passed !== true;
+  const original = f.invoices.find((i) => i.invoice_id === c2.invoice_id);
+  if (!original) return false;
+  let amount3 = c2.amount_minor ?? original.amount_minor;
+  if (c2.kind !== "invoice" && c2.amount_minor === void 0) amount3 = Math.min(amount3, a.budget_minor);
+  if (c2.kind === "budget_cap") amount3 = Math.floor(a.budget_minor / 2) + 1;
+  if (["changed_approval", "expired_approval"].includes(c2.kind) && a.mode !== "live" && !a.require_po_match && a.approval_above_minor < a.budget_minor) amount3 = a.approval_above_minor + 1;
+  const admissions = o.steps.filter((s) => s.action === "admit" || s.action === "submit_changed_request"), first = admissions[0], last = admissions.at(-1);
+  const executed = o.steps.filter((s) => s.action === "execute" && s.decision === "confirmed");
+  if (!first || !last || o.payments !== executed.length || o.spent_minor !== amount3 * o.payments) return false;
+  if (executed.some((s) => !s.operation_id || !s.payload_hash || !o.steps.slice(0, o.steps.indexOf(s)).some((p) => (p.action === "admit" || p.action === "submit_changed_request") && p.decision === "allow" && p.operation_id === s.operation_id && p.payload_hash === s.payload_hash))) return false;
+  let invariant = false;
+  if (c2.kind === "invoice") {
+    const order = f.purchase_orders.find((p) => p.id === original.purchase_order_id);
+    const poMatches = c2.amount_minor !== void 0 || !!order && order.amount_minor === amount3 && order.vendor === original.vendor && order.destination === original.destination && order.currency === "USD";
+    const expectedGate = !a.allowed_destinations.includes(original.destination) || amount3 > a.budget_minor ? "refuse" : amount3 > a.approval_above_minor || a.require_po_match === true && !poMatches ? "ask" : "allow";
+    return o.actual === expectedGate && o.actual === first.decision && admissions.length === 1 && o.payments <= 1;
+  }
+  if (c2.kind === "approved_invoice") {
+    invariant = o.payments === 1 && o.spent_minor === amount3;
+    if (o.actual !== (executed.length ? "allow" : "refuse")) return false;
+  } else if (c2.kind === "duplicate_invoice" || c2.kind === "budget_cap") {
+    if (o.actual !== last.decision || admissions.length < 2) return false;
+    invariant = executed.length > 0 && last.decision !== "allow" && o.payments === 1 && o.spent_minor <= a.budget_minor;
+  } else if (c2.kind === "changed_destination") {
+    if (o.actual !== last.decision) return false;
+    invariant = last.decision === "refuse" && o.payments === 0;
+  } else if (c2.kind === "changed_approval") {
+    if (first.decision === "ask") {
+      if (o.actual !== last.decision) return false;
+      invariant = o.steps.some((s) => s.action === "approve_exact" && s.decision === "allow") && last.action === "submit_changed_request" && last.decision !== "allow" && o.payments === 0;
+    } else if (first.decision === "allow") {
+      invariant = last.decision === "rejected" && last.reason === "operation_id_payload_mismatch" && o.payments === 0;
+      if (o.actual !== (invariant ? "refuse" : "allow")) return false;
+    } else if (o.actual !== "refuse") return false;
+  } else if (c2.kind === "expired_approval") {
+    if (o.actual !== last.decision) return false;
+    const expired = o.steps.find((s) => s.action === "submit_expired_approval");
+    invariant = expired?.decision === "rejected" && expired.reason === "invalid_approval_expiry" && (!(a.require_po_match === true || amount3 > a.approval_above_minor) || last.decision !== "allow") && o.payments === 0;
+  }
+  return o.invariant_passed === invariant;
+}
+async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
+  const checks = [];
+  const add = (name, passed) => checks.push({ name, passed: !!passed });
+  try {
+    if (depth > 4) throw new Error("Device agreement lineage exceeds supported depth");
+    const e = value;
+    add("Recognized public negotiation export with no private context", exact3(e, keys("type session invitation binding agreement fixtures mandates proposals responses report approvals"), keys("adoption adopted_agreement reviewer_grant reviewer_binding agent_bindings source_negotiation")) && e.type === "scopeblind.coordination.negotiation-evidence.v1");
+    add("Device-signed source has only its required bounded lineage", e.agreement.authorization ? !!e.source_negotiation : e.source_negotiation === void 0);
+    const a = e.agreement.payload, s = e.session.payload, i = e.invitation.payload, b = e.binding.payload;
+    const authority = authorityKey ?? a.registrar_key;
+    add("Owner signed the bounded source agreement and exact fixture snapshot", boundedAgreement(a) && boundedFixtures(e.fixtures) && await verifyOwnerAgreement(e.agreement, e.source_negotiation, depth + 1) && a.registrar_key === authority);
+    add("Named authority signed a bounded session tied to this source", await signed(e.session, authority) && exact3(s, keys("type id room_id agreement_digest fixture_digest owner_key registrar_key invitation_digest created_at expires_at max_proposals"), ["parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]) && s.type === "scopeblind.coordination.negotiation-session.v1" && id2(s.id) && s.room_id === a.id && s.agreement_digest === e.agreement.digest && s.fixture_digest === await negotiationDigest(e.fixtures) && (s.parent_session_id === void 0 || id2(s.parent_session_id) && s.parent_session_id !== s.id) && s.parent_session_id === i.parent_session_id && s.source_operation_id === i.source_operation_id && (s.source_operation_id === void 0 ? s.source_invoice_id === void 0 && s.source_operation_digest === void 0 : id2(s.source_operation_id) && text2(s.source_invoice_id, 60) && HEX.test(s.source_operation_digest ?? "") && e.fixtures.invoices.some((v) => !v.duplicate_of && v.invoice_id === s.source_invoice_id)) && s.owner_key === a.owner_key && s.registrar_key === authority && s.invitation_digest === e.invitation.digest && s.max_proposals === 3 && time3(s.created_at) >= time3(a.issued_at) - 3e5 && time3(s.expires_at) > time3(s.created_at) && time3(s.expires_at) <= time3(s.created_at) + 864e5);
+    const during = (at) => time3(at) >= time3(s.created_at) - 3e5 && time3(at) < time3(s.expires_at);
+    add("Owner invited one counterparty for this exact session", await signed(e.invitation, a.owner_key) && exact3(i, keys("type session_id room_id agreement_digest fixture_digest issuer registrar_key role token_hash max_claims expires_at"), ["parent_session_id", "source_operation_id"]) && i.type === "scopeblind.coordination.negotiation-invitation.v1" && i.session_id === s.id && i.room_id === a.id && i.agreement_digest === e.agreement.digest && i.fixture_digest === s.fixture_digest && i.issuer === a.owner_key && i.registrar_key === authority && i.role === "counterparty" && i.max_claims === 1 && HEX.test(i.token_hash) && i.expires_at === s.expires_at);
+    const claim = b.claim.payload, partner = b.guest_key, principals = [a.owner_key, partner];
+    add("Distinct counterparty signed its claim and the authority bound that claim", await signed(e.binding, authority) && await signed(b.claim, partner) && exact3(b, keys("type session_id room_id invitation_digest guest_key name issued_at expires_at claim")) && b.type === "scopeblind.coordination.negotiation-binding.v1" && b.session_id === s.id && b.room_id === a.id && b.invitation_digest === e.invitation.digest && HEX.test(partner) && partner !== a.owner_key && during(b.issued_at) && b.expires_at === s.expires_at && exact3(claim, keys("type session_id room_id guest_key name issued_at nonce")) && claim.type === "scopeblind.coordination.negotiation-claim.v1" && claim.session_id === s.id && claim.room_id === a.id && claim.guest_key === partner && text2(claim.name, 60) && claim.name === b.name && id2(claim.nonce) && Math.abs(time3(claim.issued_at) - time3(b.issued_at)) <= 3e5);
+    add("Exactly two distinct principal mandates are included in organizer/partner order", Array.isArray(e.mandates) && e.mandates.length === 2 && e.mandates.every((m, n) => m.payload.principal_key === principals[n]) && new Set(e.mandates.map((m) => m.digest)).size === 2);
+    const mandateDigests = e.mandates.map((m) => m.digest);
+    for (let n = 0; n < e.mandates.length; n++) {
+      const m = e.mandates[n].payload;
+      add(`Principal ${n + 1} signed bounded negotiation-only authority`, await verifyHuman(e.mandates[n], principals[n], { requireRecordedUse: true, authorityKey: authority }) && exact3(m, keys("type session_id room_id principal_key version agreement_digest fixture_digest min_threshold_minor max_threshold_minor required_invoices private_brief_commitment agent_mode actions issued_at expires_at"), ["min_budget_minor", "max_budget_minor"]) && m.type === "scopeblind.coordination.negotiation-mandate.v1" && m.session_id === s.id && m.room_id === a.id && m.principal_key === principals[n] && m.agreement_digest === e.agreement.digest && m.fixture_digest === s.fixture_digest && integer2(m.version, 1, 1e6) && (m.min_budget_minor === void 0 && m.max_budget_minor === void 0 || integer2(m.min_budget_minor, 1, 1e7) && integer2(m.max_budget_minor, m.min_budget_minor, 1e7)) && integer2(m.min_threshold_minor, 0, mandateBudget(m, a.budget_minor).max) && integer2(m.max_threshold_minor, m.min_threshold_minor, mandateBudget(m, a.budget_minor).max) && Array.isArray(m.required_invoices) && m.required_invoices.length <= 2 && new Set(m.required_invoices.map((r2) => r2.invoice_id)).size === m.required_invoices.length && m.required_invoices.every((r2) => exact3(r2, keys("invoice_id expected")) && ["allow", "ask"].includes(r2.expected) && e.fixtures.invoices.some((v) => v.invoice_id === r2.invoice_id && !v.duplicate_of)) && (s.source_invoice_id === void 0 || m.required_invoices.some((r2) => r2.invoice_id === s.source_invoice_id)) && HEX.test(m.private_brief_commitment) && ["hosted", "own", "manual"].includes(m.agent_mode) && same(m.actions, NEGOTIATION_AGENT_ACTIONS) && during(m.issued_at) && time3(m.expires_at) > time3(m.issued_at) && time3(m.expires_at) <= time3(s.expires_at));
+    }
+    const validAt = (principal, at) => {
+      const m = e.mandates.find((m2) => m2.payload.principal_key === principal)?.payload;
+      return !!m && during(at) && time3(at) >= time3(m.issued_at) - 3e5 && time3(at) < time3(m.expires_at);
+    };
+    const agentBindings = e.agent_bindings ?? [];
+    add("Installed agent bindings are bounded and independently scoped per principal", Array.isArray(agentBindings) && agentBindings.length <= 12 && new Set(agentBindings.map((v) => v.payload.pair_id)).size === agentBindings.length);
+    for (const binding of agentBindings) {
+      const g = binding.payload, auth = g.owner_authorization, q = auth.payload, body = q.body, principal = g.principal_key;
+      add("Principal signed the installed agent pairing authorization", await signed(binding, authority) && await signed(auth, principal) && exact3(g, keys("type pair_id room_id session_id principal_key agreement_digest owner_key agent_key name scope audience issued_at expires_at owner_authorization")) && g.type === "scopeblind.coordination.agent-binding.v1" && g.audience === "scopeblind.coordination.negotiation" && id2(g.pair_id) && g.room_id === a.id && g.session_id === s.id && principals.includes(principal) && g.owner_key === principal && HEX.test(g.agent_key) && !principals.includes(g.agent_key) && g.agreement_digest === e.agreement.digest && same(g.scope, NEGOTIATION_AGENT_ACTIONS) && validAt(principal, g.issued_at) && time3(g.expires_at) > time3(g.issued_at) && time3(g.expires_at) <= time3(e.mandates.find((m) => m.payload.principal_key === principal).payload.expires_at) && exact3(q, keys("type action room_id body issued_at nonce")) && q.type === "scopeblind.coordination.request.v1" && q.action === "negotiation_pair_create" && q.room_id === a.id && id2(q.nonce) && exact3(body, keys("session_id pair_id secret_hash name expires_at token_expires_at scope"), ["expected_agent_key"]) && (body.expected_agent_key === void 0 || body.expected_agent_key === g.agent_key) && body.session_id === s.id && body.pair_id === g.pair_id && HEX.test(String(body.secret_hash)) && text2(body.name, 60) && text2(g.name, 60) && same(body.scope, NEGOTIATION_AGENT_ACTIONS) && body.token_expires_at === g.expires_at && validAt(principal, q.issued_at) && time3(body.expires_at) > time3(q.issued_at) && time3(body.expires_at) <= time3(q.issued_at) + 9e5 && time3(g.issued_at) < time3(body.expires_at) && time3(g.issued_at) >= time3(q.issued_at) - 3e5 && time3(body.expires_at) <= time3(g.expires_at) && !agentBindings.some((other) => other.payload.agent_key === g.agent_key && other.payload.principal_key !== principal));
+    }
+    const actorBound = (p2) => {
+      const mandate = e.mandates.find((m) => m.payload.principal_key === p2.principal_key)?.payload;
+      if (!mandate || !validAt(p2.principal_key, p2.issued_at)) return false;
+      if (p2.agent_mode === "manual") return p2.agent_key === void 0;
+      if (p2.agent_mode === "hosted") return mandate.agent_mode === "hosted" && p2.agent_key === void 0;
+      return p2.agent_mode === "own" && mandate.agent_mode === "own" && agentBindings.some((v) => v.payload.agent_key === p2.agent_key && v.payload.principal_key === p2.principal_key && time3(p2.issued_at) >= time3(v.payload.issued_at) && time3(p2.issued_at) < time3(v.payload.expires_at));
+    };
+    add("At most three uniquely identified proposals are included", Array.isArray(e.proposals) && e.proposals.length >= 1 && e.proposals.length <= 3 && new Set(e.proposals.map((p2) => p2.payload.id)).size === e.proposals.length);
+    for (let n = 0; n < e.proposals.length; n++) {
+      const envelope2 = e.proposals[n], p2 = envelope2.payload, mine = e.mandates.find((m) => m.payload.principal_key === p2.principal_key)?.payload, g = p2.reviewer_grant;
+      add(`Candidate ${n + 1} has a signed source, parent and principal authority`, await signed(envelope2, authority) && exact3(p2, keys("type id approval_above_minor session_id room_id round principal_key agent_mode agreement_digest fixture_digest mandate_digests next_agreement next_agreement_digest reviewer_grant reviewer_grant_digest issued_at"), keys("parent_digest agent_key budget_minor exploration")) && p2.type === "scopeblind.coordination.negotiation-proposal.v1" && typeof p2.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(p2.id) && p2.session_id === s.id && p2.room_id === a.id && p2.round === n + 1 && p2.parent_digest === e.proposals[n - 1]?.digest && p2.agreement_digest === e.agreement.digest && p2.fixture_digest === s.fixture_digest && same(p2.mandate_digests, mandateDigests) && (p2.exploration === void 0 || p2.exploration === true && p2.agent_mode === "manual" && !p2.agent_key) && !!mine && negotiationPlanWithinMandate(mine, p2.approval_above_minor, p2.budget_minor ?? a.budget_minor, a.budget_minor) && actorBound(p2) && (n === 0 || time3(p2.issued_at) >= time3(e.proposals[n - 1].payload.issued_at)));
+      add(`Candidate ${n + 1} changes only the tested threshold and authorized budget in a separate task`, boundedAgreement(p2.next_agreement) && p2.next_agreement.id !== a.id && same(p2.next_agreement, { ...a, id: p2.next_agreement.id, issued_at: p2.issued_at, approval_above_minor: p2.approval_above_minor, budget_minor: p2.budget_minor ?? a.budget_minor }) && p2.next_agreement_digest === await negotiationPayloadDigest(p2.next_agreement));
+      add(`Candidate ${n + 1} fixes the partner's future reviewer role before approval`, exact3(g, keys("type grant_id room_id agreement_digest issuer registrar_key role actions expires_at token_hash max_claims")) && g.type === "scopeblind.coordination.grant.v1" && id2(g.grant_id) && g.room_id === p2.next_agreement.id && g.agreement_digest === p2.next_agreement_digest && g.issuer === a.owner_key && g.registrar_key === authority && g.role === "reviewer" && same(g.actions, ["decide", "accept"]) && HEX.test(g.token_hash) && g.max_claims === 1 && g.expires_at === s.expires_at && p2.reviewer_grant_digest === await negotiationPayloadDigest(g));
+    }
+    add("Recommendations are distinct from human approvals and uniquely bound", Array.isArray(e.responses) && e.responses.length <= 6 && new Set(e.responses.map((r2) => `${r2.payload.proposal_digest}:${r2.payload.principal_key}`)).size === e.responses.length);
+    for (const response of e.responses) {
+      const r2 = response.payload, p2 = e.proposals.find((p3) => p3.digest === r2.proposal_digest), mine = e.mandates.find((m) => m.payload.principal_key === r2.principal_key);
+      add("Authority recorded an exactly scoped principal recommendation", await signed(response, authority) && exact3(r2, keys("type session_id principal_key proposal_digest mandate_digest decision agent_mode issued_at"), ["agent_key"]) && r2.type === "scopeblind.coordination.negotiation-response.v1" && r2.session_id === s.id && !!p2 && !!mine && r2.mandate_digest === mine.digest && ["support", "no_agreement"].includes(r2.decision) && actorBound(r2) && time3(r2.issued_at) >= time3(p2.payload.issued_at) && (r2.decision !== "support" || negotiationPlanWithinMandate(mine.payload, p2.payload.approval_above_minor, p2.payload.budget_minor ?? a.budget_minor, a.budget_minor)));
+    }
+    const r = e.report.payload, selected = e.proposals.find((p2) => p2.digest === r.proposal_digest), p = selected.payload;
+    add("Named authority signed the exact comparison and full union of required cases", await signed(e.report, authority) && exact3(r, keys("type session_id room_id proposal_digest agreement_digest fixture_digest mandate_digests cases_digest runtime_revision adapter isolation issued_at before_approval_above_minor after_approval_above_minor results required_passed expectations_met mandates_met"), ["before_budget_minor", "after_budget_minor"]) && r.type === "scopeblind.coordination.negotiation-report.v1" && r.session_id === s.id && r.room_id === a.id && !!selected && r.agreement_digest === e.agreement.digest && r.fixture_digest === s.fixture_digest && same(r.mandate_digests, mandateDigests) && r.adapter === "coordination-d1-sandbox" && r.isolation === "separate-fixture-ledgers" && typeof r.runtime_revision === "string" && (r.runtime_revision === "development-unbound" || /^scopeblind\.invoice-rehearsal\.v1:[0-9a-f]{64}$/.test(r.runtime_revision)) && time3(r.issued_at) >= time3(p.issued_at) && principals.every((key) => validAt(key, r.issued_at)) && (p.budget_minor === void 0 ? r.before_budget_minor === void 0 && r.after_budget_minor === void 0 : r.before_budget_minor === a.budget_minor && r.after_budget_minor === p.budget_minor) && r.before_approval_above_minor === a.approval_above_minor && r.after_approval_above_minor === p.approval_above_minor && Array.isArray(r.results) && r.results.length <= 110 && r.results.every((x) => exact3(x, keys("case before after"))) && same(r.results.map((x) => x.case), mandateCases(e.mandates, e.fixtures)) && r.cases_digest === await negotiationDigest(mandateCases(e.mandates, e.fixtures)));
+    add("Both gate traces and payment totals support every observation summary", r.results.every((x) => observationConsistent(x.case, x.before, a, e.fixtures) && observationConsistent(x.case, x.after, p.next_agreement, e.fixtures)));
+    const rangeMet = e.mandates.every((m) => negotiationPlanWithinMandate(m.payload, p.approval_above_minor, p.budget_minor ?? a.budget_minor, a.budget_minor));
+    add("Required cases, expectations and both mandates match the reported calculations", r.required_passed === r.results.every((x) => !x.case.required || x.after.matched) && r.expectations_met === r.results.every((x) => x.case.id.startsWith("sample-invoice-") || x.after.matched) && r.mandates_met === (rangeMet && r.results.filter((x) => x.case.id.startsWith("principal-")).every((x) => x.after.matched)));
+    add("Human decisions are at most one per principal", Array.isArray(e.approvals) && e.approvals.length <= 2 && new Set(e.approvals.map((v) => v.payload.principal_key)).size === e.approvals.length);
+    for (const approval of e.approvals) {
+      const v = approval.payload;
+      add("Human signed a decision over these exact rules, report and mandates", await verifyHuman(approval, v.principal_key, { proposal: selected, requireRecordedUse: true, authorityKey: authority }) && exact3(v, keys("type session_id principal_key proposal_digest report_digest next_agreement_digest mandate_digests decision issued_at expires_at"), ["selection_basis"]) && v.type === "scopeblind.coordination.negotiation-approval.v1" && principals.includes(v.principal_key) && v.session_id === s.id && v.proposal_digest === selected.digest && v.report_digest === e.report.digest && (v.selection_basis === void 0 || v.selection_basis === "human-selected-tested-plan") && v.next_agreement_digest === p.next_agreement_digest && same(v.mandate_digests, mandateDigests) && ["approve", "reject"].includes(v.decision) && validAt(v.principal_key, v.issued_at) && time3(v.issued_at) >= time3(r.issued_at) - 3e5 && time3(v.expires_at) > time3(v.issued_at) && time3(v.expires_at) <= time3(s.expires_at));
+    }
+    if (e.reviewer_grant) add("Organizer signed the exact proposed reviewer grant", await verifyHuman(e.reviewer_grant, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(e.reviewer_grant.payload, p.reviewer_grant) && e.reviewer_grant.digest === p.reviewer_grant_digest);
+    if (e.adoption) {
+      const d = e.adoption.payload, next = e.adopted_agreement, g = e.reviewer_grant, binding = e.reviewer_binding, rb = binding.payload, claim2 = rb.claim.payload;
+      add("Both unexpired human approvals authorize adoption of this exact tested candidate", e.approvals.length === 2 && e.approvals.every((v) => v.payload.decision === "approve" && time3(d.issued_at) >= time3(v.payload.issued_at) - 3e5 && time3(d.issued_at) < time3(v.payload.expires_at)) && selected.digest === e.proposals.at(-1).digest && principals.every((key) => validAt(key, d.issued_at)) && r.required_passed && r.expectations_met && r.mandates_met && (e.approvals.every((v) => v.payload.selection_basis === "human-selected-tested-plan") || principals.every((key) => e.responses.some((v) => v.payload.principal_key === key && v.payload.proposal_digest === selected.digest && v.payload.decision === "support"))));
+      add("Authority recorded exact lineage into a new separately authorized sample task", await signed(e.adoption, authority) && exact3(d, keys("type session_id source_room_id room_id source_agreement_digest agreement_digest proposal_digest report_digest approval_digests issued_at scope")) && d.type === "scopeblind.coordination.negotiation-adoption.v1" && d.session_id === s.id && d.source_room_id === a.id && d.room_id === p.next_agreement.id && d.room_id !== a.id && d.source_agreement_digest === e.agreement.digest && d.agreement_digest === p.next_agreement_digest && d.proposal_digest === selected.digest && d.report_digest === e.report.digest && same(d.approval_digests, principals.map((key) => e.approvals.find((v) => v.payload.principal_key === key).digest)) && d.scope === "new-separate-sample-task" && await verifyHuman(next, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(next.payload, p.next_agreement) && next.digest === d.agreement_digest);
+      add("Partner independently claimed the fixed reviewer role in the new task", await signed(binding, authority) && await verifyHuman(rb.claim, partner, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === partner), requireRecordedUse: true, authorityKey: authority }) && exact3(rb, keys("type grant_id grant_digest room_id guest_key name issued_at expires_at claim")) && rb.type === "scopeblind.coordination.binding.v1" && rb.grant_id === g.payload.grant_id && rb.grant_digest === g.digest && rb.room_id === d.room_id && rb.guest_key === partner && rb.expires_at === g.payload.expires_at && time3(rb.issued_at) >= time3(d.issued_at) && time3(rb.issued_at) < time3(rb.expires_at) && exact3(claim2, keys("type grant_id room_id guest_key name issued_at nonce")) && claim2.type === "scopeblind.coordination.claim.v1" && claim2.grant_id === rb.grant_id && claim2.room_id === d.room_id && claim2.guest_key === partner && text2(claim2.name, 60) && claim2.name === rb.name && id2(claim2.nonce) && time3(claim2.issued_at) >= time3(r.issued_at) - 3e5 && time3(claim2.issued_at) <= time3(rb.issued_at) + 3e5);
+    } else add("No unbound adopted agreement or reviewer binding is present", !e.adopted_agreement && !e.reviewer_binding);
+  } catch {
+    add("Complete, well-formed negotiation evidence", false);
+  }
+  return { valid: checks.length > 0 && checks.every((c2) => c2.passed), checks, limitations: [
+    "Signatures establish record integrity and control of keys. Display names are not authenticated legal identities.",
+    "The named service attests to gate traces and sample-ledger effects. These records do not independently prove execution or safety for every input or deployment.",
+    "Private briefs are omitted; signed commitments do not reveal or validate their contents. Recommendations are separate from human approval and adoption.",
+    "Comparisons test each case in a separate ledger; observing several payable invoices does not establish that all fit one shared run budget.",
+    "Expiry is checked at recorded actions. An export does not establish present authorization, revocation status, or permission to make a payment."
+  ] };
+}
+var NEGOTIATION_MAX_PROPOSALS, NEGOTIATION_MAX_MODEL_STEPS, NEGOTIATION_AGENT_ACTIONS, NEGOTIATION_ACTIONS, negotiationDigest, negotiationPayloadDigest, HEX, id2, integer2, time3, exact3, same, keys, text2;
+var init_coordination_negotiation = __esm({
+  "src/coordination-negotiation.ts"() {
+    "use strict";
+    init_coordination_devices();
+    init_coordination_evidence();
+    init_coordination_protocol();
+    init_coordination_rehearsal();
+    NEGOTIATION_MAX_PROPOSALS = 3;
+    NEGOTIATION_MAX_MODEL_STEPS = 6;
+    NEGOTIATION_AGENT_ACTIONS = ["negotiation_get", "negotiation_propose", "negotiation_respond", "negotiation_compare"];
+    NEGOTIATION_ACTIONS = [
+      ...NEGOTIATION_AGENT_ACTIONS,
+      "negotiation_create",
+      "negotiation_claim",
+      "negotiation_mandate",
+      "negotiation_approve",
+      "negotiation_adopt",
+      "negotiation_pair_create",
+      "negotiation_pair_claim",
+      "negotiation_pair_revoke",
+      "negotiation_step",
+      "negotiation_cancel"
+    ];
+    negotiationDigest = (value) => sha256(canonical(value));
+    negotiationPayloadDigest = (value) => sha256(COORDINATION_DOMAIN + canonical(value));
+    HEX = /^[0-9a-f]{64}$/;
+    id2 = (v, max = 100) => typeof v === "string" && /^[A-Za-z0-9_-]+$/.test(v) && v.length >= 8 && v.length <= max;
+    integer2 = (v, min, max) => Number.isSafeInteger(v) && Number(v) >= min && Number(v) <= max;
+    time3 = (v) => typeof v === "string" ? Date.parse(v) : NaN;
+    exact3 = (v, required, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+    same = (a, b) => canonical(a) === canonical(b);
+    keys = (s) => s.split(" ");
+    text2 = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max;
+  }
+});
+
+// src/coordination-pairing.ts
+function isRehearsalPairingScope(scope) {
+  return Array.isArray(scope) && JSON.stringify(scope) === JSON.stringify(REHEARSAL_PAIRING_SCOPE);
+}
+function isNegotiationPairingScope(scope) {
+  return Array.isArray(scope) && JSON.stringify(scope) === JSON.stringify(NEGOTIATION_PAIRING_SCOPE);
+}
+function pairingScope(code2) {
+  return code2.version === 3 ? NEGOTIATION_PAIRING_SCOPE : code2.version === 2 ? REHEARSAL_PAIRING_SCOPE : PAIRING_SCOPE;
+}
+function pairingAudience(code2) {
+  return code2.version === 3 ? NEGOTIATION_PAIRING_AUDIENCE : code2.version === 2 ? REHEARSAL_PAIRING_AUDIENCE : "scopeblind.coordination.sample-ledger";
+}
+function decodePairingCode(value) {
+  if (!/^sbp[123]\.[A-Za-z0-9_-]{100,4000}$/.test(value)) throw new Error("The pairing code is incomplete. Copy a fresh code from the room.");
+  try {
+    const raw = value.slice(5).replace(/-/g, "+").replace(/_/g, "/");
+    const parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(Uint8Array.from(atob(raw), (c2) => c2.charCodeAt(0))));
+    const keys2 = parsed?.version === 3 ? "audience,authority_key,endpoint,pair_id,principal_key,room_id,scope,secret,session_id,version" : parsed?.version === 2 ? "audience,authority_key,endpoint,pair_id,room_id,scope,secret,version" : "authority_key,endpoint,pair_id,room_id,secret,version";
+    if (!parsed || Object.keys(parsed).sort().join(",") !== keys2 || ![1, 2, 3].includes(parsed.version) || value.slice(0, 5) !== `sbp${parsed.version}.` || parsed.version === 3 && (!isNegotiationPairingScope(parsed.scope) || parsed.audience !== NEGOTIATION_PAIRING_AUDIENCE || !/^[0-9a-f]{64}$/.test(parsed.principal_key) || !/^[A-Za-z0-9_-]{8,100}$/.test(parsed.session_id)) || parsed.version === 2 && (!isRehearsalPairingScope(parsed.scope) || parsed.audience !== REHEARSAL_PAIRING_AUDIENCE) || !/^[A-Za-z0-9_-]{8,100}$/.test(parsed.room_id) || !/^[A-Za-z0-9_-]{8,100}$/.test(parsed.pair_id) || !/^[0-9a-f]{64}$/.test(parsed.authority_key) || !/^[0-9a-f]{64}$/.test(parsed.secret) || typeof parsed.endpoint !== "string") throw new Error();
+    return parsed;
+  } catch {
+    throw new Error("The pairing code is invalid. Copy a fresh code from the room.");
+  }
+}
+var PAIRING_SCOPE, REHEARSAL_PAIRING_SCOPE, REHEARSAL_PAIRING_AUDIENCE, NEGOTIATION_PAIRING_SCOPE, NEGOTIATION_PAIRING_AUDIENCE;
+var init_coordination_pairing = __esm({
+  "src/coordination-pairing.ts"() {
+    "use strict";
+    init_coordination_negotiation();
+    init_coordination_rehearsal();
+    PAIRING_SCOPE = ["inspect", "admit", "execute", "outcome", "deliver"];
+    REHEARSAL_PAIRING_SCOPE = REHEARSAL_ACTIONS;
+    REHEARSAL_PAIRING_AUDIENCE = "scopeblind.coordination.rehearsal";
+    NEGOTIATION_PAIRING_SCOPE = NEGOTIATION_AGENT_ACTIONS;
+    NEGOTIATION_PAIRING_AUDIENCE = "scopeblind.coordination.negotiation";
+  }
+});
+
+// src/coordination-config.ts
+function validateCoordinationConfig(config) {
+  if (config.purpose !== void 0 && !["execution", "rehearsal", "negotiation"].includes(config.purpose)) throw new Error("Unknown coordination connection purpose.");
+  if (config.purpose === "negotiation") {
+    if (!config.sessionId || !/^[A-Za-z0-9_-]{8,100}$/.test(config.sessionId)) throw new Error("A negotiation connection requires its exact paired session ID.");
+    if (!config.principalKey || !/^[0-9a-f]{64}$/.test(config.principalKey)) throw new Error("A negotiation connection requires its paired principal public key.");
+  } else if (config.sessionId !== void 0 || config.principalKey !== void 0) throw new Error("Negotiation session and principal fields require a negotiation connection.");
+  let endpoint;
+  try {
+    endpoint = new URL(config.endpoint);
+  } catch {
+    throw new Error("Coordination endpoint must be an absolute URL.");
+  }
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(endpoint.hostname);
+  if (endpoint.protocol !== "https:" && !(endpoint.protocol === "http:" && local)) {
+    throw new Error("Coordination endpoint requires HTTPS (HTTP is permitted only on loopback for local trials).");
+  }
+  if (endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
+    throw new Error("Coordination endpoint must not contain credentials, query parameters, or a fragment.");
+  }
+  if (!/^[a-fA-F0-9]{64}$/.test(config.authorityKey)) {
+    throw new Error("An explicitly pinned 32-byte Ed25519 authority public key is required (64 hexadecimal characters).");
+  }
+  if (!/^[A-Za-z0-9_-]{8,100}$/.test(config.roomId)) throw new Error("Room ID must use 8\u2013100 letters, numbers, underscores, or hyphens.");
+  if (!config.token || /[\r\n]/.test(config.token)) throw new Error("An executor token is required in the configured environment variable.");
+  if (config.runId !== void 0 && !/^run-[A-Za-z0-9_-]{8,100}$/.test(config.runId)) throw new Error("Run ID must be run- followed by the room ID.");
+  if (config.timeoutMs !== void 0 && (!Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1 || config.timeoutMs > 12e4)) {
+    throw new Error("Coordination timeout must be an integer from 1 to 120000 milliseconds.");
+  }
+  return { ...config, endpoint: endpoint.href, authorityKey: config.authorityKey.toLowerCase() };
+}
+function coordinationConfigFromArgs(args, env = process.env) {
+  const values = /* @__PURE__ */ new Map();
+  const flags = /* @__PURE__ */ new Set(["--endpoint", "--room", "--authority-key", "--token-env", "--run"]);
+  for (let i = 0; i < args.length; i += 2) {
+    const flag2 = args[i];
+    if (!flags.has(flag2)) throw new Error("Unknown coordination option. Use --endpoint, --room, --authority-key, --token-env, and optionally --run.");
+    if (values.has(flag2)) throw new Error("Coordination options may only be supplied once.");
+    const value = args[i + 1];
+    if (!value || value.startsWith("--")) throw new Error("Every coordination option requires a value.");
+    values.set(flag2, value);
+  }
+  const variable = values.get("--token-env") || "PROTECT_MCP_COORDINATION_TOKEN";
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(variable)) throw new Error("--token-env must name an environment variable.");
+  return validateCoordinationConfig({
+    endpoint: values.get("--endpoint") || "",
+    roomId: values.get("--room") || "",
+    authorityKey: values.get("--authority-key") || "",
+    token: env[variable] || "",
+    runId: values.get("--run")
+  });
+}
+var init_coordination_config = __esm({
+  "src/coordination-config.ts"() {
+    "use strict";
+  }
+});
+
+// src/coordination-agent-setup.ts
+function agentClient(value) {
+  if (!AGENT_CLIENTS.some((client) => client.id === value)) throw new Error("Supported setup clients: claude-code, codex, or json.");
+  return value;
+}
+function agentServerName(purpose, roomId, pairId, principalKey) {
+  const suffix = (pairId || roomId).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 12);
+  return purpose === "negotiation" ? `scopeblind-negotiate-${principalKey?.slice(0, 8) || "agent"}-${suffix}` : `scopeblind-${purpose === "rehearsal" ? "test" : "work"}-${suffix}`;
+}
+function agentRegistration(client, serverName, configPath) {
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(serverName)) throw new Error("Invalid MCP server name.");
+  const launch = `npx --yes ${AGENT_PACKAGE_URL} coordination --config ${shellQuote(configPath)}`;
+  if (client === "claude-code") return `claude mcp add --transport stdio --scope local ${serverName} -- ${launch}`;
+  if (client === "codex") return `codex mcp add ${serverName} -- ${launch}`;
+  return JSON.stringify({ mcpServers: { [serverName]: { command: "npx", args: ["--yes", AGENT_PACKAGE_URL, "coordination", "--config", configPath] } } }, null, 2);
+}
+function agentProfileRegistration(client, serverName, profilePath) {
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(serverName)) throw new Error("Invalid MCP server name.");
+  const args = ["--yes", AGENT_PACKAGE_URL, "coordination", "agent", "--profile", profilePath];
+  const launch = `npx --yes ${AGENT_PACKAGE_URL} coordination agent --profile ${shellQuote(profilePath)}`;
+  if (client === "claude-code") return `claude mcp add --transport stdio --scope local ${serverName} -- ${launch}`;
+  if (client === "codex") return `codex mcp add ${serverName} -- ${launch}`;
+  return JSON.stringify({ mcpServers: { [serverName]: { command: "npx", args } } }, null, 2);
+}
+function agentPrompt(purpose, roomId, sessionId) {
+  const subject = purpose === "negotiation" ? `ScopeBlind negotiation ${sessionId || "(the paired session)"} in room ${roomId}` : `ScopeBlind ${purpose === "rehearsal" ? "rehearsal" : "room"} ${roomId}`;
+  if (purpose === "negotiation") return `Resume ${subject}. First call coordination.inspect_negotiation to read my current signed mandate, my private instructions, and the shared state. Summarize my hard limits without disclosing my private brief. Take only my next permitted action: propose within my limits, respond to the exact candidate, or compare it in isolation. Keep stable IDs when retrying. Use coordination.wait_negotiation when waiting for the other participant. Stop at a human decision, an unmet hard limit, or the round limit. Recommendations are not human approval; do not pay, adopt terms, or claim to run after this agent session ends.`;
+  if (purpose === "rehearsal") return `Resume ${subject}. First call coordination.inspect_rehearsal to read the current signed rules, sample records, and test history. Help test my expectations and compare a proposed repair using isolated ledgers. Explain observed tradeoffs. Keep stable case, proposal, and run IDs across retries. Leave adoption and approvals to me; this connection cannot pay or change the active rules.`;
+  return `Resume ${subject}. First call coordination.inspect to read the current signed agreement, sample records, and recorded operations. Reconcile the invoices within those rules. Reuse existing operation IDs; check uncertain outcomes before retrying. Use coordination.wait for reviewer decisions while this agent session is active. Stop when human action is required, the room is paused, or the result is delivered. Do not approve your own exceptions or change the rules.`;
+}
+var AGENT_PACKAGE_URL, AGENT_CLIENTS, shellQuote;
+var init_coordination_agent_setup = __esm({
+  "src/coordination-agent-setup.ts"() {
+    "use strict";
+    AGENT_PACKAGE_URL = "protect-mcp@0.21.0";
+    AGENT_CLIENTS = [
+      { id: "claude-code", label: "Claude Code" },
+      { id: "codex", label: "Codex CLI" },
+      { id: "json", label: "Other MCP client" }
+    ];
+    shellQuote = (value) => "'" + value.replace(/'/g, "'\\''") + "'";
+  }
+});
+
+// src/coordination-pair-cli.ts
+var coordination_pair_cli_exports = {};
+__export(coordination_pair_cli_exports, {
+  DEFAULT_COORDINATION_CONFIG: () => DEFAULT_COORDINATION_CONFIG,
+  claimPairing: () => claimPairing,
+  coordinationConfigFromFile: () => coordinationConfigFromFile,
+  readPrivateConfig: () => readPrivateConfig,
+  runCoordinationPair: () => runCoordinationPair,
+  runCoordinationSetup: () => runCoordinationSetup,
+  shellQuote: () => shellQuote
+});
+function readPrivateConfig(path) {
+  let fd;
+  try {
+    fd = (0, import_node_fs14.openSync)(path, import_node_fs14.constants.O_RDONLY | import_node_fs14.constants.O_NOFOLLOW);
+  } catch {
+    throw new Error("The agent connection file could not be opened. Pair from the room first.");
+  }
+  try {
+    const stat = (0, import_node_fs14.fstatSync)(fd);
+    if (!stat.isFile() || stat.size > 64e3 || process.platform !== "win32" && ((stat.mode & 63) !== 0 || process.getuid && stat.uid !== process.getuid())) throw new Error("The connection file must be owned by you, with permissions 600.");
+    let data;
+    try {
+      data = JSON.parse((0, import_node_fs14.readFileSync)(fd, "utf8"));
+    } catch {
+      throw new Error("The agent connection file is not valid JSON.");
+    }
+    if (data.type !== "scopeblind.coordination.config.v1" || data.setupVersion !== void 0 && data.setupVersion !== 2 || !/^[0-9a-f]{64}$/.test(data.agentKey)) throw new Error("The agent connection file is invalid.");
+    validateCoordinationConfig(data);
+    return data;
+  } finally {
+    (0, import_node_fs14.closeSync)(fd);
+  }
+}
+function coordinationConfigFromFile(path) {
+  const data = readPrivateConfig((0, import_node_path10.resolve)(path));
+  if (!data.binding || data.pending) throw new Error("Pairing has not completed. Run the pair command again with the same --config file.");
+  const binding = data.binding.payload;
+  const purpose = binding.audience === NEGOTIATION_PAIRING_AUDIENCE ? "negotiation" : binding.audience === REHEARSAL_PAIRING_AUDIENCE ? "rehearsal" : "execution";
+  return validateCoordinationConfig({ ...data, purpose, ...purpose === "negotiation" ? { sessionId: binding.session_id, principalKey: binding.principal_key } : {} });
+}
+function savePrivateConfig(path, data, create) {
+  (0, import_node_fs14.mkdirSync)((0, import_node_path10.dirname)(path), { recursive: true, mode: 448 });
+  if (create) {
+    const fd = (0, import_node_fs14.openSync)(path, import_node_fs14.constants.O_WRONLY | import_node_fs14.constants.O_CREAT | import_node_fs14.constants.O_EXCL | import_node_fs14.constants.O_NOFOLLOW, 384);
+    try {
+      (0, import_node_fs14.writeFileSync)(fd, JSON.stringify(data) + "\n");
+    } finally {
+      (0, import_node_fs14.closeSync)(fd);
+    }
+    return;
+  }
+  readPrivateConfig(path);
+  const temporary = `${path}.${(0, import_node_crypto9.randomBytes)(8).toString("hex")}.tmp`;
+  try {
+    (0, import_node_fs14.writeFileSync)(temporary, JSON.stringify(data) + "\n", { flag: "wx", mode: 384 });
+    (0, import_node_fs14.renameSync)(temporary, path);
+    (0, import_node_fs14.chmodSync)(path, 384);
+  } finally {
+    try {
+      (0, import_node_fs14.unlinkSync)(temporary);
+    } catch {
+    }
+  }
+}
+async function codeFromInput(variable) {
+  if (process.env[variable]) return process.env[variable].trim();
+  process.stderr.write("Paste the private pairing code from your room, then press Enter:\n");
+  const silent = new import_node_stream.Writable({ write(_chunk, _encoding, callback) {
+    callback();
+  } });
+  const lines = (0, import_node_readline3.createInterface)({ input: process.stdin, output: silent, terminal: !!process.stdin.isTTY });
+  try {
+    for await (const line of lines) {
+      if (line.trim()) {
+        if (line.length > 4096) throw new Error("The pairing code is too long.");
+        return line.trim();
+      }
+    }
+  } finally {
+    lines.close();
+  }
+  throw new Error("No pairing code was provided. Copy a new code from your room.");
+}
+async function claimPairing(config, fetchImpl = fetch) {
+  if (!config.pending) return config;
+  const { code: code2, privateKey } = config.pending;
+  validateCoordinationConfig(config);
+  if (code2.endpoint !== config.endpoint || code2.room_id !== config.roomId || code2.authority_key !== config.authorityKey) throw new Error("The saved pairing destination does not match its authority pin.");
+  if (code2.version === 3 && (config.purpose !== "negotiation" || config.sessionId !== code2.session_id || config.principalKey !== code2.principal_key)) throw new Error("The saved pairing does not match its negotiation session and principal.");
+  const identity = await importIdentity(privateKey, config.agentKey);
+  const request = await sign(makeRequest(code2.version === 3 ? "negotiation_pair_claim" : "pair_claim", code2.room_id, { ...code2.version === 3 ? { session_id: code2.session_id } : {}, pair_id: code2.pair_id, secret: code2.secret, executor_token: config.token, name: config.name }), identity);
+  const abort = new AbortController(), timer = setTimeout(() => abort.abort(), 2e4);
+  try {
+    const response = await fetchImpl(config.endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request }), redirect: "error", signal: abort.signal });
+    const raw = await response.text();
+    if (raw.length > 64e3) throw new Error("Pairing returned an oversized response.");
+    const result2 = JSON.parse(raw);
+    if (!response.ok || !result2.ok) throw new Error(safeMessage[result2.error || ""] || "The room refused this pairing. Check its state before retrying.");
+    const binding = result2.binding, b = binding?.payload;
+    if (!binding || !b || !await verify(binding, config.authorityKey) || b.type !== "scopeblind.coordination.agent-binding.v1" || b.room_id !== code2.room_id || b.pair_id !== code2.pair_id || b.agent_key !== config.agentKey || b.name !== config.name || b.audience !== pairingAudience(code2) || canonical(b.scope) !== canonical(pairingScope(code2)) || result2.executor_token !== config.token || !Number.isFinite(Date.parse(b.expires_at)) || Date.parse(b.expires_at) <= Date.now() || !/^[0-9a-f]{64}$/.test(b.agreement_digest)) throw new Error("The pairing acknowledgment did not match the pinned authority and exact scope.");
+    if (code2.version === 3 && (b.session_id !== code2.session_id || b.principal_key !== code2.principal_key || b.owner_key !== code2.principal_key)) throw new Error("The pairing acknowledgment names another negotiation session or principal.");
+    const owner = b.owner_authorization, grant = owner?.payload;
+    if (!await verify(owner, b.owner_key) || grant?.action !== (code2.version === 3 ? "negotiation_pair_create" : "pair_create") || grant.room_id !== code2.room_id || grant.body.pair_id !== code2.pair_id || grant.body.secret_hash !== await sha256(code2.secret) || grant.body.token_expires_at !== b.expires_at || (code2.version === 3 ? !isNegotiationPairingScope(grant.body.scope) || grant.body.session_id !== code2.session_id : code2.version === 2 ? !isRehearsalPairingScope(grant.body.scope) : grant.body.scope !== void 0)) throw new Error("The owner authorization for this connection could not be verified.");
+    if (grant.body.expected_agent_key !== void 0 && (code2.version !== 3 || grant.body.expected_agent_key !== config.agentKey)) throw new Error("The owner authorization is bound to another agent key.");
+    const { pending: _pending, ...ready } = config;
+    return { ...ready, purpose: code2.version === 3 ? "negotiation" : code2.version === 2 ? "rehearsal" : "execution", binding };
+  } catch (error) {
+    if (error instanceof Error && error.name !== "AbortError" && !/fetch|connect|JSON|Unexpected|network/i.test(error.message)) throw error;
+    throw new Error("The pairing response could not be verified. Rerun the same command and config to recover safely.");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+function configArgs(args, pairing) {
+  const options2 = /* @__PURE__ */ new Map(), allowed = new Set(pairing ? ["--config", "--name", "--code-env", "--client"] : ["--config", "--client"]);
+  for (let i = 0; i < args.length; i += 2) {
+    if (!allowed.has(args[i]) || options2.has(args[i]) || !args[i + 1] || args[i + 1].startsWith("--")) throw new Error("Unsupported, repeated, or incomplete connection option.");
+    options2.set(args[i], args[i + 1]);
+  }
+  return options2;
+}
+async function runCoordinationPair(args) {
+  const options2 = configArgs(args, true), path = (0, import_node_path10.resolve)(options2.get("--config") || DEFAULT_COORDINATION_CONFIG);
+  const client = agentClient(options2.get("--client") || "claude-code");
+  let config;
+  try {
+    config = readPrivateConfig(path);
+  } catch (error) {
+    try {
+      const fd = (0, import_node_fs14.openSync)(path, import_node_fs14.constants.O_RDONLY | import_node_fs14.constants.O_NOFOLLOW);
+      (0, import_node_fs14.closeSync)(fd);
+      throw error;
+    } catch (check) {
+      if (check.code !== "ENOENT") throw error;
+    }
+  }
+  if (config?.binding && !config.pending) {
+    if (Date.parse(config.binding.payload.expires_at) <= Date.now()) throw new Error("This saved connection has expired. Create a fresh pairing in the room and use its new config filename.");
+    process.stdout.write("This config is already paired. Its existing identity and scope are unchanged. Reuse the setup below to reconnect; the room will confirm readiness only after a successful tool inspection. A revoked connection needs a fresh code and config filename.\n");
+    runCoordinationSetup(["--config", path, "--client", client]);
+    const existing = coordinationConfigFromFile(path);
+    process.stdout.write("\nAsk your agent:\n" + agentPrompt(existing.purpose || "execution", existing.roomId, existing.sessionId) + "\n");
+    return;
+  }
+  if (!config) {
+    const variable = options2.get("--code-env") || "PROTECT_MCP_PAIRING_CODE";
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(variable)) throw new Error("--code-env must name an environment variable.");
+    const code2 = decodePairingCode(await codeFromInput(variable));
+    const name = options2.get("--name") || "My agent";
+    if (!name.trim() || name !== name.trim() || name.length > 60 || /[\u0000-\u001f]/.test(name)) throw new Error("Agent name must contain 1\u201360 printable characters.");
+    const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+    const token = (0, import_node_crypto9.randomBytes)(32).toString("hex");
+    config = {
+      type: "scopeblind.coordination.config.v1",
+      setupVersion: 2,
+      ...validateCoordinationConfig({ endpoint: code2.endpoint, roomId: code2.room_id, authorityKey: code2.authority_key, token, ...code2.version === 3 ? { purpose: "negotiation", sessionId: code2.session_id, principalKey: code2.principal_key } : {} }),
+      agentKey: bytesToHex(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))),
+      name,
+      pending: { code: { ...code2, endpoint: new URL(code2.endpoint).href }, privateKey: bytesToHex(new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey))) }
+    };
+    savePrivateConfig(path, config, true);
+  }
+  const ready = await claimPairing(config);
+  savePrivateConfig(path, ready, false);
+  if (ready.purpose === "negotiation") process.stdout.write(`Connected ${ready.name} for one principal\u2019s bounded negotiation until ${ready.binding.payload.expires_at}. This agent can read its principal\u2019s mandate and shared proposals, propose or support a candidate, compare it in isolation, and wait. It cannot inspect the other private brief, pay, approve, adopt, or run a hosted agent.
+Connection saved privately. Each principal needs a separate pairing and config.
+`);
+  else if (ready.purpose === "rehearsal") process.stdout.write(`Connected ${ready.name} to test these rules until ${ready.binding.payload.expires_at}. This agent can inspect rules, add cases, propose repairs, and run isolated tests. It cannot pay, approve, or activate changes.
+Connection saved privately. Return to the room to see or revoke this agent.
+`);
+  else process.stdout.write(`Connected ${ready.name}. This independently keyed agent can inspect records, request permitted sandbox payments, and deliver results until ${ready.binding.payload.expires_at}. It cannot approve exceptions or change the rules.
+Connection saved privately. Return to the room to see or revoke this agent.
+`);
+  process.stdout.write(client === "json" ? "Merge this entry into your MCP client\u2019s local configuration; preserve existing servers:\n" : client === "codex" ? "Run this command to add the connection to your Codex configuration:\n" : "Run this command in the project where you use Claude Code:\n");
+  runCoordinationSetup(["--config", path, "--client", client]);
+  process.stdout.write("\nOpen or restart the selected client, then ask:\n" + agentPrompt(ready.purpose || "execution", ready.roomId, ready.sessionId) + "\n");
+  process.stdout.write("The room will show \u201CRead current instructions\u201D only after your agent successfully inspects and verifies its signed context. Pairing alone does not start an agent. Resume requires an active agent session.\n");
+}
+function runCoordinationSetup(args) {
+  const options2 = configArgs(args, false), path = (0, import_node_path10.resolve)(options2.get("--config") || DEFAULT_COORDINATION_CONFIG);
+  const stored = readPrivateConfig(path), config = coordinationConfigFromFile(path);
+  if (Date.parse(stored.binding.payload.expires_at) <= Date.now()) throw new Error("This saved connection has expired. Create a fresh pairing in the room and use its new config filename.");
+  const serverName = stored.setupVersion === 2 ? agentServerName(config.purpose || "execution", config.roomId, stored.binding?.payload.pair_id, config.principalKey) : config.purpose === "negotiation" ? `scopeblind-negotiate-${config.principalKey.slice(0, 8)}` : config.purpose === "rehearsal" ? "scopeblind-test" : "scopeblind";
+  process.stdout.write(agentRegistration(agentClient(options2.get("--client") || "claude-code"), serverName, path) + "\n");
+}
+var import_node_readline3, import_node_stream, import_node_fs14, import_node_path10, import_node_os, import_node_crypto9, DEFAULT_COORDINATION_CONFIG, safeMessage;
+var init_coordination_pair_cli = __esm({
+  "src/coordination-pair-cli.ts"() {
+    "use strict";
+    import_node_readline3 = require("readline");
+    import_node_stream = require("stream");
+    import_node_fs14 = require("fs");
+    import_node_path10 = require("path");
+    import_node_os = require("os");
+    import_node_crypto9 = require("crypto");
+    init_coordination_protocol();
+    init_coordination_pairing();
+    init_coordination_config();
+    init_coordination_agent_setup();
+    init_coordination_agent_setup();
+    if (!globalThis.crypto) Object.defineProperty(globalThis, "crypto", { value: import_node_crypto9.webcrypto, configurable: true });
+    DEFAULT_COORDINATION_CONFIG = (0, import_node_path10.resolve)((0, import_node_os.homedir)(), ".scopeblind", "coordination.json");
+    safeMessage = {
+      pairing_not_found: "This pairing code could not be matched. Create a new code in the room.",
+      pairing_expired_or_revoked: "This pairing has expired or was revoked. Create a new code in the room.",
+      pairing_already_claimed: "This pairing code has already enrolled another agent. Create a new code in the room.",
+      run_finalized: "This result is already delivered. Start an authorized revision before connecting another agent."
+    };
+  }
+});
+
+// src/coordination-client.ts
+function waitDelay(ms, signal) {
+  return new Promise((resolve5, reject) => {
+    const cancelled = () => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", cancelled);
+      reject(new CoordinationError("cancelled", "The wait was cancelled. No action or approval was performed."));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", cancelled);
+      resolve5();
+    }, Math.ceil(ms));
+    if (signal.aborted) cancelled();
+    else signal.addEventListener("abort", cancelled, { once: true });
+  });
+}
+function validateCoordinationPayment(payment) {
+  if (!payment || !operationIdentifier(payment.operation_id)) throw new CoordinationError("invalid_operation", "A stable operation_id of 8\u2013100 letters, numbers, underscores, or hyphens is required; retain it when retrying the same intended payment.");
+  if (Object.keys(payment).sort().join(",") !== "input,operation_id") throw new CoordinationError("invalid_operation", "The executor accepts operation_id and input only; revisions must be made by the room owner.");
+  const input = payment.input;
+  if (!input || typeof input.invoice_id !== "string" || !input.invoice_id.length || input.invoice_id.length > 60 || !Number.isSafeInteger(input.amount_minor) || input.amount_minor <= 0 || input.amount_minor > 1e7 || input.currency !== "USD" || typeof input.destination !== "string" || !input.destination.length || input.destination.length > 100) {
+    throw new CoordinationError("invalid_input", "Payment requires invoice_id, a positive integer amount_minor, currency USD, and a sample destination.");
+  }
+  if (input.fixture_revision !== void 0 && (!Number.isSafeInteger(input.fixture_revision) || input.fixture_revision < 1)) throw new CoordinationError("invalid_input", "fixture_revision must be a positive integer from coordination.inspect.");
+  if (Object.keys(input).filter((key) => key !== "fixture_revision").sort().join(",") !== "amount_minor,currency,destination,invoice_id") {
+    throw new CoordinationError("invalid_input", "Payment input contains unsupported fields.");
+  }
+}
+var import_node_crypto10, CoordinationError, CoordinationTransport, operationIdentifier, CoordinationClient;
+var init_coordination_client = __esm({
+  "src/coordination-client.ts"() {
+    "use strict";
+    init_coordination_evidence();
+    init_coordination_devices();
+    init_coordination_config();
+    init_coordination_rehearsal();
+    init_coordination_negotiation();
+    import_node_crypto10 = require("crypto");
+    init_coordination_protocol();
+    if (!globalThis.crypto) Object.defineProperty(globalThis, "crypto", { value: import_node_crypto10.webcrypto, configurable: true });
+    CoordinationError = class extends Error {
+      constructor(code2, message) {
+        super(message);
+        this.code = code2;
+        this.name = "CoordinationError";
+      }
+    };
+    CoordinationTransport = class {
+      constructor(config, fetchImpl = fetch) {
+        this.fetchImpl = fetchImpl;
+        this.#config = validateCoordinationConfig(config);
+      }
+      #config;
+      async get(op, operationId) {
+        const url = new URL(this.#config.endpoint);
+        url.searchParams.set("op", op);
+        url.searchParams.set("room_id", this.#config.roomId);
+        if (operationId !== void 0) url.searchParams.set("operation_id", operationId);
+        return this.request(url.href, { method: "GET" });
+      }
+      async post(action, body, signal) {
+        if (this.#config.purpose === "negotiation" && !NEGOTIATION_AGENT_ACTIONS.includes(action)) throw new CoordinationError("tool_outside_grant", "This negotiation connection cannot access execution or rehearsal actions.");
+        return this.request(this.#config.endpoint, {
+          method: "POST",
+          body: JSON.stringify({ action, room_id: this.#config.roomId, body }),
+          signal
+        }, action === "rehearsal_run" || action === "negotiation_compare" ? 6e4 : void 0);
+      }
+      async request(url, init, defaultTimeout) {
+        const abort = new AbortController();
+        const cancel = () => abort.abort();
+        if (init.signal?.aborted) cancel();
+        else init.signal?.addEventListener("abort", cancel, { once: true });
+        const timeout = setTimeout(() => abort.abort(), this.#config.timeoutMs ?? defaultTimeout ?? 15e3);
+        try {
+          const response = await this.fetchImpl(url, {
+            ...init,
+            signal: abort.signal,
+            redirect: "error",
+            cache: "no-store",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.#config.token}` }
+          });
+          const raw = await response.text();
+          if (raw.length > 2e6) throw new CoordinationError("invalid_response", "Coordination response exceeds the supported size.");
+          let result2;
+          try {
+            result2 = JSON.parse(raw);
+          } catch {
+            throw new CoordinationError("invalid_response", "Coordination service returned invalid JSON.");
+          }
+          if (!response.ok) {
+            const code2 = result2 && typeof result2 === "object" && "error" in result2 && typeof result2.error === "string" && /^[a-z_]{3,80}$/.test(result2.error) ? result2.error : "service_rejected";
+            const guidance = { rehearsal_in_progress: "This exact test is still running. Wait before inspecting reports or retrying with the same test id.", rehearsal_run_failed: "This exact test ended without a completed report. Inspect the source and cases; a new deliberately requested test needs a new id.", proposal_stale: "Cases or source records changed. Inspect the rehearsal and propose a newly identified repair against the current snapshot.", executor_action_not_permitted: "This action is outside the owner\u2019s explicit grant. Ask for a separate connection with the required scope.", rehearsal_id_conflict: "This stable ID already names different content. Inspect the existing record; use a new ID only for a new intended case, proposal, or test.", executor_token_invalid: "This agent connection expired or was revoked. Ask the owner for a fresh pairing.", room_paused: "The owner paused this task. Wait for resume; retain all operation IDs.", run_has_unresolved_operations: "Resolve held or unknown operations before delivering the result.", run_finalized: "This attempt is already delivered. Wait for an owner-authorized revision.", rate_limited: "The room request limit was reached. Pause and retry later with unchanged operation IDs." };
+            throw new CoordinationError(code2, guidance[code2] || `Coordination service rejected the request (${code2}; HTTP ${response.status}). Inspect current room state before retrying.`);
+          }
+          if (!result2 || typeof result2 !== "object" || Array.isArray(result2) || result2.ok !== true) {
+            throw new CoordinationError("invalid_response", "Coordination service did not return a successful protocol response.");
+          }
+          return result2;
+        } catch (error) {
+          if (error instanceof CoordinationError) throw error;
+          if (init.signal?.aborted) throw new CoordinationError("cancelled", "The wait was cancelled. No action or approval was performed.");
+          throw new CoordinationError("service_unavailable", "Coordination service could not be reached or the request timed out.");
+        } finally {
+          clearTimeout(timeout);
+          init.signal?.removeEventListener("abort", cancel);
+        }
+      }
+    };
+    operationIdentifier = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(value);
+    CoordinationClient = class {
+      #config;
+      #transport;
+      #acknowledgedContexts = /* @__PURE__ */ new Set();
+      constructor(config, fetchImpl = fetch) {
+        this.#config = validateCoordinationConfig(config);
+        this.#transport = new CoordinationTransport(this.#config, fetchImpl);
+      }
+      /** Tool visibility is a local convenience; every RPC also checks the persisted grant. */
+      get purpose() {
+        return this.#config.purpose || "execution";
+      }
+      /** Acknowledge only a context that this adapter has already verified. Pairing and MCP initialization do not call this. */
+      async acknowledgeInspection(response, action, contextDigest, signal) {
+        const key = `${action}:${contextDigest}`;
+        if (response.agent_inspection_supported !== true || this.#acknowledgedContexts.has(key)) return;
+        const acknowledgment = await this.#transport.post(action, { ...action === "negotiation_get" ? { session_id: this.#config.sessionId } : {}, observed_context_digest: contextDigest }, signal);
+        if (typeof acknowledgment.agent_inspection_acknowledged !== "boolean") throw new CoordinationError("agent_inspection_unconfirmed", "The room could not confirm this inspection. Inspect again before continuing.");
+        this.#acknowledgedContexts.add(key);
+      }
+      negotiationConfig() {
+        if (this.purpose !== "negotiation" || !this.#config.sessionId || !this.#config.principalKey) throw new CoordinationError("tool_outside_grant", "Use a separate principal-authorized negotiation pairing for these tools.");
+        return { sessionId: this.#config.sessionId, principalKey: this.#config.principalKey };
+      }
+      /** Inspect only the scoped negotiation response. Never read the public room to obtain a mandate. */
+      async checkedNegotiation(response) {
+        const { sessionId, principalKey } = this.negotiationConfig();
+        const state = response.negotiation;
+        const invalid = () => {
+          throw new CoordinationError("invalid_negotiation", "The negotiation identity, source records, mandate, or signed candidate could not be verified. No approval or authority was granted.");
+        };
+        const keys2 = (value, allowed) => {
+          if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !allowed.includes(key))) invalid();
+        };
+        const envelope2 = (value) => keys2(value, ["payload", "signer", "digest", "signature"]);
+        const humanEnvelope = (value) => keys2(value, ["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"]);
+        try {
+          keys2(state, ["session", "invitation", "binding", "agreement", "fixtures", "principals", "status", "proposals", "responses", "reports", "approvals", "adoption", "adopted_agreement", "run", "feasibility", "next_principal_key", "model_steps", "max_model_steps", "error", "viewer", "started", "reviewer_grant", "reviewer_binding", "agent_bindings", "selected_proposal_digest", "runtime_changed", "source_negotiation"]);
+          const session = state.session?.payload, agreement = state.agreement?.payload;
+          if (!session || !agreement || session.type !== "scopeblind.coordination.negotiation-session.v1" || session.id !== sessionId || session.room_id !== this.#config.roomId || session.registrar_key !== this.#config.authorityKey || !await verify(state.session, this.#config.authorityKey) || agreement.type !== "scopeblind.coordination.agreement.v1" || agreement.id !== this.#config.roomId || agreement.owner_key !== session.owner_key || agreement.registrar_key !== this.#config.authorityKey || !await verifyOwnerAgreement(state.agreement, state.source_negotiation) || state.agreement.digest !== session.agreement_digest || session.max_proposals !== NEGOTIATION_MAX_PROPOSALS || state.max_model_steps !== NEGOTIATION_MAX_MODEL_STEPS || !Number.isSafeInteger(state.model_steps) || state.model_steps < 0 || state.model_steps > NEGOTIATION_MAX_MODEL_STEPS || !state.fixtures || await negotiationDigest(state.fixtures) !== session.fixture_digest) invalid();
+          if (!Number.isFinite(Date.parse(session.created_at)) || !Number.isFinite(Date.parse(session.expires_at)) || Date.parse(session.expires_at) <= Date.parse(session.created_at) || Date.parse(session.expires_at) > Date.parse(session.created_at) + 864e5) invalid();
+          envelope2(state.session);
+          keys2(session, ["type", "id", "room_id", "agreement_digest", "fixture_digest", "owner_key", "registrar_key", "invitation_digest", "created_at", "expires_at", "max_proposals", "parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]);
+          const invitation = state.invitation?.payload;
+          if (!invitation || !await verify(state.invitation, session.owner_key) || invitation.type !== "scopeblind.coordination.negotiation-invitation.v1" || state.invitation.digest !== session.invitation_digest || invitation.session_id !== sessionId || invitation.room_id !== session.room_id || invitation.agreement_digest !== session.agreement_digest || invitation.fixture_digest !== session.fixture_digest || invitation.issuer !== session.owner_key || invitation.registrar_key !== this.#config.authorityKey) invalid();
+          if (invitation.role !== "counterparty" || invitation.max_claims !== 1 || invitation.expires_at !== session.expires_at || !/^[0-9a-f]{64}$/.test(invitation.token_hash)) invalid();
+          envelope2(state.invitation);
+          keys2(invitation, ["type", "session_id", "room_id", "agreement_digest", "fixture_digest", "issuer", "registrar_key", "role", "token_hash", "max_claims", "expires_at", "parent_session_id", "source_operation_id"]);
+          if (!Array.isArray(state.principals) || state.principals.length < 1 || state.principals.length > 2 || new Set(state.principals.map((p) => p.key)).size !== state.principals.length || new Set(state.principals.map((p) => p.side)).size !== state.principals.length) invalid();
+          if (state.binding) {
+            const binding = state.binding.payload;
+            envelope2(state.binding);
+            keys2(binding, ["type", "session_id", "room_id", "invitation_digest", "guest_key", "name", "issued_at", "expires_at", "claim"]);
+            if (!await verify(state.binding, this.#config.authorityKey) || binding.type !== "scopeblind.coordination.negotiation-binding.v1" || binding.session_id !== sessionId || binding.room_id !== session.room_id || binding.invitation_digest !== state.invitation.digest || !await verify(binding.claim, binding.guest_key) || binding.claim.payload.session_id !== sessionId || binding.claim.payload.room_id !== session.room_id || binding.claim.payload.guest_key !== binding.guest_key || binding.guest_key === session.owner_key) invalid();
+            envelope2(binding.claim);
+            keys2(binding.claim.payload, ["type", "session_id", "room_id", "guest_key", "name", "issued_at", "nonce"]);
+          }
+          for (const principal of state.principals) {
+            keys2(principal, ["side", "key", "name", "mandate", "agent_status"]);
+            if (principal.side === "organizer" ? principal.key !== session.owner_key : principal.side !== "partner" || principal.key !== state.binding?.payload.guest_key) invalid();
+            if (principal.mandate) {
+              humanEnvelope(principal.mandate);
+              const mandate = principal.mandate.payload;
+              keys2(mandate, ["type", "session_id", "room_id", "principal_key", "version", "agreement_digest", "fixture_digest", "min_threshold_minor", "max_threshold_minor", "min_budget_minor", "max_budget_minor", "required_invoices", "private_brief_commitment", "agent_mode", "actions", "issued_at", "expires_at"]);
+              if (!await verifyHuman(principal.mandate, principal.key, { requireRecordedUse: true, authorityKey: this.#config.authorityKey }) || mandate.type !== "scopeblind.coordination.negotiation-mandate.v1" || mandate.session_id !== sessionId || mandate.room_id !== session.room_id || mandate.principal_key !== principal.key || mandate.agreement_digest !== session.agreement_digest || mandate.fixture_digest !== session.fixture_digest || canonical(mandate.actions) !== canonical(NEGOTIATION_AGENT_ACTIONS) || !Number.isSafeInteger(mandate.version) || mandate.version < 1 || !["hosted", "own", "manual"].includes(mandate.agent_mode) || !Number.isSafeInteger(mandate.min_threshold_minor) || !Number.isSafeInteger(mandate.max_threshold_minor) || mandate.min_threshold_minor < 0 || mandate.max_threshold_minor < mandate.min_threshold_minor || mandate.max_threshold_minor > mandateBudget(mandate, agreement.budget_minor).max || !Array.isArray(mandate.required_invoices) || !/^[0-9a-f]{64}$/.test(mandate.private_brief_commitment)) invalid();
+              if (mandate.min_budget_minor === void 0 !== (mandate.max_budget_minor === void 0) || mandate.min_budget_minor !== void 0 && (!Number.isSafeInteger(mandate.min_budget_minor) || !Number.isSafeInteger(mandate.max_budget_minor) || mandate.min_budget_minor < 1 || mandate.max_budget_minor < mandate.min_budget_minor || mandate.max_budget_minor > 1e7)) invalid();
+              if (!Number.isFinite(Date.parse(mandate.issued_at)) || !Number.isFinite(Date.parse(mandate.expires_at)) || Date.parse(mandate.expires_at) <= Date.parse(mandate.issued_at) || Date.parse(mandate.expires_at) > Date.parse(session.expires_at) || mandate.required_invoices.length > 2 || new Set(mandate.required_invoices.map((r) => r.invoice_id)).size !== mandate.required_invoices.length) invalid();
+              for (const required of mandate.required_invoices) {
+                keys2(required, ["invoice_id", "expected"]);
+                if (!["allow", "ask"].includes(required.expected) || !state.fixtures.invoices.some((invoice) => invoice.invoice_id === required.invoice_id && !invoice.duplicate_of)) invalid();
+              }
+            }
+          }
+          const own = state.principals.find((p) => p.key === principalKey);
+          keys2(state.viewer, ["principal_key", "side", "brief", "pairs", "is_agent"]);
+          if (!own?.mandate || own.mandate.payload.agent_mode !== "own" || state.viewer.principal_key !== principalKey || state.viewer.side !== own.side || state.viewer.is_agent !== true || !state.viewer.brief || await privateBriefCommitment(parseNegotiationBrief(state.viewer.brief)) !== own.mandate.payload.private_brief_commitment || !Array.isArray(state.viewer.pairs)) invalid();
+          for (const pair of state.viewer.pairs) {
+            keys2(pair, ["pair_id", "name", "principal_key", "session_id", "status", "code_expires_at", "expires_at", "agent_key", "readiness", "profile_bound"]);
+            if (pair.session_id !== sessionId || pair.principal_key !== principalKey || pair.profile_bound !== void 0 && pair.profile_bound !== true) invalid();
+            if (pair.readiness) {
+              keys2(pair.readiness, ["observed_at", "context_digest"]);
+              if (!Number.isFinite(Date.parse(pair.readiness.observed_at)) || !/^[0-9a-f]{64}$/.test(pair.readiness.context_digest)) invalid();
+            }
+          }
+          if (typeof state.started !== "boolean" || state.runtime_changed !== void 0 && typeof state.runtime_changed !== "boolean") invalid();
+          if (!["waiting_partner", "setting_limits", "ready", "working", "waiting_agent", "needs_decision", "agreed", "no_overlap", "round_limit", "failed", "cancelled", "adopted"].includes(state.status) || state.next_principal_key !== void 0 && !state.principals.some((p) => p.key === state.next_principal_key)) invalid();
+          if (!Array.isArray(state.proposals) || state.proposals.length > NEGOTIATION_MAX_PROPOSALS || !Array.isArray(state.responses) || !Array.isArray(state.reports) || !Array.isArray(state.approvals)) invalid();
+          const mandates = ["organizer", "partner"].map((side) => state.principals.find((p) => p.side === side)?.mandate);
+          const mandateDigests = mandates.filter(Boolean).map((m) => m.digest);
+          const agentBindings = state.agent_bindings ?? [];
+          if (!Array.isArray(agentBindings) || agentBindings.length > 12) invalid();
+          for (const signed2 of agentBindings) {
+            envelope2(signed2);
+            const b = signed2.payload, auth = b.owner_authorization, q = auth?.payload;
+            keys2(b, ["type", "pair_id", "room_id", "session_id", "principal_key", "agreement_digest", "owner_key", "agent_key", "name", "scope", "audience", "issued_at", "expires_at", "owner_authorization"]);
+            if (!await verify(signed2, this.#config.authorityKey) || b.type !== "scopeblind.coordination.agent-binding.v1" || b.audience !== "scopeblind.coordination.negotiation" || b.session_id !== sessionId || b.room_id !== session.room_id || b.agreement_digest !== session.agreement_digest || b.owner_key !== b.principal_key || !state.principals.some((p) => p.key === b.principal_key) || state.principals.some((p) => p.key === b.agent_key) || canonical(b.scope) !== canonical(NEGOTIATION_AGENT_ACTIONS) || !await verify(auth, b.principal_key) || q.type !== "scopeblind.coordination.request.v1" || q.action !== "negotiation_pair_create" || q.room_id !== session.room_id || q.body.session_id !== sessionId || q.body.pair_id !== b.pair_id || q.body.token_expires_at !== b.expires_at || canonical(q.body.scope) !== canonical(NEGOTIATION_AGENT_ACTIONS)) invalid();
+            envelope2(auth);
+            keys2(q, ["type", "action", "room_id", "body", "issued_at", "nonce"]);
+            keys2(q.body, ["session_id", "pair_id", "secret_hash", "name", "expires_at", "token_expires_at", "scope", "expected_agent_key"]);
+            if (q.body.expected_agent_key !== void 0 && q.body.expected_agent_key !== b.agent_key) invalid();
+            if (!/^[0-9a-f]{64}$/.test(b.agent_key) || !Number.isFinite(Date.parse(b.issued_at)) || Date.parse(b.expires_at) <= Date.parse(b.issued_at) || Date.parse(b.expires_at) > Date.parse(session.expires_at) || agentBindings.some((other) => other.payload.agent_key === b.agent_key && other.payload.principal_key !== b.principal_key)) invalid();
+          }
+          const actorBound = (record) => {
+            const mandate = state.principals.find((p) => p.key === record.principal_key)?.mandate?.payload;
+            if (!mandate || !Number.isFinite(Date.parse(record.issued_at)) || Date.parse(record.issued_at) >= Date.parse(mandate.expires_at)) return false;
+            if (record.agent_mode === "manual") return record.agent_key === void 0;
+            if (record.agent_mode === "hosted") return mandate.agent_mode === "hosted" && record.agent_key === void 0;
+            return record.agent_mode === "own" && mandate.agent_mode === "own" && agentBindings.some((b) => b.payload.agent_key === record.agent_key && b.payload.principal_key === record.principal_key && Date.parse(record.issued_at) >= Date.parse(b.payload.issued_at) && Date.parse(record.issued_at) < Date.parse(b.payload.expires_at));
+          };
+          for (let index = 0; index < state.proposals.length; index++) {
+            const signed2 = state.proposals[index], proposal = signed2.payload;
+            envelope2(signed2);
+            keys2(proposal, ["type", "id", "approval_above_minor", "budget_minor", "exploration", "parent_digest", "session_id", "room_id", "round", "principal_key", "agent_key", "agent_mode", "agreement_digest", "fixture_digest", "mandate_digests", "next_agreement", "next_agreement_digest", "reviewer_grant", "reviewer_grant_digest", "issued_at"]);
+            if (!actorBound(proposal) || !await verify(signed2, this.#config.authorityKey) || proposal.type !== "scopeblind.coordination.negotiation-proposal.v1" || proposal.session_id !== sessionId || proposal.room_id !== session.room_id || proposal.round !== index + 1 || proposal.agreement_digest !== session.agreement_digest || proposal.fixture_digest !== session.fixture_digest || mandateDigests.length !== 2 || canonical(proposal.mandate_digests) !== canonical(mandateDigests) || !state.principals.some((p) => p.key === proposal.principal_key) || !Number.isSafeInteger(proposal.approval_above_minor) || proposal.approval_above_minor < 0 || proposal.approval_above_minor > (proposal.budget_minor ?? agreement.budget_minor) || proposal.next_agreement?.approval_above_minor !== proposal.approval_above_minor || await negotiationPayloadDigest(proposal.next_agreement) !== proposal.next_agreement_digest || (index === 0 ? proposal.parent_digest !== void 0 : proposal.parent_digest !== state.proposals[index - 1].digest)) invalid();
+          }
+          if (state.selected_proposal_digest !== void 0 && !state.proposals.some((p) => p.digest === state.selected_proposal_digest)) invalid();
+          for (const { payload: p } of state.proposals) {
+            const g = p.reviewer_grant;
+            const authorMandate = state.principals.find((principal) => principal.key === p.principal_key).mandate.payload;
+            if (!negotiationPlanWithinMandate(authorMandate, p.approval_above_minor, p.budget_minor ?? agreement.budget_minor, agreement.budget_minor) || p.exploration !== void 0 && (p.exploration !== true || p.agent_mode !== "manual")) invalid();
+            keys2(g, ["type", "grant_id", "room_id", "agreement_digest", "issuer", "registrar_key", "role", "actions", "expires_at", "token_hash", "max_claims"]);
+            if (canonical(p.next_agreement) !== canonical({ ...agreement, id: p.next_agreement.id, issued_at: p.issued_at, approval_above_minor: p.approval_above_minor, budget_minor: p.budget_minor ?? agreement.budget_minor }) || p.next_agreement.id === agreement.id || g.type !== "scopeblind.coordination.grant.v1" || g.room_id !== p.next_agreement.id || g.agreement_digest !== p.next_agreement_digest || g.issuer !== agreement.owner_key || g.registrar_key !== this.#config.authorityKey || g.role !== "reviewer" || canonical(g.actions) !== canonical(["decide", "accept"]) || g.max_claims !== 1 || g.expires_at !== session.expires_at || await negotiationPayloadDigest(g) !== p.reviewer_grant_digest) invalid();
+          }
+          for (const signed2 of state.responses) {
+            const response2 = signed2.payload;
+            envelope2(signed2);
+            keys2(response2, ["type", "session_id", "principal_key", "proposal_digest", "mandate_digest", "decision", "agent_key", "agent_mode", "issued_at"]);
+            if (!actorBound(response2) || !await verify(signed2, this.#config.authorityKey) || response2.type !== "scopeblind.coordination.negotiation-response.v1" || response2.session_id !== sessionId || !["support", "no_agreement"].includes(response2.decision) || !state.proposals.some((p) => p.digest === response2.proposal_digest) || state.principals.find((p) => p.key === response2.principal_key)?.mandate?.digest !== response2.mandate_digest) invalid();
+          }
+          for (const signed2 of state.reports) {
+            const report = signed2.payload;
+            envelope2(signed2);
+            keys2(report, ["type", "session_id", "room_id", "proposal_digest", "agreement_digest", "fixture_digest", "mandate_digests", "cases_digest", "runtime_revision", "adapter", "isolation", "issued_at", "before_approval_above_minor", "after_approval_above_minor", "before_budget_minor", "after_budget_minor", "results", "required_passed", "expectations_met", "mandates_met"]);
+            if (!await verify(signed2, this.#config.authorityKey) || report.type !== "scopeblind.coordination.negotiation-report.v1" || report.session_id !== sessionId || report.room_id !== session.room_id || report.agreement_digest !== session.agreement_digest || report.fixture_digest !== session.fixture_digest || canonical(report.mandate_digests) !== canonical(mandateDigests) || !state.proposals.some((p) => p.digest === report.proposal_digest) || report.adapter !== "coordination-d1-sandbox" || report.isolation !== "separate-fixture-ledgers") invalid();
+          }
+          for (const signed2 of state.approvals) {
+            const approval = signed2.payload;
+            humanEnvelope(signed2);
+            keys2(approval, ["type", "session_id", "principal_key", "proposal_digest", "report_digest", "next_agreement_digest", "mandate_digests", "decision", "issued_at", "expires_at", "selection_basis"]);
+            if (!state.principals.some((p) => p.key === approval.principal_key) || !await verifyHuman(signed2, approval.principal_key, { proposal: state.proposals.find((p) => p.digest === approval.proposal_digest), requireRecordedUse: true, authorityKey: this.#config.authorityKey }) || approval.type !== "scopeblind.coordination.negotiation-approval.v1" || approval.session_id !== sessionId || !["approve", "reject"].includes(approval.decision) || canonical(approval.mandate_digests) !== canonical(mandateDigests) || !state.reports.some((r) => r.digest === approval.report_digest && r.payload.proposal_digest === approval.proposal_digest) || !state.proposals.some((p) => p.digest === approval.proposal_digest && p.payload.next_agreement_digest === approval.next_agreement_digest)) invalid();
+          }
+          if (state.run) {
+            keys2(state.run, ["proposal_digest", "status", "completed_cases", "total_cases", "error"]);
+            const total = mandateDigests.length === 2 ? mandateCases(mandates, state.fixtures).length : 0;
+            if (!state.proposals.some((p) => p.digest === state.run.proposal_digest) || !["running", "completed", "failed"].includes(state.run.status) || !Number.isSafeInteger(state.run.completed_cases) || state.run.completed_cases < 0 || state.run.total_cases !== total || state.run.completed_cases > total) invalid();
+          }
+          if (state.error !== void 0 && !/^[a-z_]{3,80}$/.test(state.error)) invalid();
+          if (state.run?.error !== void 0 && !/^[a-z_]{3,80}$/.test(state.run.error)) invalid();
+          return state;
+        } catch (error) {
+          if (error instanceof CoordinationError) throw error;
+          return invalid();
+        }
+      }
+      async negotiationResult(response) {
+        const negotiation = await this.checkedNegotiation(response);
+        let evidenceVerification;
+        if (response.evidence !== void 0) {
+          const evidence = response.evidence;
+          evidenceVerification = await verifyNegotiationEvidence(evidence, this.#config.authorityKey);
+          if (!evidenceVerification.valid || evidence.session?.digest !== negotiation.session.digest || !negotiation.reports.some((report) => report.digest === evidence.report?.digest)) throw new CoordinationError("invalid_negotiation_evidence", "The exact negotiation comparison evidence could not be verified. Do not treat it as a passing agreement or approval.");
+        }
+        return {
+          negotiation,
+          state_digest: await negotiationDigest(negotiation),
+          ...response.evidence !== void 0 ? { evidence: response.evidence, evidence_verification: evidenceVerification } : {},
+          signatures_verified: true,
+          scope: "One principal\u2019s bounded negotiation. Its own private brief is for this agent only. Public proposals and signed mandate constraints are shared. The gate operator records isolated test observations; these are not independent execution observation or payment authority. Support is an agent recommendation, not a human approval.",
+          next_steps: negotiation.runtime_changed ? ["These signed records remain historical evidence. Ask the people to start a fresh linked discussion for the current runtime; prior mandates and approvals do not carry over."] : ["Keep the private brief private. Work within your principal\u2019s signed limits; at most three candidates exist per session. Compare the exact supported candidate, stop on no agreement, and leave approval and adoption to both people."]
+        };
+      }
+      async inspectNegotiation(reportDigest, signal) {
+        const { sessionId } = this.negotiationConfig();
+        if (reportDigest !== void 0 && (typeof reportDigest !== "string" || !/^[0-9a-f]{64}$/.test(reportDigest))) throw new CoordinationError("invalid_input", "report_digest must name an exact negotiation report.");
+        const response = await this.#transport.post("negotiation_get", { session_id: sessionId, ...reportDigest ? { report_digest: reportDigest } : {} }, signal);
+        if (reportDigest && response.evidence?.report?.digest !== reportDigest) throw new CoordinationError("invalid_negotiation_evidence", "The requested exact report was not returned.");
+        const result2 = await this.negotiationResult(response);
+        const state = result2.negotiation;
+        const mandate = state.principals.find((principal) => principal.key === this.#config.principalKey).mandate;
+        if (!state.runtime_changed) await this.acknowledgeInspection(response, "negotiation_get", mandate.digest, signal);
+        return result2;
+      }
+      async proposeCandidate(value) {
+        const { sessionId, principalKey } = this.negotiationConfig();
+        if (!value || Object.keys(value).some((key) => !["id", "approval_above_minor", "budget_minor", "parent_digest"].includes(key)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.id) || !Number.isSafeInteger(value.approval_above_minor) || value.approval_above_minor < 0 || value.approval_above_minor > 1e7 || value.budget_minor !== void 0 && (!Number.isSafeInteger(value.budget_minor) || value.budget_minor < 1 || value.budget_minor > 1e7) || value.parent_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.parent_digest)) throw new CoordinationError("invalid_input", "Provide a stable candidate id, a threshold and optional total budget in USD cents, and the current parent_digest for a counterproposal. Private notes and additional powers are not accepted.");
+        const proposal = { ...value };
+        const result2 = await this.inspectNegotiation(), before = result2.negotiation;
+        if (before.runtime_changed) throw new CoordinationError("negotiation_runtime_changed", "This discussion belongs to an earlier runtime. Ask the people to start a fresh linked discussion; do not reuse its mandate.");
+        const existing = before.proposals.find((p) => p.payload.id === proposal.id);
+        if (existing) {
+          if (existing.payload.principal_key !== principalKey || existing.payload.approval_above_minor !== proposal.approval_above_minor || (existing.payload.budget_minor ?? before.agreement.payload.budget_minor) !== (proposal.budget_minor ?? before.agreement.payload.budget_minor) || existing.payload.exploration !== void 0 || existing.payload.parent_digest !== proposal.parent_digest) throw new CoordinationError("negotiation_id_conflict", "This stable candidate id already names different terms. Inspect it before proposing anything else.");
+          return result2;
+        }
+        const own = before.principals.find((p) => p.key === principalKey).mandate.payload;
+        if (Date.parse(own.expires_at) <= Date.now() || Date.parse(before.session.payload.expires_at) <= Date.now()) throw new CoordinationError("negotiation_expired", "This session or your signed mandate has expired. Ask your principal to review it.");
+        if (before.proposals.length >= NEGOTIATION_MAX_PROPOSALS) throw new CoordinationError("negotiation_round_limit", "The three-candidate limit has been reached. Stop and explain the remaining disagreement to your principal.");
+        if (["needs_decision", "agreed", "no_overlap", "round_limit", "failed", "cancelled", "adopted"].includes(before.status) || before.next_principal_key !== principalKey) throw new CoordinationError("negotiation_not_your_turn", "This session does not currently invite your agent to propose. Inspect its status; leave human decisions to the people.");
+        if (!negotiationPlanWithinMandate(own, proposal.approval_above_minor, proposal.budget_minor ?? before.agreement.payload.budget_minor, before.agreement.payload.budget_minor) || proposal.parent_digest !== before.proposals.at(-1)?.digest) throw new CoordinationError("invalid_candidate", "The candidate must fit your signed range and name the current parent candidate.");
+        for (const requirement of own.required_invoices) {
+          const invoice = before.fixtures.invoices.find((invoice2) => invoice2.invoice_id === requirement.invoice_id);
+          const budget = proposal.budget_minor ?? before.agreement.payload.budget_minor;
+          const matching = !before.agreement.payload.require_po_match || before.fixtures.purchase_orders.some((po) => po.id === invoice.purchase_order_id && po.vendor === invoice.vendor && po.destination === invoice.destination && po.amount_minor === invoice.amount_minor && po.currency === "USD");
+          const expected = invoice.amount_minor > budget || !before.agreement.payload.allowed_destinations.includes(invoice.destination) ? "refuse" : !matching || invoice.amount_minor > proposal.approval_above_minor ? "ask" : "allow";
+          if (expected !== requirement.expected) throw new CoordinationError("invalid_candidate", "The candidate does not meet your principal\u2019s required invoice decision.");
+        }
+        const response = await this.#transport.post("negotiation_propose", { session_id: sessionId, proposal });
+        const checked = await this.negotiationResult(response), after = checked.negotiation;
+        if (!after.proposals.some((p) => p.payload.id === proposal.id && p.payload.principal_key === principalKey && p.payload.approval_above_minor === proposal.approval_above_minor && (p.payload.budget_minor ?? before.agreement.payload.budget_minor) === (proposal.budget_minor ?? before.agreement.payload.budget_minor) && p.payload.exploration === void 0 && p.payload.parent_digest === proposal.parent_digest)) throw new CoordinationError("invalid_negotiation", "The service did not record the exact candidate submitted. Inspect before retrying with the same id.");
+        return checked;
+      }
+      async respondCandidate(value) {
+        const { sessionId, principalKey } = this.negotiationConfig();
+        if (!value || Object.keys(value).sort().join(",") !== "decision,proposal_digest" || !/^[0-9a-f]{64}$/.test(value.proposal_digest) || !["support", "no_agreement"].includes(value.decision)) throw new CoordinationError("invalid_input", "Respond only support or no_agreement to an exact proposal_digest. A response does not approve or adopt it.");
+        const submitted = { ...value };
+        const response = await this.#transport.post("negotiation_respond", { session_id: sessionId, ...submitted });
+        const result2 = await this.negotiationResult(response), state = result2.negotiation;
+        if (!state.responses.some((r) => r.payload.principal_key === principalKey && r.payload.proposal_digest === submitted.proposal_digest && r.payload.decision === submitted.decision)) throw new CoordinationError("invalid_negotiation", "The returned record does not contain your exact response. Inspect before retrying.");
+        return result2;
+      }
+      async compareCandidate(value, signal) {
+        const { sessionId } = this.negotiationConfig();
+        if (!value || Object.keys(value).join(",") !== "proposal_digest" || !/^[0-9a-f]{64}$/.test(value.proposal_digest)) throw new CoordinationError("invalid_input", "Compare takes only the exact supported proposal_digest. It cannot adopt or approve a proposal.");
+        const proposalDigest = value.proposal_digest;
+        const abort = new AbortController(), cancel = () => abort.abort();
+        if (signal?.aborted) cancel();
+        else signal?.addEventListener("abort", cancel, { once: true });
+        const deadline = performance.now() + 18e4, timer = setTimeout(cancel, 18e4);
+        let latest, completedCases = 0, advancingChunks = 0, busyWaits = 0;
+        const pending = () => ({ ...latest, comparison_status: "pending", proposal_digest: proposalDigest, ...signal?.aborted ? { cancelled: true } : {}, next_steps: ["No verified final comparison is available yet. Inspect negotiation status, then resume compare_candidate with the SAME proposal_digest. The server retains its fixed test identity and completed chunks. No approval, payment, or adoption occurred."] });
+        try {
+          while (!abort.signal.aborted && performance.now() < deadline && advancingChunks < 8) {
+            let response;
+            try {
+              response = await this.#transport.post("negotiation_compare", { session_id: sessionId, proposal_digest: proposalDigest }, abort.signal);
+            } catch (error) {
+              if (error instanceof CoordinationError && ["negotiation_in_progress", "rehearsal_in_progress"].includes(error.code) && busyWaits++ < 6) {
+                await waitDelay(1e3, abort.signal);
+                continue;
+              }
+              throw error;
+            }
+            latest = await this.negotiationResult(response);
+            const state = latest.negotiation;
+            const report = state.reports.find((report2) => report2.payload.proposal_digest === proposalDigest);
+            if (report) {
+              if (response.evidence?.report?.digest !== report.digest) latest = await this.inspectNegotiation(report.digest, abort.signal);
+              return { ...latest, comparison_status: "completed", proposal_digest: proposalDigest };
+            }
+            const run = state.run;
+            if (!run || run.proposal_digest !== proposalDigest || run.status !== "running") throw new CoordinationError("invalid_negotiation", "The comparison did not return a matching checkpoint or verified report. Inspect before resuming the same candidate.");
+            if (run.completed_cases <= completedCases) {
+              if (busyWaits++ >= 6) return pending();
+              await waitDelay(1e3, abort.signal);
+            } else {
+              completedCases = run.completed_cases;
+              advancingChunks++;
+            }
+          }
+          return pending();
+        } catch (error) {
+          if (abort.signal.aborted || error instanceof CoordinationError && ["negotiation_in_progress", "rehearsal_in_progress"].includes(error.code)) return pending();
+          if (error instanceof CoordinationError && error.code === "service_unavailable") throw new CoordinationError("negotiation_outcome_unknown", "The comparison response was lost or timed out. Inspect and resume the SAME proposal_digest; do not create another candidate or assume the test failed. No approval or adoption was requested.");
+          throw error;
+        } finally {
+          clearTimeout(timer);
+          signal?.removeEventListener("abort", cancel);
+        }
+      }
+      async waitNegotiation(value, signal) {
+        this.negotiationConfig();
+        if (!value || Object.keys(value).some((key) => !["after_digest", "timeout_ms"].includes(key)) || value.after_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.after_digest)) throw new CoordinationError("invalid_wait", "Use the state_digest from inspect_negotiation as after_digest, with an optional timeout_ms.");
+        const timeoutMs = value.timeout_ms ?? 3e4;
+        if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1e3 || timeoutMs > 3e4) throw new CoordinationError("invalid_wait", "timeout_ms must be an integer from 1000 to 30000.");
+        const abort = new AbortController(), cancel = () => abort.abort();
+        if (signal?.aborted) cancel();
+        else signal?.addEventListener("abort", cancel, { once: true });
+        const deadline = performance.now() + timeoutMs;
+        let timedOut = false;
+        const timer = setTimeout(() => {
+          timedOut = true;
+          abort.abort();
+        }, timeoutMs);
+        let latest;
+        const result2 = (waitStatus) => ({ ...latest, wait_status: waitStatus });
+        try {
+          for (; ; ) {
+            if (abort.signal.aborted) throw new CoordinationError("cancelled", "The negotiation wait was cancelled.");
+            latest = await this.inspectNegotiation(void 0, abort.signal);
+            const state = latest.negotiation;
+            if (state.runtime_changed) return result2("blocked");
+            if (["agreed", "adopted"].includes(state.status)) return result2("completed");
+            if (["no_overlap", "round_limit", "failed", "cancelled"].includes(state.status)) return result2("blocked");
+            if (state.status === "needs_decision") return result2("awaiting_human_decision");
+            if (state.next_principal_key === this.#config.principalKey) return result2("action_required");
+            if (value.after_digest && latest.state_digest !== value.after_digest) return result2("changed");
+            const remaining = deadline - performance.now();
+            if (remaining <= 0) return result2("waiting");
+            const finalInterval = remaining <= 2e3;
+            await waitDelay(Math.min(2e3, remaining), abort.signal);
+            if (finalInterval || timedOut || performance.now() >= deadline) return result2("waiting");
+          }
+        } catch (error) {
+          if (!signal?.aborted && timedOut && error instanceof CoordinationError && error.code === "cancelled") {
+            if (latest) return result2("waiting");
+            throw new CoordinationError("wait_timeout", "No current negotiation state was retrieved before the timeout. Inspect before retrying.");
+          }
+          throw error;
+        } finally {
+          clearTimeout(timer);
+          signal?.removeEventListener("abort", cancel);
+        }
+      }
+      async checkedRehearsal(response) {
+        const agreement = response.agreement, fixtures = response.fixtures, rehearsal = response.rehearsal;
+        if (response.room_id !== this.#config.roomId || response.authority_key !== this.#config.authorityKey || !agreement || agreement.payload?.type !== "scopeblind.coordination.agreement.v1" || agreement.payload.id !== this.#config.roomId || agreement.payload.registrar_key !== this.#config.authorityKey || !await verifyOwnerAgreement(agreement, response.source_negotiation) || !fixtures || !rehearsal || rehearsal.agreement_digest !== agreement.digest || rehearsal.fixture_digest !== await rehearsalDigest(fixtures) || !Array.isArray(rehearsal.cases) || rehearsal.cases_digest !== await rehearsalDigest(rehearsal.cases)) {
+          throw new CoordinationError("invalid_rehearsal", "The rehearsal source agreement, sample records, or case snapshot could not be verified against the pinned authority.");
+        }
+        if (!Array.isArray(rehearsal.proposals) || !Array.isArray(rehearsal.reports)) throw new CoordinationError("invalid_rehearsal", "The rehearsal record is incomplete.");
+        for (const proposal of rehearsal.proposals) {
+          if (!await verify(proposal, this.#config.authorityKey) || proposal.payload.type !== "scopeblind.coordination.repair-proposal.v1" || proposal.payload.room_id !== this.#config.roomId || proposal.payload.agreement_digest !== agreement.digest) {
+            throw new CoordinationError("invalid_rehearsal", "A proposed repair does not verify against this source agreement and the pinned authority.");
+          }
+        }
+        for (const report of rehearsal.reports) {
+          if (!await verify(report, this.#config.authorityKey) || report.payload.type !== "scopeblind.coordination.rehearsal-report.v1" || report.payload.room_id !== this.#config.roomId || report.payload.agreement_digest !== agreement.digest) {
+            throw new CoordinationError("invalid_rehearsal", "A rehearsal report does not verify against this source agreement and the pinned authority.");
+          }
+        }
+        return { agreement, fixtures, rehearsal };
+      }
+      async rehearsalResult(response) {
+        const source = await this.checkedRehearsal(response);
+        if (response.proposal && !source.rehearsal.proposals.some((p) => canonical(p) === canonical(response.proposal))) throw new CoordinationError("invalid_rehearsal", "The returned proposal is absent from the verified rehearsal record.");
+        if (response.report && !source.rehearsal.reports.some((r) => canonical(r) === canonical(response.report))) throw new CoordinationError("invalid_rehearsal", "The returned report is absent from the verified rehearsal record.");
+        let evidenceVerification;
+        if (response.evidence !== void 0) {
+          const evidence = response.evidence;
+          evidenceVerification = await verifyRehearsalEvidence(evidence, this.#config.authorityKey);
+          if (!evidenceVerification.valid || evidence.agreement.digest !== source.agreement.digest || response.report && canonical(evidence.report) !== canonical(response.report)) throw new CoordinationError("invalid_rehearsal_evidence", "The isolated test evidence could not be verified. No authority has been activated.");
+        }
+        return {
+          room_id: this.#config.roomId,
+          ...source,
+          ...response.run ? { run: response.run } : {},
+          ...response.proposal ? { proposal: response.proposal } : {},
+          ...response.report ? { report: response.report } : {},
+          ...response.evidence ? { evidence: response.evidence, evidence_verification: evidenceVerification } : {},
+          source_signature_verified: true,
+          scope: "Test-only coordination. The named gate operator attests to observed outcomes in separate sample ledgers. Signed records establish integrity, not proof for every input or independent execution observation. Proposals do not change this agreement or authorize payments; adoption belongs to the owner.",
+          next_steps: ["Inspect cases and their human expectations. Keep stable IDs for retries. Compare a proposed repair against required safety cases. Explain the observed tradeoffs; leave adoption to the owner."]
+        };
+      }
+      async inspectRehearsal(reportDigest) {
+        if (reportDigest !== void 0 && (typeof reportDigest !== "string" || !/^[0-9a-f]{64}$/.test(reportDigest))) throw new CoordinationError("invalid_input", "report_digest must identify an exact signed rehearsal report.");
+        const response = await this.#transport.post("rehearsal_get", reportDigest ? { report_digest: reportDigest } : {});
+        if (reportDigest && response.evidence?.report?.digest !== reportDigest) throw new CoordinationError("invalid_rehearsal_evidence", "The returned evidence does not identify the requested report.");
+        const result2 = await this.rehearsalResult(response);
+        await this.acknowledgeInspection(response, "rehearsal_get", result2.agreement.digest);
+        return result2;
+      }
+      async proposeCase(value) {
+        let testCase;
+        try {
+          if (value && ("required" in value || value.id?.startsWith("required-"))) throw new Error();
+          testCase = parseRehearsalCase(value);
+        } catch {
+          throw new CoordinationError("invalid_input", "Provide a bounded case with a stable id and explicit expectation. The required safety cases are reserved and cannot be reassigned.");
+        }
+        const response = await this.#transport.post("rehearsal_case", { case: testCase });
+        const result2 = await this.rehearsalResult(response);
+        if (![...response.rehearsal.cases, ...response.rehearsal.excluded_cases || []].some((c2) => canonical(c2) === canonical(testCase))) throw new CoordinationError("invalid_rehearsal", "The returned cases do not contain the exact submitted expectation.");
+        return result2;
+      }
+      async proposeRepair(value) {
+        let snapshot;
+        try {
+          snapshot = parseRepairProposal(value, 1e7);
+        } catch {
+          throw new CoordinationError("invalid_input", "Provide only a stable id, review threshold in USD cents, and a rationale of at most 600 characters.");
+        }
+        const before = await this.checkedRehearsal(await this.#transport.post("rehearsal_get", {}));
+        let proposal;
+        try {
+          proposal = parseRepairProposal(snapshot, before.agreement.payload.budget_minor);
+        } catch {
+          throw new CoordinationError("invalid_input", "Propose only a review threshold within the source budget, a stable id, and a rationale of at most 600 characters.");
+        }
+        const response = await this.#transport.post("rehearsal_propose", { proposal });
+        const result2 = await this.rehearsalResult(response);
+        const recorded = response.proposal;
+        if (!recorded || recorded.payload.id !== proposal.id || recorded.payload.approval_above_minor !== proposal.approval_above_minor || recorded.payload.rationale !== proposal.rationale) throw new CoordinationError("invalid_rehearsal", "The signed repair does not match the exact proposed threshold and rationale.");
+        return result2;
+      }
+      async runRehearsal(value, signal) {
+        if (!value || Object.keys(value).some((k) => !["id", "proposal_id"].includes(k)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.id) || value.proposal_id !== void 0 && (typeof value.proposal_id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.proposal_id))) throw new CoordinationError("invalid_input", "Use a stable test id and optional exact proposal_id. Retain the same id if the response is lost.");
+        const snapshot = { ...value }, abort = new AbortController(), cancel = () => abort.abort();
+        if (signal?.aborted) cancel();
+        else signal?.addEventListener("abort", cancel, { once: true });
+        const deadline = performance.now() + 18e4, timer = setTimeout(cancel, 18e4);
+        let latest, chunks = 0, busyWaits = 0, completedCases = 0;
+        const pending = () => ({
+          ...latest,
+          status: "pending",
+          run: latest?.run || { id: snapshot.id, status: "unknown" },
+          ...signal?.aborted ? { cancelled: true } : {},
+          next_steps: [`The comparison has no verified final report yet. Inspect rehearsal progress, then resume coordination.run_rehearsal with the SAME id '${snapshot.id}'${snapshot.proposal_id ? ` and proposal_id '${snapshot.proposal_id}'` : ""}. Completed case chunks are retained; do not create a replacement test id. No source payment or rule change was authorized.`]
+        });
+        try {
+          while (chunks < 6 && performance.now() < deadline && !abort.signal.aborted) {
+            let response;
+            try {
+              response = await this.#transport.post("rehearsal_run", snapshot, abort.signal);
+            } catch (error) {
+              if (error instanceof CoordinationError && error.code === "rehearsal_in_progress" && busyWaits++ < 6) {
+                await waitDelay(1e3, abort.signal);
+                continue;
+              }
+              throw error;
+            }
+            latest = await this.rehearsalResult(response);
+            const report = response.report;
+            if (report) {
+              const proposal = response.rehearsal.proposals.find((p) => p.payload.id === snapshot.proposal_id);
+              if (report.payload.id !== snapshot.id || (snapshot.proposal_id ? !proposal || report.payload.proposal_digest !== proposal.digest : report.payload.proposal_digest !== void 0)) throw new CoordinationError("invalid_rehearsal", "The report does not match the requested test ID and proposal.");
+              if (!response.evidence) {
+                const historical = await this.#transport.post("rehearsal_get", { report_digest: report.digest }, abort.signal);
+                if (historical.evidence?.report?.digest !== report.digest) throw new CoordinationError("invalid_rehearsal_evidence", "The completed report\u2019s exact evidence snapshot could not be retrieved.");
+                latest = { ...await this.rehearsalResult(historical), report };
+              }
+              return { ...latest, status: "completed" };
+            }
+            const run = response.run;
+            if (!run || run.id !== snapshot.id || run.status !== "running" || !Number.isSafeInteger(run.completed_cases) || !Number.isSafeInteger(run.total_cases) || Number(run.completed_cases) < 0 || Number(run.completed_cases) > Number(run.total_cases) || Number(run.total_cases) < 1 || Number(run.total_cases) > 10) {
+              throw new CoordinationError("invalid_rehearsal", "The service did not return a usable test checkpoint or final report. Inspect before resuming the same test id.");
+            }
+            if (Number(run.completed_cases) <= completedCases) {
+              if (busyWaits++ >= 6) return pending();
+              await waitDelay(1e3, abort.signal);
+            } else {
+              completedCases = Number(run.completed_cases);
+              chunks++;
+            }
+          }
+          return pending();
+        } catch (error) {
+          if (abort.signal.aborted || error instanceof CoordinationError && error.code === "rehearsal_in_progress") return pending();
+          if (error instanceof CoordinationError && error.code === "service_unavailable") throw new CoordinationError("rehearsal_outcome_unknown", "The test response was lost or timed out. Inspect reports and retry with the SAME test id to recover its result. Do not assume failure or create another test id. No source payment or rule change was authorized.");
+          throw error;
+        } finally {
+          clearTimeout(timer);
+          signal?.removeEventListener("abort", cancel);
+        }
+      }
+      async room(signal) {
+        const response = await this.#transport.post("inspect", {}, signal);
+        const room = response.room;
+        const agreement = room?.agreement;
+        if (!room || room.room_id !== this.#config.roomId || typeof room.run_id !== "string" || room.authority_key !== this.#config.authorityKey || !agreement || agreement.payload?.type !== "scopeblind.coordination.agreement.v1" || agreement.payload.id !== this.#config.roomId || agreement.payload.version !== 1 || agreement.payload.currency !== "USD" || !/^[0-9a-f]{64}$/.test(agreement.payload.owner_key) || agreement.payload.registrar_key !== this.#config.authorityKey || !await verifyOwnerAgreement(agreement, room.negotiation_evidence)) {
+          throw new CoordinationError("invalid_agreement", "The room agreement or its pinned registrar binding could not be verified.");
+        }
+        if (room.run_id !== `run-${room.room_id}`) {
+          const revisions = room.attempts || [];
+          let prior = `run-${room.room_id}`;
+          for (const attempt of revisions) {
+            const r = attempt.revision;
+            if (!r || !await verify(r, this.#config.authorityKey) || r.payload.type !== "scopeblind.coordination.revision.v1" || r.payload.room_id !== room.room_id || r.payload.previous_run_id !== prior || r.payload.previous_manifest_digest !== attempt.manifest.digest || attempt.manifest.payload.room_id !== room.room_id || attempt.manifest.payload.run_id !== prior || r.payload.requested_by !== agreement.payload.owner_key || r.payload.agreement_digest !== agreement.digest || !await verify(attempt.manifest, this.#config.authorityKey)) throw new CoordinationError("invalid_revision", "The signed chain of authorized result revisions could not be verified.");
+            prior = r.payload.run_id;
+          }
+          if (prior !== room.run_id) throw new CoordinationError("invalid_revision", "The current run does not follow the signed revision history.");
+        }
+        if (this.#config.runId && room.run_id !== this.#config.runId) throw new CoordinationError("run_mismatch", "The configured run does not match this room.");
+        await this.acknowledgeInspection(response, "inspect", agreement.digest, signal);
+        return room;
+      }
+      /** Live room state is informational; only signed artifacts establish signed claims. */
+      async inspect() {
+        const room = await this.room();
+        return {
+          room_id: room.room_id,
+          run_id: room.run_id,
+          cursor: room.revision,
+          agreement: room.agreement,
+          authority_key: this.#config.authorityKey,
+          paused: room.paused,
+          budget: room.budget,
+          invoices: room.invoices,
+          operations: room.operations,
+          fixtures: room.fixtures,
+          historical_operations: room.historical_operations,
+          revision_note: room.revision_note,
+          result: room.manifest,
+          acceptance: room.acceptances,
+          next_steps: room.manifest ? ["Result is delivered. Wait for recipient acceptance or an owner-authorized revision."] : room.paused ? ["Wait for the owner to resume."] : ["Inspect invoices and purchase orders. Reuse operation IDs for retries. Await a reviewer for held requests; continue other permitted work. Deliver when all items have a recorded disposition."],
+          agreement_signature_verified: true,
+          scope: "Sample ledger only. No real money moves. Budget and operation lists are service-reported state; ledger.pay verifies each exact admission and outcome independently."
+        };
+      }
+      /** Poll inside the tool, without model calls, for at most thirty seconds. */
+      async wait(input, signal) {
+        if (!input || Object.keys(input).some((key) => !["after_cursor", "run_id", "timeout_ms"].includes(key)) || !Number.isSafeInteger(input.after_cursor) || input.after_cursor < 0 || input.run_id !== void 0 && (typeof input.run_id !== "string" || !/^run-[A-Za-z0-9_-]{8,100}$/.test(input.run_id))) {
+          throw new CoordinationError("invalid_wait", "Pass after_cursor and optionally run_id from coordination.inspect.");
+        }
+        const timeoutMs = input.timeout_ms === void 0 ? 3e4 : input.timeout_ms;
+        if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1e3 || timeoutMs > 3e4) throw new CoordinationError("invalid_wait", "timeout_ms must be an integer from 1000 to 30000.");
+        const abort = new AbortController(), cancel = () => abort.abort();
+        if (signal?.aborted) cancel();
+        else signal?.addEventListener("abort", cancel, { once: true });
+        const deadline = performance.now() + timeoutMs;
+        let timedOut = false;
+        const timer = setTimeout(() => {
+          timedOut = true;
+          abort.abort();
+        }, timeoutMs);
+        let latest;
+        const response = (room, status) => {
+          const operations = room.operations || [];
+          const ready = operations.filter((op) => op.status === "admitted" || op.status === "held" && op.decision?.payload.decision === "approve" && Date.parse(op.decision.payload.expires_at) > Date.now()).map((op) => op.operation_id);
+          return {
+            status,
+            cursor: room.revision,
+            run_id: room.run_id,
+            paused: room.paused,
+            result_ready: !!room.manifest,
+            attention: {
+              ready_to_retry: ready,
+              awaiting_reviewer: operations.filter((op) => op.status === "held" && !ready.includes(op.operation_id)).map((op) => op.operation_id),
+              changes_requested: operations.filter((op) => op.status === "request_changes").map((op) => op.operation_id),
+              unknown_outcomes: operations.filter((op) => op.status === "unknown").map((op) => op.operation_id)
+            },
+            events: (room.events || []).filter((event) => event.id > input.after_cursor).slice(-30),
+            next_steps: status === "waiting" ? ["No change was observed before the timeout. If the client session is still active, call coordination.wait again with this cursor; otherwise resume the session and inspect. This is bounded polling, not a push notification."] : ["Inspect the updated room. Retry approved operations with their existing IDs and exact input; unknown outcomes keep their reservations. A new run requires reviewing its revision instructions."],
+            scope: "Authenticated service-reported state. A decision notification does not itself authorize execution; ledger.pay independently verifies each exact admission and outcome."
+          };
+        };
+        try {
+          for (; ; ) {
+            if (abort.signal.aborted) throw new CoordinationError("cancelled", "The wait was cancelled. No action or approval was performed.");
+            latest = await this.room(abort.signal);
+            if (abort.signal.aborted) throw new CoordinationError("cancelled", "The wait was cancelled. No action or approval was performed.");
+            if (!Number.isSafeInteger(latest.revision) || latest.revision < 0) throw new CoordinationError("invalid_cursor", "The room did not provide a usable event cursor.");
+            if (latest.revision !== input.after_cursor || input.run_id !== void 0 && latest.run_id !== input.run_id) return response(latest, "changed");
+            const remaining = deadline - performance.now();
+            if (remaining <= 0) return response(latest, "waiting");
+            const finalInterval = remaining <= 2e3;
+            await waitDelay(Math.min(2e3, remaining), abort.signal);
+            if (finalInterval || timedOut || performance.now() >= deadline) return response(latest, "waiting");
+          }
+        } catch (error) {
+          if (!signal?.aborted && (timedOut || performance.now() >= deadline) && latest && error instanceof CoordinationError && error.code === "cancelled") return response(latest, latest.revision !== input.after_cursor || input.run_id !== void 0 && latest.run_id !== input.run_id ? "changed" : "waiting");
+          if (!signal?.aborted && (timedOut || performance.now() >= deadline) && !latest && error instanceof CoordinationError && error.code === "cancelled") throw new CoordinationError("wait_timeout", "No current room state could be retrieved before the wait timed out. Inspect the room before retrying.");
+          throw error;
+        } finally {
+          clearTimeout(timer);
+          signal?.removeEventListener("abort", cancel);
+        }
+      }
+      async deliver(runId) {
+        if (typeof runId !== "string" || !/^run-[A-Za-z0-9_-]{8,100}$/.test(runId)) throw new CoordinationError("invalid_run", "Pass the exact run_id from coordination.inspect when delivering.");
+        const before = await this.room();
+        if (before.run_id !== runId) throw new CoordinationError("run_mismatch", "This attempt has changed. Inspect the revised instructions and work before delivering.");
+        const response = await this.#transport.post("deliver", { run_id: before.run_id });
+        const room = response.room;
+        const manifest = room?.manifest;
+        if (!manifest || !await verify(manifest, this.#config.authorityKey) || manifest.payload.type !== "scopeblind.coordination.manifest.v1" || manifest.payload.room_id !== this.#config.roomId || manifest.payload.run_id !== before.run_id || manifest.payload.agreement_digest !== before.agreement.digest) throw new CoordinationError("invalid_manifest", "The delivered result did not verify against this room and attempt. Inspect the room before retrying.");
+        return { manifest, manifest_signature_verified: true, next_step: "The recipient can accept this exact result or request changes in the shared room. Delivery does not imply their acceptance." };
+      }
+      async checkAdmission(value, request, agreement, hash, fresh) {
+        const envelope2 = value;
+        if (!await verify(envelope2, this.#config.authorityKey)) throw new CoordinationError("invalid_admission", "Admission signature does not match the pinned authority. No execution was requested.");
+        const a = envelope2.payload;
+        if (a.type !== "scopeblind.coordination.admission.v1" || a.room_id !== this.#config.roomId || a.run_id !== request.run_id || a.operation_id !== request.operation_id || a.agreement_digest !== agreement.digest || a.payload_hash !== hash || canonical(a.input) !== canonical(request.input) || a.destination !== request.input.destination || !["admitted", "held", "refused"].includes(a.decision)) {
+          throw new CoordinationError("invalid_admission", "Admission does not authorize these exact operation terms. No execution was requested.");
+        }
+        const issued = Date.parse(a.issued_at), expiry = Date.parse(a.expires_at);
+        if (!Number.isFinite(issued) || !Number.isFinite(expiry) || expiry <= issued || issued > Date.now() + 3e4 || fresh && expiry <= Date.now()) {
+          throw new CoordinationError("expired_admission", "Admission validity could not be established. No execution was requested.");
+        }
+        return envelope2;
+      }
+      async checkOutcome(value, request, hash) {
+        const envelope2 = value;
+        if (!await verify(envelope2, this.#config.authorityKey)) throw new CoordinationError("invalid_outcome", "Destination outcome signature does not match the pinned authority.");
+        const o = envelope2.payload;
+        if (o.type !== "scopeblind.coordination.outcome.v1" || o.room_id !== this.#config.roomId || o.run_id !== request.run_id || o.operation_id !== request.operation_id || o.payload_hash !== hash || o.amount_minor !== request.input.amount_minor || o.destination !== request.input.destination || !["confirmed", "failed", "unknown"].includes(o.status) || o.observed_by !== "sandbox-ledger" && !(o.status === "unknown" && o.observed_by === "gateway-report") || !Number.isFinite(Date.parse(o.issued_at)) || Date.parse(o.issued_at) > Date.now() + 3e4 || o.status === "confirmed" && !o.transaction_id) {
+          throw new CoordinationError("invalid_outcome", "Destination outcome does not establish the result of these exact operation terms.");
+        }
+        return envelope2;
+      }
+      async pay(payment) {
+        validateCoordinationPayment(payment);
+        const input = JSON.parse(canonical(payment.input));
+        const operationId = payment.operation_id;
+        const room = await this.room();
+        const request = { operation_id: operationId, run_id: room.run_id, tool: "ledger.pay", input };
+        const hash = await payloadHash(input);
+        const response = await this.#transport.post("admit", { operation: request });
+        const receipt = response.operation?.receipt;
+        const admission = await this.checkAdmission(response.admission, request, room.agreement, hash, !receipt);
+        if (response.decision !== admission.payload.decision) throw new CoordinationError("invalid_admission", "Admission response contradicts its signed decision. No execution was requested.");
+        if (receipt) {
+          const outcome = await this.checkOutcome(receipt, request, hash);
+          if (outcome.payload.status === "confirmed" && admission.payload.decision !== "admitted") {
+            throw new CoordinationError("invalid_outcome", "A confirmed outcome contradicts the signed admission decision. No new execution was requested.");
+          }
+          if (outcome.payload.status === "unknown" && outcome.payload.observed_by === "gateway-report") {
+            return { operation_id: operationId, status: "unknown", reason: outcome.payload.note || "A gateway reported an unknown outcome. Authority remains reserved; no new execution was requested.", admission, outcome, replay: true };
+          }
+          if (outcome.payload.status !== "unknown") return { operation_id: operationId, status: outcome.payload.status, reason: outcome.payload.note || "Previously observed destination outcome.", admission, outcome, replay: true };
+          await this.checkAdmission(response.admission, request, room.agreement, hash, true);
+        }
+        if (admission.payload.decision !== "admitted") {
+          return { operation_id: operationId, status: admission.payload.decision, reason: admission.payload.reason, admission };
+        }
+        try {
+          const execution = await this.#transport.post("execute", { operation_id: operationId });
+          const outcome = await this.checkOutcome(execution.outcome, request, hash);
+          return { operation_id: operationId, status: outcome.payload.status, reason: outcome.payload.note || "Signed sample-ledger outcome.", admission, outcome, replay: execution.replay === true };
+        } catch {
+          return { operation_id: operationId, status: "unknown", reason: "Execution was requested, but its outcome could not be verified. Retain this operation_id and inspect or retry the same operation to reconcile; do not create a replacement payment.", admission };
+        }
+      }
+    };
+  }
+});
+
+// src/coordination-agent-requests.ts
+function parseAgentTaskDraft(value) {
+  const invalid = () => {
+    throw new Error("Use a bounded invoice-task draft with explicit suggested limits and assumptions. No authority has been granted.");
+  };
+  if (!value || typeof value !== "object" || Array.isArray(value)) return invalid();
+  const v = value;
+  if (Object.keys(v).sort().join(",") !== DRAFT_KEYS || v.type !== "scopeblind.coordination.agent-task-draft.v1" || !text3(v.title, 1, 100) || !v.title.trim() || !text3(v.goal, 1, 2e3) || !v.goal.trim() || !text3(v.counterparty_name, 0, 60) || !text3(v.private_brief, 0, 2e3) || !amount(v.budget_minor, 1) || !amount(v.approval_above_minor) || v.approval_above_minor > v.budget_minor || !Number.isSafeInteger(v.approval_ttl_seconds) || v.approval_ttl_seconds < 30 || v.approval_ttl_seconds > 900 || v.require_po_match !== true || !amount(v.min_budget_minor, 1) || !amount(v.max_budget_minor, 1) || v.min_budget_minor > v.max_budget_minor || !amount(v.min_threshold_minor) || !amount(v.max_threshold_minor) || v.min_threshold_minor > v.max_threshold_minor || v.max_threshold_minor > v.max_budget_minor || typeof v.preference !== "string" || !["fewer_reviews", "more_review", "balanced"].includes(v.preference) || typeof v.budget_preference !== "string" || !["preserve_budget", "lower_budget", "more_capacity"].includes(v.budget_preference) || !Array.isArray(v.assumptions) || v.assumptions.length > 12 || !v.assumptions.every((item) => text3(item, 1, 300))) return invalid();
+  return structuredClone(v);
+}
+function prepareAgentTaskDraft(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Provide a task title and goal for human review.");
+  const v = value;
+  if (Object.keys(v).some((key) => !DRAFT_KEYS.split(",").includes(key))) throw new Error("The draft contains a rule this invoice trial cannot enforce. Explain it to the person instead of granting it.");
+  if (v.type !== void 0 && v.type !== "scopeblind.coordination.agent-task-draft.v1" || v.assumptions !== void 0 && !Array.isArray(v.assumptions)) throw new Error("The draft type or assumptions are invalid.");
+  const assumptions = [...v.assumptions || []];
+  const fallback = (key, supplied, defaultValue, note) => {
+    if (supplied !== void 0) return supplied;
+    assumptions.push(note);
+    return defaultValue;
+  };
+  const budget = fallback("budget_minor", v.budget_minor, 2e5, "Total budget was not supplied: $2,000 is suggested for review.");
+  const threshold = fallback("approval_above_minor", v.approval_above_minor, Math.min(5e4, budget), "Review threshold was not supplied: up to $500 is suggested for review.");
+  const draft = {
+    type: "scopeblind.coordination.agent-task-draft.v1",
+    title: v.title,
+    goal: v.goal,
+    counterparty_name: v.counterparty_name ?? "",
+    budget_minor: budget,
+    approval_above_minor: threshold,
+    approval_ttl_seconds: fallback("approval_ttl_seconds", v.approval_ttl_seconds, 900, "Approval expiry was not supplied: 15 minutes is suggested."),
+    require_po_match: v.require_po_match ?? true,
+    min_budget_minor: fallback("min_budget_minor", v.min_budget_minor, budget, "Minimum negotiable budget defaults to the suggested total; review before signing."),
+    max_budget_minor: fallback("max_budget_minor", v.max_budget_minor, budget, "Maximum negotiable budget defaults to the suggested total; review before signing."),
+    min_threshold_minor: fallback("min_threshold_minor", v.min_threshold_minor, threshold, "Minimum review threshold defaults to the suggested threshold; review before signing."),
+    max_threshold_minor: fallback("max_threshold_minor", v.max_threshold_minor, threshold, "Maximum review threshold defaults to the suggested threshold; review before signing."),
+    private_brief: v.private_brief ?? "",
+    preference: v.preference ?? "balanced",
+    budget_preference: v.budget_preference ?? "preserve_budget",
+    assumptions
+  };
+  if (!assumptions.includes("This draft uses fictional USD invoices and fixed sample destinations. No real payment service is connected.")) assumptions.push("This draft uses fictional USD invoices and fixed sample destinations. No real payment service is connected.");
+  return parseAgentTaskDraft(draft);
+}
+var DRAFT_KEYS, text3, amount;
+var init_coordination_agent_requests = __esm({
+  "src/coordination-agent-requests.ts"() {
+    "use strict";
+    DRAFT_KEYS = ["type", "title", "goal", "counterparty_name", "budget_minor", "approval_above_minor", "approval_ttl_seconds", "require_po_match", "min_budget_minor", "max_budget_minor", "min_threshold_minor", "max_threshold_minor", "private_brief", "preference", "budget_preference", "assumptions"].sort().join(",");
+    text3 = (value, min, max) => typeof value === "string" && value.length >= min && value.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value);
+    amount = (value, min = 0) => Number.isSafeInteger(value) && Number(value) >= min && Number(value) <= 1e7;
+  }
+});
+
+// src/coordination-agent-profile.ts
+function validateProfileDestination(endpoint, authorityKey) {
+  const checked = validateCoordinationConfig({ endpoint, authorityKey, roomId: "profile-placeholder", token: "profile-placeholder" });
+  return { endpoint: checked.endpoint, authorityKey: checked.authorityKey };
+}
+function readAgentProfile(path) {
+  let fd;
+  try {
+    fd = (0, import_node_fs15.openSync)((0, import_node_path11.resolve)(path), import_node_fs15.constants.O_RDONLY | import_node_fs15.constants.O_NOFOLLOW);
+  } catch {
+    throw new Error("The private agent profile could not be opened. Run coordination agent setup first.");
+  }
+  try {
+    const file = (0, import_node_fs15.fstatSync)(fd);
+    if (!file.isFile() || file.size > 2e6 || process.platform !== "win32" && ((file.mode & 63) !== 0 || process.getuid && file.uid !== process.getuid())) throw new Error("The agent profile must be owned by you with permissions 600.");
+    let value;
+    try {
+      value = JSON.parse((0, import_node_fs15.readFileSync)(fd, "utf8"));
+    } catch {
+      throw new Error("The private agent profile is not valid JSON.");
+    }
+    if (value?.type !== "scopeblind.coordination.agent-profile.v1" || !/^[a-f0-9]{64}$/.test(value.agentKey) || !/^[a-f0-9]{96,256}$/.test(value.privateKey) || [value.requests, value.connections, value.pendingHandoffs].some((v) => !v || typeof v !== "object" || Array.isArray(v))) throw new Error("The private agent profile has an unsupported format.");
+    validateProfileDestination(value.endpoint, value.authorityKey);
+    if (Object.keys(value.requests).length > 50 || Object.keys(value.connections).length > 50 || Object.keys(value.pendingHandoffs).length > 50) throw new Error("This private profile reached its connection limit. Use a separate profile for new work.");
+    for (const [id4, connection] of Object.entries(value.connections)) {
+      validateCoordinationConfig(connection);
+      if (!profileId(id4) || connection.endpoint !== value.endpoint || connection.authorityKey !== value.authorityKey || !connection.binding || connection.binding.payload.pair_id !== id4 || connection.binding.payload.agent_key !== connection.agentKey) throw new Error("A saved connection does not match this private profile.");
+    }
+    return value;
+  } finally {
+    (0, import_node_fs15.closeSync)(fd);
+  }
+}
+async function updateAgentProfile(path, change) {
+  path = (0, import_node_path11.resolve)(path);
+  const lock = path + ".lock";
+  let locked = false;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    try {
+      (0, import_node_fs15.mkdirSync)(lock, { mode: 448 });
+      locked = true;
+      break;
+    } catch (error) {
+      if (error.code !== "EEXIST") throw new Error("The private profile could not be locked.");
+    }
+    await new Promise((resolve5) => setTimeout(resolve5, 50));
+  }
+  if (!locked) throw new Error("Another process is updating this profile. Retry after it finishes; no credentials were changed.");
+  const temporary = path + "." + (0, import_node_crypto11.randomBytes)(8).toString("hex") + ".tmp";
+  try {
+    const profile = readAgentProfile(path), result2 = change(profile);
+    if ([profile.requests, profile.connections, profile.pendingHandoffs].some((entries) => Object.keys(entries).length > 50)) throw new Error("This private profile reached its connection limit. Use a separate profile for new work.");
+    (0, import_node_fs15.writeFileSync)(temporary, JSON.stringify(profile) + "\n", { flag: "wx", mode: 384 });
+    (0, import_node_fs15.renameSync)(temporary, path);
+    return result2;
+  } finally {
+    try {
+      (0, import_node_fs15.unlinkSync)(temporary);
+    } catch {
+    }
+    try {
+      (0, import_node_fs15.rmdirSync)(lock);
+    } catch {
+    }
+  }
+}
+async function ensureAgentProfile(path, endpoint, authorityKey) {
+  path = (0, import_node_path11.resolve)(path);
+  try {
+    const value = readAgentProfile(path);
+    if (endpoint !== void 0 && validateProfileDestination(endpoint, authorityKey || value.authorityKey).endpoint !== value.endpoint || authorityKey !== void 0 && authorityKey.toLowerCase() !== value.authorityKey) throw new Error("This profile is pinned to another authority or endpoint. Use its original settings or a separate profile.");
+    await importIdentity(value.privateKey, value.agentKey);
+    return value;
+  } catch (error) {
+    try {
+      const fd2 = (0, import_node_fs15.openSync)(path, import_node_fs15.constants.O_RDONLY | import_node_fs15.constants.O_NOFOLLOW);
+      (0, import_node_fs15.closeSync)(fd2);
+      throw error;
+    } catch (check) {
+      if (check.code !== "ENOENT") throw error;
+    }
+  }
+  if (!endpoint || !authorityKey) throw new Error("A new profile needs --endpoint and an independently pinned --authority-key.");
+  const destination = validateProfileDestination(endpoint, authorityKey), pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
+  const profile = { type: "scopeblind.coordination.agent-profile.v1", ...destination, agentKey: bytesToHex(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))), privateKey: bytesToHex(new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey))), requests: {}, connections: {}, pendingHandoffs: {} };
+  (0, import_node_fs15.mkdirSync)((0, import_node_path11.dirname)(path), { recursive: true, mode: 448 });
+  const fd = (0, import_node_fs15.openSync)(path, import_node_fs15.constants.O_WRONLY | import_node_fs15.constants.O_CREAT | import_node_fs15.constants.O_EXCL | import_node_fs15.constants.O_NOFOLLOW, 384);
+  try {
+    (0, import_node_fs15.writeFileSync)(fd, JSON.stringify(profile) + "\n");
+  } finally {
+    (0, import_node_fs15.closeSync)(fd);
+  }
+  return profile;
+}
+async function importProfileConnection(profilePath, configPath) {
+  const stored = readPrivateConfig(configPath), config = coordinationConfigFromFile(configPath), binding = stored.binding;
+  if (!await verify(binding, config.authorityKey) || !await verify(binding.payload.owner_authorization, binding.payload.owner_key)) throw new Error("The saved connection signatures could not be verified.");
+  await updateAgentProfile(profilePath, (profile) => {
+    if (config.endpoint !== profile.endpoint || config.authorityKey !== profile.authorityKey) throw new Error("Import requires the same pinned endpoint and authority.");
+    const id4 = binding.payload.pair_id, existing = profile.connections[id4];
+    if (existing && existing.binding.digest !== binding.digest) throw new Error("This connection ID already names another signed grant.");
+    profile.connections[id4] = { ...config, type: stored.type, setupVersion: stored.setupVersion, agentKey: stored.agentKey, name: stored.name, binding };
+  });
+  return binding.payload.pair_id;
+}
+var import_node_fs15, import_node_path11, import_node_os2, import_node_crypto11, DEFAULT_AGENT_PROFILE, profileId;
+var init_coordination_agent_profile = __esm({
+  "src/coordination-agent-profile.ts"() {
+    "use strict";
+    import_node_fs15 = require("fs");
+    import_node_path11 = require("path");
+    import_node_os2 = require("os");
+    import_node_crypto11 = require("crypto");
+    init_coordination_protocol();
+    init_coordination_config();
+    init_coordination_pair_cli();
+    DEFAULT_AGENT_PROFILE = (0, import_node_path11.resolve)((0, import_node_os2.homedir)(), ".scopeblind", "agent.json");
+    profileId = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(value);
+  }
+});
+
+// src/coordination-agent-client.ts
+function fail(code2, message) {
+  throw new CoordinationError(code2, message);
+}
+var import_node_crypto12, hex2, exact4, envelope, CoordinationAgentClient;
+var init_coordination_agent_client = __esm({
+  "src/coordination-agent-client.ts"() {
+    "use strict";
+    import_node_crypto12 = require("crypto");
+    init_coordination_protocol();
+    init_coordination_pairing();
+    init_coordination_pair_cli();
+    init_coordination_client();
+    init_coordination_agent_requests();
+    init_coordination_agent_profile();
+    hex2 = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+    exact4 = (value, required, optional = []) => !!value && typeof value === "object" && !Array.isArray(value) && required.every((k) => Object.hasOwn(value, k)) && Object.keys(value).every((k) => required.includes(k) || optional.includes(k));
+    envelope = (value) => exact4(value, ["payload", "signer", "digest", "signature"]);
+    CoordinationAgentClient = class {
+      constructor(profilePath, fetchImpl = fetch) {
+        this.profilePath = profilePath;
+        this.fetchImpl = fetchImpl;
+      }
+      profile() {
+        return readAgentProfile(this.profilePath);
+      }
+      async request(action, roomId, body) {
+        const profile = this.profile(), identity = await importIdentity(profile.privateKey, profile.agentKey);
+        const request = await sign(makeRequest(action, roomId, body), identity);
+        const abort = new AbortController(), timer = setTimeout(() => abort.abort(), 25e3);
+        try {
+          const response = await this.fetchImpl(profile.endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request }), redirect: "error", cache: "no-store", signal: abort.signal });
+          const raw = await response.text();
+          if (raw.length > 2e6) fail("invalid_agent_response", "The service response was too large.");
+          let result2;
+          try {
+            result2 = JSON.parse(raw);
+          } catch {
+            fail("invalid_agent_response", "The service did not return a readable response.");
+          }
+          if (!response.ok || result2.ok !== true) {
+            const code2 = typeof result2.error === "string" && /^[a-z_]{3,80}$/.test(result2.error) ? result2.error : "agent_request_refused";
+            fail(code2, "The service refused this agent request. Inspect the current task or ask the person to review its permissions; no authority was added.");
+          }
+          return result2;
+        } catch (error) {
+          if (error instanceof CoordinationError) throw error;
+          fail("agent_connection_interrupted", "The reply was interrupted. Retry the same request or grant ID; its private recovery state is saved locally.");
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+      async checkedRequest(value, id4) {
+        const profile = this.profile(), pending = profile.requests[id4];
+        if (!pending || !exact4(value, ["request_id", "agent_key", "pairing_secret_hash", "status", "expires_at", "draft"], ["accepted", "connection"])) fail("invalid_agent_request", "The returned draft does not match this profile.");
+        const v = value;
+        if (v.request_id !== id4 || v.agent_key !== profile.agentKey || v.pairing_secret_hash !== await sha256(pending.pairingSecret) || v.expires_at !== pending.expiresAt || !["pending", "accepted", "ready", "revoked", "expired"].includes(v.status) || canonical(parseAgentTaskDraft(v.draft)) !== canonical(pending.draft)) fail("invalid_agent_request", "The returned draft does not match the exact request prepared here.");
+        if (v.accepted) {
+          const a = v.accepted;
+          if (!exact4(a, ["owner_key", "room_id", "session_id", "pair_id", "reviewed_draft", "digest"]) || !hex2(a.owner_key) || a.owner_key === profile.agentKey || ![a.room_id, a.session_id, a.pair_id].every(profileId) || !hex2(a.digest)) fail("invalid_agent_request", "The reviewed draft does not name a valid independent principal.");
+          if (a.digest !== await sha256(canonical(parseAgentTaskDraft(a.reviewed_draft)))) fail("invalid_agent_request", "The reviewed draft digest does not match its exact content.");
+        }
+        if (v.connection) {
+          const c2 = v.connection, a = v.accepted;
+          if (!a || !exact4(c2, ["purpose", "room_id", "session_id", "pair_id", "principal_key", "authority_key"], ["binding"]) || c2.purpose !== "negotiation" || c2.room_id !== a.room_id || c2.session_id !== a.session_id || c2.pair_id !== a.pair_id || c2.principal_key !== a.owner_key || c2.authority_key !== profile.authorityKey) fail("invalid_agent_request", "The offered connection does not match the person\u2019s reviewed task.");
+        }
+        if (v.status === "ready" && !v.connection) fail("invalid_agent_request", "A ready connection must name its exact signed task.");
+        return v;
+      }
+      reviewLink(id4, secret) {
+        const url = new URL("/standard", this.profile().endpoint);
+        url.searchParams.set("trial", "new");
+        url.hash = "agent_request=" + id4 + "." + secret;
+        return url.href;
+      }
+      async prepareTask(input) {
+        if (!exact4(input, ["request_id", "draft"]) || !profileId(input.request_id)) fail("invalid_agent_draft", "Use one stable request_id and an explicit draft.");
+        const draft = prepareAgentTaskDraft(input.draft), id4 = input.request_id;
+        await updateAgentProfile(this.profilePath, (profile) => {
+          if (profile.requests[id4]) {
+            if (canonical(profile.requests[id4].draft) !== canonical(draft)) fail("agent_request_id_conflict", "This request ID already names a different draft. Keep it for retries; use a new ID only for a different intended task.");
+            return;
+          }
+          if (Object.keys(profile.requests).length >= 50) fail("agent_profile_limit", "This profile has 50 saved requests. Use a separate profile for new work.");
+          profile.requests[id4] = { draft, reviewSecret: (0, import_node_crypto12.randomBytes)(32).toString("hex"), pairingSecret: (0, import_node_crypto12.randomBytes)(32).toString("hex"), expiresAt: new Date(Date.now() + 30 * 60 * 1e3).toISOString() };
+        });
+        const saved = this.profile().requests[id4];
+        const response = await this.request("agent_request_create", id4, { request_id: id4, secret_hash: await sha256(saved.reviewSecret), pairing_secret_hash: await sha256(saved.pairingSecret), draft: saved.draft, expires_at: saved.expiresAt });
+        const request = await this.checkedRequest(response.agent_request, id4);
+        return { request_id: id4, status: request.status, private_review_link: this.reviewLink(id4, saved.reviewSecret), draft: { ...draft, private_brief: void 0 }, assumptions: draft.assumptions, scope: "Unsigned suggestions only. Show this private review link to your own person; it includes access to their private draft instructions. They must review the draft, create the shared task, and sign a mandate. This does not create owner authority, invite the colleague, or start a model or payment." };
+      }
+      async inspectTaskRequest(id4) {
+        if (!profileId(id4) || !this.profile().requests[id4]) fail("unknown_agent_request", "This profile has no saved request with that ID.");
+        const response = await this.request("agent_request_get", id4, { request_id: id4 }), request = await this.checkedRequest(response.agent_request, id4);
+        return { request_id: id4, status: request.status, expires_at: request.expires_at, title: request.draft.title, ...request.accepted ? { reviewed_draft: request.accepted.reviewed_draft, owner_key: request.accepted.owner_key, room_id: request.accepted.room_id, session_id: request.accepted.session_id } : {}, ...request.connection ? { connection_id: request.connection.pair_id } : {}, next_step: request.status === "ready" ? "Call coordination.claim_task_connection with this request_id. Then inspect the exact mandate through the returned connection_id." : request.status === "pending" ? "Your person must open and review the private link. No authority is granted." : request.status === "accepted" ? "The person reviewed the draft. Wait for their signed mandate and explicit agent connection; acceptance of a draft is not an agent grant." : "This request is inactive. Keep its history; ask the person before preparing a new task." };
+      }
+      async claimTaskConnection(id4) {
+        if (!profileId(id4) || !this.profile().requests[id4]) fail("unknown_agent_request", "This profile has no saved request with that ID.");
+        const response = await this.request("agent_request_get", id4, { request_id: id4 }), view = await this.checkedRequest(response.agent_request, id4);
+        if (view.status !== "ready" || !view.connection) fail("agent_grant_not_ready", "The person has not yet signed an active negotiation grant. A reviewed draft alone is not permission.");
+        const c2 = view.connection;
+        const existing = this.profile().connections[c2.pair_id];
+        if (existing) return this.connectionSummary(c2.pair_id, existing);
+        await updateAgentProfile(this.profilePath, (profile2) => {
+          const saved2 = profile2.requests[id4];
+          if (saved2.pendingPairId !== c2.pair_id || !saved2.pendingToken) {
+            saved2.pendingPairId = c2.pair_id;
+            saved2.pendingToken = (0, import_node_crypto12.randomBytes)(32).toString("hex");
+          }
+        });
+        const profile = this.profile(), saved = profile.requests[id4];
+        const ready = await claimPairing({ type: "scopeblind.coordination.config.v1", setupVersion: 2, endpoint: profile.endpoint, authorityKey: profile.authorityKey, agentKey: profile.agentKey, token: saved.pendingToken, roomId: c2.room_id, purpose: "negotiation", sessionId: c2.session_id, principalKey: c2.principal_key, name: "My agent", pending: { privateKey: profile.privateKey, code: { version: 3, endpoint: profile.endpoint, authority_key: profile.authorityKey, room_id: c2.room_id, session_id: c2.session_id, principal_key: c2.principal_key, pair_id: c2.pair_id, secret: saved.pairingSecret, scope: NEGOTIATION_PAIRING_SCOPE, audience: NEGOTIATION_PAIRING_AUDIENCE } } }, this.fetchImpl);
+        if (ready.binding?.payload.owner_authorization.payload.body.expected_agent_key !== profile.agentKey) fail("agent_grant_wrong_key", "This grant must explicitly name the profile\u2019s agent key.");
+        await updateAgentProfile(this.profilePath, (current) => {
+          const prior = current.connections[c2.pair_id];
+          if (prior && prior.binding.digest !== ready.binding.digest) fail("agent_grant_conflict", "The connection ID already belongs to another signed grant.");
+          current.connections[c2.pair_id] = ready;
+          delete current.requests[id4].pendingToken;
+          delete current.requests[id4].pendingPairId;
+        });
+        return { ...this.connectionSummary(c2.pair_id, ready), next_step: "Call coordination.inspect_negotiation with this connection_id before taking any next action. Claiming does not establish readiness or start background work." };
+      }
+      connectionSummary(id4, connection) {
+        return { connection_id: id4, purpose: connection.purpose || "execution", room_id: connection.roomId, ...connection.sessionId ? { session_id: connection.sessionId, principal_key: connection.principalKey } : {}, agent_key: connection.agentKey, expires_at: connection.binding.payload.expires_at, locally_expired: Date.parse(connection.binding.payload.expires_at) <= Date.now(), same_profile_key: connection.agentKey === this.profile().agentKey, scope: connection.binding.payload.scope };
+      }
+      connections() {
+        const profile = this.profile();
+        return { agent_key: profile.agentKey, connections: Object.entries(profile.connections).map(([id4, c2]) => this.connectionSummary(id4, c2)), scope: "Saved grants only; connection listings do not prove that authority remains active. Inspect the intended connection before acting. Every action is still checked by the service." };
+      }
+      clientFor(id4) {
+        if (!profileId(id4)) fail("unknown_agent_connection", "Use an exact connection_id from coordination.connections.");
+        const c2 = this.profile().connections[id4];
+        if (!c2) fail("unknown_agent_connection", "This profile does not hold that connection.");
+        return new CoordinationClient(c2, this.fetchImpl);
+      }
+      sourceConnection(id4) {
+        const profile = this.profile(), source = profile.connections[id4];
+        if (!source || source.purpose !== "negotiation" || !source.sessionId || !source.principalKey || source.agentKey !== profile.agentKey) fail("handoff_profile_key_required", "Seamless execution handoff needs a negotiation connection enrolled with this profile\u2019s own key. Imported legacy connections retain their original scope; their discarded private key cannot be recreated.");
+        return source;
+      }
+      async checkedHandoff(value, source) {
+        const p = this.profile();
+        if (!exact4(value, ["pair_id", "room_id", "source_room_id", "session_id", "source_pair_id", "agent_key", "name", "status", "expires_at", "token_expires_at", "authorization"], ["binding"])) fail("invalid_handoff", "The offered execution connection has an unsupported shape.");
+        const h = value, q = h.authorization?.payload, b = q?.body;
+        if (![h.pair_id, h.room_id].every(profileId) || h.source_room_id !== source.roomId || h.session_id !== source.sessionId || h.source_pair_id !== source.binding.payload.pair_id || h.agent_key !== p.agentKey || typeof h.name !== "string" || !h.name.length || h.name.length > 60 || !["waiting", "connected", "revoked", "expired"].includes(h.status) || ![h.expires_at, h.token_expires_at].every((t) => Number.isFinite(Date.parse(t))) || Date.parse(h.token_expires_at) < Date.parse(h.expires_at) || !envelope(h.authorization) || !await verify(h.authorization, source.principalKey)) fail("invalid_handoff", "The execution handoff is not signed by the expected human principal for this exact source connection.");
+        if (!exact4(q, ["type", "action", "room_id", "body", "issued_at", "nonce"]) || q.type !== "scopeblind.coordination.request.v1" || q.action !== "agent_handoff_create" || q.room_id !== h.room_id || !profileId(q.nonce) || !exact4(b, ["session_id", "source_pair_id", "pair_id", "agent_key", "agreement_digest", "scope", "name", "expires_at", "token_expires_at"]) || b.session_id !== h.session_id || b.source_pair_id !== h.source_pair_id || b.pair_id !== h.pair_id || b.agent_key !== h.agent_key || !hex2(b.agreement_digest) || canonical(b.scope) !== canonical(PAIRING_SCOPE) || b.name !== h.name || b.expires_at !== h.expires_at || b.token_expires_at !== h.token_expires_at) fail("invalid_handoff", "The human authorization does not match the exact execution scope and target agreement.");
+        return h;
+      }
+      async checkHandoffs(id4) {
+        const source = this.sourceConnection(id4), response = await this.request("agent_handoff_get", source.roomId, { session_id: source.sessionId, source_pair_id: source.binding.payload.pair_id });
+        if (!Array.isArray(response.handoffs) || response.handoffs.length > 50) fail("invalid_handoff", "The handoff response is invalid.");
+        const handoffs = await Promise.all(response.handoffs.map((v) => this.checkedHandoff(v, source)));
+        return { source_connection_id: id4, handoffs: handoffs.map((h) => ({ handoff_id: h.pair_id, room_id: h.room_id, name: h.name, status: h.status, expires_at: h.expires_at, token_expires_at: h.token_expires_at, agreement_digest: h.authorization.payload.body.agreement_digest })), next_step: "Only an active, separately human-authorized handoff can be claimed. Claiming never spends money or transfers human approval powers." };
+      }
+      async claimExecutionConnection(id4, handoffId) {
+        if (!profileId(handoffId)) fail("invalid_handoff", "Use the exact handoff_id returned by coordination.check_handoffs.");
+        const source = this.sourceConnection(id4), response = await this.request("agent_handoff_get", source.roomId, { session_id: source.sessionId, source_pair_id: source.binding.payload.pair_id });
+        if (!Array.isArray(response.handoffs)) fail("invalid_handoff", "The handoff response is invalid.");
+        const offered = response.handoffs.find((v) => v?.pair_id === handoffId);
+        if (!offered) fail("handoff_not_found", "No execution grant with that ID belongs to this source connection.");
+        const handoff = await this.checkedHandoff(offered, source);
+        if (["revoked", "expired"].includes(handoff.status) || Date.parse(handoff.token_expires_at) <= Date.now()) fail("handoff_inactive", "This execution grant is expired or revoked. The person must decide whether to grant new access.");
+        const prior = this.profile().connections[handoffId];
+        if (prior) return this.connectionSummary(handoffId, prior);
+        if (handoff.status === "waiting" && Date.parse(handoff.expires_at) <= Date.now()) fail("handoff_inactive", "This unclaimed execution grant expired.");
+        await updateAgentProfile(this.profilePath, (profile2) => {
+          const pending = profile2.pendingHandoffs[handoffId];
+          if (pending && pending.handoff.authorization.digest !== handoff.authorization.digest) fail("handoff_conflict", "The saved handoff ID names a different authorization.");
+          profile2.pendingHandoffs[handoffId] ??= { handoff, token: (0, import_node_crypto12.randomBytes)(32).toString("hex") };
+        });
+        const profile = this.profile(), token = profile.pendingHandoffs[handoffId].token, claimed = await this.request("agent_handoff_claim", handoff.room_id, { pair_id: handoffId, executor_token: token, name: handoff.name });
+        const binding = claimed.binding, b = binding?.payload;
+        if (claimed.executor_token !== token || !envelope(binding) || !b || !await verify(binding, profile.authorityKey) || !exact4(b, ["type", "pair_id", "room_id", "agreement_digest", "owner_key", "agent_key", "name", "scope", "audience", "issued_at", "expires_at", "owner_authorization"]) || b.type !== "scopeblind.coordination.agent-binding.v1" || b.pair_id !== handoffId || b.room_id !== handoff.room_id || b.agreement_digest !== handoff.authorization.payload.body.agreement_digest || b.owner_key !== source.principalKey || b.agent_key !== profile.agentKey || b.name !== handoff.name || b.audience !== "scopeblind.coordination.sample-ledger" || canonical(b.scope) !== canonical(PAIRING_SCOPE) || b.expires_at !== handoff.token_expires_at || !Number.isFinite(Date.parse(b.issued_at)) || Date.parse(b.issued_at) >= Date.parse(b.expires_at) || Date.parse(b.issued_at) > Date.now() + 3e5 || canonical(b.owner_authorization) !== canonical(handoff.authorization)) fail("invalid_handoff_binding", "The claimed execution grant did not verify against the pinned authority and exact human authorization. Retry the same ID; no connection is presented as verified.");
+        const config = { type: "scopeblind.coordination.config.v1", setupVersion: 2, endpoint: profile.endpoint, authorityKey: profile.authorityKey, roomId: handoff.room_id, agentKey: profile.agentKey, token, name: handoff.name, purpose: "execution", binding };
+        await updateAgentProfile(this.profilePath, (current) => {
+          current.connections[handoffId] = config;
+          delete current.pendingHandoffs[handoffId];
+        });
+        return { ...this.connectionSummary(handoffId, config), next_step: "Call coordination.inspect with this NEW connection_id to verify the adopted agreement and current work before acting. The negotiation connection remains separately scoped; no action was executed." };
+      }
+    };
+  }
+});
+
+// src/coordination-server.ts
+var coordination_server_exports = {};
+__export(coordination_server_exports, {
+  COORDINATION_TOOLS: () => COORDINATION_TOOLS,
+  NEGOTIATION_TOOLS: () => NEGOTIATION_TOOLS,
+  REHEARSAL_TOOLS: () => REHEARSAL_TOOLS,
+  handleCoordinationRequest: () => handleCoordinationRequest,
+  runCoordinationServer: () => runCoordinationServer
+});
+async function handleCoordinationRequest(client, request, signal) {
+  if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") return { jsonrpc: "2.0", id: request?.id ?? null, error: { code: -32600, message: "Invalid JSON-RPC request." } };
+  if (request.id === void 0) return void 0;
+  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-coordination", version: process.env.PROTECT_MCP_VERSION || "0.21.0" }, capabilities: { tools: {} } } };
+  if (request.method === "ping") return { jsonrpc: "2.0", id: request.id, result: {} };
+  if (request.method === "tools/list") return { jsonrpc: "2.0", id: request.id, result: { tools: toolsForPurpose(client.purpose) } };
+  if (request.method !== "tools/call") return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found." } };
+  try {
+    const args = request.params?.arguments ?? {};
+    if (!args || typeof args !== "object" || Array.isArray(args)) throw new CoordinationError("invalid_input", "Tool arguments must be an object.");
+    const available = toolsForPurpose(client.purpose);
+    if (!available.some((tool) => tool.name === request.params?.name)) throw new CoordinationError("tool_outside_grant", "This connection does not expose that capability. Use the separately authorized connection for its intended purpose.");
+    const fields = args;
+    if (request.params?.name === "coordination.inspect_negotiation") {
+      if (Object.keys(fields).some((key) => key !== "report_digest")) throw new CoordinationError("invalid_input", "Inspect takes only an optional report_digest; session and principal come from the pairing.");
+      return textResult2(request.id, await client.inspectNegotiation(fields.report_digest, signal));
+    }
+    if (request.params?.name === "coordination.propose_candidate") {
+      if (Object.keys(fields).join(",") !== "proposal") throw new CoordinationError("invalid_input", "Propose requires only proposal.");
+      return textResult2(request.id, await client.proposeCandidate(fields.proposal));
+    }
+    if (request.params?.name === "coordination.respond_candidate") return textResult2(request.id, await client.respondCandidate(fields));
+    if (request.params?.name === "coordination.compare_candidate") return textResult2(request.id, await client.compareCandidate(fields, signal));
+    if (request.params?.name === "coordination.wait_negotiation") return textResult2(request.id, await client.waitNegotiation(fields, signal));
+    if (request.params?.name === "coordination.inspect_rehearsal") {
+      if (Object.keys(fields).some((key) => key !== "report_digest")) throw new CoordinationError("invalid_input", "Inspect takes only an optional report_digest.");
+      return textResult2(request.id, await client.inspectRehearsal(fields.report_digest));
+    }
+    if (request.params?.name === "coordination.propose_case") {
+      if (Object.keys(fields).join(",") !== "case") throw new CoordinationError("invalid_input", "Propose case requires only case.");
+      return textResult2(request.id, await client.proposeCase(fields.case));
+    }
+    if (request.params?.name === "coordination.propose_repair") {
+      if (Object.keys(fields).join(",") !== "proposal") throw new CoordinationError("invalid_input", "Propose repair requires only proposal.");
+      return textResult2(request.id, await client.proposeRepair(fields.proposal));
+    }
+    if (request.params?.name === "coordination.run_rehearsal") return textResult2(request.id, await client.runRehearsal(fields, signal));
+    if (request.params?.name === "coordination.wait") return textResult2(request.id, await client.wait(args, signal));
+    if (request.params?.name === "coordination.deliver") {
+      if (Object.keys(args).join(",") !== "run_id") throw new CoordinationError("invalid_input", "coordination.deliver requires only the exact run_id from coordination.inspect.");
+      return textResult2(request.id, await client.deliver(args.run_id));
+    }
+    if (request.params?.name === "coordination.inspect") {
+      if (Object.keys(args).length) throw new CoordinationError("invalid_input", "coordination.inspect takes no arguments.");
+      return textResult2(request.id, await client.inspect());
+    }
+    if (request.params?.name !== "ledger.pay") throw new CoordinationError("unknown_tool", "Unknown coordination tool.");
+    const values = args;
+    const allowed = /* @__PURE__ */ new Set(["operation_id", "invoice_id", "amount_minor", "currency", "destination", "fixture_revision"]);
+    if (Object.keys(values).some((key) => !allowed.has(key))) throw new CoordinationError("invalid_input", "Payment contains unsupported fields.");
+    const payment = {
+      operation_id: values.operation_id,
+      input: { invoice_id: values.invoice_id, amount_minor: values.amount_minor, currency: values.currency, destination: values.destination, ...values.fixture_revision !== void 0 ? { fixture_revision: values.fixture_revision } : {} }
+    };
+    return textResult2(request.id, await client.pay(payment));
+  } catch (error) {
+    return textResult2(request.id, {
+      code: error instanceof CoordinationError ? error.code : "coordination_error",
+      error: error instanceof CoordinationError ? error.message : "Coordination request could not be completed."
+    }, true);
+  }
+}
+async function runCoordinationServer(args) {
+  const config = args.length === 2 && args[0] === "--config" ? coordinationConfigFromFile(args[1]) : coordinationConfigFromArgs(args);
+  const client = new CoordinationClient(config);
+  const lines = (0, import_node_readline4.createInterface)({ input: process.stdin, crlfDelay: Infinity });
+  let chain = Promise.resolve();
+  const waits = /* @__PURE__ */ new Map();
+  const cancelWaits = () => {
+    for (const controller of waits.values()) controller.abort();
+  };
+  lines.on("close", cancelWaits);
+  process.stdout.on("error", cancelWaits);
+  lines.on("line", (line) => {
+    if (!line.trim()) return;
+    let request;
+    try {
+      if (line.length > 1e6) throw new Error("Frame too large");
+      request = JSON.parse(line);
+    } catch {
+      process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Invalid or oversized JSON-RPC message." } }) + "\n");
+      return;
+    }
+    if (request?.jsonrpc === "2.0" && request.method === "notifications/cancelled") {
+      const id4 = request.params?.requestId;
+      if (typeof id4 === "string" || typeof id4 === "number") waits.get(id4)?.abort();
+      return;
+    }
+    const controller = request?.method === "tools/call" && ["coordination.wait", "coordination.run_rehearsal", "coordination.wait_negotiation", "coordination.compare_candidate"].includes(String(request.params?.name)) ? new AbortController() : void 0;
+    if (controller) waits.set(request.id, controller);
+    chain = chain.then(async () => {
+      let response;
+      try {
+        response = await handleCoordinationRequest(client, request, controller?.signal);
+      } catch {
+        response = { jsonrpc: "2.0", id: null, error: { code: -32700, message: "Invalid or oversized JSON-RPC message." } };
+      } finally {
+        if (controller && waits.get(request.id) === controller) waits.delete(request.id);
+      }
+      if (response !== void 0) process.stdout.write(JSON.stringify(response) + "\n");
+    });
+  });
+  process.stderr.write(client.purpose === "negotiation" ? "[PROTECT_MCP] Negotiation MCP ready: inspect_negotiation, propose_candidate, respond_candidate, compare_candidate, and wait_negotiation. One principal only; no payment, human approval, adoption, or hosted-model authority.\n" : client.purpose === "rehearsal" ? "[PROTECT_MCP] Test MCP ready: inspect_rehearsal, propose_case, propose_repair, and run_rehearsal. Separate sample ledgers; no execution or adoption authority.\n" : "[PROTECT_MCP] Coordination MCP ready: ledger.pay, coordination.inspect, coordination.deliver, and coordination.wait. Sample ledger only; no real money moves.\n");
+  await new Promise((resolve5) => lines.on("close", resolve5));
+  await chain;
+  process.stdout.removeListener("error", cancelWaits);
+}
+var import_node_readline4, COORDINATION_TOOLS, REHEARSAL_TOOLS, NEGOTIATION_TOOLS, toolsForPurpose, textResult2;
+var init_coordination_server = __esm({
+  "src/coordination-server.ts"() {
+    "use strict";
+    import_node_readline4 = require("readline");
+    init_coordination_client();
+    init_coordination_pair_cli();
+    init_coordination_config();
+    COORDINATION_TOOLS = [
+      {
+        name: "coordination.deliver",
+        description: "Freeze the completed invoice result for the recipient to accept or request changes. The service refuses delivery while operations remain held, admitted, or unknown, or invoices have no recorded disposition. Does not accept the result on behalf of a person, change terms, or grant a revision. Returns the verified service-signed manifest.",
+        inputSchema: { type: "object", properties: { run_id: { type: "string", pattern: "^run-[A-Za-z0-9_-]{8,100}$", description: "Exact run_id from the inspected task. Prevents delivery of a different revision." } }, required: ["run_id"], additionalProperties: false },
+        annotations: { title: "Deliver the result for review", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      {
+        name: "ledger.pay",
+        description: "Pay a sample invoice through the shared room authority. The installed adapter obtains and verifies an exact signed admission BEFORE the sample ledger can execute. No real money moves. Reuse operation_id for retries of the same intended payment; a changed payload with the same ID is refused. Held requests need the room reviewer; call again with unchanged terms after approval. An unknown outcome must be reconciled with the same ID, never replaced by a new payment. Returns signed admission and destination evidence when available.",
+        inputSchema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            operation_id: { type: "string", minLength: 8, maxLength: 100, pattern: "^[A-Za-z0-9_-]{8,100}$", description: "Stable identity for this intended payment, retained across retries and restarts." },
+            invoice_id: { type: "string", minLength: 1, maxLength: 60 },
+            amount_minor: { type: "integer", minimum: 1, maximum: 1e7, description: "USD cents; 32000 means $320.00." },
+            currency: { type: "string", enum: ["USD"] },
+            fixture_revision: { type: "integer", minimum: 1, description: "Current records revision from coordination.inspect. Required for live rooms; binds this exact record version." },
+            destination: { type: "string", minLength: 1, maxLength: 100, description: "Sample destination from coordination.inspect, for example sandbox:northstar." }
+          },
+          required: ["operation_id", "invoice_id", "amount_minor", "currency", "destination"]
+        },
+        annotations: { title: "Pay a sample invoice under the agreed rules", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      {
+        name: "coordination.inspect",
+        description: "Read this shared invoice room, its owner-signed agreement, sample invoices, budget, and pending outcomes. The configured registrar key is pinned; the adapter verifies the agreement signature. Live budget/operation listings are the service report, not proof of complete runtime coverage. Use ledger.pay to independently verify the exact admission and destination outcome. Does not approve, execute, change rules, or move money.",
+        inputSchema: { type: "object", properties: {}, additionalProperties: false },
+        annotations: { title: "Inspect the shared invoice room", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      {
+        name: "coordination.wait",
+        description: "Await a colleague decision or other room event for up to 30 seconds. Pass the cursor from coordination.inspect or the last wait. The installed tool polls every two seconds without calling the model between checks. Returns changed or waiting, current cursor/run, recent events, and operations needing attention. On changed, inspect and retry approved requests with unchanged operation IDs. On timeout, the active agent session can call wait again; resumption depends on the MCP client. This does not push notifications, approve, execute, or grant authority.",
+        inputSchema: { type: "object", properties: {
+          after_cursor: { type: "integer", minimum: 0, description: "Event cursor returned by coordination.inspect or the preceding wait." },
+          run_id: { type: "string", pattern: "^run-[A-Za-z0-9_-]{8,100}$", description: "Optional inspected run; a changed attempt returns immediately." },
+          timeout_ms: { type: "integer", minimum: 1e3, maximum: 3e4, default: 3e4 }
+        }, required: ["after_cursor"], additionalProperties: false },
+        annotations: { title: "Wait for the next room decision", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      }
+    ];
+    REHEARSAL_TOOLS = [
+      {
+        name: "coordination.inspect_rehearsal",
+        description: "Inspect the owner-signed agreement, sample records, proposed expectations, repairs, and signed test reports. Optional report_digest retrieves exact historical evidence. The adapter pins the authority and verifies source signatures; the gate operator attests to observations. This test grant cannot execute source payments, approve exceptions, or activate a repair.",
+        inputSchema: { type: "object", properties: { report_digest: { type: "string", pattern: "^[0-9a-f]{64}$", description: "Optional exact report digest to retrieve its immutable evidence snapshot." } }, additionalProperties: false },
+        annotations: { title: "Inspect rules and test evidence", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      {
+        name: "coordination.propose_case",
+        description: "Add an explicit human expectation or safety challenge against sample invoices. Stable case IDs make identical retries safe; changed content needs a new ID. Cases only influence isolated tests and do not pause work or change the active agreement. Required shipped safety cases cannot be replaced. Invoice expectations are allow, ask, or refuse; adversarial case kinds use invariant.",
+        inputSchema: { type: "object", properties: { case: { type: "object", properties: {
+          id: { type: "string", pattern: "^[A-Za-z0-9_-]{1,80}$" },
+          title: { type: "string", minLength: 1, maxLength: 120 },
+          kind: { type: "string", enum: ["invoice", "approved_invoice", "duplicate_invoice", "changed_approval", "changed_destination", "expired_approval", "budget_cap"] },
+          invoice_id: { type: "string", pattern: "^[A-Za-z0-9_-]{1,60}$" },
+          amount_minor: { type: "integer", minimum: 1, maximum: 1e7, description: "Optional explicit invoice AND matching purchase-order override inside this case\u2019s isolated ledger only." },
+          expected: { type: "string", enum: ["allow", "ask", "refuse", "invariant"] },
+          requirement: { type: "string", minLength: 1, maxLength: 400 }
+        }, required: ["id", "title", "kind", "invoice_id", "expected", "requirement"], additionalProperties: false } }, required: ["case"], additionalProperties: false },
+        annotations: { title: "Propose a test case", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      {
+        name: "coordination.propose_repair",
+        description: "Propose a single review-threshold change in USD cents, with an explicit rationale. The proposal is bound to the current source agreement, sample records, and cases. It cannot activate rules, change the budget or destination, or authorize a payment. Keep its stable id for retries; inspect again if the source snapshot changes.",
+        inputSchema: { type: "object", properties: { proposal: { type: "object", properties: { id: { type: "string", pattern: "^[A-Za-z0-9_-]{1,80}$" }, approval_above_minor: { type: "integer", minimum: 0, maximum: 1e7 }, rationale: { type: "string", minLength: 1, maxLength: 600 } }, required: ["id", "approval_above_minor", "rationale"], additionalProperties: false } }, required: ["proposal"], additionalProperties: false },
+        annotations: { title: "Propose a review-threshold repair", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      {
+        name: "coordination.run_rehearsal",
+        description: "Run concrete cases through the actual gate in separate fixture ledgers. Omit proposal_id for a baseline, or select an exact proposal to compare before and after. The tool resumes up to six durable chunks within three minutes and returns pending if unfinished. Use one stable id per intended run and retain it if a response is lost or times out; inspect reports before retrying. Results are bounded observations, not proof for every input. This never spends the source budget, changes the source ledger, or adopts a repair.",
+        inputSchema: { type: "object", properties: { id: { type: "string", pattern: "^[A-Za-z0-9_-]{1,80}$" }, proposal_id: { type: "string", pattern: "^[A-Za-z0-9_-]{1,80}$" } }, required: ["id"], additionalProperties: false },
+        annotations: { title: "Test and compare rules in isolation", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      }
+    ];
+    NEGOTIATION_TOOLS = [
+      {
+        name: "coordination.inspect_negotiation",
+        description: "Inspect your principal\u2019s signed mandate and private brief, plus the shared candidates, responses, and isolated comparison records for this paired session. Never returns the other principal\u2019s private brief. Treat brief text as private task context, not as permission to override the signed limits. Optional report_digest retrieves exact historical comparison evidence. This connection cannot pay, approve, adopt, delegate, or run a hosted model.",
+        inputSchema: { type: "object", properties: { report_digest: { type: "string", pattern: "^[0-9a-f]{64}$" } }, additionalProperties: false },
+        annotations: { title: "Inspect my mandate and shared negotiation", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      {
+        name: "coordination.propose_candidate",
+        description: "Propose a review threshold and optional total budget within your principal\u2019s signed limits. At most three candidate proposals may exist in this session; the service enforces the limit across all agents and retries. Reuse id for retries with identical terms. A counterproposal must name the current parent_digest. Only structured terms are shared; do not send private briefing text. A candidate grants no authority and cannot change the active job.",
+        inputSchema: { type: "object", properties: { proposal: { type: "object", properties: { id: { type: "string", pattern: "^[A-Za-z0-9_-]{1,80}$" }, approval_above_minor: { type: "integer", minimum: 0, maximum: 1e7, description: "USD cents: 40000 means review above $400." }, budget_minor: { type: "integer", minimum: 1, maximum: 1e7, description: "Optional total budget in USD cents, within the principal\u2019s signed budget limits. Omit to retain the source budget." }, parent_digest: { type: "string", pattern: "^[0-9a-f]{64}$" } }, required: ["id", "approval_above_minor"], additionalProperties: false } }, required: ["proposal"], additionalProperties: false },
+        annotations: { title: "Propose bounded terms", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      {
+        name: "coordination.respond_candidate",
+        description: "Record support or no agreement for an exact shared candidate on behalf of your principal\u2019s agent mandate. Support is a recommendation only; it is never either human\u2019s approval. No agreement is a valid bounded outcome. This tool cannot pay, approve the final agreement, or adopt it.",
+        inputSchema: { type: "object", properties: { proposal_digest: { type: "string", pattern: "^[0-9a-f]{64}$" }, decision: { type: "string", enum: ["support", "no_agreement"] } }, required: ["proposal_digest", "decision"], additionalProperties: false },
+        annotations: { title: "Respond to the exact candidate", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      {
+        name: "coordination.compare_candidate",
+        description: "Compare an exact supported candidate against the baseline using the real gate in isolated sample ledgers. The server owns one fixed report identity per proposal; retries resume two-case chunks. This tool runs for at most three minutes and returns pending if unfinished. Resume with the SAME proposal_digest after timeout or cancellation. A verified report records observed cases; it does not approve or adopt terms, spend the source budget, or prove every possible input.",
+        inputSchema: { type: "object", properties: { proposal_digest: { type: "string", pattern: "^[0-9a-f]{64}$" } }, required: ["proposal_digest"], additionalProperties: false },
+        annotations: { title: "Compare the candidate in isolation", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      },
+      {
+        name: "coordination.wait_negotiation",
+        description: "Wait for this principal\u2019s next negotiation action or a completed, blocked, or human-decision state. Polls only the principal-scoped negotiation endpoint every two seconds for at most thirty seconds, without model calls. Pass state_digest from inspection as after_digest to also return on any state change. This is bounded polling, not a background notification or permission to keep proposing beyond three candidates.",
+        inputSchema: { type: "object", properties: { after_digest: { type: "string", pattern: "^[0-9a-f]{64}$" }, timeout_ms: { type: "integer", minimum: 1e3, maximum: 3e4, default: 3e4 } }, additionalProperties: false },
+        annotations: { title: "Wait for negotiation status", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }
+      }
+    ];
+    toolsForPurpose = (purpose) => purpose === "negotiation" ? NEGOTIATION_TOOLS : purpose === "rehearsal" ? REHEARSAL_TOOLS : COORDINATION_TOOLS;
+    textResult2 = (id4, value, isError = false) => ({ jsonrpc: "2.0", id: id4, result: { content: [{ type: "text", text: JSON.stringify(value) }], ...isError ? { isError: true } : {} } });
+  }
+});
+
+// src/coordination-agent-server.ts
+var coordination_agent_server_exports = {};
+__export(coordination_agent_server_exports, {
+  AGENT_PROFILE_TOOLS: () => AGENT_PROFILE_TOOLS,
+  handleAgentProfileRequest: () => handleAgentProfileRequest,
+  runCoordinationAgent: () => runCoordinationAgent
+});
+async function handleAgentProfileRequest(client, request, signal) {
+  if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") return { jsonrpc: "2.0", id: request?.id ?? null, error: { code: -32600, message: "Invalid JSON-RPC request." } };
+  if (request.id === void 0) return void 0;
+  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-agent", version: process.env.PROTECT_MCP_VERSION || "0.21.0" }, capabilities: { tools: {} } } };
+  if (request.method === "ping") return { jsonrpc: "2.0", id: request.id, result: {} };
+  if (request.method === "tools/list") return { jsonrpc: "2.0", id: request.id, result: { tools: [...AGENT_PROFILE_TOOLS, ...scopedTools] } };
+  if (request.method !== "tools/call") return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found." } };
+  try {
+    const args = request.params?.arguments ?? {};
+    if (!args || typeof args !== "object" || Array.isArray(args)) throw new CoordinationError("invalid_input", "Tool arguments must be an object.");
+    const fields = args, name = request.params?.name;
+    const only = (...keys2) => {
+      if (Object.keys(fields).sort().join(",") !== keys2.sort().join(",")) throw new CoordinationError("invalid_input", "Use only the exact fields required by this tool.");
+    };
+    if (name === "coordination.prepare_task") {
+      only("request_id", "draft");
+      return result(request, await client.prepareTask(fields));
+    }
+    if (name === "coordination.inspect_task_request") {
+      only("request_id");
+      return result(request, await client.inspectTaskRequest(fields.request_id));
+    }
+    if (name === "coordination.claim_task_connection") {
+      only("request_id");
+      return result(request, await client.claimTaskConnection(fields.request_id));
+    }
+    if (name === "coordination.connections") {
+      only();
+      return result(request, client.connections());
+    }
+    if (name === "coordination.check_handoffs") {
+      only("connection_id");
+      return result(request, await client.checkHandoffs(fields.connection_id));
+    }
+    if (name === "coordination.claim_execution_connection") {
+      only("connection_id", "handoff_id");
+      return result(request, await client.claimExecutionConnection(fields.connection_id, fields.handoff_id));
+    }
+    if (!scopedTools.some((tool) => tool.name === name)) throw new CoordinationError("unknown_tool", "This profile does not expose that tool.");
+    const { connection_id, ...scoped } = fields;
+    return await handleCoordinationRequest(client.clientFor(connection_id), { ...request, params: { name, arguments: scoped } }, signal);
+  } catch (error) {
+    return result(request, { code: error instanceof CoordinationError ? error.code : "agent_request_error", error: error instanceof Error ? error.message : "The agent request could not be completed." }, true);
+  }
+}
+function options(args, mode) {
+  const allowed = /* @__PURE__ */ new Set(["--profile", "--endpoint", "--authority-key", ...mode === "setup" ? ["--client"] : [], ...mode === "import" ? ["--config"] : []]), values = /* @__PURE__ */ new Map();
+  for (let index = 0; index < args.length; index += 2) {
+    const flag2 = args[index], value = args[index + 1];
+    if (!allowed.has(flag2) || values.has(flag2) || !value || value.startsWith("--")) throw new Error("Use --profile, optional --endpoint/--authority-key for first setup, and the documented setup/import options.");
+    values.set(flag2, value);
+  }
+  return values;
+}
+async function runCoordinationAgent(args) {
+  const mode = args[0] === "setup" ? "setup" : args[0] === "import" ? "import" : "server";
+  const values = options(mode === "server" ? args : args.slice(1), mode), path = (0, import_node_path12.resolve)(values.get("--profile") || DEFAULT_AGENT_PROFILE);
+  const selected = mode === "setup" ? agentClient(values.get("--client") || "claude-code") : void 0;
+  const profile = await ensureAgentProfile(path, values.get("--endpoint"), values.get("--authority-key"));
+  if (mode === "setup") {
+    process.stdout.write(agentProfileRegistration(selected, `scopeblind-agent-${profile.agentKey.slice(0, 12)}`, path) + "\n");
+    process.stdout.write("Register this server once, then ask your agent to prepare a shared task with coordination.prepare_task. The profile is an agent identity only; each person reviews and signs their own authority. Existing connections stay separately scoped.\n");
+    return;
+  }
+  if (mode === "import") {
+    if (!values.get("--config")) throw new Error("Import needs the existing --config file.");
+    const id4 = await importProfileConnection(path, values.get("--config"));
+    process.stdout.write(`Saved existing scoped connection ${id4}. Its authority is unchanged. Imported legacy keys cannot be recreated for automatic execution handoff.
+`);
+    return;
+  }
+  const client = new CoordinationAgentClient(path), lines = (0, import_node_readline5.createInterface)({ input: process.stdin, crlfDelay: Infinity });
+  let chain = Promise.resolve();
+  const waits = /* @__PURE__ */ new Map(), cancel = () => {
+    for (const controller of waits.values()) controller.abort();
+  };
+  lines.on("close", cancel);
+  process.stdout.on("error", cancel);
+  lines.on("line", (line) => {
+    if (!line.trim()) return;
+    let request;
+    try {
+      if (line.length > 1e6) throw new Error();
+      request = JSON.parse(line);
+    } catch {
+      process.stdout.write(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Invalid or oversized JSON-RPC message." } }) + "\n");
+      return;
+    }
+    if (request?.jsonrpc === "2.0" && request.method === "notifications/cancelled") {
+      const id4 = request.params?.requestId;
+      if (typeof id4 === "string" || typeof id4 === "number") waits.get(id4)?.abort();
+      return;
+    }
+    const controller = request?.method === "tools/call" && ["coordination.wait", "coordination.run_rehearsal", "coordination.wait_negotiation", "coordination.compare_candidate"].includes(String(request.params?.name)) ? new AbortController() : void 0;
+    if (controller) waits.set(request.id, controller);
+    chain = chain.then(async () => {
+      try {
+        const response = await handleAgentProfileRequest(client, request, controller?.signal);
+        if (response !== void 0) process.stdout.write(JSON.stringify(response) + "\n");
+      } finally {
+        if (controller && waits.get(request.id) === controller) waits.delete(request.id);
+      }
+    });
+  });
+  process.stderr.write("[PROTECT_MCP] Agent profile ready. Drafts confer no authority. Every scoped tool needs a separately authorized connection_id. No background model work is started.\n");
+  await new Promise((resolve5) => lines.on("close", resolve5));
+  await chain;
+  process.stdout.removeListener("error", cancel);
+}
+var import_node_readline5, import_node_path12, id3, amount2, draftSchema, AGENT_PROFILE_TOOLS, scopedTools, result;
+var init_coordination_agent_server = __esm({
+  "src/coordination-agent-server.ts"() {
+    "use strict";
+    import_node_readline5 = require("readline");
+    import_node_path12 = require("path");
+    init_coordination_agent_client();
+    init_coordination_client();
+    init_coordination_server();
+    init_coordination_agent_profile();
+    init_coordination_agent_setup();
+    id3 = { type: "string", pattern: "^[A-Za-z0-9_-]{8,100}$" };
+    amount2 = { type: "integer", minimum: 0, maximum: 1e7 };
+    draftSchema = { type: "object", additionalProperties: false, properties: {
+      title: { type: "string", minLength: 1, maxLength: 100 },
+      goal: { type: "string", minLength: 1, maxLength: 2e3 },
+      counterparty_name: { type: "string", maxLength: 60 },
+      budget_minor: { ...amount2, minimum: 1 },
+      approval_above_minor: amount2,
+      approval_ttl_seconds: { type: "integer", minimum: 30, maximum: 900 },
+      require_po_match: { type: "boolean", const: true },
+      min_budget_minor: { ...amount2, minimum: 1 },
+      max_budget_minor: { ...amount2, minimum: 1 },
+      min_threshold_minor: amount2,
+      max_threshold_minor: amount2,
+      private_brief: { type: "string", maxLength: 2e3 },
+      preference: { type: "string", enum: ["fewer_reviews", "more_review", "balanced"] },
+      budget_preference: { type: "string", enum: ["preserve_budget", "lower_budget", "more_capacity"] },
+      assumptions: { type: "array", maxItems: 12, items: { type: "string", minLength: 1, maxLength: 300 } }
+    }, required: ["title", "goal"] };
+    AGENT_PROFILE_TOOLS = [
+      { name: "coordination.prepare_task", description: "Prepare an unsigned shared invoice-task draft for your own person to review. Use a stable request_id for retries. Proposed limits, preferences, and assumptions grant no authority. Returns a private review link intended only for the requesting person; they review and sign in the browser, invite the other person, and explicitly authorize a scoped agent. Do not put unsupported hard rules into a preference. No room, human signature, payment, or hosted model is created by this tool.", inputSchema: { type: "object", additionalProperties: false, properties: { request_id: id3, draft: draftSchema }, required: ["request_id", "draft"] }, annotations: { title: "Prepare a shared task for human review", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.inspect_task_request", description: "Check a draft prepared by this profile. An accepted draft is still not an agent grant. Ready means the person separately signed the named negotiation grant; use claim_task_connection and inspect the mandate before acting. Does not poll in the background or reveal the draft to another principal.", inputSchema: { type: "object", additionalProperties: false, properties: { request_id: id3 }, required: ["request_id"] }, annotations: { title: "Check the person\u2019s review and agent grant", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.claim_task_connection", description: "Claim the exact negotiation connection explicitly authorized for this profile\u2019s key after human review. Saves its separate token locally and returns a connection_id. Does not sign a mandate, establish readiness, execute, approve, or grant ownership. Inspect the returned connection before taking its next permitted action.", inputSchema: { type: "object", additionalProperties: false, properties: { request_id: id3 }, required: ["request_id"] }, annotations: { title: "Connect to the human-authorized task", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.connections", description: "List saved purpose-scoped connections without credentials. A saved grant may have expired or been revoked: inspect before acting. Every scoped tool requires its explicit connection_id so another task or purpose cannot be selected implicitly.", inputSchema: { type: "object", additionalProperties: false, properties: {} }, annotations: { title: "List this agent\u2019s separate connections", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.check_handoffs", description: "Check whether the organizer separately authorized this same agent to execute the exact jointly adopted task. Requires the original negotiation connection_id. Uses the profile key, never broadens the old negotiation token, and performs no payment. Legacy imported connections without the original private agent key cannot claim this continuity.", inputSchema: { type: "object", additionalProperties: false, properties: { connection_id: id3 }, required: ["connection_id"] }, annotations: { title: "Check for a separately authorized execution handoff", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.claim_execution_connection", description: "Claim one exact owner-signed execution handoff discovered by check_handoffs. Returns a NEW execution connection_id while preserving the negotiation grant separately. The local token is persisted before claiming so a lost reply can be retried with the same handoff_id. Does not execute or approve anything; inspect the new room before acting.", inputSchema: { type: "object", additionalProperties: false, properties: { connection_id: id3, handoff_id: id3 }, required: ["connection_id", "handoff_id"] }, annotations: { title: "Claim the approved execution handoff", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }
+    ];
+    scopedTools = [...COORDINATION_TOOLS, ...REHEARSAL_TOOLS, ...NEGOTIATION_TOOLS].map((tool) => ({ ...tool, description: tool.description + " Select the exact saved connection_id for this purpose; permissions are never combined across connections.", inputSchema: { ...tool.inputSchema, properties: { ...tool.inputSchema.properties, connection_id: id3 }, required: [..."required" in tool.inputSchema ? tool.inputSchema.required ?? [] : [], "connection_id"] } }));
+    result = (request, value, error = false) => ({ jsonrpc: "2.0", id: request.id, result: { content: [{ type: "text", text: JSON.stringify(value) }], ...error ? { isError: true } : {} } });
+  }
+});
+
 // src/scopeblind-bridge.ts
 function parseConfiguredPseudonymKey(value) {
   const key = Buffer.from(value, "base64url");
@@ -5808,28 +8531,28 @@ function parseConfiguredPseudonymKey(value) {
   return key;
 }
 function loadOrCreatePseudonymKey(env, base, slug) {
-  const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path10.join)((0, import_node_os.homedir)(), ".protect-mcp", "egress-keys");
-  const scopeDigest = (0, import_node_crypto9.createHash)("sha256").update(`${base}\0${slug}`).digest("hex");
-  const path = (0, import_node_path10.join)(dir, `${scopeDigest}.key`);
-  (0, import_node_fs14.mkdirSync)(dir, { recursive: true, mode: 448 });
-  (0, import_node_fs14.chmodSync)(dir, 448);
+  const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path13.join)((0, import_node_os3.homedir)(), ".protect-mcp", "egress-keys");
+  const scopeDigest = (0, import_node_crypto13.createHash)("sha256").update(`${base}\0${slug}`).digest("hex");
+  const path = (0, import_node_path13.join)(dir, `${scopeDigest}.key`);
+  (0, import_node_fs16.mkdirSync)(dir, { recursive: true, mode: 448 });
+  (0, import_node_fs16.chmodSync)(dir, 448);
   try {
-    const existing = (0, import_node_fs14.readFileSync)(path);
+    const existing = (0, import_node_fs16.readFileSync)(path);
     if (existing.length !== 32) throw new Error(`local egress key has invalid length: ${path}`);
-    (0, import_node_fs14.chmodSync)(path, 384);
+    (0, import_node_fs16.chmodSync)(path, 384);
     return existing;
   } catch (err) {
     if (err?.code !== "ENOENT") throw err;
   }
-  const fresh = (0, import_node_crypto9.randomBytes)(32);
+  const fresh = (0, import_node_crypto13.randomBytes)(32);
   try {
-    (0, import_node_fs14.writeFileSync)(path, fresh, { mode: 384, flag: "wx" });
+    (0, import_node_fs16.writeFileSync)(path, fresh, { mode: 384, flag: "wx" });
     return fresh;
   } catch (err) {
     if (err?.code !== "EEXIST") throw err;
-    const existing = (0, import_node_fs14.readFileSync)(path);
+    const existing = (0, import_node_fs16.readFileSync)(path);
     if (existing.length !== 32) throw new Error(`local egress key has invalid length: ${path}`);
-    (0, import_node_fs14.chmodSync)(path, 384);
+    (0, import_node_fs16.chmodSync)(path, 384);
     return existing;
   }
 }
@@ -5837,14 +8560,14 @@ function getScopeBlindBridge() {
   if (!singleton) singleton = new ScopeBlindBridge();
   return singleton;
 }
-var import_node_crypto9, import_node_fs14, import_node_os, import_node_path10, DEFAULT_BASE, FLUSH_INTERVAL_MS, BATCH_MAX, BRASS_REFRESH_MARGIN_MS, ScopeBlindBridge, singleton;
+var import_node_crypto13, import_node_fs16, import_node_os3, import_node_path13, DEFAULT_BASE, FLUSH_INTERVAL_MS, BATCH_MAX, BRASS_REFRESH_MARGIN_MS, ScopeBlindBridge, singleton;
 var init_scopeblind_bridge = __esm({
   "src/scopeblind-bridge.ts"() {
     "use strict";
-    import_node_crypto9 = require("crypto");
-    import_node_fs14 = require("fs");
-    import_node_os = require("os");
-    import_node_path10 = require("path");
+    import_node_crypto13 = require("crypto");
+    import_node_fs16 = require("fs");
+    import_node_os3 = require("os");
+    import_node_path13 = require("path");
     init_egress_guard();
     init_signing();
     DEFAULT_BASE = "https://scopeblind.com";
@@ -5930,20 +8653,20 @@ var init_scopeblind_bridge = __esm({
               this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
               continue;
             }
-            const signed = signGenericArtifact("scopeblind.egress_summary.v1", summary);
-            if (!signed.ok || !signed.signed) {
+            const signed2 = signGenericArtifact("scopeblind.egress_summary.v1", summary);
+            if (!signed2.ok || !signed2.signed) {
               this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
-              process.stderr.write(`[PROTECT_MCP] egress summary dropped: a locally signed summary is required (${signed.error || signed.warning || "signer unavailable"})
+              process.stderr.write(`[PROTECT_MCP] egress summary dropped: a locally signed summary is required (${signed2.error || signed2.warning || "signer unavailable"})
 `);
               continue;
             }
             try {
-              const envelope = JSON.parse(signed.signed);
-              const signedGuard = inspectEgress(envelope?.payload, { signed: true });
-              if (!signedGuard.safe || envelope?.signature?.alg !== "EdDSA") {
+              const envelope2 = JSON.parse(signed2.signed);
+              const signedGuard = inspectEgress(envelope2?.payload, { signed: true });
+              if (!signedGuard.safe || envelope2?.signature?.alg !== "EdDSA") {
                 throw new Error(signedGuard.violations.slice(0, 2).map((v) => v.path).join(", "));
               }
-              summaries.push(envelope);
+              summaries.push(envelope2);
             } catch (err) {
               this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
               process.stderr.write(`[PROTECT_MCP] egress summary dropped after signing: ${String(err?.message || err)}
@@ -6004,8 +8727,8 @@ var init_scopeblind_bridge = __esm({
             })
           });
           if (!res.ok) {
-            const text = await res.text().catch(() => "");
-            this.stats.last_error = `brass-issue: HTTP ${res.status} ${text.slice(0, 160)}`;
+            const text4 = await res.text().catch(() => "");
+            this.stats.last_error = `brass-issue: HTTP ${res.status} ${text4.slice(0, 160)}`;
             return null;
           }
           const body = await res.json();
@@ -6049,8 +8772,8 @@ __export(hook_server_exports, {
 });
 function resumeReceiptChain(receiptFilePath) {
   try {
-    if (!(0, import_node_fs15.existsSync)(receiptFilePath)) return null;
-    const lines = (0, import_node_fs15.readFileSync)(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
+    if (!(0, import_node_fs17.existsSync)(receiptFilePath)) return null;
+    const lines = (0, import_node_fs17.readFileSync)(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
     if (lines.length === 0) return null;
     return receiptHash(JSON.parse(lines[lines.length - 1]));
   } catch {
@@ -6080,7 +8803,7 @@ function computePayloadDigest(input) {
     return void 0;
   }
   return {
-    input_hash: (0, import_node_crypto10.createHash)("sha256").update(content).digest("hex"),
+    input_hash: (0, import_node_crypto14.createHash)("sha256").update(content).digest("hex"),
     input_size: size,
     truncated: true,
     preview: content.slice(0, 256)
@@ -6093,7 +8816,7 @@ function computeOutputDigest(output) {
     return void 0;
   }
   return {
-    output_hash: (0, import_node_crypto10.createHash)("sha256").update(content).digest("hex"),
+    output_hash: (0, import_node_crypto14.createHash)("sha256").update(content).digest("hex"),
     output_size: size
   };
 }
@@ -6106,7 +8829,7 @@ function detectSandboxState() {
   }
   if (process.platform === "linux") {
     try {
-      const procStatus = (0, import_node_fs15.readFileSync)("/proc/self/status", "utf-8");
+      const procStatus = (0, import_node_fs17.readFileSync)("/proc/self/status", "utf-8");
       if (procStatus.includes("Seccomp:	2")) return "enabled";
     } catch {
     }
@@ -6116,7 +8839,7 @@ function detectSandboxState() {
 async function handlePreToolUse(input, state) {
   const hookStart = Date.now();
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto10.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto14.randomUUID)().slice(0, 12);
   state.inflightTools.set(requestId, {
     tool: toolName,
     startedAt: hookStart,
@@ -6167,9 +8890,9 @@ async function handlePreToolUse(input, state) {
       const r = refuse("standard_tool_not_allowed", `"${toolName}" is not among the tools the standard permits.`);
       if (r) return r;
     } else {
-      const amount = checkAmount(std, input.toolInput);
-      if (!amount.ok) {
-        const r = refuse(amount.reason, `"${toolName}" refused by the standard: ${amount.detail}.`);
+      const amount3 = checkAmount(std, input.toolInput);
+      if (!amount3.ok) {
+        const r = refuse(amount3.reason, `"${toolName}" refused by the standard: ${amount3.detail}.`);
         if (r) return r;
       } else {
         const person = personRequired(std, input.toolInput);
@@ -6393,7 +9116,7 @@ async function handlePreToolUse(input, state) {
 }
 async function handlePostToolUse(input, state) {
   const toolName = input.toolName || "unknown";
-  const requestId = input.toolUseId || (0, import_node_crypto10.randomUUID)().slice(0, 12);
+  const requestId = input.toolUseId || (0, import_node_crypto14.randomUUID)().slice(0, 12);
   const now = Date.now();
   const inflight = state.inflightTools.get(requestId);
   const timing = {
@@ -6405,7 +9128,7 @@ async function handlePostToolUse(input, state) {
     state.inflightTools.delete(requestId);
   }
   const outputDigest = computeOutputDigest(input.toolResult);
-  const receiptId = (0, import_node_crypto10.randomUUID)().slice(0, 8);
+  const receiptId = (0, import_node_crypto14.randomUUID)().slice(0, 8);
   const policyName = state.cedarPolicies ? `cedar:${state.policyDigest}` : state.policyDigest;
   const additionalContext = `[ScopeBlind] Tool call receipted. Policy: ${policyName}. Decision: allow. Receipt: #${receiptId}.` + (timing.tool_duration_ms !== void 0 ? ` Duration: ${timing.tool_duration_ms}ms.` : "") + (timing.hook_latency_ms !== void 0 ? ` Overhead: ${timing.hook_latency_ms}ms.` : "");
   emitDecisionLog(state, {
@@ -6437,7 +9160,7 @@ function handleSubagentStart(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_started",
-    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto14.randomUUID)().slice(0, 12),
     hook_event: "SubagentStart",
     swarm: {
       ...state.swarmContext,
@@ -6458,7 +9181,7 @@ function handleSubagentStop(input, state) {
     tool: `subagent:${agentId}`,
     decision: "allow",
     reason_code: "subagent_stopped",
-    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto14.randomUUID)().slice(0, 12),
     hook_event: "SubagentStop",
     swarm: {
       ...state.swarmContext,
@@ -6473,7 +9196,7 @@ function handleTaskCreated(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_created",
-    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto14.randomUUID)().slice(0, 12),
     hook_event: "TaskCreated",
     swarm: {
       ...state.swarmContext,
@@ -6487,7 +9210,7 @@ function handleTaskCompleted(input, state) {
     tool: `task:${input.taskId || "unknown"}`,
     decision: "allow",
     reason_code: "task_completed",
-    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto14.randomUUID)().slice(0, 12),
     hook_event: "TaskCompleted",
     swarm: state.swarmContext
   });
@@ -6498,7 +9221,7 @@ function handleSessionStart(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_started",
-    request_id: input.sessionId || (0, import_node_crypto10.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto14.randomUUID)().slice(0, 12),
     hook_event: "SessionStart",
     swarm: state.swarmContext,
     sandbox_state: detectSandboxState()
@@ -6521,7 +9244,7 @@ function handleSessionEnd(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "session_ended",
-    request_id: input.sessionId || (0, import_node_crypto10.randomUUID)().slice(0, 12),
+    request_id: input.sessionId || (0, import_node_crypto14.randomUUID)().slice(0, 12),
     hook_event: "SessionEnd",
     swarm: state.swarmContext
   });
@@ -6532,7 +9255,7 @@ function handleTeammateIdle(input, state) {
     tool: `teammate:${input.agentId || "unknown"}`,
     decision: "allow",
     reason_code: "teammate_idle",
-    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto14.randomUUID)().slice(0, 12),
     hook_event: "TeammateIdle",
     swarm: {
       ...state.swarmContext,
@@ -6560,7 +9283,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "deny",
       reason_code: "config_tamper_detected",
-      request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto14.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange",
       swarm: state.swarmContext
     });
@@ -6569,7 +9292,7 @@ function handleConfigChange(input, state) {
       tool: "config",
       decision: "allow",
       reason_code: "config_changed",
-      request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
+      request_id: (0, import_node_crypto14.randomUUID)().slice(0, 12),
       hook_event: "ConfigChange"
     });
   }
@@ -6591,7 +9314,7 @@ function handleStop(input, state) {
     tool: "session",
     decision: "allow",
     reason_code: "agent_stopped",
-    request_id: (0, import_node_crypto10.randomUUID)().slice(0, 12),
+    request_id: (0, import_node_crypto14.randomUUID)().slice(0, 12),
     hook_event: "Stop",
     swarm: state.swarmContext
   });
@@ -6599,8 +9322,8 @@ function handleStop(input, state) {
 }
 function emitDecisionLog(state, entry) {
   const mode = state.enforce ? "enforce" : "shadow";
-  const otelTraceId = (0, import_node_crypto10.randomBytes)(16).toString("hex");
-  const otelSpanId = (0, import_node_crypto10.randomBytes)(8).toString("hex");
+  const otelTraceId = (0, import_node_crypto14.randomBytes)(16).toString("hex");
+  const otelSpanId = (0, import_node_crypto14.randomBytes)(8).toString("hex");
   const log = {
     v: 2,
     tool: entry.tool || "unknown",
@@ -6608,7 +9331,7 @@ function emitDecisionLog(state, entry) {
     reason_code: entry.reason_code || "default_allow",
     policy_digest: state.policyDigest,
     policy_engine: state.cedarPolicies ? "cedar" : "built-in",
-    request_id: entry.request_id || (0, import_node_crypto10.randomUUID)().slice(0, 12),
+    request_id: entry.request_id || (0, import_node_crypto14.randomUUID)().slice(0, 12),
     timestamp: Date.now(),
     mode,
     otel_trace_id: otelTraceId,
@@ -6643,42 +9366,42 @@ function emitDecisionLog(state, entry) {
   process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
 `);
   try {
-    (0, import_node_fs15.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
+    (0, import_node_fs17.appendFileSync)(state.logFilePath, JSON.stringify(log) + "\n");
   } catch {
   }
   if (isSigningEnabled()) {
-    const signed = signDecision(log, state.lastReceiptHash || void 0);
-    if (signed.signed) {
+    const signed2 = signDecision(log, state.lastReceiptHash || void 0);
+    if (signed2.signed) {
       try {
-        (0, import_node_fs15.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
-        if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
+        (0, import_node_fs17.appendFileSync)(state.receiptFilePath, signed2.signed + "\n");
+        if (signed2.receipt_hash) state.lastReceiptHash = signed2.receipt_hash;
       } catch {
       }
-      state.receiptBuffer.add(log.request_id, signed.signed);
-      state.reporter?.record(signed.signed, callLine);
+      state.receiptBuffer.add(log.request_id, signed2.signed);
+      state.reporter?.record(signed2.signed, callLine);
       try {
         const bridge = getScopeBlindBridge();
         if (bridge.enabled()) {
-          const parsed = typeof signed.signed === "string" ? JSON.parse(signed.signed) : signed.signed;
+          const parsed = typeof signed2.signed === "string" ? JSON.parse(signed2.signed) : signed2.signed;
           bridge.forward(parsed);
         }
       } catch (err) {
         process.stderr.write(`[PROTECT_MCP] ScopeBlind forward error: ${err instanceof Error ? err.message : err}
 `);
       }
-    } else if (signed.error) {
+    } else if (signed2.error) {
       const tombstoneObj = {
         type: "scopeblind.signing_failure.v1",
         request_id: log.request_id,
         tool: log.tool,
         decision: log.decision,
-        error: signed.error,
+        error: signed2.error,
         at: new Date(log.timestamp).toISOString(),
         ...state.lastReceiptHash ? { previousReceiptHash: state.lastReceiptHash } : {}
       };
       const tombstone = JSON.stringify(tombstoneObj);
       try {
-        (0, import_node_fs15.appendFileSync)(state.receiptFilePath, tombstone + "\n");
+        (0, import_node_fs17.appendFileSync)(state.receiptFilePath, tombstone + "\n");
         state.lastReceiptHash = receiptHash(tombstoneObj);
       } catch {
       }
@@ -6721,17 +9444,17 @@ async function routeHookEvent(input, state) {
       return {};
   }
 }
-async function startHookServer(options = {}) {
-  const port = options.port || DEFAULT_PORT;
-  const verbose = options.verbose || false;
-  const enforce = options.enforce || false;
-  const dataDir = options.dataDir || process.cwd();
+async function startHookServer(options2 = {}) {
+  const port = options2.port || DEFAULT_PORT;
+  const verbose = options2.verbose || false;
+  const enforce = options2.enforce || false;
+  const dataDir = options2.dataDir || process.cwd();
   let cedarPolicies = null;
   let jsonPolicy = null;
   let policyDigest = "none";
   let gateKeyPath;
   let managedMandate = null;
-  const cedarDir = options.cedarDir || findCedarDir();
+  const cedarDir = options2.cedarDir || findCedarDir();
   if (cedarDir) {
     try {
       cedarPolicies = loadCedarPolicies(cedarDir);
@@ -6751,11 +9474,11 @@ async function startHookServer(options = {}) {
 `);
     }
   }
-  if (options.policyPath) {
+  if (options2.policyPath) {
     try {
-      jsonPolicy = loadPolicy(options.policyPath);
+      jsonPolicy = loadPolicy(options2.policyPath);
       if (!cedarPolicies) policyDigest = jsonPolicy.digest;
-      process.stderr.write(`[PROTECT_MCP] JSON policy loaded from ${options.policyPath}
+      process.stderr.write(`[PROTECT_MCP] JSON policy loaded from ${options2.policyPath}
 `);
       if (jsonPolicy.signing) {
         gateKeyPath = jsonPolicy.signing.key_path;
@@ -6771,8 +9494,8 @@ async function startHookServer(options = {}) {
     }
   }
   if (!jsonPolicy?.signing) {
-    const keyPath = (0, import_node_path11.join)(dataDir, "keys", "gateway.json");
-    if ((0, import_node_fs15.existsSync)(keyPath)) {
+    const keyPath = (0, import_node_path14.join)(dataDir, "keys", "gateway.json");
+    if ((0, import_node_fs17.existsSync)(keyPath)) {
       gateKeyPath = keyPath;
       const warnings = await initSigning({ key_path: keyPath, issuer: "protect-mcp", enabled: true });
       for (const w of warnings) {
@@ -6812,8 +9535,8 @@ async function startHookServer(options = {}) {
             managedMandate = {
               signer: gateSigner,
               registry: check.registry,
-              rpId: options.mandateRelyingPartyId || "localhost",
-              expectedOrigin: options.mandateApprovalOrigin || `http://localhost:${port}`,
+              rpId: options2.mandateRelyingPartyId || "localhost",
+              expectedOrigin: options2.mandateApprovalOrigin || `http://localhost:${port}`,
               highWaterSequence: check.registry.history.length,
               highWaterHash: check.registry.history.length ? receiptHash(check.registry.history[check.registry.history.length - 1].transition_receipt) : "",
               maxSeenTimeMs: Math.max(Date.now(), check.registry.history.reduce((m, t) => Math.max(m, Date.parse(t.occurred_at) || 0), 0))
@@ -6868,16 +9591,16 @@ async function startHookServer(options = {}) {
   }
   let standard = null;
   let reporter = null;
-  if (options.standardPath) {
-    standard = loadStandardFile(options.standardPath);
+  if (options2.standardPath) {
+    standard = loadStandardFile(options2.standardPath);
     process.stderr.write(`[PROTECT_MCP] Standard in force: ${standard.request_id} (${standard.summary})
 `);
   }
-  if (options.reportUrl) {
+  if (options2.reportUrl) {
     if (!standard) throw new Error("--report needs --standard <standard.json>; the page belongs to a signed standard");
-    const token = options.reportToken || process.env.PROTECT_MCP_REPORT_TOKEN || "";
+    const token = options2.reportToken || process.env.PROTECT_MCP_REPORT_TOKEN || "";
     if (!token) throw new Error("--report needs the page's write token: --report-token <token> or PROTECT_MCP_REPORT_TOKEN");
-    reporter = new RecordReporter({ url: options.reportUrl, token, runId: options.runId || `run-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 19).replace(/[-:T]/g, "")}` });
+    reporter = new RecordReporter({ url: options2.reportUrl, token, runId: options2.runId || `run-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 19).replace(/[-:T]/g, "")}` });
     process.stderr.write(`[PROTECT_MCP] Record lands on ${new URL(reporter.url).origin}/standard?s=${reporter.sid} as run ${reporter.runId}
 `);
     if (!isSigningEnabled()) process.stderr.write("[PROTECT_MCP] Warning: signing is not configured, so only unsigned call lines reach the page; add a signing key for receipts\n");
@@ -6899,9 +9622,9 @@ async function startHookServer(options = {}) {
     verbose,
     enforce,
     policyDigest,
-    logFilePath: (0, import_node_path11.join)(dataDir, LOG_FILE3),
-    receiptFilePath: (0, import_node_path11.join)(dataDir, RECEIPTS_FILE2),
-    lastReceiptHash: resumeReceiptChain((0, import_node_path11.join)(dataDir, RECEIPTS_FILE2)),
+    logFilePath: (0, import_node_path14.join)(dataDir, LOG_FILE3),
+    receiptFilePath: (0, import_node_path14.join)(dataDir, RECEIPTS_FILE2),
+    lastReceiptHash: resumeReceiptChain((0, import_node_path14.join)(dataDir, RECEIPTS_FILE2)),
     permissionSuggestions: /* @__PURE__ */ new Map(),
     configAlerts: [],
     managedMandate,
@@ -7182,7 +9905,7 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs15.existsSync)((0, import_node_path11.join)(dataDir, ".scopeblind"));
+    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs17.existsSync)((0, import_node_path14.join)(dataDir, ".scopeblind"));
     if (!hasSlug) {
       w(`  Dashboard  npx protect-mcp connect
 `);
@@ -7213,9 +9936,9 @@ async function startHookServer(options = {}) {
 function newestCedarMtime(dir) {
   try {
     let newest = 0;
-    for (const f of (0, import_node_fs15.readdirSync)(dir)) {
+    for (const f of (0, import_node_fs17.readdirSync)(dir)) {
       if (!f.endsWith(".cedar")) continue;
-      const m = (0, import_node_fs15.statSync)((0, import_node_path11.join)(dir, f)).mtimeMs;
+      const m = (0, import_node_fs17.statSync)((0, import_node_path14.join)(dir, f)).mtimeMs;
       if (m > newest) newest = m;
     }
     return newest;
@@ -7228,15 +9951,15 @@ function ensureManagedMandate(state) {
     if (!state.managedMandate || !state.cedarDir) return { valid: true };
     const mm = state.managedMandate;
     const floorMs = Math.max(Date.now(), mm.maxSeenTimeMs);
-    const result = refreshManagedMandate({ cedarDir: state.cedarDir, signer: mm.signer, now: new Date(floorMs) });
-    if (!result.valid || !result.registry) {
+    const result2 = refreshManagedMandate({ cedarDir: state.cedarDir, signer: mm.signer, now: new Date(floorMs) });
+    if (!result2.valid || !result2.registry) {
       return {
         valid: false,
-        code: result.code || "mandate_registry_invalid",
-        message: result.message || "The mandate registry could not be verified."
+        code: result2.code || "mandate_registry_invalid",
+        message: result2.message || "The mandate registry could not be verified."
       };
     }
-    const history = result.registry.history;
+    const history = result2.registry.history;
     if (mm.highWaterSequence > 0) {
       if (history.length < mm.highWaterSequence) {
         return { valid: false, code: "mandate_rollback_detected", message: "The mandate history is shorter than a state this gate already enforced. The registry was rolled back or truncated." };
@@ -7250,17 +9973,17 @@ function ensureManagedMandate(state) {
     mm.highWaterHash = history.length ? receiptHash(history[history.length - 1].transition_receipt) : "";
     const latestTransitionMs = history.reduce((m, t) => Math.max(m, Date.parse(t.occurred_at) || 0), 0);
     mm.maxSeenTimeMs = Math.max(mm.maxSeenTimeMs, floorMs, latestTransitionMs);
-    state.managedMandate.registry = result.registry;
-    if (state.policyDigest !== result.registry.active.policy_digest || result.expired_reverted) {
+    state.managedMandate.registry = result2.registry;
+    if (state.policyDigest !== result2.registry.active.policy_digest || result2.expired_reverted) {
       const reloaded = loadCedarPolicies(state.cedarDir);
-      if (reloaded.digest !== result.registry.active.policy_digest) {
+      if (reloaded.digest !== result2.registry.active.policy_digest) {
         return { valid: false, code: "policy_head_mismatch", message: "Reloaded policy bytes do not match the signed active mandate head." };
       }
       state.cedarPolicies = reloaded;
       state.policyDigest = reloaded.digest;
       state.cedarMtimeMs = newestCedarMtime(state.cedarDir);
       state.cedarCheckedMs = Date.now();
-      if (result.expired_reverted) {
+      if (result2.expired_reverted) {
         process.stderr.write(`[PROTECT_MCP] Mandate grant expired; restored signed baseline ${reloaded.digest}.
 `);
       }
@@ -7298,8 +10021,8 @@ function maybeReloadCedar(state) {
 function findCedarDir() {
   for (const candidate of ["cedar", "policies", "."]) {
     try {
-      if ((0, import_node_fs15.existsSync)(candidate)) {
-        const files = (0, import_node_fs15.readdirSync)(candidate, { encoding: "utf-8" });
+      if ((0, import_node_fs17.existsSync)(candidate)) {
+        const files = (0, import_node_fs17.readdirSync)(candidate, { encoding: "utf-8" });
         if (files.some((f) => f.endsWith(".cedar"))) {
           return candidate;
         }
@@ -7357,24 +10080,24 @@ button.addEventListener('click', async () => { try {
 </script></main></body></html>`;
 }
 function normalizeHookInput(raw) {
-  const result = {};
+  const result2 = {};
   for (const [key, value] of Object.entries(raw)) {
     const camelKey = SNAKE_TO_CAMEL_MAP[key] || key;
-    result[camelKey] = value;
+    result2[camelKey] = value;
   }
   if (raw.source !== void 0 && raw.hook_event_name === "ConfigChange" && !raw.config_source) {
-    result["configSource"] = raw.source;
+    result2["configSource"] = raw.source;
   }
-  return result;
+  return result2;
 }
-var import_node_http2, import_node_crypto10, import_node_fs15, import_node_path11, DEFAULT_PORT, LOG_FILE3, RECEIPTS_FILE2, PAYLOAD_HASH_THRESHOLD, CEDAR_CHECK_THROTTLE_MS, SNAKE_TO_CAMEL_MAP;
+var import_node_http2, import_node_crypto14, import_node_fs17, import_node_path14, DEFAULT_PORT, LOG_FILE3, RECEIPTS_FILE2, PAYLOAD_HASH_THRESHOLD, CEDAR_CHECK_THROTTLE_MS, SNAKE_TO_CAMEL_MAP;
 var init_hook_server = __esm({
   "src/hook-server.ts"() {
     "use strict";
     import_node_http2 = require("http");
-    import_node_crypto10 = require("crypto");
-    import_node_fs15 = require("fs");
-    import_node_path11 = require("path");
+    import_node_crypto14 = require("crypto");
+    import_node_fs17 = require("fs");
+    import_node_path14 = require("path");
     init_cedar_evaluator();
     init_standard_gate();
     init_signing();
@@ -7439,8 +10162,8 @@ __export(onboard_exports, {
   handleOffboard: () => handleOffboard,
   handleOnboard: () => handleOnboard
 });
-function scenarioFor(id) {
-  return ONBOARD_PACKS.find((p) => p.id === id)?.scenario;
+function scenarioFor(id4) {
+  return ONBOARD_PACKS.find((p) => p.id === id4)?.scenario;
 }
 function flag(argv, name) {
   const i = argv.indexOf(name);
@@ -7450,11 +10173,11 @@ function has(argv, name) {
   return argv.includes(name);
 }
 function keypair() {
-  const priv = (0, import_node_crypto11.randomBytes)(32);
+  const priv = (0, import_node_crypto15.randomBytes)(32);
   return { privateKey: (0, import_utils9.bytesToHex)(priv), publicKey: (0, import_utils9.bytesToHex)(import_ed255196.ed25519.getPublicKey(priv)), kid: "onboard", issuer: "protect-mcp" };
 }
 async function handleOnboard(argv) {
-  const dir = flag(argv, "--dir") || (0, import_node_path12.join)(process.cwd(), "scopeblind-demo");
+  const dir = flag(argv, "--dir") || (0, import_node_path15.join)(process.cwd(), "scopeblind-demo");
   const enforce = has(argv, "--enforce");
   const yes = has(argv, "--yes") || has(argv, "-y");
   const interactive = Boolean(process.stdin.isTTY) && !yes;
@@ -7496,13 +10219,13 @@ async function handleOnboard(argv) {
     const force = has(argv, "--force");
     const existingCfg = (() => {
       try {
-        return (0, import_node_fs16.existsSync)((0, import_node_path12.join)(dir, "protect-mcp.json")) ? JSON.parse((0, import_node_fs16.readFileSync)((0, import_node_path12.join)(dir, "protect-mcp.json"), "utf-8")) : null;
+        return (0, import_node_fs18.existsSync)((0, import_node_path15.join)(dir, "protect-mcp.json")) ? JSON.parse((0, import_node_fs18.readFileSync)((0, import_node_path15.join)(dir, "protect-mcp.json"), "utf-8")) : null;
       } catch {
         return {};
       }
     })();
     if (existingCfg && existingCfg._scopeblind_onboarding !== true && !force) {
-      out(red("  " + (0, import_node_path12.join)(dir, "protect-mcp.json") + " already exists and was not created by onboard."));
+      out(red("  " + (0, import_node_path15.join)(dir, "protect-mcp.json") + " already exists and was not created by onboard."));
       out(red("  Refusing to overwrite a real workspace. Use --dir <a fresh folder>, or --force if you are sure."));
       throw new Error("onboard: refusing to overwrite a non-onboarding workspace at " + dir);
     }
@@ -7513,14 +10236,14 @@ async function handleOnboard(argv) {
         return;
       }
     }
-    (0, import_node_fs16.mkdirSync)((0, import_node_path12.join)(dir, "cedar"), { recursive: true });
-    (0, import_node_fs16.mkdirSync)((0, import_node_path12.join)(dir, "keys"), { recursive: true });
+    (0, import_node_fs18.mkdirSync)((0, import_node_path15.join)(dir, "cedar"), { recursive: true });
+    (0, import_node_fs18.mkdirSync)((0, import_node_path15.join)(dir, "keys"), { recursive: true });
     const kp = keypair();
-    const keyPath = (0, import_node_path12.join)(dir, "keys", "gateway.json");
-    (0, import_node_fs16.writeFileSync)(keyPath, JSON.stringify({ ...kp, generated_at: (/* @__PURE__ */ new Date()).toISOString(), warning: "KEEP THIS FILE SECRET." }, null, 2) + "\n");
-    (0, import_node_fs16.writeFileSync)((0, import_node_path12.join)(dir, "keys", ".gitignore"), "*.json\n");
-    (0, import_node_fs16.writeFileSync)((0, import_node_path12.join)(dir, "cedar", pack.files[0].path), pack.files[0].contents);
-    (0, import_node_fs16.writeFileSync)((0, import_node_path12.join)(dir, "protect-mcp.json"), JSON.stringify({
+    const keyPath = (0, import_node_path15.join)(dir, "keys", "gateway.json");
+    (0, import_node_fs18.writeFileSync)(keyPath, JSON.stringify({ ...kp, generated_at: (/* @__PURE__ */ new Date()).toISOString(), warning: "KEEP THIS FILE SECRET." }, null, 2) + "\n");
+    (0, import_node_fs18.writeFileSync)((0, import_node_path15.join)(dir, "keys", ".gitignore"), "*.json\n");
+    (0, import_node_fs18.writeFileSync)((0, import_node_path15.join)(dir, "cedar", pack.files[0].path), pack.files[0].contents);
+    (0, import_node_fs18.writeFileSync)((0, import_node_path15.join)(dir, "protect-mcp.json"), JSON.stringify({
       cedar_dir: "./cedar",
       default_tier: "unknown",
       signing: { key_path: "./keys/gateway.json", issuer: kp.issuer, enabled: true },
@@ -7535,9 +10258,9 @@ async function handleOnboard(argv) {
     out();
     out(bold("  Step 4/6  Run a safe governed demo (synthetic actions, no real credentials)"));
     const policySet = policySetFromSource(pack.files[0].contents, pack.files[0].path);
-    const receiptsPath = (0, import_node_path12.join)(dir, ".protect-mcp-receipts.jsonl");
-    const logPath = (0, import_node_path12.join)(dir, ".protect-mcp-log.jsonl");
-    for (const p of [receiptsPath, logPath]) if ((0, import_node_fs16.existsSync)(p)) (0, import_node_fs16.rmSync)(p, { force: true });
+    const receiptsPath = (0, import_node_path15.join)(dir, ".protect-mcp-receipts.jsonl");
+    const logPath = (0, import_node_path15.join)(dir, ".protect-mcp-log.jsonl");
+    for (const p of [receiptsPath, logPath]) if ((0, import_node_fs18.existsSync)(p)) (0, import_node_fs18.rmSync)(p, { force: true });
     const base = Date.parse("2026-07-10T12:00:00.000Z");
     let cedarEngine = true;
     const rows = [];
@@ -7563,9 +10286,9 @@ async function handleOnboard(argv) {
         mode: enforce ? "enforce" : "shadow",
         ...simulated ? {} : { policy_engine: "cedar" }
       };
-      (0, import_node_fs16.appendFileSync)(logPath, JSON.stringify(entry) + "\n");
-      const signed = signDecision(entry);
-      if (signed.signed) (0, import_node_fs16.appendFileSync)(receiptsPath, signed.signed + "\n");
+      (0, import_node_fs18.appendFileSync)(logPath, JSON.stringify(entry) + "\n");
+      const signed2 = signDecision(entry);
+      if (signed2.signed) (0, import_node_fs18.appendFileSync)(receiptsPath, signed2.signed + "\n");
       rows.push({ label: a.label, tool: a.tool, allowed, simulated });
     }
     if (!cedarEngine) out(yellow("  Note: the Cedar engine (optional dep) is not installed here, so decisions are POLICY-SIMULATED from the pack. Install @cedar-policy/cedar-wasm for live evaluation."));
@@ -7584,14 +10307,14 @@ async function handleOnboard(argv) {
     }
     out();
     out(bold("  Step 6/6  Export an evidence pack and verify a receipt"));
-    const receipts = (0, import_node_fs16.readFileSync)(receiptsPath, "utf-8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
+    const receipts = (0, import_node_fs18.readFileSync)(receiptsPath, "utf-8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l));
     const bundle = createAuditBundle({
       tenant: kp.issuer,
       receipts,
       signingKeys: [{ kty: "OKP", crv: "Ed25519", kid: kp.kid, x: Buffer.from(kp.publicKey, "hex").toString("base64url"), use: "sig" }]
     });
-    const bundlePath = (0, import_node_path12.join)(dir, "audit-bundle.json");
-    (0, import_node_fs16.writeFileSync)(bundlePath, JSON.stringify(bundle, null, 2) + "\n");
+    const bundlePath = (0, import_node_path15.join)(dir, "audit-bundle.json");
+    (0, import_node_fs18.writeFileSync)(bundlePath, JSON.stringify(bundle, null, 2) + "\n");
     const firstReceipt = receipts[0];
     const check = verifyReceipt(firstReceipt, kp.publicKey);
     out("  " + green("\u2713 ") + receipts.length + " signed receipts exported to " + dim("audit-bundle.json"));
@@ -7609,11 +10332,11 @@ async function handleOnboard(argv) {
     out();
     out(bold("  Optional: human approval + phone"));
     out("  To require a person to approve a specific action (with a passkey, and optionally a paired");
-    out("  iPhone), set up a governed mandate:  " + cyan("protect-mcp mandate init --cedar " + (0, import_node_path12.join)(dir, "cedar") + " --controller-id ..."));
+    out("  iPhone), set up a governed mandate:  " + cyan("protect-mcp mandate init --cedar " + (0, import_node_path15.join)(dir, "cedar") + " --controller-id ..."));
     out(dim("  (Desktop localhost WebAuthn is the tested route; paired-iPhone approval is a further step.)"));
     out();
     out(bold("  You are set up."));
-    out("  Govern a real agent:  " + cyan("protect-mcp serve --enforce --cedar " + (0, import_node_path12.join)(dir, "cedar")));
+    out("  Govern a real agent:  " + cyan("protect-mcp serve --enforce --cedar " + (0, import_node_path15.join)(dir, "cedar")));
     out("  See the local record:  " + cyan("protect-mcp record --dir " + dir));
     out("  Remove everything:     " + cyan("protect-mcp offboard --dir " + dir + " --uninstall"));
     out();
@@ -7622,13 +10345,13 @@ async function handleOnboard(argv) {
   }
 }
 async function handleOffboard(argv) {
-  const dir = flag(argv, "--dir") || (0, import_node_path12.join)(process.cwd(), "scopeblind-demo");
+  const dir = flag(argv, "--dir") || (0, import_node_path15.join)(process.cwd(), "scopeblind-demo");
   const yes = has(argv, "--yes") || has(argv, "-y");
   const interactive = Boolean(process.stdin.isTTY) && !yes;
   const all = has(argv, "--uninstall") || has(argv, "--all");
   const isOnboardingWorkspace = (() => {
     try {
-      return JSON.parse((0, import_node_fs16.readFileSync)((0, import_node_path12.join)(dir, "protect-mcp.json"), "utf-8"))._scopeblind_onboarding === true;
+      return JSON.parse((0, import_node_fs18.readFileSync)((0, import_node_path15.join)(dir, "protect-mcp.json"), "utf-8"))._scopeblind_onboarding === true;
     } catch {
       return false;
     }
@@ -7661,11 +10384,11 @@ async function handleOffboard(argv) {
   const teardownFiles = ["protect-mcp.json", "cedar", "coverage.json"];
   const targets = [];
   if (deleteData) {
-    for (const f of dataFiles) if ((0, import_node_fs16.existsSync)((0, import_node_path12.join)(dir, f))) targets.push(f);
+    for (const f of dataFiles) if ((0, import_node_fs18.existsSync)((0, import_node_path15.join)(dir, f))) targets.push(f);
   }
-  if (deleteKeys && (0, import_node_fs16.existsSync)((0, import_node_path12.join)(dir, "keys"))) targets.push("keys");
+  if (deleteKeys && (0, import_node_fs18.existsSync)((0, import_node_path15.join)(dir, "keys"))) targets.push("keys");
   if (fullTeardown) {
-    for (const f of teardownFiles) if ((0, import_node_fs16.existsSync)((0, import_node_path12.join)(dir, f))) targets.push(f);
+    for (const f of teardownFiles) if ((0, import_node_fs18.existsSync)((0, import_node_path15.join)(dir, f))) targets.push(f);
   }
   if (all && !isOnboardingWorkspace) {
     out();
@@ -7673,7 +10396,7 @@ async function handleOffboard(argv) {
     out(yellow("  config, policies, keys, or receipts. It only removes protect-mcp hooks (below)."));
     out(yellow("  If you really want the local data or keys gone, pass --delete-data / --delete-keys."));
   }
-  const settingsPath = (0, import_node_path12.join)(process.cwd(), ".claude", "settings.json");
+  const settingsPath = (0, import_node_path15.join)(process.cwd(), ".claude", "settings.json");
   const hookHits = disable ? countProtectHooks(settingsPath) : 0;
   out();
   out(bold("  protect-mcp offboard") + " will remove, in " + dir + ":");
@@ -7698,9 +10421,9 @@ async function handleOffboard(argv) {
     }
   }
   for (const t of targets) {
-    const p = (0, import_node_path12.join)(dir, t);
+    const p = (0, import_node_path15.join)(dir, t);
     try {
-      (0, import_node_fs16.rmSync)(p, { recursive: (0, import_node_fs16.statSync)(p).isDirectory(), force: true });
+      (0, import_node_fs18.rmSync)(p, { recursive: (0, import_node_fs18.statSync)(p).isDirectory(), force: true });
       out(green("  \u2713 removed ") + t);
     } catch (e) {
       out(red("  \u2717 could not remove " + t + ": " + (e instanceof Error ? e.message : e)));
@@ -7710,10 +10433,10 @@ async function handleOffboard(argv) {
     const removed = removeProtectHooks(settingsPath);
     out(green("  \u2713 removed ") + removed + " protect-mcp hook(s); the gate no longer intercepts tool calls");
   }
-  if (fullTeardown && (0, import_node_fs16.existsSync)(dir)) {
+  if (fullTeardown && (0, import_node_fs18.existsSync)(dir)) {
     try {
-      if ((0, import_node_fs16.readdirSync)(dir).length === 0) {
-        (0, import_node_fs16.rmSync)(dir, { recursive: true, force: true });
+      if ((0, import_node_fs18.readdirSync)(dir).length === 0) {
+        (0, import_node_fs18.rmSync)(dir, { recursive: true, force: true });
         out(green("  \u2713 removed ") + "the empty workspace folder");
       }
     } catch {
@@ -7724,9 +10447,9 @@ async function handleOffboard(argv) {
   out();
 }
 function countProtectHooks(settingsPath) {
-  if (!(0, import_node_fs16.existsSync)(settingsPath)) return 0;
+  if (!(0, import_node_fs18.existsSync)(settingsPath)) return 0;
   try {
-    const s = JSON.parse((0, import_node_fs16.readFileSync)(settingsPath, "utf-8"));
+    const s = JSON.parse((0, import_node_fs18.readFileSync)(settingsPath, "utf-8"));
     return protectHookCount(s?.hooks);
   } catch {
     return 0;
@@ -7755,10 +10478,10 @@ function referencesProtect(h) {
   return invokesProtect || url.includes("protect-mcp");
 }
 function removeProtectHooks(settingsPath) {
-  if (!(0, import_node_fs16.existsSync)(settingsPath)) return 0;
+  if (!(0, import_node_fs18.existsSync)(settingsPath)) return 0;
   let s;
   try {
-    s = JSON.parse((0, import_node_fs16.readFileSync)(settingsPath, "utf-8"));
+    s = JSON.parse((0, import_node_fs18.readFileSync)(settingsPath, "utf-8"));
   } catch {
     return 0;
   }
@@ -7784,17 +10507,17 @@ function removeProtectHooks(settingsPath) {
     }
     s.hooks[event] = kept;
   }
-  (0, import_node_fs16.writeFileSync)(settingsPath, JSON.stringify(s, null, 2) + "\n");
+  (0, import_node_fs18.writeFileSync)(settingsPath, JSON.stringify(s, null, 2) + "\n");
   return removed;
 }
-var import_promises, import_node_fs16, import_node_path12, import_node_crypto11, import_ed255196, import_utils9, c, bold, dim, green, red, yellow, cyan, out, ONBOARD_PACKS;
+var import_promises, import_node_fs18, import_node_path15, import_node_crypto15, import_ed255196, import_utils9, c, bold, dim, green, red, yellow, cyan, out, ONBOARD_PACKS;
 var init_onboard = __esm({
   "src/onboard.ts"() {
     "use strict";
     import_promises = require("readline/promises");
-    import_node_fs16 = require("fs");
-    import_node_path12 = require("path");
-    import_node_crypto11 = require("crypto");
+    import_node_fs18 = require("fs");
+    import_node_path15 = require("path");
+    import_node_crypto15 = require("crypto");
     import_ed255196 = require("@noble/curves/ed25519");
     import_utils9 = require("@noble/hashes/utils");
     init_cedar_evaluator();
@@ -7942,7 +10665,7 @@ function parseCoverageArgs(args) {
   let policyPath;
   let cedarDir;
   let out2 = "scopeblind-coverage.json";
-  let json = false;
+  let json2 = false;
   const extraNotGoverned = [];
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--mode" && args[i + 1]) mode = args[++i];
@@ -7950,12 +10673,12 @@ function parseCoverageArgs(args) {
     else if (args[i] === "--policy" && args[i + 1]) policyPath = args[++i];
     else if (args[i] === "--cedar" && args[i + 1]) cedarDir = args[++i];
     else if (args[i] === "--out" && args[i + 1]) out2 = args[++i];
-    else if (args[i] === "--json") json = true;
+    else if (args[i] === "--json") json2 = true;
     else if (args[i] === "--not-governed" && args[i + 1]) {
       extraNotGoverned.push(...args[++i].split(",").map((s) => s.trim()).filter(Boolean));
     }
   }
-  return { mode, enforce, policyPath, cedarDir, out: out2, json, extraNotGoverned };
+  return { mode, enforce, policyPath, cedarDir, out: out2, json: json2, extraNotGoverned };
 }
 async function handleCoverage(args) {
   const opts = parseCoverageArgs(args);
@@ -8036,14 +10759,14 @@ async function handleCoverage(args) {
       process.exitCode = 1;
       return;
     }
-    const signed = signGenericArtifact("coverage_statement", statement);
-    if (!signed.ok || !signed.signed) {
-      process.stderr.write(`[protect-mcp] coverage: signing failed: ${signed.error || "unknown error"}
+    const signed2 = signGenericArtifact("coverage_statement", statement);
+    if (!signed2.ok || !signed2.signed) {
+      process.stderr.write(`[protect-mcp] coverage: signing failed: ${signed2.error || "unknown error"}
 `);
       process.exitCode = 1;
       return;
     }
-    output = JSON.parse(signed.signed);
+    output = JSON.parse(signed2.signed);
   } else {
     output = {
       artifact: statement,
@@ -8052,7 +10775,7 @@ async function handleCoverage(args) {
     };
   }
   const serialized = JSON.stringify(output, null, 2) + "\n";
-  (0, import_node_fs17.writeFileSync)(opts.out, serialized);
+  (0, import_node_fs19.writeFileSync)(opts.out, serialized);
   if (opts.json) process.stdout.write(serialized);
   const signer = getSignerInfo();
   process.stderr.write(
@@ -8067,11 +10790,11 @@ async function handleCoverage(args) {
 `
   );
 }
-var import_node_fs17, DEFAULT_NOT_GOVERNED, RESIDUAL_BYPASS_ROUTES, ATTESTATION_NOTE, CHANNEL_DESCRIPTION;
+var import_node_fs19, DEFAULT_NOT_GOVERNED, RESIDUAL_BYPASS_ROUTES, ATTESTATION_NOTE, CHANNEL_DESCRIPTION;
 var init_coverage = __esm({
   "src/coverage.ts"() {
     "use strict";
-    import_node_fs17 = require("fs");
+    import_node_fs19 = require("fs");
     init_policy();
     init_cedar_evaluator();
     init_signing();
@@ -8121,8 +10844,8 @@ var http_transport_exports = {};
 __export(http_transport_exports, {
   startHttpTransport: () => startHttpTransport
 });
-async function startHttpTransport(options) {
-  const { port, config, serverCommand } = options;
+async function startHttpTransport(options2) {
+  const { port, config, serverCommand } = options2;
   const sseClients = /* @__PURE__ */ new Set();
   const httpConfig = {
     ...config,
@@ -8130,8 +10853,8 @@ async function startHttpTransport(options) {
     args: serverCommand.slice(1)
   };
   const gateway = new ProtectGateway(httpConfig);
-  if (options.cedarPolicySet) {
-    gateway.setCedarPolicies(options.cedarPolicySet);
+  if (options2.cedarPolicySet) {
+    gateway.setCedarPolicies(options2.cedarPolicySet);
   }
   await gateway.startForHttp();
   const server = (0, import_node_http3.createServer)(async (req, res) => {
@@ -8291,8 +11014,8 @@ function generateReport(logPath, receiptPath, periodDays) {
   const now = /* @__PURE__ */ new Date();
   const from = new Date(now.getTime() - periodDays * 864e5);
   const entries = [];
-  if ((0, import_node_fs18.existsSync)(logPath)) {
-    const raw = (0, import_node_fs18.readFileSync)(logPath, "utf-8");
+  if ((0, import_node_fs20.existsSync)(logPath)) {
+    const raw = (0, import_node_fs20.readFileSync)(logPath, "utf-8");
     for (const line of raw.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed) continue;
@@ -8312,8 +11035,8 @@ function generateReport(logPath, receiptPath, periodDays) {
   let receiptsSigned = 0;
   let signerKid = "";
   let signerIssuer = "";
-  if ((0, import_node_fs18.existsSync)(receiptPath)) {
-    const raw = (0, import_node_fs18.readFileSync)(receiptPath, "utf-8");
+  if ((0, import_node_fs20.existsSync)(receiptPath)) {
+    const raw = (0, import_node_fs20.readFileSync)(receiptPath, "utf-8");
     for (const line of raw.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed) continue;
@@ -8446,11 +11169,11 @@ function formatReportMarkdown(report) {
   lines.push("*Generated by protect-mcp \xB7 scopeblind.com*");
   return lines.join("\n");
 }
-var import_node_fs18;
+var import_node_fs20;
 var init_report = __esm({
   "src/report.ts"() {
     "use strict";
-    import_node_fs18 = require("fs");
+    import_node_fs20 = require("fs");
     init_acta_envelope();
   }
 });
@@ -8514,8 +11237,8 @@ function simulate(entries, policy, tier = "unknown") {
       newDecision = "require_approval";
     } else if (toolPolicy.rate_limit) {
       const limit = parseRateLimit(toolPolicy.rate_limit);
-      const result = checkRateLimit(toolName, limit, rateLimitStore);
-      newDecision = result.allowed ? "allow" : "rate_limited";
+      const result2 = checkRateLimit(toolName, limit, rateLimitStore);
+      newDecision = result2.allowed ? "allow" : "rate_limited";
     } else {
       newDecision = "allow";
     }
@@ -8537,24 +11260,24 @@ function simulate(entries, policy, tier = "unknown") {
       tr.original.deny++;
     }
   }
-  for (const [tool, result] of toolResults) {
-    const wasAllBlocked = result.original.allow === 0;
-    const nowAllBlocked = result.results.allow === 0;
-    const wasAllAllowed = result.original.deny === 0;
-    if (wasAllAllowed && result.results.block > 0) {
-      changes.push(`${tool}: ${result.results.block} calls would be blocked (was: all allowed)`);
+  for (const [tool, result2] of toolResults) {
+    const wasAllBlocked = result2.original.allow === 0;
+    const nowAllBlocked = result2.results.allow === 0;
+    const wasAllAllowed = result2.original.deny === 0;
+    if (wasAllAllowed && result2.results.block > 0) {
+      changes.push(`${tool}: ${result2.results.block} calls would be blocked (was: all allowed)`);
     }
-    if (wasAllAllowed && result.results.rate_limited > 0) {
-      changes.push(`${tool}: ${result.results.rate_limited} calls would be rate-limited (was: all allowed)`);
+    if (wasAllAllowed && result2.results.rate_limited > 0) {
+      changes.push(`${tool}: ${result2.results.rate_limited} calls would be rate-limited (was: all allowed)`);
     }
-    if (wasAllAllowed && result.results.require_approval > 0) {
-      changes.push(`${tool}: ${result.results.require_approval} calls would require approval (was: all allowed)`);
+    if (wasAllAllowed && result2.results.require_approval > 0) {
+      changes.push(`${tool}: ${result2.results.require_approval} calls would require approval (was: all allowed)`);
     }
-    if (wasAllAllowed && result.results.tier_insufficient > 0) {
-      changes.push(`${tool}: ${result.results.tier_insufficient} calls would fail tier check (was: all allowed)`);
+    if (wasAllAllowed && result2.results.tier_insufficient > 0) {
+      changes.push(`${tool}: ${result2.results.tier_insufficient} calls would fail tier check (was: all allowed)`);
     }
-    if (wasAllBlocked && result.results.allow > 0 && !nowAllBlocked) {
-      changes.push(`${tool}: ${result.results.allow} calls would now be allowed (was: all blocked)`);
+    if (wasAllBlocked && result2.results.allow > 0 && !nowAllBlocked) {
+      changes.push(`${tool}: ${result2.results.allow} calls would now be allowed (was: all blocked)`);
     }
   }
   return {
@@ -9189,8 +11912,8 @@ when { context.tool == "nautilus.strategy.deploy" && context.strategy_pack_signe
 `
   }
 ];
-function getConnectorPilot(id) {
-  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id);
+function getConnectorPilot(id4) {
+  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id4);
 }
 function connectorDirectory(dir) {
   return (0, import_node_path6.join)(dir, ".protect-mcp", "connectors");
@@ -9198,9 +11921,9 @@ function connectorDirectory(dir) {
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
   (0, import_node_fs10.mkdirSync)(directory, { recursive: true });
-  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id) => {
-    const pilot = getConnectorPilot(id);
-    if (!pilot) throw new Error(`Unknown connector pilot: ${id}`);
+  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id4) => {
+    const pilot = getConnectorPilot(id4);
+    if (!pilot) throw new Error(`Unknown connector pilot: ${id4}`);
     return pilot;
   }) : CONNECTOR_PILOTS;
   const written = [];
@@ -9241,15 +11964,15 @@ function readInstalledConnectorPilots(dir) {
     const configPath = (0, import_node_path6.join)(directory, name);
     try {
       const parsed = JSON.parse((0, import_node_fs10.readFileSync)(configPath, "utf-8"));
-      const id = String(parsed.id || name.replace(/\.json$/, ""));
-      const pilot = getConnectorPilot(id);
+      const id4 = String(parsed.id || name.replace(/\.json$/, ""));
+      const pilot = getConnectorPilot(id4);
       return {
-        id,
-        name: String(parsed.name || pilot?.name || id),
+        id: id4,
+        name: String(parsed.name || pilot?.name || id4),
         category: String(parsed.category || pilot?.category || "unknown"),
         status: String(parsed.status || parsed.type || "installed"),
         config_path: configPath,
-        policy_path: (0, import_node_path6.join)(directory, `${id}.cedar`)
+        policy_path: (0, import_node_path6.join)(directory, `${id4}.cedar`)
       };
     } catch {
       return null;
@@ -9308,10 +12031,10 @@ Next: run \`npx protect-mcp dashboard --open\` and review tool inventory, policy
 
 // src/cli.ts
 init_mandate_lifecycle();
-var import_node_crypto12 = require("crypto");
-var import_node_fs19 = require("fs");
-var import_node_path13 = require("path");
-var import_node_os2 = require("os");
+var import_node_crypto16 = require("crypto");
+var import_node_fs21 = require("fs");
+var import_node_path16 = require("path");
+var import_node_os4 = require("os");
 function printHelp() {
   process.stderr.write(`
 protect-mcp: Enterprise security gateway for MCP servers & Claude Code hooks
@@ -9320,6 +12043,13 @@ Usage:
   protect-mcp [options] -- <command> [args...]
   protect-mcp serve [--port <port>] [--enforce] [--policy <path>] [--cedar <dir>]
   protect-mcp mcp                                 # the gate as an MCP server (evaluate/sign/verify/self_test tools)
+  protect-mcp coordination pair [--config <private-file>] [--name <name>] [--code-env <variable>]
+  protect-mcp coordination setup [--config <private-file>] [--client claude-code|codex|json]
+  protect-mcp coordination agent setup --endpoint <url> --authority-key <hex> [--profile <private-file>] [--client claude-code|codex|json]
+  protect-mcp coordination agent [--profile <private-file>]
+  protect-mcp coordination agent import --config <existing-private-file> [--profile <private-file>]
+  protect-mcp coordination --config <private-file>
+  protect-mcp coordination --endpoint <url> --room <id> --authority-key <hex> [--token-env <name>] [--run <id>]
   protect-mcp init-hooks [--dir <path>] [--port <port>]
   protect-mcp quickstart [--connect]
   protect-mcp wrap [--write] [--claude-desktop] [-- <command>]
@@ -9366,6 +12096,7 @@ Options:
   --version         Print the installed version
 
 Commands:
+  coordination      Shared invoice MCP tools; verifies pinned admission before an idempotent sample-ledger action (token from environment)
   serve             Start HTTP hook server for Claude Code integration (port 9377)
   evaluate          Evaluate one tool call against a Cedar policy (PreToolUse gate; exit 2 = deny, fail-closed)
   sign              Sign one tool call into a receipt (PostToolUse)
@@ -9459,30 +12190,30 @@ function parseArgs(argv) {
     process.stderr.write('[PROTECT_MCP] Error: No command specified after "--"\n');
     process.exit(1);
   }
-  const options = argv.slice(0, separatorIndex);
-  for (let i = 0; i < options.length; i++) {
-    const arg = options[i];
+  const options2 = argv.slice(0, separatorIndex);
+  for (let i = 0; i < options2.length; i++) {
+    const arg = options2[i];
     if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
-    } else if (arg === "--policy" && i + 1 < options.length) {
-      policyPath = options[++i];
-    } else if (arg === "--cedar" && i + 1 < options.length) {
-      cedarDir = options[++i];
-    } else if (arg === "--slug" && i + 1 < options.length) {
-      slug = options[++i];
+    } else if (arg === "--policy" && i + 1 < options2.length) {
+      policyPath = options2[++i];
+    } else if (arg === "--cedar" && i + 1 < options2.length) {
+      cedarDir = options2[++i];
+    } else if (arg === "--slug" && i + 1 < options2.length) {
+      slug = options2[++i];
     } else if (arg === "--enforce") {
       enforce = true;
     } else if (arg === "--verbose" || arg === "-v") {
       verbose = true;
-    } else if (arg === "--standard" && i + 1 < options.length) {
-      standardPath = options[++i];
-    } else if (arg === "--report" && i + 1 < options.length) {
-      reportUrl = options[++i];
-    } else if (arg === "--report-token" && i + 1 < options.length) {
-      reportToken = options[++i];
-    } else if (arg === "--run" && i + 1 < options.length) {
-      runId = options[++i];
+    } else if (arg === "--standard" && i + 1 < options2.length) {
+      standardPath = options2[++i];
+    } else if (arg === "--report" && i + 1 < options2.length) {
+      reportUrl = options2[++i];
+    } else if (arg === "--report-token" && i + 1 < options2.length) {
+      reportToken = options2[++i];
+    } else if (arg === "--run" && i + 1 < options2.length) {
+      runId = options2[++i];
     } else {
       process.stderr.write(`[PROTECT_MCP] Warning: Unknown option "${arg}"
 `);
@@ -9491,7 +12222,7 @@ function parseArgs(argv) {
   return { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId };
 }
 async function handleInit(argv) {
-  const { writeFileSync: writeFileSync9, existsSync: existsSync13, mkdirSync: mkdirSync7 } = await import("fs");
+  const { writeFileSync: writeFileSync11, existsSync: existsSync13, mkdirSync: mkdirSync9 } = await import("fs");
   const { join: join13 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
@@ -9509,21 +12240,21 @@ async function handleInit(argv) {
   }
   let keypair2;
   {
-    const { randomBytes: randomBytes8 } = await import("crypto");
+    const { randomBytes: randomBytes11 } = await import("crypto");
     const { ed25519: ed255197 } = await import("@noble/curves/ed25519");
-    const { bytesToHex: bytesToHex9 } = await import("@noble/hashes/utils");
-    const privateKey = randomBytes8(32);
+    const { bytesToHex: bytesToHex10 } = await import("@noble/hashes/utils");
+    const privateKey = randomBytes11(32);
     const publicKey = ed255197.getPublicKey(privateKey);
     keypair2 = {
-      privateKey: bytesToHex9(privateKey),
-      publicKey: bytesToHex9(publicKey),
+      privateKey: bytesToHex10(privateKey),
+      publicKey: bytesToHex10(publicKey),
       kid: "generated"
     };
   }
   if (!existsSync13(keysDir)) {
-    mkdirSync7(keysDir, { recursive: true });
+    mkdirSync9(keysDir, { recursive: true });
   }
-  writeFileSync9(keyPath, JSON.stringify({
+  writeFileSync11(keyPath, JSON.stringify({
     privateKey: keypair2.privateKey,
     publicKey: keypair2.publicKey,
     kid: keypair2.kid,
@@ -9532,7 +12263,7 @@ async function handleInit(argv) {
   }, null, 2) + "\n");
   const gitignorePath = join13(keysDir, ".gitignore");
   if (!existsSync13(gitignorePath)) {
-    writeFileSync9(gitignorePath, "# Never commit signing keys\n*.json\n");
+    writeFileSync11(gitignorePath, "# Never commit signing keys\n*.json\n");
   }
   const config = {
     tools: {
@@ -9566,7 +12297,7 @@ async function handleInit(argv) {
       }
     }
   };
-  writeFileSync9(configPath, JSON.stringify(config, null, 2) + "\n");
+  writeFileSync11(configPath, JSON.stringify(config, null, 2) + "\n");
   const claudeConfig = {
     "mcpServers": {
       "my-server": {
@@ -9605,14 +12336,14 @@ Add --enforce when ready to block policy violations.
 }
 async function handleDemo() {
   const { existsSync: existsSync13 } = await import("fs");
-  const { join: join13, dirname: dirname4, resolve: resolve2 } = await import("path");
+  const { join: join13, dirname: dirname6, resolve: resolve5 } = await import("path");
   const { realpathSync } = await import("fs");
-  const cliPath = resolve2(process.argv[1] || "dist/cli.js");
+  const cliPath = resolve5(process.argv[1] || "dist/cli.js");
   let cliDir;
   try {
-    cliDir = dirname4(realpathSync(cliPath));
+    cliDir = dirname6(realpathSync(cliPath));
   } catch {
-    cliDir = dirname4(cliPath);
+    cliDir = dirname6(cliPath);
   }
   const demoServerPath = join13(cliDir, "demo-server.js");
   const configPath = join13(process.cwd(), "protect-mcp.json");
@@ -9690,7 +12421,7 @@ Starting demo server with 5 tools...
   await gateway.start();
 }
 async function handleStatus2(argv) {
-  const { readFileSync: readFileSync17, existsSync: existsSync13 } = await import("fs");
+  const { readFileSync: readFileSync19, existsSync: existsSync13 } = await import("fs");
   const { join: join13 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
@@ -9708,7 +12439,7 @@ async function handleStatus2(argv) {
 `);
     process.exit(0);
   }
-  const raw = readFileSync17(logPath, "utf-8");
+  const raw = readFileSync19(logPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   if (lines.length === 0) {
     process.stderr.write(`${bold2("protect-mcp status")}
@@ -9790,7 +12521,7 @@ ${bold2("protect-mcp status")}
   const evidencePath = join13(dir, ".protect-mcp-evidence.json");
   if (existsSync13(evidencePath)) {
     try {
-      const evidenceRaw = readFileSync17(evidencePath, "utf-8");
+      const evidenceRaw = readFileSync19(evidencePath, "utf-8");
       const evidence = JSON.parse(evidenceRaw);
       const agentCount = Object.keys(evidence.agents || {}).length;
       process.stdout.write(`
@@ -9802,7 +12533,7 @@ ${bold2("protect-mcp status")}
   const keyPath = join13(dir, "keys", "gateway.json");
   if (existsSync13(keyPath)) {
     try {
-      const keyData = JSON.parse(readFileSync17(keyPath, "utf-8"));
+      const keyData = JSON.parse(readFileSync19(keyPath, "utf-8"));
       if (keyData.publicKey) {
         const fingerprint = keyData.publicKey.slice(0, 16) + "...";
         process.stdout.write(`
@@ -9830,7 +12561,7 @@ function commandNeedsValue(argv, flag2) {
   return Boolean(value && !value.startsWith("--"));
 }
 function absoluteOrCwd(pathValue) {
-  return (0, import_node_path13.resolve)(process.cwd(), pathValue);
+  return (0, import_node_path16.resolve)(process.cwd(), pathValue);
 }
 function shellQuoteArg(arg) {
   if (/^[A-Za-z0-9_./:@%+=,-]+$/.test(arg)) return arg;
@@ -9853,16 +12584,16 @@ function wrapperArgsFor(command, opts) {
 }
 function claudeDesktopConfigPath() {
   if (process.platform === "darwin") {
-    return (0, import_node_path13.join)((0, import_node_os2.homedir)(), "Library", "Application Support", "Claude", "claude_desktop_config.json");
+    return (0, import_node_path16.join)((0, import_node_os4.homedir)(), "Library", "Application Support", "Claude", "claude_desktop_config.json");
   }
   if (process.platform === "win32") {
-    return (0, import_node_path13.join)(process.env.APPDATA || (0, import_node_path13.join)((0, import_node_os2.homedir)(), "AppData", "Roaming"), "Claude", "claude_desktop_config.json");
+    return (0, import_node_path16.join)(process.env.APPDATA || (0, import_node_path16.join)((0, import_node_os4.homedir)(), "AppData", "Roaming"), "Claude", "claude_desktop_config.json");
   }
-  return (0, import_node_path13.join)((0, import_node_os2.homedir)(), ".config", "Claude", "claude_desktop_config.json");
+  return (0, import_node_path16.join)((0, import_node_os4.homedir)(), ".config", "Claude", "claude_desktop_config.json");
 }
 async function ensureLocalConfig(dir = process.cwd()) {
   const { existsSync: existsSync13 } = await import("fs");
-  const { join: join13, resolve: resolve2 } = await import("path");
+  const { join: join13, resolve: resolve5 } = await import("path");
   const configPath = join13(dir, "protect-mcp.json");
   if (!existsSync13(configPath)) {
     process.stderr.write(`${bold2("protect-mcp wrap")}
@@ -9872,11 +12603,11 @@ No protect-mcp.json found; creating local shadow-mode config first.
 `);
     await handleInit(["--dir", dir]);
   }
-  return resolve2(configPath);
+  return resolve5(configPath);
 }
 function parseJsonlFile(pathValue) {
   try {
-    const raw = (0, import_node_fs19.readFileSync)(pathValue, "utf-8");
+    const raw = (0, import_node_fs21.readFileSync)(pathValue, "utf-8");
     return raw.split("\n").map((line) => line.trim()).filter(Boolean).flatMap((line) => {
       try {
         return [JSON.parse(line)];
@@ -9890,13 +12621,13 @@ function parseJsonlFile(pathValue) {
 }
 function parseJsonlRecords(pathValue) {
   try {
-    const raw = (0, import_node_fs19.readFileSync)(pathValue, "utf-8");
+    const raw = (0, import_node_fs21.readFileSync)(pathValue, "utf-8");
     return raw.split("\n").map((line) => line.trim()).filter(Boolean).flatMap((line) => {
       try {
         return [{
           value: JSON.parse(line),
           raw: line,
-          hash: (0, import_node_crypto12.createHash)("sha256").update(line).digest("hex")
+          hash: (0, import_node_crypto16.createHash)("sha256").update(line).digest("hex")
         }];
       } catch {
         return [];
@@ -9908,8 +12639,8 @@ function parseJsonlRecords(pathValue) {
 }
 function loadPolicyJson(policyPath) {
   try {
-    if (!(0, import_node_fs19.existsSync)(policyPath)) return null;
-    return JSON.parse((0, import_node_fs19.readFileSync)(policyPath, "utf-8"));
+    if (!(0, import_node_fs21.existsSync)(policyPath)) return null;
+    return JSON.parse((0, import_node_fs21.readFileSync)(policyPath, "utf-8"));
   } catch {
     return null;
   }
@@ -10054,10 +12785,10 @@ function suggestedGuardrailFor(_tool, risk, reasons) {
     policy: { rate_limit: "100/hour" }
   };
 }
-function buildDashboardSummary(dir, policyPath = (0, import_node_path13.join)(dir, "protect-mcp.json")) {
-  const logPath = (0, import_node_path13.join)(dir, ".protect-mcp-log.jsonl");
-  const receiptPath = (0, import_node_path13.join)(dir, ".protect-mcp-receipts.jsonl");
-  const keyPath = (0, import_node_path13.join)(dir, "keys", "gateway.json");
+function buildDashboardSummary(dir, policyPath = (0, import_node_path16.join)(dir, "protect-mcp.json")) {
+  const logPath = (0, import_node_path16.join)(dir, ".protect-mcp-log.jsonl");
+  const receiptPath = (0, import_node_path16.join)(dir, ".protect-mcp-receipts.jsonl");
+  const keyPath = (0, import_node_path16.join)(dir, "keys", "gateway.json");
   const entries = parseJsonlFile(logPath);
   const receiptRecords = parseJsonlRecords(receiptPath);
   const receipts = receiptRecords.map((record) => record.value);
@@ -10102,9 +12833,9 @@ function buildDashboardSummary(dir, policyPath = (0, import_node_path13.join)(di
   const pendingApprovals = entries.filter((e) => e.decision === "require_approval").slice(-25).reverse();
   const chains = buildReceiptChains(entries, receiptRecords);
   let key = null;
-  if ((0, import_node_fs19.existsSync)(keyPath)) {
+  if ((0, import_node_fs21.existsSync)(keyPath)) {
     try {
-      const parsed = JSON.parse((0, import_node_fs19.readFileSync)(keyPath, "utf-8"));
+      const parsed = JSON.parse((0, import_node_fs21.readFileSync)(keyPath, "utf-8"));
       key = {
         kid: parsed.kid || null,
         issuer: parsed.issuer || "protect-mcp",
@@ -10121,10 +12852,10 @@ function buildDashboardSummary(dir, policyPath = (0, import_node_path13.join)(di
       receipts: receiptPath,
       key: keyPath,
       policy: policyPath,
-      log_exists: (0, import_node_fs19.existsSync)(logPath),
-      receipts_exist: (0, import_node_fs19.existsSync)(receiptPath),
-      key_exists: (0, import_node_fs19.existsSync)(keyPath),
-      policy_exists: (0, import_node_fs19.existsSync)(policyPath)
+      log_exists: (0, import_node_fs21.existsSync)(logPath),
+      receipts_exist: (0, import_node_fs21.existsSync)(receiptPath),
+      key_exists: (0, import_node_fs21.existsSync)(keyPath),
+      policy_exists: (0, import_node_fs21.existsSync)(policyPath)
     },
     totals: {
       decisions: entries.length,
@@ -10141,7 +12872,7 @@ function buildDashboardSummary(dir, policyPath = (0, import_node_path13.join)(di
     key,
     policy: activePolicy ? {
       path: policyPath,
-      digest: (0, import_node_crypto12.createHash)("sha256").update(JSON.stringify(activePolicy)).digest("hex").slice(0, 16),
+      digest: (0, import_node_crypto16.createHash)("sha256").update(JSON.stringify(activePolicy)).digest("hex").slice(0, 16),
       default_tier: activePolicy.default_tier || "unknown",
       tools: activePolicy.tools || {}
     } : null,
@@ -10161,7 +12892,7 @@ function buildDashboardSummary(dir, policyPath = (0, import_node_path13.join)(di
       }))
     },
     connector_pilots: {
-      directory: (0, import_node_path13.join)(dir, ".protect-mcp", "connectors"),
+      directory: (0, import_node_path16.join)(dir, ".protect-mcp", "connectors"),
       installed: readInstalledConnectorPilots(dir),
       doctor: connectorDoctor(dir),
       available: CONNECTOR_PILOTS.map((pilot) => ({
@@ -10536,10 +13267,10 @@ refresh();
 async function handleDashboard(argv) {
   const { createServer: createServer4 } = await import("http");
   const { execFile } = await import("child_process");
-  const { resolve: resolve2 } = await import("path");
+  const { resolve: resolve5 } = await import("path");
   const port = commandNeedsValue(argv, "--port") ? parseInt(flagValue(argv, "--port") || "9877", 10) : 9877;
-  const dir = resolve2(commandNeedsValue(argv, "--dir") ? flagValue(argv, "--dir") || process.cwd() : process.cwd());
-  const policyPath = resolve2(flagValue(argv, "--policy") || (0, import_node_path13.join)(dir, "protect-mcp.json"));
+  const dir = resolve5(commandNeedsValue(argv, "--dir") ? flagValue(argv, "--dir") || process.cwd() : process.cwd());
+  const policyPath = resolve5(flagValue(argv, "--policy") || (0, import_node_path16.join)(dir, "protect-mcp.json"));
   const approvalEndpoint = flagValue(argv, "--approval-endpoint");
   const approvalNonce = flagValue(argv, "--approval-nonce");
   const open = argv.includes("--open");
@@ -10608,7 +13339,7 @@ async function handleDashboard(argv) {
           const { createReceiptRegistry: createReceiptRegistry2 } = await Promise.resolve().then(() => (init_receipt_registry(), receipt_registry_exports));
           try {
             const hosted = Boolean(body.hosted);
-            const result = await createReceiptRegistry2({
+            const result2 = await createReceiptRegistry2({
               dir,
               orgName: typeof body.org_name === "string" && body.org_name.trim() ? body.org_name.trim() : void 0,
               orgId: typeof body.org_id === "string" && body.org_id.trim() ? body.org_id.trim() : void 0,
@@ -10621,11 +13352,11 @@ async function handleDashboard(argv) {
             res.writeHead(200, { "content-type": "application/json" });
             res.end(JSON.stringify({
               ok: true,
-              uploaded: result.uploaded,
-              records: result.registry.records.length,
-              anchors: result.registry.anchors.length,
-              registry_path: result.registryPath,
-              verifier_path: result.verifierPath,
+              uploaded: result2.uploaded,
+              records: result2.registry.records.length,
+              anchors: result2.registry.anchors.length,
+              registry_path: result2.registryPath,
+              verifier_path: result2.verifierPath,
               registry: dashboardRegistryStatus(dir)
             }));
           } catch (err) {
@@ -10640,9 +13371,9 @@ async function handleDashboard(argv) {
         }
         if (url2.pathname === "/api/approval/resolve" && req.method === "POST") {
           const body = await readJsonBody(req);
-          const result = await recordApprovalResolution({ dir, approvalEndpoint, approvalNonce, body });
+          const result2 = await recordApprovalResolution({ dir, approvalEndpoint, approvalNonce, body });
           res.writeHead(200, { "content-type": "application/json" });
-          res.end(JSON.stringify(result));
+          res.end(JSON.stringify(result2));
           return;
         }
         if (url2.pathname === "/api/audit-bundle") {
@@ -10744,32 +13475,32 @@ function writeToolPolicy(policyPath, tool, action) {
     tools,
     default_tier: existing.default_tier || "unknown"
   };
-  (0, import_node_fs19.writeFileSync)(policyPath, JSON.stringify(next, null, 2) + "\n");
+  (0, import_node_fs21.writeFileSync)(policyPath, JSON.stringify(next, null, 2) + "\n");
   return next;
 }
 function policyPackDirectory(dir) {
-  return (0, import_node_path13.join)(dir, "cedar");
+  return (0, import_node_path16.join)(dir, "cedar");
 }
 function installedPolicyPackIds(dir) {
   const cedarDir = policyPackDirectory(dir);
   return POLICY_PACKS.filter(
-    (pack) => pack.files.every((file) => (0, import_node_fs19.existsSync)((0, import_node_path13.join)(cedarDir, file.path)))
+    (pack) => pack.files.every((file) => (0, import_node_fs21.existsSync)((0, import_node_path16.join)(cedarDir, file.path)))
   ).map((pack) => pack.id);
 }
 function installPolicyPackToDir(dir, packId, force = false) {
   const packs = packId === "all" ? POLICY_PACKS : [getPolicyPack(packId)].filter(Boolean);
   if (packs.length === 0) throw new Error(`Unknown policy pack: ${packId}`);
   const outDir = policyPackDirectory(dir);
-  (0, import_node_fs19.mkdirSync)(outDir, { recursive: true });
+  (0, import_node_fs21.mkdirSync)(outDir, { recursive: true });
   const written = [];
   for (const pack of packs) {
     for (const file of pack.files) {
-      const outPath = (0, import_node_path13.join)(outDir, file.path);
-      if ((0, import_node_fs19.existsSync)(outPath) && !force) {
+      const outPath = (0, import_node_path16.join)(outDir, file.path);
+      if ((0, import_node_fs21.existsSync)(outPath) && !force) {
         throw new Error(`Refusing to overwrite ${outPath}. Pass force=true if intentional.`);
       }
-      (0, import_node_fs19.mkdirSync)((0, import_node_path13.dirname)(outPath), { recursive: true });
-      (0, import_node_fs19.writeFileSync)(outPath, file.contents.endsWith("\n") ? file.contents : `${file.contents}
+      (0, import_node_fs21.mkdirSync)((0, import_node_path16.dirname)(outPath), { recursive: true });
+      (0, import_node_fs21.writeFileSync)(outPath, file.contents.endsWith("\n") ? file.contents : `${file.contents}
 `);
       written.push(outPath);
     }
@@ -10777,19 +13508,19 @@ function installPolicyPackToDir(dir, packId, force = false) {
   return { dir: outDir, written, packs: packs.map((pack) => pack.id) };
 }
 function dashboardRegistryStatus(dir) {
-  const identityPath = (0, import_node_path13.join)(dir, ".protect-mcp-org.json");
-  const registryPath = (0, import_node_path13.join)(dir, ".protect-mcp-registry.json");
-  const verifierPath = (0, import_node_path13.join)(dir, "scopeblind-verifier.html");
-  const identity = (0, import_node_fs19.existsSync)(identityPath) ? (() => {
+  const identityPath = (0, import_node_path16.join)(dir, ".protect-mcp-org.json");
+  const registryPath = (0, import_node_path16.join)(dir, ".protect-mcp-registry.json");
+  const verifierPath = (0, import_node_path16.join)(dir, "scopeblind-verifier.html");
+  const identity = (0, import_node_fs21.existsSync)(identityPath) ? (() => {
     try {
-      return JSON.parse((0, import_node_fs19.readFileSync)(identityPath, "utf-8"));
+      return JSON.parse((0, import_node_fs21.readFileSync)(identityPath, "utf-8"));
     } catch {
       return null;
     }
   })() : null;
-  const registry = (0, import_node_fs19.existsSync)(registryPath) ? (() => {
+  const registry = (0, import_node_fs21.existsSync)(registryPath) ? (() => {
     try {
-      return JSON.parse((0, import_node_fs19.readFileSync)(registryPath, "utf-8"));
+      return JSON.parse((0, import_node_fs21.readFileSync)(registryPath, "utf-8"));
     } catch {
       return null;
     }
@@ -10797,9 +13528,9 @@ function dashboardRegistryStatus(dir) {
   const anchors = Array.isArray(registry?.anchors) ? registry.anchors : [];
   const hosted = anchors.some((anchor) => anchor.timestamp_source === "scopeblind-hosted");
   return {
-    identity_exists: (0, import_node_fs19.existsSync)(identityPath),
-    registry_exists: (0, import_node_fs19.existsSync)(registryPath),
-    verifier_exists: (0, import_node_fs19.existsSync)(verifierPath),
+    identity_exists: (0, import_node_fs21.existsSync)(identityPath),
+    registry_exists: (0, import_node_fs21.existsSync)(registryPath),
+    verifier_exists: (0, import_node_fs21.existsSync)(verifierPath),
     identity_path: identityPath,
     registry_path: registryPath,
     verifier_path: verifierPath,
@@ -10820,13 +13551,13 @@ async function readJsonBody(req) {
 }
 async function buildAuditBundleForDir(dir) {
   const { createAuditBundle: createAuditBundle2 } = await Promise.resolve().then(() => (init_bundle(), bundle_exports));
-  const receiptPath = (0, import_node_path13.join)(dir, ".protect-mcp-receipts.jsonl");
-  const keyPath = (0, import_node_path13.join)(dir, "keys", "gateway.json");
-  if (!(0, import_node_fs19.existsSync)(receiptPath)) throw new Error("No receipt file found.");
-  if (!(0, import_node_fs19.existsSync)(keyPath)) throw new Error("No signing key found.");
+  const receiptPath = (0, import_node_path16.join)(dir, ".protect-mcp-receipts.jsonl");
+  const keyPath = (0, import_node_path16.join)(dir, "keys", "gateway.json");
+  if (!(0, import_node_fs21.existsSync)(receiptPath)) throw new Error("No receipt file found.");
+  if (!(0, import_node_fs21.existsSync)(keyPath)) throw new Error("No signing key found.");
   const receipts = parseJsonlFile(receiptPath);
   if (receipts.length === 0) throw new Error("No signed receipts found.");
-  const keyData = JSON.parse((0, import_node_fs19.readFileSync)(keyPath, "utf-8"));
+  const keyData = JSON.parse((0, import_node_fs21.readFileSync)(keyPath, "utf-8"));
   return createAuditBundle2({
     tenant: keyData.issuer || "protect-mcp",
     receipts,
@@ -10844,17 +13575,17 @@ function collectSelectiveDisclosurePackages(dir) {
   const out2 = [];
   const seen = /* @__PURE__ */ new Set();
   const candidates = [];
-  const receiptsDir = (0, import_node_path13.join)(dir, "receipts");
-  if ((0, import_node_fs19.existsSync)(receiptsDir)) {
-    for (const name of (0, import_node_fs19.readdirSync)(receiptsDir)) {
+  const receiptsDir = (0, import_node_path16.join)(dir, "receipts");
+  if ((0, import_node_fs21.existsSync)(receiptsDir)) {
+    for (const name of (0, import_node_fs21.readdirSync)(receiptsDir)) {
       if (name.includes("selective-disclosure") && name.endsWith(".json")) {
-        candidates.push((0, import_node_path13.join)(receiptsDir, name));
+        candidates.push((0, import_node_path16.join)(receiptsDir, name));
       }
     }
   }
-  const jsonlPath = (0, import_node_path13.join)(dir, ".protect-mcp-selective-disclosures.jsonl");
-  if ((0, import_node_fs19.existsSync)(jsonlPath)) {
-    for (const line of (0, import_node_fs19.readFileSync)(jsonlPath, "utf-8").split("\n").map((s) => s.trim()).filter(Boolean)) {
+  const jsonlPath = (0, import_node_path16.join)(dir, ".protect-mcp-selective-disclosures.jsonl");
+  if ((0, import_node_fs21.existsSync)(jsonlPath)) {
+    for (const line of (0, import_node_fs21.readFileSync)(jsonlPath, "utf-8").split("\n").map((s) => s.trim()).filter(Boolean)) {
       try {
         const parsed = JSON.parse(line);
         addSelectiveDisclosure(out2, seen, parsed);
@@ -10864,7 +13595,7 @@ function collectSelectiveDisclosurePackages(dir) {
   }
   for (const path of candidates) {
     try {
-      const parsed = JSON.parse((0, import_node_fs19.readFileSync)(path, "utf-8"));
+      const parsed = JSON.parse((0, import_node_fs21.readFileSync)(path, "utf-8"));
       addSelectiveDisclosure(out2, seen, parsed);
     } catch {
     }
@@ -10897,7 +13628,7 @@ async function recordApprovalResolution(opts) {
     takeover_note: opts.body.takeover_note || void 0,
     payload_hash: opts.body.payload_hash || void 0
   };
-  (0, import_node_fs19.appendFileSync)((0, import_node_path13.join)(opts.dir, ".protect-mcp-approval-resolutions.jsonl"), JSON.stringify(record) + "\n");
+  (0, import_node_fs21.appendFileSync)((0, import_node_path16.join)(opts.dir, ".protect-mcp-approval-resolutions.jsonl"), JSON.stringify(record) + "\n");
   let forwarded = null;
   if (resolution === "approve" && opts.approvalEndpoint && opts.approvalNonce) {
     const endpoint = opts.approvalEndpoint.replace(/\/$/, "") + "/approve";
@@ -10920,10 +13651,10 @@ async function recordApprovalResolution(opts) {
   return { recorded: true, resolution: record, forwarded };
 }
 async function handleRecommend(argv) {
-  const { writeFileSync: writeFileSync9 } = await import("fs");
-  const { resolve: resolve2 } = await import("path");
-  const dir = resolve2(commandNeedsValue(argv, "--dir") ? flagValue(argv, "--dir") || process.cwd() : process.cwd());
-  const outputPath = resolve2(flagValue(argv, "--output") || "protect-mcp.recommended.json");
+  const { writeFileSync: writeFileSync11 } = await import("fs");
+  const { resolve: resolve5 } = await import("path");
+  const dir = resolve5(commandNeedsValue(argv, "--dir") ? flagValue(argv, "--dir") || process.cwd() : process.cwd());
+  const outputPath = resolve5(flagValue(argv, "--output") || "protect-mcp.recommended.json");
   const write = argv.includes("--write");
   const summary = buildDashboardSummary(dir);
   const totals = summary.totals;
@@ -10969,7 +13700,7 @@ Dry run only. Write the policy with:
     process.stdout.write(dim2(body));
     return;
   }
-  writeFileSync9(outputPath, body);
+  writeFileSync11(outputPath, body);
   process.stdout.write(`
 ${green2("\u2713 Wrote recommended policy")}
 `);
@@ -10982,8 +13713,8 @@ ${green2("\u2713 Wrote recommended policy")}
 `);
 }
 async function handleWrap(argv) {
-  const { existsSync: existsSync13, readFileSync: readFileSync17, writeFileSync: writeFileSync9 } = await import("fs");
-  const { resolve: resolve2 } = await import("path");
+  const { existsSync: existsSync13, readFileSync: readFileSync19, writeFileSync: writeFileSync11 } = await import("fs");
+  const { resolve: resolve5 } = await import("path");
   const configFlag = flagValue(argv, "--config");
   const cedarFlag = flagValue(argv, "--cedar");
   const enforce = argv.includes("--enforce");
@@ -10992,10 +13723,10 @@ async function handleWrap(argv) {
   const serverName = flagValue(argv, "--server");
   const separator = argv.indexOf("--");
   const childCommand = separator >= 0 ? argv.slice(separator + 1).filter(Boolean) : [];
-  const configPath = cedarFlag ? void 0 : resolve2(configFlag || await ensureLocalConfig(process.cwd()));
-  const cedarDir = cedarFlag ? resolve2(cedarFlag) : void 0;
+  const configPath = cedarFlag ? void 0 : resolve5(configFlag || await ensureLocalConfig(process.cwd()));
+  const cedarDir = cedarFlag ? resolve5(cedarFlag) : void 0;
   const standardFlag = flagValue(argv, "--standard");
-  const standardPath = standardFlag ? resolve2(standardFlag) : void 0;
+  const standardPath = standardFlag ? resolve5(standardFlag) : void 0;
   const reportUrl = flagValue(argv, "--report") || void 0;
   const reportToken = flagValue(argv, "--report-token") || void 0;
   const runId = flagValue(argv, "--run") || void 0;
@@ -11023,7 +13754,7 @@ ${bold2("protect-mcp wrap")}
 `);
     return;
   }
-  const claudePath = resolve2(flagValue(argv, "--path") || claudeDesktopConfigPath());
+  const claudePath = resolve5(flagValue(argv, "--path") || claudeDesktopConfigPath());
   if (!claudeDesktop && !existsSync13(claudePath)) {
     process.stdout.write(`
 ${bold2("protect-mcp wrap")}
@@ -11048,7 +13779,7 @@ ${bold2("protect-mcp wrap")}
   }
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync17(claudePath, "utf-8"));
+    parsed = JSON.parse(readFileSync19(claudePath, "utf-8"));
   } catch (err) {
     process.stderr.write(`protect-mcp wrap: could not parse ${claudePath}: ${err instanceof Error ? err.message : err}
 `);
@@ -11112,8 +13843,8 @@ Dry run only. Apply with:
     return;
   }
   const backupPath = `${claudePath}.bak.${Date.now()}`;
-  writeFileSync9(backupPath, readFileSync17(claudePath, "utf-8"));
-  writeFileSync9(claudePath, JSON.stringify(next, null, 2) + "\n");
+  writeFileSync11(backupPath, readFileSync19(claudePath, "utf-8"));
+  writeFileSync11(claudePath, JSON.stringify(next, null, 2) + "\n");
   process.stdout.write(`
 ${green2("\u2713 Claude Desktop config updated")}
 `);
@@ -11139,7 +13870,7 @@ function yellow2(s) {
   return process.env.NO_COLOR ? s : `\x1B[33m${s}\x1B[0m`;
 }
 async function handleDigest(argv) {
-  const { readFileSync: readFileSync17, existsSync: existsSync13 } = await import("fs");
+  const { readFileSync: readFileSync19, existsSync: existsSync13 } = await import("fs");
   const { join: join13 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
@@ -11153,7 +13884,7 @@ No log file found. Run protect-mcp first.
 `);
     process.exit(0);
   }
-  const raw = readFileSync17(logPath, "utf-8");
+  const raw = readFileSync19(logPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   let entries = [];
   for (const line of lines) {
@@ -11230,7 +13961,7 @@ ${bold2("\u{1F6E1}\uFE0F Agent Daily Digest")}
 `);
 }
 async function handleReceipts2(argv) {
-  const { readFileSync: readFileSync17, existsSync: existsSync13 } = await import("fs");
+  const { readFileSync: readFileSync19, existsSync: existsSync13 } = await import("fs");
   const { join: join13 } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
@@ -11245,7 +13976,7 @@ No signed receipt file found. Run protect-mcp with signing enabled first.
 `);
     process.exit(0);
   }
-  const raw = readFileSync17(receiptsPath, "utf-8");
+  const raw = readFileSync19(receiptsPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   const recent = lines.slice(-count);
   process.stdout.write(`
@@ -11256,10 +13987,10 @@ ${bold2("\u{1F6E1}\uFE0F Recent Receipts")} (last ${recent.length})
     try {
       const entry = JSON.parse(line);
       const payload = entry.payload || {};
-      const time = typeof entry.issued_at === "string" ? new Date(entry.issued_at).toLocaleTimeString() : "unknown";
+      const time4 = typeof entry.issued_at === "string" ? new Date(entry.issued_at).toLocaleTimeString() : "unknown";
       const decision = payload.decision || "unknown";
       const icon = decision === "allow" ? green2("\u2713") : decision === "require_approval" ? yellow2("\u23F3") : red2("\u2717");
-      process.stdout.write(`  ${dim2(time)} ${icon} ${String(payload.tool || "unknown").padEnd(22)} ${String(entry.type || "receipt").padEnd(18)} ${dim2(String(payload.reason_code || "signed"))}
+      process.stdout.write(`  ${dim2(time4)} ${icon} ${String(payload.tool || "unknown").padEnd(22)} ${String(entry.type || "receipt").padEnd(18)} ${dim2(String(payload.reason_code || "signed"))}
 `);
     } catch {
     }
@@ -11272,11 +14003,11 @@ async function pkgVersion() {
   if (_pkgV) return _pkgV;
   let v = "0.0.0";
   try {
-    const { readFileSync: readFileSync17, existsSync: existsSync13, realpathSync } = await import("fs");
-    const { dirname: dirname4, join: join13, resolve: resolve2 } = await import("path");
+    const { readFileSync: readFileSync19, existsSync: existsSync13, realpathSync } = await import("fs");
+    const { dirname: dirname6, join: join13, resolve: resolve5 } = await import("path");
     let base = "";
     try {
-      base = dirname4(realpathSync(resolve2(process.argv[1] || "")));
+      base = dirname6(realpathSync(resolve5(process.argv[1] || "")));
     } catch {
     }
     const candidates = [
@@ -11285,7 +14016,7 @@ async function pkgVersion() {
     ].filter(Boolean);
     for (const p of candidates) {
       if (existsSync13(p)) {
-        const parsed = JSON.parse(readFileSync17(p, "utf-8"));
+        const parsed = JSON.parse(readFileSync19(p, "utf-8"));
         if (parsed && parsed.name === "protect-mcp" && parsed.version) {
           v = parsed.version;
           break;
@@ -11307,7 +14038,7 @@ function mapRecordEntry(e) {
   const tool = String(p.tool || e.tool || "action");
   const reason = String(p.reason_code || e.reason_code || p.policy_engine || "signed");
   const hook = String(p.hook_event || e.hook_event || "");
-  const signed = !!(e.signature || e.sig || e.receipt_hash || typeof e.type === "string" && e.type.indexOf("receipt") >= 0);
+  const signed2 = !!(e.signature || e.sig || e.receipt_hash || typeof e.type === "string" && e.type.indexOf("receipt") >= 0);
   let digest = "";
   if (e.receipt_hash) digest = String(e.receipt_hash);
   else if (e.digest) digest = String(e.digest);
@@ -11318,10 +14049,10 @@ function mapRecordEntry(e) {
   const agent = sw && (sw.agent_name || sw.agent_id || sw.agent_type) ? String(sw.agent_name || sw.agent_id || sw.agent_type) : "main agent";
   const tm = p && typeof p.timing === "object" && p.timing || null;
   const dur = tm && typeof tm.tool_duration_ms === "number" ? tm.tool_duration_ms : 0;
-  return { ts, tool, verdict, reason, hook, signed, caps, agent, dur, id: String(e.request_id || p.request_id || ""), digest, raw: e };
+  return { ts, tool, verdict, reason, hook, signed: signed2, caps, agent, dur, id: String(e.request_id || p.request_id || ""), digest, raw: e };
 }
 async function handleRecord(argv) {
-  const { readFileSync: readFileSync17, existsSync: existsSync13, writeFileSync: writeFileSync9 } = await import("fs");
+  const { readFileSync: readFileSync19, existsSync: existsSync13, writeFileSync: writeFileSync11 } = await import("fs");
   const { join: join13 } = await import("path");
   const osMod = await import("os");
   const cp = await import("child_process");
@@ -11345,7 +14076,7 @@ Start the gate with ${bold2("npx protect-mcp serve")}, use your agent, then run 
     process.exit(0);
     return;
   }
-  const readRecs = (file) => readFileSync17(file, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const readRecs = (file) => readFileSync19(file, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
@@ -11355,7 +14086,7 @@ Start the gate with ${bold2("npx protect-mcp serve")}, use your agent, then run 
   let pinnedKey = "";
   let pinnedKid = "";
   try {
-    const kd = JSON.parse(readFileSync17(join13(dir, "keys", "gateway.json"), "utf-8"));
+    const kd = JSON.parse(readFileSync19(join13(dir, "keys", "gateway.json"), "utf-8"));
     if (kd && typeof kd.publicKey === "string" && /^[0-9a-f]{64}$/i.test(kd.publicKey)) {
       pinnedKey = kd.publicKey;
       pinnedKid = typeof kd.kid === "string" ? kd.kid : "";
@@ -11417,7 +14148,7 @@ ${bold2("\u{1F6E1}\uFE0F  Your record")} ${dim2("\xB7")} live at ${url}
   const meta = { file: chosen, signed: chosen === recPath, count: recs.length, live: false, pinned_key: pinnedKey, pinned_kid: pinnedKid };
   const html = RECORD_HTML.replace("__DATA__", () => JSON.stringify(recs)).replace("__META__", () => JSON.stringify(meta));
   const out2 = join13(osMod.tmpdir(), "protect-mcp-record-" + Date.now() + ".html");
-  writeFileSync9(out2, html);
+  writeFileSync11(out2, html);
   openTarget(out2);
   process.stdout.write(`
 ${bold2("\u{1F6E1}\uFE0F  Your record")} ${dim2("\xB7")} ${recs.length} decision${recs.length === 1 ? "" : "s"}, all on this machine
@@ -11593,7 +14324,7 @@ render();kickVerify();
 if(META.live){var poll=function(){fetch('/data',{cache:'no-store'}).then(function(r){return r.json()}).then(function(d){var nr=d.recs||[];var changed=nr.length!==RECORDS.length;RECORDS=nr;META.count=RECORDS.length;if(typeof d.signed==='boolean')META.signed=d.signed;if(changed){render();kickVerify()}}).catch(function(){})};poll();setInterval(poll,2000);}
 </script></body></html>`;
 async function handleClaim(argv) {
-  const { readFileSync: readFileSync17, existsSync: existsSync13, writeFileSync: writeFileSync9 } = await import("fs");
+  const { readFileSync: readFileSync19, existsSync: existsSync13, writeFileSync: writeFileSync11 } = await import("fs");
   const { join: join13 } = await import("path");
   const { buildClaim: buildClaim2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
   let dir = process.cwd();
@@ -11640,7 +14371,7 @@ No signing key at ${keyPath}. A claim must be signed. Run ${bold2("npx protect-m
   }
   let key;
   try {
-    key = JSON.parse(readFileSync17(keyPath, "utf-8"));
+    key = JSON.parse(readFileSync19(keyPath, "utf-8"));
   } catch {
     process.stderr.write(`
 protect-mcp claim: ${keyPath} is not valid JSON.
@@ -11668,7 +14399,7 @@ No signed receipts in ${dir}. Run the gate with signing on, then try again.
     process.exit(0);
     return;
   }
-  const receipts = readFileSync17(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const receipts = readFileSync19(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
@@ -11686,7 +14417,7 @@ protect-mcp claim: no readable receipts in ${recPath}.
   const pack = buildClaim2(receipts, predicate, { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || "gateway", issuer: "protect-mcp" }, (/* @__PURE__ */ new Date()).toISOString());
   const oi = argv.indexOf("--output");
   const out2 = oi !== -1 && argv[oi + 1] ? argv[oi + 1] : join13(dir, "claim-" + Date.now() + ".json");
-  writeFileSync9(out2, JSON.stringify(pack, null, 2) + "\n");
+  writeFileSync11(out2, JSON.stringify(pack, null, 2) + "\n");
   process.stdout.write(`
 ${bold2("\u{1F6E1}\uFE0F  Signed claim")}
 `);
@@ -11712,7 +14443,7 @@ ${bold2("\u{1F6E1}\uFE0F  Signed claim")}
     );
     if (res.ok) {
       const sidecar = out2.replace(/\.json$/, "") + ".anchor.json";
-      writeFileSync9(sidecar, JSON.stringify({ log: logBase || "https://scopeblind.com", seq: res.seq, entry_url: res.entry_url, anchored_at: res.anchored_at, claim_digest: res.claim_digest, envelope: res.envelope }, null, 2) + "\n");
+      writeFileSync11(sidecar, JSON.stringify({ log: logBase || "https://scopeblind.com", seq: res.seq, entry_url: res.entry_url, anchored_at: res.anchored_at, claim_digest: res.claim_digest, envelope: res.envelope }, null, 2) + "\n");
       process.stdout.write(`  ${green2("Anchored")} as log entry ${bold2("#" + res.seq)}${res.already_anchored ? dim2(" (already present)") : ""}  ${dim2(res.entry_url || "")}
 `);
       process.stdout.write(`  ${dim2("A counterparty can now confirm this exact claim existed at " + (res.anchored_at || "this time") + " and cannot be quietly re-cut.")}
@@ -11741,7 +14472,7 @@ ${bold2("\u{1F6E1}\uFE0F  Signed claim")}
   process.exit(0);
 }
 async function handleAnchorRecord(argv) {
-  const { readFileSync: readFileSync17, existsSync: existsSync13, appendFileSync: appendFileSync4 } = await import("fs");
+  const { readFileSync: readFileSync19, existsSync: existsSync13, appendFileSync: appendFileSync4 } = await import("fs");
   const { join: join13 } = await import("path");
   const { anchorRecordCheckpoint: anchorRecordCheckpoint2, buildRecordCheckpoint: buildRecordCheckpoint2, lookupPinnedIdentity: lookupPinnedIdentity2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
   let dir = process.cwd();
@@ -11762,7 +14493,7 @@ No signing key at ${keyPath}. A checkpoint must be signed. Run ${bold2("npx prot
   }
   let key;
   try {
-    key = JSON.parse(readFileSync17(keyPath, "utf-8"));
+    key = JSON.parse(readFileSync19(keyPath, "utf-8"));
   } catch {
     process.stderr.write(`
 protect-mcp anchor-record: ${keyPath} is not valid JSON.
@@ -11790,7 +14521,7 @@ No signed receipts in ${dir}. Run the gate with signing on, then try again.
     process.exit(0);
     return;
   }
-  const receipts = readFileSync17(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const receipts = readFileSync19(recPath, "utf-8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
@@ -11809,7 +14540,7 @@ protect-mcp anchor-record: no readable receipts in ${recPath}.
   const historyPath = join13(dir, ".protect-mcp-anchors.jsonl");
   const preview = buildRecordCheckpoint2(receipts, claimKey, "preview");
   if (!argv.includes("--force") && existsSync13(historyPath)) {
-    const lines = readFileSync17(historyPath, "utf-8").split(/\r?\n/).filter(Boolean);
+    const lines = readFileSync19(historyPath, "utf-8").split(/\r?\n/).filter(Boolean);
     const last = lines.length ? (() => {
       try {
         return JSON.parse(lines[lines.length - 1]);
@@ -11867,7 +14598,7 @@ ${bold2("\u{1F6E1}\uFE0F  Record checkpoint")}
   process.exit(0);
 }
 async function handleVerifyClaim(argv) {
-  const { readFileSync: readFileSync17, existsSync: existsSync13 } = await import("fs");
+  const { readFileSync: readFileSync19, existsSync: existsSync13 } = await import("fs");
   const { verifyClaim: verifyClaim2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
   const file = argv.find((a) => !a.startsWith("--"));
   if (!file || !existsSync13(file)) {
@@ -11882,7 +14613,7 @@ Provide a claim pack file.
   }
   let pack;
   try {
-    pack = JSON.parse(readFileSync17(file, "utf-8"));
+    pack = JSON.parse(readFileSync19(file, "utf-8"));
   } catch {
     process.stderr.write(`
 protect-mcp verify-claim: ${file} is not valid JSON.
@@ -11923,7 +14654,7 @@ ${bold2("protect-mcp verify-claim")}
     const { checkClaimAnchor: checkClaimAnchor2 } = await Promise.resolve().then(() => (init_claim(), claim_exports));
     let sidecar = null;
     try {
-      sidecar = JSON.parse(readFileSync17(sidecarPath, "utf-8"));
+      sidecar = JSON.parse(readFileSync19(sidecarPath, "utf-8"));
     } catch {
     }
     if (!sidecar) {
@@ -11990,7 +14721,7 @@ ${bold2("protect-mcp verify-claim")}
   process.exit(finalValid ? 0 : 1);
 }
 async function handleBundle(argv) {
-  const { readFileSync: readFileSync17, writeFileSync: writeFileSync9, existsSync: existsSync13 } = await import("fs");
+  const { readFileSync: readFileSync19, writeFileSync: writeFileSync11, existsSync: existsSync13 } = await import("fs");
   const { join: join13 } = await import("path");
   const { createAuditBundle: createAuditBundle2 } = await Promise.resolve().then(() => (init_bundle(), bundle_exports));
   let dir = process.cwd();
@@ -12014,8 +14745,8 @@ No key file found at ${keyPath}
 `);
     process.exit(1);
   }
-  const receipts = readFileSync17(receiptsPath, "utf-8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
-  const keyData = JSON.parse(readFileSync17(keyPath, "utf-8"));
+  const receipts = readFileSync19(receiptsPath, "utf-8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  const keyData = JSON.parse(readFileSync19(keyPath, "utf-8"));
   const bundle = createAuditBundle2({
     tenant: keyData.issuer || "protect-mcp",
     receipts,
@@ -12028,7 +14759,7 @@ No key file found at ${keyPath}
       use: "sig"
     }]
   });
-  writeFileSync9(outputPath, JSON.stringify(bundle, null, 2) + "\n");
+  writeFileSync11(outputPath, JSON.stringify(bundle, null, 2) + "\n");
   process.stdout.write(`
 ${bold2("protect-mcp bundle")}
 
@@ -12044,9 +14775,9 @@ ${bold2("protect-mcp bundle")}
 `);
 }
 async function createSandbox() {
-  const { mkdirSync: mkdirSync7, writeFileSync: writeFileSync9, existsSync: existsSync13, readFileSync: readFileSync17 } = await import("fs");
+  const { mkdirSync: mkdirSync9, writeFileSync: writeFileSync11, existsSync: existsSync13, readFileSync: readFileSync19 } = await import("fs");
   const { join: join13 } = await import("path");
-  const { homedir: homedir2 } = await import("os");
+  const { homedir: homedir4 } = await import("os");
   let response;
   try {
     response = await fetch("https://api.scopeblind.com/sandbox/create", { method: "POST" });
@@ -12075,19 +14806,19 @@ async function createSandbox() {
     return null;
   }
   const dashboardUrl = `https://scopeblind.com/t/${data.slug}`;
-  const configDir = join13(homedir2(), ".protect-mcp");
+  const configDir = join13(homedir4(), ".protect-mcp");
   if (!existsSync13(configDir)) {
-    mkdirSync7(configDir, { recursive: true });
+    mkdirSync9(configDir, { recursive: true });
   }
   const configPath = join13(configDir, "config.json");
   let existing = {};
   if (existsSync13(configPath)) {
     try {
-      existing = JSON.parse(readFileSync17(configPath, "utf-8"));
+      existing = JSON.parse(readFileSync19(configPath, "utf-8"));
     } catch {
     }
   }
-  writeFileSync9(configPath, JSON.stringify({
+  writeFileSync11(configPath, JSON.stringify({
     ...existing,
     sandbox_slug: data.slug,
     dashboard_url: dashboardUrl
@@ -12120,7 +14851,7 @@ ${"\u2500".repeat(50)}
 }
 async function handleQuickstart(argv) {
   const connectFlag = argv.includes("--connect");
-  const { mkdtempSync, writeFileSync: writeFileSync9, existsSync: existsSync13, mkdirSync: mkdirSync7, readFileSync: readFileSync17 } = await import("fs");
+  const { mkdtempSync, writeFileSync: writeFileSync11, existsSync: existsSync13, mkdirSync: mkdirSync9, readFileSync: readFileSync19 } = await import("fs");
   const { join: join13 } = await import("path");
   const { tmpdir } = await import("os");
   const dir = mkdtempSync(join13(tmpdir(), "protect-mcp-quickstart-"));
@@ -12149,27 +14880,27 @@ ${bold2("protect-mcp quickstart")}
 
 `);
   const keysDir = join13(dir, "keys");
-  mkdirSync7(keysDir, { recursive: true });
-  const { randomBytes: randomBytes8 } = await import("crypto");
+  mkdirSync9(keysDir, { recursive: true });
+  const { randomBytes: randomBytes11 } = await import("crypto");
   let keypair2;
   try {
     const { ed25519: ed255197 } = await import("@noble/curves/ed25519");
-    const { bytesToHex: bytesToHex9 } = await import("@noble/hashes/utils");
-    const privateKey = randomBytes8(32);
+    const { bytesToHex: bytesToHex10 } = await import("@noble/hashes/utils");
+    const privateKey = randomBytes11(32);
     const publicKey = ed255197.getPublicKey(privateKey);
     keypair2 = {
-      privateKey: bytesToHex9(privateKey),
-      publicKey: bytesToHex9(publicKey),
+      privateKey: bytesToHex10(privateKey),
+      publicKey: bytesToHex10(publicKey),
       kid: `quickstart-${Date.now()}`
     };
   } catch {
     keypair2 = {
-      privateKey: randomBytes8(32).toString("hex"),
-      publicKey: randomBytes8(32).toString("hex"),
+      privateKey: randomBytes11(32).toString("hex"),
+      publicKey: randomBytes11(32).toString("hex"),
       kid: `quickstart-${Date.now()}`
     };
   }
-  writeFileSync9(join13(keysDir, "gateway.json"), JSON.stringify({
+  writeFileSync11(join13(keysDir, "gateway.json"), JSON.stringify({
     privateKey: keypair2.privateKey,
     publicKey: keypair2.publicKey,
     kid: keypair2.kid,
@@ -12188,7 +14919,7 @@ ${bold2("protect-mcp quickstart")}
       enabled: true
     }
   };
-  writeFileSync9(configPath, JSON.stringify(config, null, 2) + "\n");
+  writeFileSync11(configPath, JSON.stringify(config, null, 2) + "\n");
   process.stdout.write(`  \u2713 Keypair generated (kid: ${keypair2.kid})
 `);
   process.stdout.write(`  \u2713 Policy created (shadow mode, all tools logged)
@@ -12203,7 +14934,7 @@ ${bold2("protect-mcp quickstart")}
     const dashboardUrl = await createSandbox();
     if (dashboardUrl) {
       const updatedConfig = { ...config, dashboard_url: dashboardUrl };
-      writeFileSync9(configPath, JSON.stringify(updatedConfig, null, 2) + "\n");
+      writeFileSync11(configPath, JSON.stringify(updatedConfig, null, 2) + "\n");
       process.stdout.write(green2(`  \u2713 Dashboard created: ${dashboardUrl}
 `));
       process.stdout.write(`    Privacy-safe summaries will be sent automatically.
@@ -12239,7 +14970,7 @@ ${bold2("protect-mcp quickstart")}
 }
 async function handleRegistry(argv) {
   const subcommand = argv[0] || "status";
-  const dir = (0, import_node_path13.resolve)(flagValue(argv, "--dir") || process.cwd());
+  const dir = (0, import_node_path16.resolve)(flagValue(argv, "--dir") || process.cwd());
   const orgName = flagValue(argv, "--org") || process.env.SCOPEBLIND_ORG;
   const orgId = flagValue(argv, "--org-id") || process.env.SCOPEBLIND_ORG_ID;
   const billingAccountId = flagValue(argv, "--billing-account") || process.env.SCOPEBLIND_BILLING_ACCOUNT;
@@ -12280,7 +15011,7 @@ ${bold2("protect-mcp registry init")}
 ${bold2("protect-mcp registry anchor")}
 
 `);
-    const result = await registryMod.createReceiptRegistry({
+    const result2 = await registryMod.createReceiptRegistry({
       dir,
       orgName,
       orgId,
@@ -12291,27 +15022,27 @@ ${bold2("protect-mcp registry anchor")}
       verifierBaseUrl,
       outPath: flagValue(argv, "--output")
     });
-    process.stdout.write(`  Org:              ${result.registry.org.org_name}
+    process.stdout.write(`  Org:              ${result2.registry.org.org_name}
 `);
-    process.stdout.write(`  Billing account:  ${result.registry.billing.billing_account_id}
+    process.stdout.write(`  Billing account:  ${result2.registry.billing.billing_account_id}
 `);
-    process.stdout.write(`  Digests:          ${result.registry.records.length}
+    process.stdout.write(`  Digests:          ${result2.registry.records.length}
 `);
-    process.stdout.write(`  Anchors:          ${result.registry.anchors.length}
+    process.stdout.write(`  Anchors:          ${result2.registry.anchors.length}
 `);
-    process.stdout.write(`  Boundary:         ${result.uploaded ? green2("hosted digest anchor") : yellow2("local preview only")}
+    process.stdout.write(`  Boundary:         ${result2.uploaded ? green2("hosted digest anchor") : yellow2("local preview only")}
 `);
-    process.stdout.write(`  Registry:         ${result.registryPath}
+    process.stdout.write(`  Registry:         ${result2.registryPath}
 `);
-    process.stdout.write(`  Verifier page:    ${result.verifierPath}
+    process.stdout.write(`  Verifier page:    ${result2.verifierPath}
 
 `);
-    process.stdout.write(`  Uploaded fields:  ${result.registry.privacy.uploaded_fields.join(", ")}
+    process.stdout.write(`  Uploaded fields:  ${result2.registry.privacy.uploaded_fields.join(", ")}
 `);
-    process.stdout.write(`  Excluded fields:  ${result.registry.privacy.excluded_fields.join(", ")}
+    process.stdout.write(`  Excluded fields:  ${result2.registry.privacy.excluded_fields.join(", ")}
 
 `);
-    if (!result.uploaded) {
+    if (!result2.uploaded) {
       process.stdout.write(`${yellow2("  This is not an independent timestamp yet.")}
 `);
       process.stdout.write(`  Run with ${dim2("--hosted --token $SCOPEBLIND_TOKEN")} to make the paid boundary real.
@@ -12321,14 +15052,14 @@ ${bold2("protect-mcp registry anchor")}
     return;
   }
   if (subcommand === "status") {
-    const registryPath = (0, import_node_path13.join)(dir, registryMod.REGISTRY_FILE);
-    const identityPath = (0, import_node_path13.join)(dir, registryMod.ORG_IDENTITY_FILE);
+    const registryPath = (0, import_node_path16.join)(dir, registryMod.REGISTRY_FILE);
+    const identityPath = (0, import_node_path16.join)(dir, registryMod.ORG_IDENTITY_FILE);
     process.stdout.write(`
 ${bold2("protect-mcp registry status")}
 
 `);
-    if ((0, import_node_fs19.existsSync)(identityPath)) {
-      const identity = JSON.parse((0, import_node_fs19.readFileSync)(identityPath, "utf-8"));
+    if ((0, import_node_fs21.existsSync)(identityPath)) {
+      const identity = JSON.parse((0, import_node_fs21.readFileSync)(identityPath, "utf-8"));
       process.stdout.write(`  Org:              ${identity.org_name || "unknown"}
 `);
       process.stdout.write(`  Org ID:           ${identity.org_id || "unknown"}
@@ -12339,8 +15070,8 @@ ${bold2("protect-mcp registry status")}
       process.stdout.write(`  Org identity:     ${yellow2("missing")} (${identityPath})
 `);
     }
-    if ((0, import_node_fs19.existsSync)(registryPath)) {
-      const registry = JSON.parse((0, import_node_fs19.readFileSync)(registryPath, "utf-8"));
+    if ((0, import_node_fs21.existsSync)(registryPath)) {
+      const registry = JSON.parse((0, import_node_fs21.readFileSync)(registryPath, "utf-8"));
       const hosted = Array.isArray(registry.anchors) && registry.anchors.some((a) => a.timestamp_source === "scopeblind-hosted");
       process.stdout.write(`  Registry:         ${registryPath}
 `);
@@ -12350,7 +15081,7 @@ ${bold2("protect-mcp registry status")}
 `);
       process.stdout.write(`  Boundary:         ${hosted ? green2("hosted digest anchor") : yellow2("local preview only")}
 `);
-      process.stdout.write(`  Verifier page:    ${(0, import_node_path13.join)(dir, registryMod.VERIFIER_PAGE_FILE)}
+      process.stdout.write(`  Verifier page:    ${(0, import_node_path16.join)(dir, registryMod.VERIFIER_PAGE_FILE)}
 `);
     } else {
       process.stdout.write(`  Registry:         ${yellow2("missing")} (${registryPath})
@@ -12369,8 +15100,8 @@ async function handleKillerDemo(argv) {
   const { mkdtempSync } = await import("fs");
   const { tmpdir } = await import("os");
   const { ed25519: ed255197 } = await import("@noble/curves/ed25519");
-  const { bytesToHex: bytesToHex9 } = await import("@noble/hashes/utils");
-  const { randomBytes: randomBytes8 } = await import("crypto");
+  const { bytesToHex: bytesToHex10 } = await import("@noble/hashes/utils");
+  const { randomBytes: randomBytes11 } = await import("crypto");
   const artifacts2 = await import("@veritasacta/artifacts");
   const {
     createSelectiveDisclosurePackage: createSelectiveDisclosurePackage2,
@@ -12378,26 +15109,26 @@ async function handleKillerDemo(argv) {
     verifySelectiveDisclosurePackage: verifySelectiveDisclosurePackage2
   } = await Promise.resolve().then(() => (init_signing_committed(), signing_committed_exports));
   const registryMod = await Promise.resolve().then(() => (init_receipt_registry(), receipt_registry_exports));
-  const dir = (0, import_node_path13.resolve)(flagValue(argv, "--dir") || mkdtempSync((0, import_node_path13.join)(tmpdir(), "scopeblind-killer-demo-")));
-  (0, import_node_fs19.mkdirSync)(dir, { recursive: true });
-  (0, import_node_fs19.mkdirSync)((0, import_node_path13.join)(dir, "keys"), { recursive: true });
-  (0, import_node_fs19.mkdirSync)((0, import_node_path13.join)(dir, "receipts"), { recursive: true });
-  const privateKeyBytes = randomBytes8(32);
+  const dir = (0, import_node_path16.resolve)(flagValue(argv, "--dir") || mkdtempSync((0, import_node_path16.join)(tmpdir(), "scopeblind-killer-demo-")));
+  (0, import_node_fs21.mkdirSync)(dir, { recursive: true });
+  (0, import_node_fs21.mkdirSync)((0, import_node_path16.join)(dir, "keys"), { recursive: true });
+  (0, import_node_fs21.mkdirSync)((0, import_node_path16.join)(dir, "receipts"), { recursive: true });
+  const privateKeyBytes = randomBytes11(32);
   const publicKeyBytes = ed255197.getPublicKey(privateKeyBytes);
   const keypair2 = {
-    privateKey: bytesToHex9(privateKeyBytes),
-    publicKey: bytesToHex9(publicKeyBytes),
+    privateKey: bytesToHex10(privateKeyBytes),
+    publicKey: bytesToHex10(publicKeyBytes),
     kid: `killer-demo-${Date.now()}`,
     issuer: "scopeblind-killer-demo"
   };
-  const keyPath = (0, import_node_path13.join)(dir, "keys", "gateway.json");
-  (0, import_node_fs19.writeFileSync)(keyPath, JSON.stringify({
+  const keyPath = (0, import_node_path16.join)(dir, "keys", "gateway.json");
+  (0, import_node_fs21.writeFileSync)(keyPath, JSON.stringify({
     ...keypair2,
     generated_at: (/* @__PURE__ */ new Date()).toISOString(),
     warning: "Demo key only. Do not use for production."
   }, null, 2) + "\n");
-  const shadowConfigPath = (0, import_node_path13.join)(dir, "protect-mcp.shadow.json");
-  const policyPackPath = (0, import_node_path13.join)(dir, "protect-mcp.policy-pack.json");
+  const shadowConfigPath = (0, import_node_path16.join)(dir, "protect-mcp.shadow.json");
+  const policyPackPath = (0, import_node_path16.join)(dir, "protect-mcp.policy-pack.json");
   const config = {
     tools: { "*": { rate_limit: "100/hour" } },
     default_tier: "signed-known",
@@ -12416,11 +15147,11 @@ async function handleKillerDemo(argv) {
     signing: { key_path: keyPath, issuer: keypair2.issuer, enabled: true },
     notes: ["Demo policy pack: approvals for GitHub, email, and PMS booking; destructive tools blocked."]
   };
-  (0, import_node_fs19.writeFileSync)(shadowConfigPath, JSON.stringify(config, null, 2) + "\n");
-  (0, import_node_fs19.writeFileSync)(policyPackPath, JSON.stringify(policyPack, null, 2) + "\n");
+  (0, import_node_fs21.writeFileSync)(shadowConfigPath, JSON.stringify(config, null, 2) + "\n");
+  (0, import_node_fs21.writeFileSync)(policyPackPath, JSON.stringify(policyPack, null, 2) + "\n");
   await initSigning({ enabled: true, key_path: keyPath, issuer: keypair2.issuer });
-  const logPath = (0, import_node_path13.join)(dir, ".protect-mcp-log.jsonl");
-  const receiptPath = (0, import_node_path13.join)(dir, ".protect-mcp-receipts.jsonl");
+  const logPath = (0, import_node_path16.join)(dir, ".protect-mcp-log.jsonl");
+  const receiptPath = (0, import_node_path16.join)(dir, ".protect-mcp-receipts.jsonl");
   const shadowCalls = [
     { tool: "read_file", input: { path: "/research/macro-notes.md" }, reason: "observe_mode" },
     { tool: "github_create_pr", input: { repo: "scopeblind/legate", branch: "agent/pms-adapter", title: "Wire mock PMS adapter" }, reason: "observe_mode" },
@@ -12429,7 +15160,7 @@ async function handleKillerDemo(argv) {
   ];
   for (const [idx, call] of shadowCalls.entries()) {
     const requestId2 = `demo-shadow-${idx + 1}`;
-    (0, import_node_fs19.appendFileSync)(logPath, JSON.stringify({
+    (0, import_node_fs21.appendFileSync)(logPath, JSON.stringify({
       v: 2,
       tool: call.tool,
       decision: "allow",
@@ -12461,11 +15192,11 @@ async function handleKillerDemo(argv) {
     request_id: requestId,
     timestamp: Date.now() + 10,
     mode: "enforce",
-    policy_digest: (0, import_node_crypto12.createHash)("sha256").update(JSON.stringify(policyPack)).digest("hex").slice(0, 16),
+    policy_digest: (0, import_node_crypto16.createHash)("sha256").update(JSON.stringify(policyPack)).digest("hex").slice(0, 16),
     action_readback: readback
   };
-  (0, import_node_fs19.appendFileSync)(logPath, JSON.stringify(requireApprovalEntry) + "\n");
-  (0, import_node_fs19.appendFileSync)((0, import_node_path13.join)(dir, ".protect-mcp-approval-resolutions.jsonl"), JSON.stringify({
+  (0, import_node_fs21.appendFileSync)(logPath, JSON.stringify(requireApprovalEntry) + "\n");
+  (0, import_node_fs21.appendFileSync)((0, import_node_path16.join)(dir, ".protect-mcp-approval-resolutions.jsonl"), JSON.stringify({
     type: "scopeblind.approval_resolution.v1",
     at: (/* @__PURE__ */ new Date()).toISOString(),
     request_id: requestId,
@@ -12480,18 +15211,18 @@ async function handleKillerDemo(argv) {
     reason_code: "approval_granted",
     timestamp: Date.now() + 20,
     payload_digest: {
-      output_hash: (0, import_node_crypto12.createHash)("sha256").update("mock-pms-booking-confirmed").digest("hex"),
+      output_hash: (0, import_node_crypto16.createHash)("sha256").update("mock-pms-booking-confirmed").digest("hex"),
       output_size: 26,
       truncated: false
     }
   };
-  (0, import_node_fs19.appendFileSync)(logPath, JSON.stringify(executedEntry) + "\n");
-  const signed = signDecision(executedEntry);
-  if (!signed.signed) throw new Error(`demo signing failed: ${signed.warning || signed.error || "unknown"}`);
-  (0, import_node_fs19.appendFileSync)(receiptPath, signed.signed + "\n");
-  (0, import_node_fs19.writeFileSync)((0, import_node_path13.join)(dir, "receipts", "approved-pms-booking.receipt.json"), JSON.stringify(JSON.parse(signed.signed), null, 2) + "\n");
-  const receiptArtifact = JSON.parse(signed.signed);
-  const tamperedArtifact = JSON.parse(signed.signed);
+  (0, import_node_fs21.appendFileSync)(logPath, JSON.stringify(executedEntry) + "\n");
+  const signed2 = signDecision(executedEntry);
+  if (!signed2.signed) throw new Error(`demo signing failed: ${signed2.warning || signed2.error || "unknown"}`);
+  (0, import_node_fs21.appendFileSync)(receiptPath, signed2.signed + "\n");
+  (0, import_node_fs21.writeFileSync)((0, import_node_path16.join)(dir, "receipts", "approved-pms-booking.receipt.json"), JSON.stringify(JSON.parse(signed2.signed), null, 2) + "\n");
+  const receiptArtifact = JSON.parse(signed2.signed);
+  const tamperedArtifact = JSON.parse(signed2.signed);
   if (tamperedArtifact.payload && typeof tamperedArtifact.payload === "object") {
     tamperedArtifact.payload.decision = "deny";
     tamperedArtifact.payload.tool_name = "send_email";
@@ -12500,7 +15231,7 @@ async function handleKillerDemo(argv) {
   }
   const validOriginal = verifyReceipt(receiptArtifact, keypair2.publicKey);
   const validTampered = verifyReceipt(tamperedArtifact, keypair2.publicKey);
-  (0, import_node_fs19.writeFileSync)((0, import_node_path13.join)(dir, "receipts", "tampered.receipt.json"), JSON.stringify(tamperedArtifact, null, 2) + "\n");
+  (0, import_node_fs21.writeFileSync)((0, import_node_path16.join)(dir, "receipts", "tampered.receipt.json"), JSON.stringify(tamperedArtifact, null, 2) + "\n");
   const committed = signCommittedDecision2(
     executedEntry,
     ["tool", "payload_digest", "swarm"],
@@ -12512,11 +15243,11 @@ async function handleKillerDemo(argv) {
   const committedReceipt = JSON.parse(committed.signed);
   const disclosurePackage = createSelectiveDisclosurePackage2(committedReceipt, ["tool"], committed.openings);
   const disclosureVerification = verifySelectiveDisclosurePackage2(committedReceipt, disclosurePackage);
-  (0, import_node_fs19.appendFileSync)(receiptPath, committed.signed + "\n");
-  (0, import_node_fs19.writeFileSync)((0, import_node_path13.join)(dir, "receipts", "selective-disclosure.receipt.json"), JSON.stringify(committedReceipt, null, 2) + "\n");
-  (0, import_node_fs19.writeFileSync)((0, import_node_path13.join)(dir, "receipts", "selective-disclosure.package.json"), JSON.stringify(disclosurePackage, null, 2) + "\n");
-  (0, import_node_fs19.writeFileSync)((0, import_node_path13.join)(dir, "receipts", "selective-disclosure.tool-only.json"), JSON.stringify(disclosurePackage, null, 2) + "\n");
-  (0, import_node_fs19.writeFileSync)((0, import_node_path13.join)(dir, "verification-results.json"), JSON.stringify({
+  (0, import_node_fs21.appendFileSync)(receiptPath, committed.signed + "\n");
+  (0, import_node_fs21.writeFileSync)((0, import_node_path16.join)(dir, "receipts", "selective-disclosure.receipt.json"), JSON.stringify(committedReceipt, null, 2) + "\n");
+  (0, import_node_fs21.writeFileSync)((0, import_node_path16.join)(dir, "receipts", "selective-disclosure.package.json"), JSON.stringify(disclosurePackage, null, 2) + "\n");
+  (0, import_node_fs21.writeFileSync)((0, import_node_path16.join)(dir, "receipts", "selective-disclosure.tool-only.json"), JSON.stringify(disclosurePackage, null, 2) + "\n");
+  (0, import_node_fs21.writeFileSync)((0, import_node_path16.join)(dir, "verification-results.json"), JSON.stringify({
     original_receipt_valid: validOriginal,
     tampered_receipt_valid: validTampered,
     selective_disclosure_valid: disclosureVerification.valid,
@@ -12599,19 +15330,19 @@ async function handleKillerDemo(argv) {
     "No raw prompt, payload, output, private key, or raw receipt is uploaded by the registry flow. Hosted mode submits receipt digests, request ids, org public keys, and billing account metadata only.",
     ""
   ].join("\n");
-  (0, import_node_fs19.writeFileSync)((0, import_node_path13.join)(dir, "DEMO-RUNBOOK.md"), runbook);
-  (0, import_node_fs19.writeFileSync)((0, import_node_path13.join)(dir, "demo-summary.json"), JSON.stringify({
+  (0, import_node_fs21.writeFileSync)((0, import_node_path16.join)(dir, "DEMO-RUNBOOK.md"), runbook);
+  (0, import_node_fs21.writeFileSync)((0, import_node_path16.join)(dir, "demo-summary.json"), JSON.stringify({
     dir,
     dashboard_command: `npx protect-mcp dashboard --dir ${dir} --policy ${policyPackPath} --open`,
     policy_pack: policyPackPath,
-    receipt: (0, import_node_path13.join)(dir, "receipts", "approved-pms-booking.receipt.json"),
-    tampered_receipt: (0, import_node_path13.join)(dir, "receipts", "tampered.receipt.json"),
-    selective_disclosure_receipt: (0, import_node_path13.join)(dir, "receipts", "selective-disclosure.receipt.json"),
-    selective_disclosure_package: (0, import_node_path13.join)(dir, "receipts", "selective-disclosure.tool-only.json"),
-    verification_results: (0, import_node_path13.join)(dir, "verification-results.json"),
+    receipt: (0, import_node_path16.join)(dir, "receipts", "approved-pms-booking.receipt.json"),
+    tampered_receipt: (0, import_node_path16.join)(dir, "receipts", "tampered.receipt.json"),
+    selective_disclosure_receipt: (0, import_node_path16.join)(dir, "receipts", "selective-disclosure.receipt.json"),
+    selective_disclosure_package: (0, import_node_path16.join)(dir, "receipts", "selective-disclosure.tool-only.json"),
+    verification_results: (0, import_node_path16.join)(dir, "verification-results.json"),
     registry: registry.registryPath,
     verifier_page: registry.verifierPath,
-    runbook: (0, import_node_path13.join)(dir, "DEMO-RUNBOOK.md"),
+    runbook: (0, import_node_path16.join)(dir, "DEMO-RUNBOOK.md"),
     original_valid: validOriginal.valid,
     tampered_valid: validTampered.valid,
     selective_disclosure_valid: disclosureVerification.valid
@@ -12624,9 +15355,9 @@ ${bold2("protect-mcp killer-demo")}
 `);
   process.stdout.write(`  Dashboard:         ${dim2(`npx protect-mcp dashboard --dir ${dir} --policy ${policyPackPath} --open`)}
 `);
-  process.stdout.write(`  Runbook:           ${(0, import_node_path13.join)(dir, "DEMO-RUNBOOK.md")}
+  process.stdout.write(`  Runbook:           ${(0, import_node_path16.join)(dir, "DEMO-RUNBOOK.md")}
 `);
-  process.stdout.write(`  Signed receipt:    ${(0, import_node_path13.join)(dir, "receipts", "approved-pms-booking.receipt.json")}
+  process.stdout.write(`  Signed receipt:    ${(0, import_node_path16.join)(dir, "receipts", "approved-pms-booking.receipt.json")}
 `);
   process.stdout.write(`  Tamper check:      original=${validOriginal.valid ? green2("valid") : red2("invalid")} tampered=${validTampered.valid ? red2("valid") : green2("invalid")}
 `);
@@ -12646,44 +15377,44 @@ async function handleVerifyDisclosure(argv) {
     process.exit(1);
   }
   const { verifySelectiveDisclosurePackage: verifySelectiveDisclosurePackage2 } = await Promise.resolve().then(() => (init_signing_committed(), signing_committed_exports));
-  const receipt = JSON.parse((0, import_node_fs19.readFileSync)((0, import_node_path13.resolve)(receiptPath), "utf-8"));
-  const disclosure = JSON.parse((0, import_node_fs19.readFileSync)((0, import_node_path13.resolve)(disclosurePath), "utf-8"));
-  const result = verifySelectiveDisclosurePackage2(receipt, disclosure);
+  const receipt = JSON.parse((0, import_node_fs21.readFileSync)((0, import_node_path16.resolve)(receiptPath), "utf-8"));
+  const disclosure = JSON.parse((0, import_node_fs21.readFileSync)((0, import_node_path16.resolve)(disclosurePath), "utf-8"));
+  const result2 = verifySelectiveDisclosurePackage2(receipt, disclosure);
   process.stdout.write(`
 ${bold2("protect-mcp verify-disclosure")}
 
 `);
-  process.stdout.write(`  Result:           ${result.valid ? green2("valid") : red2("invalid")}
+  process.stdout.write(`  Result:           ${result2.valid ? green2("valid") : red2("invalid")}
 `);
-  process.stdout.write(`  Receipt hash:     ${result.receipt_hash_valid ? green2("matches") : red2("mismatch")}
+  process.stdout.write(`  Receipt hash:     ${result2.receipt_hash_valid ? green2("matches") : red2("mismatch")}
 `);
-  process.stdout.write(`  Signature:        ${result.signature_valid === true ? green2("valid") : result.signature_valid === null ? yellow2("not checked") : red2("invalid")}
+  process.stdout.write(`  Signature:        ${result2.signature_valid === true ? green2("valid") : result2.signature_valid === null ? yellow2("not checked") : red2("invalid")}
 `);
-  process.stdout.write(`  Commitment root:  ${result.commitment_root_valid ? green2("matches") : red2("mismatch")}
+  process.stdout.write(`  Commitment root:  ${result2.commitment_root_valid ? green2("matches") : red2("mismatch")}
 `);
-  process.stdout.write(`  Disclosed fields: ${result.disclosed_fields.length ? result.disclosed_fields.join(", ") : "none"}
+  process.stdout.write(`  Disclosed fields: ${result2.disclosed_fields.length ? result2.disclosed_fields.join(", ") : "none"}
 `);
-  process.stdout.write(`  Hidden fields:    ${result.hidden_fields.length ? result.hidden_fields.join(", ") : "none"}
+  process.stdout.write(`  Hidden fields:    ${result2.hidden_fields.length ? result2.hidden_fields.join(", ") : "none"}
 
 `);
-  for (const line of result.explanation) {
+  for (const line of result2.explanation) {
     process.stdout.write(`  - ${line}
 `);
   }
-  if (result.errors.length > 0) {
+  if (result2.errors.length > 0) {
     process.stdout.write(`
 ${red2("Errors:")}
 `);
-    for (const err of result.errors) process.stdout.write(`  - ${err}
+    for (const err of result2.errors) process.stdout.write(`  - ${err}
 `);
   }
   process.stdout.write("\n");
-  if (!result.valid) process.exit(2);
+  if (!result2.valid) process.exit(2);
 }
 async function handlePolicyPacks(argv) {
   const subcommand = argv[0] || "list";
   const packArg = argv[1];
-  const dir = (0, import_node_path13.resolve)(flagValue(argv, "--dir") || "./cedar");
+  const dir = (0, import_node_path16.resolve)(flagValue(argv, "--dir") || "./cedar");
   const force = argv.includes("--force");
   if (subcommand === "list") {
     process.stdout.write(`
@@ -12738,17 +15469,17 @@ ${bold2(pack.name)} (${pack.id})
 `);
       process.exit(1);
     }
-    (0, import_node_fs19.mkdirSync)(dir, { recursive: true });
+    (0, import_node_fs21.mkdirSync)(dir, { recursive: true });
     const written = [];
     for (const pack of packs) {
       for (const file of pack.files) {
-        const outPath = (0, import_node_path13.join)(dir, file.path);
-        if ((0, import_node_fs19.existsSync)(outPath) && !force) {
+        const outPath = (0, import_node_path16.join)(dir, file.path);
+        if ((0, import_node_fs21.existsSync)(outPath) && !force) {
           process.stderr.write(`Refusing to overwrite ${outPath}. Re-run with --force if intentional.
 `);
           process.exit(1);
         }
-        (0, import_node_fs19.writeFileSync)(outPath, file.contents.endsWith("\n") ? file.contents : `${file.contents}
+        (0, import_node_fs21.writeFileSync)(outPath, file.contents.endsWith("\n") ? file.contents : `${file.contents}
 `);
         written.push(outPath);
       }
@@ -12773,7 +15504,7 @@ Next: ${dim2(`protect-mcp serve --cedar ${dir}`)} for shadow mode, then add ${di
 async function handleConnectors(argv) {
   const subcommand = argv[0] || "list";
   const pilotArg = argv[1];
-  const dir = (0, import_node_path13.resolve)(flagValue(argv, "--dir") || process.cwd());
+  const dir = (0, import_node_path16.resolve)(flagValue(argv, "--dir") || process.cwd());
   const force = argv.includes("--force");
   if (subcommand === "list") {
     process.stdout.write(`
@@ -12946,23 +15677,23 @@ ${bold2("protect-mcp trace")}
     childMap.get(edge.from).push({ to: edge.to, relation: edge.relation });
   }
   const rendered = /* @__PURE__ */ new Set();
-  function renderNode(id, prefix, isLast) {
-    const node = nodeMap.get(id);
+  function renderNode(id4, prefix, isLast) {
+    const node = nodeMap.get(id4);
     const connector = isLast ? "\u2514\u2500\u2500 " : "\u251C\u2500\u2500 ";
     const childPrefix = isLast ? "    " : "\u2502   ";
     const typeEmoji = getTypeEmoji(node?.receipt_type || "unknown");
-    const shortId = id.length > 16 ? id.slice(0, 12) + "\u2026" : id;
-    const time = node?.event_time ? new Date(node.event_time).toLocaleTimeString() : "?";
+    const shortId = id4.length > 16 ? id4.slice(0, 12) + "\u2026" : id4;
+    const time4 = node?.event_time ? new Date(node.event_time).toLocaleTimeString() : "?";
     const type = node?.receipt_type?.replace("acta:", "") || "unknown";
-    process.stdout.write(`${prefix}${connector}${typeEmoji} ${bold2(type)} ${dim2(shortId)} ${dim2(time)}
+    process.stdout.write(`${prefix}${connector}${typeEmoji} ${bold2(type)} ${dim2(shortId)} ${dim2(time4)}
 `);
-    if (rendered.has(id)) {
+    if (rendered.has(id4)) {
       process.stdout.write(`${prefix}${childPrefix}${dim2("(cycle: already rendered)")}
 `);
       return;
     }
-    rendered.add(id);
-    const children = childMap.get(id) || [];
+    rendered.add(id4);
+    const children = childMap.get(id4) || [];
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
       const edgeLabel = dim2(`\u2500\u2500[${child.relation}]\u2500\u2500\u25B6`);
@@ -12975,8 +15706,8 @@ ${bold2("protect-mcp trace")}
   if (rootNode) {
     const typeEmoji = getTypeEmoji(rootNode.receipt_type);
     const type = rootNode.receipt_type?.replace("acta:", "") || "unknown";
-    const time = rootNode.event_time ? new Date(rootNode.event_time).toLocaleTimeString() : "?";
-    process.stdout.write(`  ${typeEmoji} ${bold2(type)} ${dim2(receiptId.slice(0, 16) + "\u2026")} ${dim2(time)} ${bold2("(root)")}
+    const time4 = rootNode.event_time ? new Date(rootNode.event_time).toLocaleTimeString() : "?";
+    process.stdout.write(`  ${typeEmoji} ${bold2(type)} ${dim2(receiptId.slice(0, 16) + "\u2026")} ${dim2(time4)} ${bold2("(root)")}
 `);
     rendered.add(receiptId);
     const children = childMap.get(receiptId) || [];
@@ -13015,7 +15746,7 @@ ${"\u2500".repeat(60)}
 `);
 }
 async function traceLocal(receiptId) {
-  const { readFileSync: readFileSync17, existsSync: existsSync13 } = await import("fs");
+  const { readFileSync: readFileSync19, existsSync: existsSync13 } = await import("fs");
   const { join: join13 } = await import("path");
   const dir = process.cwd();
   const receiptsDir = join13(dir, ".protect-mcp", "receipts");
@@ -13033,7 +15764,7 @@ async function traceLocal(receiptId) {
   const receipts = [];
   for (const file of files) {
     try {
-      const content = readFileSync17(join13(receiptsDir, file), "utf-8");
+      const content = readFileSync19(join13(receiptsDir, file), "utf-8");
       const receipt = JSON.parse(content);
       receipts.push(receipt);
     } catch {
@@ -13090,7 +15821,7 @@ function getTypeEmoji(type) {
   }
 }
 async function handleInitHooks(argv) {
-  const { writeFileSync: writeFileSync9, existsSync: existsSync13, mkdirSync: mkdirSync7, readFileSync: readFileSync17 } = await import("fs");
+  const { writeFileSync: writeFileSync11, existsSync: existsSync13, mkdirSync: mkdirSync9, readFileSync: readFileSync19 } = await import("fs");
   const { join: join13 } = await import("path");
   const { generateHookSettings: generateHookSettings2, generateSampleCedarPolicy: generateSampleCedarPolicy2, generateVerifyReceiptSkill: generateVerifyReceiptSkill2 } = await Promise.resolve().then(() => (init_hook_patterns(), hook_patterns_exports));
   let dir = process.cwd();
@@ -13109,11 +15840,11 @@ ${bold2("protect-mcp init-hooks")}
   const settingsPath = join13(claudeDir, "settings.json");
   let existingSettings = {};
   if (!existsSync13(claudeDir)) {
-    mkdirSync7(claudeDir, { recursive: true });
+    mkdirSync9(claudeDir, { recursive: true });
   }
   if (existsSync13(settingsPath)) {
     try {
-      existingSettings = JSON.parse(readFileSync17(settingsPath, "utf-8"));
+      existingSettings = JSON.parse(readFileSync19(settingsPath, "utf-8"));
     } catch {
       process.stderr.write(`[PROTECT_MCP] Warning: Could not parse existing ${settingsPath}
 `);
@@ -13127,7 +15858,7 @@ ${bold2("protect-mcp init-hooks")}
       ...hookSettings.hooks
     }
   };
-  writeFileSync9(settingsPath, JSON.stringify(mergedSettings, null, 2) + "\n");
+  writeFileSync11(settingsPath, JSON.stringify(mergedSettings, null, 2) + "\n");
   process.stdout.write(`  ${green2("\u2713")} ${settingsPath}
 `);
   process.stdout.write(`    Hook URL: ${dim2(hookUrl)}
@@ -13138,23 +15869,23 @@ ${bold2("protect-mcp init-hooks")}
   const keysDir = join13(dir, "keys");
   const keyPath = join13(keysDir, "gateway.json");
   if (!existsSync13(keyPath)) {
-    if (!existsSync13(keysDir)) mkdirSync7(keysDir, { recursive: true });
+    if (!existsSync13(keysDir)) mkdirSync9(keysDir, { recursive: true });
     const { randomBytes: rb } = await import("crypto");
     try {
       const { ed25519: ed255197 } = await import("@noble/curves/ed25519");
-      const { bytesToHex: bytesToHex9 } = await import("@noble/hashes/utils");
+      const { bytesToHex: bytesToHex10 } = await import("@noble/hashes/utils");
       const privateKey = rb(32);
       const publicKey = ed255197.getPublicKey(privateKey);
-      writeFileSync9(keyPath, JSON.stringify({
-        privateKey: bytesToHex9(privateKey),
-        publicKey: bytesToHex9(publicKey),
+      writeFileSync11(keyPath, JSON.stringify({
+        privateKey: bytesToHex10(privateKey),
+        publicKey: bytesToHex10(publicKey),
         kid: `hook-${Date.now()}`,
         generated_at: (/* @__PURE__ */ new Date()).toISOString(),
         warning: "KEEP THIS FILE SECRET. Never commit to version control."
       }, null, 2) + "\n");
       const gitignorePath = join13(keysDir, ".gitignore");
       if (!existsSync13(gitignorePath)) {
-        writeFileSync9(gitignorePath, "# Never commit signing keys\n*.json\n");
+        writeFileSync11(gitignorePath, "# Never commit signing keys\n*.json\n");
       }
       process.stdout.write(`  ${green2("\u2713")} ${keyPath} (Ed25519 keypair)
 
@@ -13172,8 +15903,8 @@ ${bold2("protect-mcp init-hooks")}
   const policiesDir = join13(dir, "policies");
   const cedarPath = join13(policiesDir, "agent.cedar");
   if (!existsSync13(cedarPath)) {
-    if (!existsSync13(policiesDir)) mkdirSync7(policiesDir, { recursive: true });
-    writeFileSync9(cedarPath, generateSampleCedarPolicy2());
+    if (!existsSync13(policiesDir)) mkdirSync9(policiesDir, { recursive: true });
+    writeFileSync11(cedarPath, generateSampleCedarPolicy2());
     process.stdout.write(`  ${green2("\u2713")} ${cedarPath}
 `);
     process.stdout.write(`    Edit to customize tool permissions. Cedar deny is AUTHORITATIVE.
@@ -13195,7 +15926,7 @@ ${bold2("protect-mcp init-hooks")}
         enabled: true
       }
     };
-    writeFileSync9(configPath, JSON.stringify(config, null, 2) + "\n");
+    writeFileSync11(configPath, JSON.stringify(config, null, 2) + "\n");
     process.stdout.write(`  ${green2("\u2713")} ${configPath}
 
 `);
@@ -13203,8 +15934,8 @@ ${bold2("protect-mcp init-hooks")}
   const skillsDir = join13(dir, ".claude", "skills", "verify-receipt");
   const skillPath = join13(skillsDir, "SKILL.md");
   if (!existsSync13(skillPath)) {
-    mkdirSync7(skillsDir, { recursive: true });
-    writeFileSync9(skillPath, generateVerifyReceiptSkill2());
+    mkdirSync9(skillsDir, { recursive: true });
+    writeFileSync11(skillPath, generateVerifyReceiptSkill2());
     process.stdout.write(`  ${green2("\u2713")} ${skillPath}
 `);
     process.stdout.write(`    Use ${dim2("/verify-receipt")} in Claude Code to check audit trails.
@@ -13260,10 +15991,10 @@ ${bold2("protect-mcp init-hooks")}
 }
 async function sendInstallTelemetry() {
   try {
-    const { existsSync: existsSync13, mkdirSync: mkdirSync7, writeFileSync: writeFileSync9 } = await import("fs");
+    const { existsSync: existsSync13, mkdirSync: mkdirSync9, writeFileSync: writeFileSync11 } = await import("fs");
     const { join: join13 } = await import("path");
-    const { homedir: homedir2 } = await import("os");
-    const markerDir = join13(homedir2(), ".protect-mcp");
+    const { homedir: homedir4 } = await import("os");
+    const markerDir = join13(homedir4(), ".protect-mcp");
     const markerFile = join13(markerDir, ".telemetry-sent");
     if (existsSync13(markerFile) || process.env.PROTECT_MCP_TELEMETRY !== "on") {
       return;
@@ -13286,9 +16017,9 @@ async function sendInstallTelemetry() {
     }).finally(() => clearTimeout(timeout));
     if (!response.ok) return;
     if (!existsSync13(markerDir)) {
-      mkdirSync7(markerDir, { recursive: true });
+      mkdirSync9(markerDir, { recursive: true });
     }
-    writeFileSync9(markerFile, String(Date.now()), "utf-8");
+    writeFileSync11(markerFile, String(Date.now()), "utf-8");
     process.stderr.write(
       "[protect-mcp] Explicitly enabled anonymous install telemetry was accepted. Set PROTECT_MCP_TELEMETRY=off to disable future sends.\n[protect-mcp] Free dashboard: npx protect-mcp connect | https://scopeblind.com\n"
     );
@@ -13304,8 +16035,8 @@ function loadPolicyArg(argv) {
   const policyFile = flagValue(argv, "--policy");
   try {
     if (cedarDir) return loadCedarPolicies(cedarDir);
-    if (policyFile && (0, import_node_fs19.existsSync)(policyFile)) {
-      return policySetFromSource((0, import_node_fs19.readFileSync)(policyFile, "utf-8"), (0, import_node_path13.basename)(policyFile));
+    if (policyFile && (0, import_node_fs21.existsSync)(policyFile)) {
+      return policySetFromSource((0, import_node_fs21.readFileSync)(policyFile, "utf-8"), (0, import_node_path16.basename)(policyFile));
     }
   } catch {
   }
@@ -13401,11 +16132,11 @@ async function handleEvaluate(argv) {
 }
 async function handleSign(argv) {
   const format = flagValue(argv, "--format");
-  const dir = (0, import_node_path13.resolve)(flagValue(argv, "--dir") || process.cwd());
+  const dir = (0, import_node_path16.resolve)(flagValue(argv, "--dir") || process.cwd());
   let tool = flagValue(argv, "--tool") || "";
   const receiptsFlag = flagValue(argv, "--receipts");
   const receiptsDir = receiptsFlag || dir;
-  const receiptLogPath = receiptsFlag ? (0, import_node_path13.join)(receiptsFlag, "receipts.jsonl") : (0, import_node_path13.join)(dir, ".protect-mcp-receipts.jsonl");
+  const receiptLogPath = receiptsFlag ? (0, import_node_path16.join)(receiptsFlag, "receipts.jsonl") : (0, import_node_path16.join)(dir, ".protect-mcp-receipts.jsonl");
   const keyPath = flagValue(argv, "--key");
   const cedarDir = flagValue(argv, "--cedar");
   const actionModel = flagValue(argv, "--action-model") === "tool" ? "tool" : "mcp";
@@ -13428,21 +16159,21 @@ async function handleSign(argv) {
   }
   let policyDigest = "none";
   let signing;
-  const signConfigPath = (0, import_node_path13.join)(dir, "protect-mcp.json");
-  if ((0, import_node_fs19.existsSync)(signConfigPath)) {
+  const signConfigPath = (0, import_node_path16.join)(dir, "protect-mcp.json");
+  if ((0, import_node_fs21.existsSync)(signConfigPath)) {
     try {
       const loaded = loadPolicy(signConfigPath);
       policyDigest = loaded.digest || "none";
       signing = loaded.signing;
       if (signing?.key_path) {
-        signing = { ...signing, key_path: (0, import_node_path13.resolve)(dir, signing.key_path) };
+        signing = { ...signing, key_path: (0, import_node_path16.resolve)(dir, signing.key_path) };
       }
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Warning: could not load ${signConfigPath}: ${err instanceof Error ? err.message : err}
 `);
     }
   }
-  if (keyPath) signing = { enabled: true, key_path: (0, import_node_path13.resolve)(keyPath) };
+  if (keyPath) signing = { enabled: true, key_path: (0, import_node_path16.resolve)(keyPath) };
   if (signing) {
     for (const w of await initSigning(signing)) {
       process.stderr.write(`[PROTECT_MCP] Warning: ${w}
@@ -13450,7 +16181,7 @@ async function handleSign(argv) {
     }
   }
   try {
-    (0, import_node_fs19.mkdirSync)(receiptsDir, { recursive: true });
+    (0, import_node_fs21.mkdirSync)(receiptsDir, { recursive: true });
   } catch {
   }
   const releaseLogLock = acquireReceiptLogLock(receiptsDir);
@@ -13458,8 +16189,8 @@ async function handleSign(argv) {
     let prevReceiptHash;
     try {
       const logPath = receiptLogPath;
-      if ((0, import_node_fs19.existsSync)(logPath)) {
-        const lines = (0, import_node_fs19.readFileSync)(logPath, "utf-8").trim().split("\n").filter(Boolean);
+      if ((0, import_node_fs21.existsSync)(logPath)) {
+        const lines = (0, import_node_fs21.readFileSync)(logPath, "utf-8").trim().split("\n").filter(Boolean);
         const last = lines.length ? lines[lines.length - 1] : null;
         if (last) {
           const parsed = JSON.parse(last);
@@ -13471,12 +16202,12 @@ async function handleSign(argv) {
     let payloadDigest;
     if (toolInput) {
       const canonicalInput = canonicalize(toolInput);
-      payloadDigest = { input_hash: (0, import_node_crypto12.createHash)("sha256").update(canonicalInput, "utf-8").digest("hex"), input_size: Buffer.byteLength(canonicalInput, "utf-8"), canonical: "jcs" };
+      payloadDigest = { input_hash: (0, import_node_crypto16.createHash)("sha256").update(canonicalInput, "utf-8").digest("hex"), input_size: Buffer.byteLength(canonicalInput, "utf-8"), canonical: "jcs" };
     }
     let decisionValue = "allow";
     let reasonCode = "post_execution_receipt";
     if (cedarDir) {
-      const policySet = loadCedarPolicies((0, import_node_path13.resolve)(cedarDir));
+      const policySet = loadCedarPolicies((0, import_node_path16.resolve)(cedarDir));
       let ctx = {};
       if (contextRaw) {
         try {
@@ -13492,7 +16223,7 @@ async function handleSign(argv) {
       policyDigest = policySet.digest;
     }
     const requestId = `tu-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const signed = signDecision({
+    const signed2 = signDecision({
       tool,
       decision: decisionValue,
       reason_code: reasonCode,
@@ -13502,9 +16233,9 @@ async function handleSign(argv) {
       timestamp: Date.now(),
       ...payloadDigest ? { payload_digest: payloadDigest } : {}
     }, prevReceiptHash);
-    const line = signed.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed.warning || "no signer configured" });
+    const line = signed2.signed ?? JSON.stringify({ tool, request_id: requestId, signed: false, note: signed2.warning || "no signer configured" });
     try {
-      (0, import_node_fs19.appendFileSync)(receiptLogPath, line + "\n");
+      (0, import_node_fs21.appendFileSync)(receiptLogPath, line + "\n");
     } catch {
     }
     releaseLogLock();
@@ -13512,25 +16243,25 @@ async function handleSign(argv) {
       process.stdout.write("{}\n");
       process.exit(0);
     }
-    process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId, log: receiptLogPath }) + "\n");
+    process.stdout.write(JSON.stringify({ signed: Boolean(signed2.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed2.artifact_type, request_id: requestId, log: receiptLogPath }) + "\n");
     process.exit(0);
   } finally {
     releaseLogLock();
   }
 }
 function acquireReceiptLogLock(dir) {
-  const lock = (0, import_node_path13.join)(dir, ".chain-lock");
+  const lock = (0, import_node_path16.join)(dir, ".chain-lock");
   const started = Date.now();
   const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
   for (; ; ) {
     try {
-      (0, import_node_fs19.mkdirSync)(lock);
+      (0, import_node_fs21.mkdirSync)(lock);
       break;
     } catch (err) {
       if (err.code !== "EEXIST") return () => {
       };
       try {
-        if (Date.now() - (0, import_node_fs19.statSync)(lock).mtimeMs > 45e3) (0, import_node_fs19.rmSync)(lock, { recursive: true, force: true });
+        if (Date.now() - (0, import_node_fs21.statSync)(lock).mtimeMs > 45e3) (0, import_node_fs21.rmSync)(lock, { recursive: true, force: true });
       } catch {
       }
       if (Date.now() - started > 55e3) {
@@ -13543,7 +16274,7 @@ function acquireReceiptLogLock(dir) {
   }
   return () => {
     try {
-      (0, import_node_fs19.rmSync)(lock, { recursive: true, force: true });
+      (0, import_node_fs21.rmSync)(lock, { recursive: true, force: true });
     } catch {
     }
   };
@@ -13594,7 +16325,7 @@ function mandateCedarDir(argv) {
   if (explicit) return explicit;
   for (const candidate of ["cedar", "policies", "."]) {
     try {
-      if ((0, import_node_fs19.existsSync)(candidate) && (0, import_node_fs19.readdirSync)(candidate).some((file) => file.endsWith(".cedar"))) return candidate;
+      if ((0, import_node_fs21.existsSync)(candidate) && (0, import_node_fs21.readdirSync)(candidate).some((file) => file.endsWith(".cedar"))) return candidate;
     } catch {
     }
   }
@@ -13636,7 +16367,7 @@ ${dim2("This proposal is not active until a distinct registered controller appro
 async function handleMandate(argv) {
   const sub = argv[0] || "status";
   const cedarDir = mandateCedarDir(argv);
-  const gateKeyPath = mandateFlag(argv, "--gate-key") || (0, import_node_path13.join)(process.cwd(), "keys", "gateway.json");
+  const gateKeyPath = mandateFlag(argv, "--gate-key") || (0, import_node_path16.join)(process.cwd(), "keys", "gateway.json");
   if (sub === "init") {
     const controllerId = mandateFlag(argv, "--controller-id");
     const controllerLabel = mandateFlag(argv, "--controller-label") || "Mandate controller";
@@ -13716,7 +16447,7 @@ ${dim2(`append-only transition export: ${mandatePaths(cedarDir).auditLog}`)}
       cedarDir,
       signer,
       candidateDir,
-      denialReceipt: JSON.parse((0, import_node_fs19.readFileSync)(denialPath, "utf-8")),
+      denialReceipt: JSON.parse((0, import_node_fs21.readFileSync)(denialPath, "utf-8")),
       reason,
       expiresAt
     });
@@ -13742,7 +16473,7 @@ ${bold2("Desktop passkey approval")}
     const proposal = registry.proposals[proposalId];
     const controller = registry.controllers.find((item) => item.id === controllerId);
     if (!proposal || !controller || controller.type !== "ed25519") throw new Error("proposal or direct Ed25519 controller not found");
-    const raw = JSON.parse((0, import_node_fs19.readFileSync)(controllerKeyPath, "utf-8"));
+    const raw = JSON.parse((0, import_node_fs21.readFileSync)(controllerKeyPath, "utf-8"));
     if (!raw.privateKey) throw new Error("controller key file must contain privateKey");
     const signer = loadGateSigner(gateKeyPath);
     const approval = createDirectControllerApproval({ proposal, controller, privateKey: raw.privateKey });
@@ -13763,8 +16494,8 @@ ${bold2("Desktop passkey approval")}
     const summary = exportMandateDisciplineRecord(registry);
     const attachment = { type: "scopeblind.mandate-registry-attachment.v1", registry };
     const attachmentPath = output.replace(/\.json$/i, "") + ".registry.json";
-    (0, import_node_fs19.writeFileSync)(output, JSON.stringify(summary, null, 2) + "\n");
-    (0, import_node_fs19.writeFileSync)(attachmentPath, JSON.stringify(attachment, null, 2) + "\n");
+    (0, import_node_fs21.writeFileSync)(output, JSON.stringify(summary, null, 2) + "\n");
+    (0, import_node_fs21.writeFileSync)(attachmentPath, JSON.stringify(attachment, null, 2) + "\n");
     process.stdout.write(`${bold2("Discipline Record policy-change attachment exported")}
 `);
     process.stdout.write(`  ${dim2(output)}                 position-blind summary
@@ -13774,7 +16505,7 @@ ${bold2("Desktop passkey approval")}
     return;
   }
   if (sub === "continuity") {
-    const output = mandateFlag(argv, "--output") || (0, import_node_path13.join)(cedarDir, "mandate-continuity-checkpoint.json");
+    const output = mandateFlag(argv, "--output") || (0, import_node_path16.join)(cedarDir, "mandate-continuity-checkpoint.json");
     const log = mandateFlag(argv, "--log");
     const shouldAnchor = argv.includes("--anchor") || argv.includes("--require-anchor");
     const summary = exportMandateDisciplineRecord(registry);
@@ -13789,7 +16520,7 @@ ${bold2("Desktop passkey approval")}
       transition_count: summary.changes.length,
       latest_transition_hash: latest.transition_receipt_hash
     }, signer, (/* @__PURE__ */ new Date()).toISOString());
-    (0, import_node_fs19.writeFileSync)(output, JSON.stringify(checkpoint, null, 2) + "\n");
+    (0, import_node_fs21.writeFileSync)(output, JSON.stringify(checkpoint, null, 2) + "\n");
     process.stdout.write(`${bold2("Mandate continuity checkpoint written")}
 `);
     process.stdout.write(`  ${dim2(output)}
@@ -13809,7 +16540,7 @@ ${bold2("Desktop passkey approval")}
       return;
     }
     const sidecar = output.replace(/\.json$/i, "") + ".anchor.json";
-    (0, import_node_fs19.writeFileSync)(sidecar, JSON.stringify({ log: log || "https://scopeblind.com", seq: anchored.seq, entry_url: anchored.entry_url, anchored_at: anchored.anchored_at, checkpoint_digest: checkpoint.digest }, null, 2) + "\n");
+    (0, import_node_fs21.writeFileSync)(sidecar, JSON.stringify({ log: log || "https://scopeblind.com", seq: anchored.seq, entry_url: anchored.entry_url, anchored_at: anchored.anchored_at, checkpoint_digest: checkpoint.digest }, null, 2) + "\n");
     process.stdout.write(`${green2("Externally anchored")} ${dim2(`entry #${anchored.seq}; only commitments left this host`)}
 `);
     process.stdout.write(`${dim2(`sidecar ${sidecar}`)}
@@ -13939,27 +16670,27 @@ ${dim2("A running gate (protect-mcp serve) hot-reloads on this change; no restar
       process.stderr.write("No Cedar policy found. Run: npx protect-mcp init-hooks\n");
       process.exit(1);
     }
-    const result = digestCedarDir(dir);
+    const result2 = digestCedarDir(dir);
     const expectIdx = argv.indexOf("--expect");
     const expected = expectIdx >= 0 ? argv[expectIdx + 1] : null;
     if (argv.includes("--json")) {
-      process.stdout.write(JSON.stringify({ ...result, ...expected ? { expected, matches: expected === result.policy_digest } : {} }, null, 2) + "\n");
+      process.stdout.write(JSON.stringify({ ...result2, ...expected ? { expected, matches: expected === result2.policy_digest } : {} }, null, 2) + "\n");
     } else {
-      process.stdout.write(`${bold2("policy_digest")}  ${result.policy_digest}
+      process.stdout.write(`${bold2("policy_digest")}  ${result2.policy_digest}
 `);
-      process.stdout.write(`${dim2(`construction   ${result.construction}`)}
+      process.stdout.write(`${dim2(`construction   ${result2.construction}`)}
 `);
-      process.stdout.write(`${dim2(`engine         ${result.engine}   (${result.files.length} file${result.files.length === 1 ? "" : "s"} in ${dir})`)}
+      process.stdout.write(`${dim2(`engine         ${result2.engine}   (${result2.files.length} file${result2.files.length === 1 ? "" : "s"} in ${dir})`)}
 `);
-      for (const f of result.files) process.stdout.write(`${dim2(`  ${f.sha256.slice(0, 16)}\u2026  ${f.name}`)}
+      for (const f of result2.files) process.stdout.write(`${dim2(`  ${f.sha256.slice(0, 16)}\u2026  ${f.name}`)}
 `);
       process.stdout.write(`${dim2('recompute: sha256 each file; M = {construction, engine, files:[{name, sha256}] sorted by name}; digest = "sha256:" + hex(SHA-256(JCS(M)))')}
 `);
-      if (expected) process.stdout.write(expected === result.policy_digest ? `${bold2("\u2713 matches --expect")}
+      if (expected) process.stdout.write(expected === result2.policy_digest ? `${bold2("\u2713 matches --expect")}
 ` : `${bold2("\u2717 does NOT match --expect")} ${dim2(expected)}
 `);
     }
-    process.exit(expected && expected !== result.policy_digest ? 1 : 0);
+    process.exit(expected && expected !== result2.policy_digest ? 1 : 0);
   }
   if (sub === "publish") {
     if (!dir) {
@@ -14050,7 +16781,7 @@ ${dim2("Allow a tool: npx protect-mcp policy allow <ToolName>  \xB7  Block one: 
   process.exit(1);
 }
 async function handleEgressCheck(argv) {
-  const { readFileSync: readFileSync17, existsSync: existsSync13, writeFileSync: writeFileSync9 } = await import("fs");
+  const { readFileSync: readFileSync19, existsSync: existsSync13, writeFileSync: writeFileSync11 } = await import("fs");
   const { join: join13 } = await import("path");
   const { inspectEgress: inspectEgress2, toEgressSummary: toEgressSummary2, runEgressSelfCheck: runEgressSelfCheck2 } = await Promise.resolve().then(() => (init_egress_guard(), egress_guard_exports));
   let dir = process.cwd();
@@ -14059,7 +16790,7 @@ async function handleEgressCheck(argv) {
   const oi = argv.indexOf("--out");
   const outPath = oi !== -1 && argv[oi + 1] ? argv[oi + 1] : void 0;
   const receiptsPath = join13(dir, ".protect-mcp-receipts.jsonl");
-  const receipts = existsSync13(receiptsPath) ? readFileSync17(receiptsPath, "utf-8").trim().split("\n").filter(Boolean).map((l) => {
+  const receipts = existsSync13(receiptsPath) ? readFileSync19(receiptsPath, "utf-8").trim().split("\n").filter(Boolean).map((l) => {
     try {
       return JSON.parse(l);
     } catch {
@@ -14070,7 +16801,7 @@ async function handleEgressCheck(argv) {
   const summaries = receipts.map((r, i) => ({ i, s: toEgressSummary2(r, { pseudonymKey }) }));
   const unsafe = summaries.filter((x) => !x.s || !inspectEgress2(x.s).safe);
   const report = runEgressSelfCheck2(receipts, (/* @__PURE__ */ new Date()).toISOString());
-  if (outPath) writeFileSync9(outPath, JSON.stringify(report, null, 2) + "\n");
+  if (outPath) writeFileSync11(outPath, JSON.stringify(report, null, 2) + "\n");
   process.stdout.write(`
 ${bold2("protect-mcp egress-check")}  ${dim2('(the "no raw data leaves the box" health check)')}
 
@@ -14122,6 +16853,26 @@ async function main() {
   }
   if (args[0] === "mcp") {
     await (await Promise.resolve().then(() => (init_mcp_server(), mcp_server_exports))).runMcpServer();
+    return;
+  }
+  if (args[0] === "repository") {
+    await (await Promise.resolve().then(() => (init_repository_receiver(), repository_receiver_exports))).runRepositoryReceiver(args.slice(1));
+    return;
+  }
+  if (args[0] === "coordination" && args[1] === "agent") {
+    await (await Promise.resolve().then(() => (init_coordination_agent_server(), coordination_agent_server_exports))).runCoordinationAgent(args.slice(2));
+    return;
+  }
+  if (args[0] === "coordination" && args[1] === "pair") {
+    await (await Promise.resolve().then(() => (init_coordination_pair_cli(), coordination_pair_cli_exports))).runCoordinationPair(args.slice(2));
+    return;
+  }
+  if (args[0] === "coordination" && args[1] === "setup") {
+    (await Promise.resolve().then(() => (init_coordination_pair_cli(), coordination_pair_cli_exports))).runCoordinationSetup(args.slice(2));
+    return;
+  }
+  if (args[0] === "coordination") {
+    await (await Promise.resolve().then(() => (init_coordination_server(), coordination_server_exports))).runCoordinationServer(args.slice(1));
     return;
   }
   if (args[0] === "serve") {
@@ -14491,7 +17242,7 @@ async function handleSimulate(args) {
   }
 }
 async function handleDoctor() {
-  const { existsSync: existsSync13, readFileSync: readFileSync17, readdirSync: readdirSync7 } = await import("fs");
+  const { existsSync: existsSync13, readFileSync: readFileSync19, readdirSync: readdirSync7 } = await import("fs");
   const { join: join13 } = await import("path");
   const { execSync } = await import("child_process");
   const green3 = (s) => `\x1B[32m\u2713\x1B[0m ${s}`;
@@ -14514,7 +17265,7 @@ async function handleDoctor() {
   const configPath = join13(process.cwd(), "scopeblind.config.json");
   if (existsSync13(configPath)) {
     try {
-      const config = JSON.parse(readFileSync17(configPath, "utf-8"));
+      const config = JSON.parse(readFileSync19(configPath, "utf-8"));
       if (config.signing?.private_key || config.signing?.key_file) {
         process.stdout.write(green3("Signing keys configured\n"));
       } else {
@@ -14567,7 +17318,7 @@ async function handleDoctor() {
   const receiptFile = join13(process.cwd(), "protect-mcp-receipts.jsonl");
   if (existsSync13(logFile)) {
     try {
-      const lines = readFileSync17(logFile, "utf-8").trim().split("\n").length;
+      const lines = readFileSync19(logFile, "utf-8").trim().split("\n").length;
       process.stdout.write(green3(`Decision log: ${lines} entries
 `));
     } catch {
@@ -14578,7 +17329,7 @@ async function handleDoctor() {
   }
   if (existsSync13(receiptFile)) {
     try {
-      const lines = readFileSync17(receiptFile, "utf-8").trim().split("\n").length;
+      const lines = readFileSync19(receiptFile, "utf-8").trim().split("\n").length;
       process.stdout.write(green3(`Receipt file: ${lines} signed receipts
 `));
     } catch {
@@ -14658,8 +17409,8 @@ async function handleReport(args) {
     output = JSON.stringify(report, null, 2);
   }
   if (outputPath) {
-    const { writeFileSync: writeFileSync9 } = await import("fs");
-    writeFileSync9(outputPath, output, "utf-8");
+    const { writeFileSync: writeFileSync11 } = await import("fs");
+    writeFileSync11(outputPath, output, "utf-8");
     process.stderr.write(`Report written to ${outputPath}
 `);
   } else {

@@ -71,6 +71,13 @@ Usage:
   protect-mcp [options] -- <command> [args...]
   protect-mcp serve [--port <port>] [--enforce] [--policy <path>] [--cedar <dir>]
   protect-mcp mcp                                 # the gate as an MCP server (evaluate/sign/verify/self_test tools)
+  protect-mcp coordination pair [--config <private-file>] [--name <name>] [--code-env <variable>]
+  protect-mcp coordination setup [--config <private-file>] [--client claude-code|codex|json]
+  protect-mcp coordination agent setup --endpoint <url> --authority-key <hex> [--profile <private-file>] [--client claude-code|codex|json]
+  protect-mcp coordination agent [--profile <private-file>]
+  protect-mcp coordination agent import --config <existing-private-file> [--profile <private-file>]
+  protect-mcp coordination --config <private-file>
+  protect-mcp coordination --endpoint <url> --room <id> --authority-key <hex> [--token-env <name>] [--run <id>]
   protect-mcp init-hooks [--dir <path>] [--port <port>]
   protect-mcp quickstart [--connect]
   protect-mcp wrap [--write] [--claude-desktop] [-- <command>]
@@ -117,6 +124,7 @@ Options:
   --version         Print the installed version
 
 Commands:
+  coordination      Shared invoice MCP tools; verifies pinned admission before an idempotent sample-ledger action (token from environment)
   serve             Start HTTP hook server for Claude Code integration (port 9377)
   evaluate          Evaluate one tool call against a Cedar policy (PreToolUse gate; exit 2 = deny, fail-closed)
   sign              Sign one tool call into a receipt (PostToolUse)
@@ -4720,6 +4728,11 @@ async function main(): Promise<void> {
   // sign_decision, verify_receipt, self_test. Lets an agent call the gate as
   // tools instead of only via hooks. Takes over stdin/stdout until it closes.
   if (args[0] === 'mcp') { await (await import('./mcp-server.js')).runMcpServer(); return; }
+  if (args[0] === 'repository') { await (await import('./repository-receiver.js')).runRepositoryReceiver(args.slice(1)); return; }
+  if (args[0] === 'coordination' && args[1] === 'agent') { await (await import('./coordination-agent-server.js')).runCoordinationAgent(args.slice(2)); return; }
+  if (args[0] === 'coordination' && args[1] === 'pair') { await (await import('./coordination-pair-cli.js')).runCoordinationPair(args.slice(2)); return; }
+  if (args[0] === 'coordination' && args[1] === 'setup') { (await import('./coordination-pair-cli.js')).runCoordinationSetup(args.slice(2)); return; }
+  if (args[0] === 'coordination') { await (await import('./coordination-server.js')).runCoordinationServer(args.slice(1)); return; }
 
   // Handle serve command — Claude Code Hook Server
   if (args[0] === 'serve') {
