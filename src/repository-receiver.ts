@@ -96,7 +96,7 @@ export class RepositoryReceiver {
   const observed=await this.snapshot(state.payload.task,proposalId);if(prior)requireValue(await repositorySnapshotDigest(prior.payload)===await repositorySnapshotDigest(observed),'repository_approval_stale');
   const proposal=prior??await sign(observed,this.identity),saved=prior?state:await this.rpc('repository_propose',taskId,{proposal});if(!current.review)return saved;
   const brief=current.review.payload.brief;requireValue(validRepositoryReviewBrief(brief.payload,state.payload.task.payload,state.payload.task.digest)&&await verify(brief,this.config.owner_key),'repository_review_brief_invalid');
-  const preview=await observeRepositoryReviewPreview(path=>this.github(path),this.config.repository,brief,proposal),observedAt=new Date().toISOString(),expiresAt=new Date(Math.min(Date.now()+900000,Date.parse(brief.payload.expires_at))).toISOString();
+  const preview=await observeRepositoryReviewPreview(path=>this.github(path),this.config.repository,brief,proposal),observedAt=new Date().toISOString(),expiresAt=new Date(Math.min(Date.parse(observedAt)+900000,Date.parse(brief.payload.expires_at))).toISOString();
   const packet=await sign<RepositoryReviewPacket>({type:'scopeblind.repository.review-packet.v1',task_id:taskId,task_digest:state.payload.task.digest,brief_digest:brief.digest,proposal_digest:proposal.digest,base_sha:proposal.payload.base_sha,head_sha:proposal.payload.head_sha,merge_sha:proposal.payload.merge_sha,preview,observed_at:observedAt,expires_at:expiresAt},this.identity);
   requireValue(validRepositoryReviewPacket(packet.payload,brief,proposal),'repository_review_packet_invalid');return this.recordPacket(taskId,packet);
  }

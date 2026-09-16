@@ -2,7 +2,7 @@ import {
   RepositoryReceiverError,
   discoverRepositoryPreviewChoices,
   runRepositoryReceiver
-} from "./chunk-E3D47JUV.mjs";
+} from "./chunk-RJYX2HEV.mjs";
 import {
   REPOSITORY_HEX,
   REPOSITORY_SHA,
@@ -296,7 +296,7 @@ async function artifactPin(url, pin, fetchImpl) {
   return value.slice(0, 64);
 }
 async function runRepositoryCommand(args, dependencies = {}) {
-  if (["connect", "connection-job", "coding-ready"].includes(args[0])) return (await import("./repository-connect-JEI3FHOE.mjs")).runRepositoryConnect(args, dependencies);
+  if (["connect", "connection-job", "coding-ready"].includes(args[0])) return (await import("./repository-connect-R5S35RU5.mjs")).runRepositoryConnect(args, dependencies);
   if (!["setup", "ready"].includes(args[0])) return runRepositoryReceiver(args);
   const { readFile, writeFile, mkdir, stat } = await import("fs/promises"), { resolve, join } = await import("path");
   const options = /* @__PURE__ */ new Map();
