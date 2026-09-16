@@ -7514,6 +7514,16 @@ async function github(path, token, fetchImpl, method = "GET", body) {
   need(r.ok, "connect_github_refused");
   return { status: r.status, body: await json2(r) };
 }
+async function preflightCodingPullRequests(repository2, read) {
+  let value;
+  try {
+    value = await read();
+  } catch {
+  }
+  const settings = `https://github.com/${repository2}/settings/actions`;
+  if (!object6(value) || typeof value.can_approve_pull_request_reviews !== "boolean") throw new RepositoryReceiverError("connect_coding_pull_request_policy_unverified", `Could not verify whether GitHub Actions can create pull requests in ${repository2}. Ask a repository administrator to check Settings > Actions > General > Workflow permissions at ${settings}, then rerun with a credential that can read this repository's Administration permission (or repo scope for a classic token). Coding setup cannot continue; no repository setting was changed.`);
+  if (!value.can_approve_pull_request_reviews) throw new RepositoryReceiverError("connect_coding_pull_requests_disabled", `GitHub Actions cannot create pull requests in ${repository2}. Ask a repository administrator to enable "Allow GitHub Actions to create and approve pull requests" under Settings > Actions > General > Workflow permissions at ${settings}. An organization administrator may need to allow this policy first. Then rerun the same setup command. Coding setup cannot continue; no repository setting was changed.`);
+}
 function parseRepositoryConnectLink(value) {
   let u;
   try {
@@ -7642,6 +7652,7 @@ async function installReviewedConnection(state, receiver, coding, env, execute, 
   const repo3 = c2.payload.repository, root = "/repos/" + repo3, installationFiles = [{ path: REPOSITORY_GUIDED_WORKFLOW, content: e.installation.workflow }, ...e.coding ? [{ path: ".github/workflows/scopeblind-coding.yml", content: e.coding.workflow }] : []];
   const metadata = api(root);
   need(object6(metadata) && object6(metadata.permissions) && metadata.permissions.admin === true && metadata.default_branch === c2.payload.base_branch, "connect_install_repository_admin_required");
+  if (e.coding) await preflightCodingPullRequests(repo3, () => api(root + "/actions/permissions/workflow"));
   const variables = api(root + "/actions/variables?per_page=30");
   need(object6(variables) && Array.isArray(variables.variables) && Number(variables.total_count) <= 30, "connect_variables_incomplete");
   const variableRows = variables.variables;
@@ -7741,6 +7752,10 @@ async function runRepositoryConnect(args, dependencies = {}) {
   if (state.payload.status === "awaiting_github") throw new RepositoryReceiverError("connect_github_authorization_pending", "Finish the GitHub authorization in the original browser, then run this same command again.");
   const token = await githubToken(env), preparedCoding = cp.enrollment?.payload.coding?.config, preparedReplaces = cp.enrollment?.payload.replaces, explicitCoding = ["--coding-test", "--coding-build", "--coding-preview", "--docker-image"].some((k) => opts.has(k)), codingRequested = explicitCoding || !!preparedCoding;
   if (explicitCoding) need(["--coding-test", "--coding-build", "--coding-preview", "--docker-image"].every((k) => opts.has(k)), "connect_complete_coding_config_required");
+  if (codingRequested) await preflightCodingPullRequests(state.payload.request.payload.repository, async () => {
+    const result2 = await github("/repos/" + state.payload.request.payload.repository + "/actions/permissions/workflow", token, fetchImpl);
+    return result2.status === 200 ? result2.body : null;
+  });
   let codingKey;
   if (codingRequested || cp.enrollment?.payload.coding) codingKey = await privateKey(join13(dir, "coding-key.json"));
   const refreshEnrollment = !!cp.enrollment && uncommittedSetupEnrollmentStale(cp.enrollment, state);

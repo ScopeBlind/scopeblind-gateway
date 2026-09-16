@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {bytesToHex,canonical,COORDINATION_DOMAIN,generateIdentity,importIdentity,sha256,sign,verify,type Signed,type SigningIdentity} from './coordination-protocol.js';
 import {installReviewedConnection,parseRepositoryConnectLink,runRepositoryConnect} from './repository-connect.js';
-import {renderGuidedReceiverWorkflow} from './repository-connect-workflow.js';
+import {renderGuidedReceiverWorkflow,renderGuidedCodingWorkflow} from './repository-connect-workflow.js';
 import * as S from './coordination-repository-connection.js';
 import type {RepositoryConnection,RepositoryReadiness} from './coordination-repository-collaboration.js';
 
@@ -15,12 +15,13 @@ async function initialFixture(previous?:{owner:SigningIdentity;authority:Signing
 }
 function config(state:Signed<S.RepositorySetupState>):S.RepositoryGuidedReceiverConfig{return {type:'scopeblind.repository.guided-receiver-config.v1',endpoint,authority_key:state.payload.request.payload.authority_key,connection:state.payload.connection!,authorization:state.payload.authorization!};}
 function fakeGitHub(previous?:Signed<S.RepositorySetupState>){
- const variables=new Map<string,string>(),files=new Map<string,{bytes:string;sha:string}>(),secrets=new Set<string>(),calls:Array<{args:string[];input:string|undefined}>=[];let failSecret=false;
+ const variables=new Map<string,string>(),files=new Map<string,{bytes:string;sha:string}>(),secrets=new Set<string>(),calls:Array<{args:string[];input:string|undefined}>=[];let failSecret=false,policy:unknown={can_approve_pull_request_reviews:true};
  if(previous){variables.set('SCOPEBLIND_GUIDED_CONNECTION',JSON.stringify(config(previous)));files.set(S.REPOSITORY_GUIDED_WORKFLOW,{bytes:previous.payload.enrollment!.payload.installation.workflow,sha:'a'.repeat(40)});secrets.add('SCOPEBLIND_GUIDED_RECEIVER_KEY');}
  const run=((bin:string,args:string[],opts:any)=>{expect(bin).toBe('gh');calls.push({args,input:opts.input});if(args[0]==='api'){
   const method=args[2],path=args[3],input=opts.input?JSON.parse(opts.input):null;
   if(method==='GET'){
    if(path==='/repos/'+repository)return JSON.stringify({permissions:{admin:true},default_branch:'main'});
+   if(path.endsWith('/actions/permissions/workflow')){if(policy instanceof Error)throw policy;return JSON.stringify(policy);}
    if(path.endsWith('/actions/variables?per_page=30'))return JSON.stringify({total_count:variables.size,variables:[...variables].map(([name,value])=>({name,value}))});
    if(path.endsWith('/actions/secrets?per_page=100'))return JSON.stringify({total_count:secrets.size,secrets:[...secrets].map(name=>({name}))});
    if(path.includes('/contents/')){const file=path.split('/contents/')[1].split('?')[0],old=files.get(file);if(!old)throw new Error('not found');return JSON.stringify({type:'file',encoding:'base64',content:Buffer.from(old.bytes).toString('base64'),sha:old.sha});}
@@ -32,13 +33,31 @@ function fakeGitHub(previous?:Signed<S.RepositorySetupState>){
  if(args[0]==='secret'){if(failSecret){failSecret=false;throw new Error('interrupted');}secrets.add(args[2]);return '';}
  if(args[0]==='workflow'){expect(args[1]).toBe('run');return '';}
  throw new Error('Unexpected fixture GitHub command');}) as unknown as typeof import('node:child_process').execFileSync;
- return {run,variables,files,secrets,calls,failNextSecret:()=>{failSecret=true;},writes:()=>calls.filter(c=>c.args[0]!=='api'||c.args[2]!=='GET')};
+ return {run,variables,files,secrets,calls,setPolicy:(value:unknown)=>{policy=value;},failNextSecret:()=>{failSecret=true;},writes:()=>calls.filter(c=>c.args[0]!=='api'||c.args[2]!=='GET')};
+}
+async function codingFixture(){
+ const f=await fixture(),worker=await fixture(),receiverArtifact={url:f.state.payload.enrollment!.payload.installation.receiver_url,sha256:f.state.payload.enrollment!.payload.installation.receiver_sha256},artifact={url:'https://scopeblind.com/releases/repository-coding-0.24.0.cjs',sha256:'d'.repeat(64)},workflow=renderGuidedCodingWorkflow(artifact,receiverArtifact),codingConfig:S.RepositoryCodingConnectionConfig={type:'scopeblind.repository.coding-config.v1',endpoint,authority_key:f.authority.publicKey,worker_key:worker.key.public_key,repository,base_branch:'main',runtime:'node22-static-v1',test_command:['node','--test','tests/contact.test.js'],build_command:['node','scripts/build.js'],preview_directory:'dist',docker_image:S.REPOSITORY_CODING_IMAGE};
+ const enrollment=await sign({...f.state.payload.enrollment!.payload,coding:{config:codingConfig,workflow,workflow_sha256:await sha256(workflow),artifact_url:artifact.url,artifact_sha256:artifact.sha256}},f.receiver),authorization=await sign({...f.state.payload.authorization!.payload,enrollment_digest:enrollment.digest},f.owner),state=await sign({...f.state.payload,enrollment,authorization,observed_at:date()},f.authority);
+ return {...f,state,codingKey:worker.key};
 }
 describe('guided owner-local installation',()=>{
  it('preflights all GitHub state, writes only exact signed workflow/config, and sends secrets only on stdin',async()=>{
   const f=await fixture(),gh=fakeGitHub();expect(await S.verifyRepositorySetupState(f.state,f.authority.publicKey)).toBe(true);await installReviewedConnection(f.state,f.key,undefined,{},gh.run);
+  expect(gh.calls.some(c=>c.args[3]?.endsWith('/actions/permissions/workflow'))).toBe(false);
   expect(gh.files.get(S.REPOSITORY_GUIDED_WORKFLOW)!.bytes).toBe(f.state.payload.enrollment!.payload.installation.workflow);expect(gh.variables.get('SCOPEBLIND_GUIDED_CONNECTION')).toBe(JSON.stringify(config(f.state)));expect(gh.calls.find(c=>c.args[0]==='secret')!.input).toBe(f.key.private_key);expect(JSON.stringify(gh.calls.map(c=>c.args))).not.toContain(f.key.private_key);expect(gh.calls.filter(c=>c.args[0]==='workflow')).toHaveLength(1);
   const firstWrite=gh.calls.findIndex(c=>c.args[0]!=='api'||c.args[2]!=='GET');expect(gh.calls.slice(firstWrite).every(c=>c.args[0]!=='api'||c.args[2]!=='GET')).toBe(true);
+ });
+ it('requires verified PR-creation policy before coding installation writes, without changing the policy',async()=>{
+  const f=await codingFixture();expect(await S.verifyRepositorySetupState(f.state,f.authority.publicKey)).toBe(true);
+  for(const policy of [false,null,'true',new Error('private provider response')]){const gh=fakeGitHub();gh.setPolicy(policy instanceof Error?policy:policy===null?{}:{can_approve_pull_request_reviews:policy});const expected=policy===false?'connect_coding_pull_requests_disabled':'connect_coding_pull_request_policy_unverified';await expect(installReviewedConnection(f.state,f.key,f.codingKey,{},gh.run)).rejects.toMatchObject({code:expected,message:expect.stringContaining('https://github.com/Acme/project/settings/actions')});expect(gh.writes()).toHaveLength(0);}
+  const gh=fakeGitHub();await installReviewedConnection(f.state,f.key,f.codingKey,{},gh.run);expect(gh.files.has('.github/workflows/scopeblind-coding.yml')).toBe(true);expect(gh.calls.filter(c=>c.args[0]==='workflow')).toHaveLength(2);const policyRead=gh.calls.findIndex(c=>c.args[3]==='/repos/Acme/project/actions/permissions/workflow');expect(policyRead).toBeGreaterThan(-1);expect(policyRead).toBeLessThan(gh.calls.findIndex(c=>c.args[0]!=='api'||c.args[2]!=='GET'));expect(gh.calls.filter(c=>c.args[3]?.endsWith('/actions/permissions/workflow')).every(c=>c.args[2]==='GET')).toBe(true);
+ });
+ it('stops coding opt-in before discovery or enrollment when the exact repository policy is disabled or unreadable',async()=>{
+  const {mkdtemp,writeFile,readFile,rm}=await import('node:fs/promises'),{tmpdir}=await import('node:os'),{join}=await import('node:path');
+  for(const status of [200,403,404]){const f=await fixture(),dir=await mkdtemp(join(tmpdir(),'scopeblind-coding-policy-')),pending=await sign({...f.state.payload,enrollment:null,connection:null,authorization:null,challenge:null,status:'awaiting_receiver' as const,observed_at:date()},f.authority),actions:string[]=[],reads:string[]=[];
+   const fetchImpl:typeof fetch=async(input,init)=>{const url=new URL(String(input));if(url.href===endpoint+'?op=info')return Response.json({ok:true,authority_key:f.authority.publicKey});if(url.href===endpoint){const request=JSON.parse(String(init!.body)).request;actions.push(request.payload.action);expect(request.payload.action).toBe('repository_setup_get');return Response.json({ok:true,setup:pending});}expect(url.href).toBe('https://api.github.com/repos/Acme/project/actions/permissions/workflow');expect(init?.method).toBe('GET');expect(new Headers(init?.headers).get('authorization')).toBe('Bearer fixture-token');reads.push(url.href);return Response.json(status===200?{can_approve_pull_request_reviews:false}:{message:'private provider response'},{status});};
+   try{await writeFile(join(dir,'receiver-key.json'),JSON.stringify(f.key),{mode:0o600});await expect(runRepositoryConnect(['connect','--link',`https://scopeblind.com/standard?trial=new&view=repository&setup=${pending.payload.request.payload.id}#setup=${'a'.repeat(64)}`,'--output',dir,'--coding-test','["node","--test","tests/contact.test.js"]','--coding-build','["node","scripts/build.js"]','--coding-preview','dist','--docker-image',S.REPOSITORY_CODING_IMAGE],{fetchImpl,env:{GITHUB_TOKEN:'fixture-token'},stdout:()=>{}})).rejects.toMatchObject({code:status===200?'connect_coding_pull_requests_disabled':'connect_coding_pull_request_policy_unverified'});expect(actions).toEqual(['repository_setup_get']);expect(reads).toHaveLength(1);expect(JSON.parse(await readFile(join(dir,'checkpoint.json'),'utf8')).enrollment).toBeUndefined();await expect(readFile(join(dir,'coding-key.json'))).rejects.toMatchObject({code:'ENOENT'});}finally{await rm(dir,{recursive:true,force:true});}
+  }
  });
  it('rejects tampered authorization, another connection, and unexpected workflow bytes before any write',async()=>{
   const f=await fixture();for(const kind of ['authorization','connection','workflow']){const gh=fakeGitHub();let state=f.state;if(kind==='authorization')state={...state,payload:{...state.payload,authorization:await sign({...state.payload.authorization!.payload,receiver_sha256:'f'.repeat(64)},f.owner)}};if(kind==='connection')gh.variables.set('SCOPEBLIND_GUIDED_CONNECTION','different');if(kind==='workflow')gh.files.set(S.REPOSITORY_GUIDED_WORKFLOW,{bytes:'unsafe unrelated workflow',sha:'a'.repeat(40)});await expect(installReviewedConnection(state,f.key,undefined,{},gh.run)).rejects.toThrow();expect(gh.writes()).toHaveLength(0);}

@@ -4888,7 +4888,7 @@ async function main() {
     return;
   }
   if (args[0] === "repository") {
-    await (await import("./repository-setup-55MQRE4A.mjs")).runRepositoryCommand(args.slice(1));
+    await (await import("./repository-setup-4GT7E42P.mjs")).runRepositoryCommand(args.slice(1));
     return;
   }
   if (args[0] === "coordination" && args[1] === "agent") {
