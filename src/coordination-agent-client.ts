@@ -5,6 +5,8 @@ import {claimPairing} from './coordination-pair-cli.js';
 import {CoordinationClient,CoordinationError} from './coordination-client.js';
 import {parseAgentTaskDraft,prepareAgentTaskDraft,type AgentTaskRequestView,type AgentHandoffView} from './coordination-agent-requests.js';
 import {readAgentProfile,updateAgentProfile,profileId,type ProfileConnection,type AgentProfile} from './coordination-agent-profile.js';
+import {RepositoryAgentClient,repositoryConnectionSummary} from './coordination-repository-agent.js';
+import type {ContactPage} from './coordination-repository-collaboration.js';
 
 const hex=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const exact=(value:unknown,required:string[],optional:string[]=[]):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value)&&required.every(k=>Object.hasOwn(value,k))&&Object.keys(value).every(k=>required.includes(k)||optional.includes(k));
@@ -81,7 +83,10 @@ export class CoordinationAgentClient {
     return {...this.connectionSummary(c.pair_id,ready as ProfileConnection),next_step:'Call coordination.inspect_negotiation with this connection_id before taking any next action. Claiming does not establish readiness or start background work.'};
   }
   connectionSummary(id:string,connection:ProfileConnection){return {connection_id:id,purpose:connection.purpose||'execution',room_id:connection.roomId,...(connection.sessionId?{session_id:connection.sessionId,principal_key:connection.principalKey}:{}),agent_key:connection.agentKey,expires_at:connection.binding.payload.expires_at,locally_expired:Date.parse(connection.binding.payload.expires_at)<=Date.now(),same_profile_key:connection.agentKey===this.profile().agentKey,scope:connection.binding.payload.scope};}
-  connections(){const profile=this.profile();return {agent_key:profile.agentKey,connections:Object.entries(profile.connections).map(([id,c])=>this.connectionSummary(id,c)),scope:'Saved grants only; connection listings do not prove that authority remains active. Inspect the intended connection before acting. Every action is still checked by the service.'};}
+  connections(){const profile=this.profile();return {agent_key:profile.agentKey,connections:[...Object.entries(profile.connections).map(([id,c])=>this.connectionSummary(id,c)),...Object.entries(profile.repositoryConnections??{}).map(([id,c])=>repositoryConnectionSummary(id,c,profile.agentKey))],scope:'Saved grants only; connection listings do not prove that authority remains active. Inspect the intended connection before acting. Every action is still checked by the service.'};}
+  private repositoryClient(){return new RepositoryAgentClient(this.profilePath,(action,taskId,body)=>this.request(action,taskId,body));}
+  inspectRepository(taskId:string,grantId:string){return this.repositoryClient().inspect(taskId,grantId);}
+  requestRepositoryRevision(input:{connection_id:string;request_id:string;basis_digest:string;message:string;proposed:ContactPage}){return this.repositoryClient().requestRevision(input);}
   clientFor(id:string){
     if(!profileId(id))fail('unknown_agent_connection','Use an exact connection_id from coordination.connections.');
     const c=this.profile().connections[id];if(!c)fail('unknown_agent_connection','This profile does not hold that connection.');

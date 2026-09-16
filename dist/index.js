@@ -67,10 +67,10 @@ var require_util = __commonJS({
           return obj[e];
         });
       };
-      util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object3) => {
+      util2.objectKeys = typeof Object.keys === "function" ? (obj) => Object.keys(obj) : (object4) => {
         const keys2 = [];
-        for (const key in object3) {
-          if (Object.prototype.hasOwnProperty.call(object3, key)) {
+        for (const key in object4) {
+          if (Object.prototype.hasOwnProperty.call(object4, key)) {
             keys2.push(key);
           }
         }
@@ -2402,9 +2402,9 @@ var require_types = __commonJS({
       _getCached() {
         if (this._cached !== null)
           return this._cached;
-        const shape = this._def.shape();
-        const keys2 = util_js_1.util.objectKeys(shape);
-        this._cached = { shape, keys: keys2 };
+        const shape3 = this._def.shape();
+        const keys2 = util_js_1.util.objectKeys(shape3);
+        this._cached = { shape: shape3, keys: keys2 };
         return this._cached;
       }
       _parse(input) {
@@ -2419,7 +2419,7 @@ var require_types = __commonJS({
           return parseUtil_js_1.INVALID;
         }
         const { status, ctx } = this._processInputParams(input);
-        const { shape, keys: shapeKeys } = this._getCached();
+        const { shape: shape3, keys: shapeKeys } = this._getCached();
         const extraKeys = [];
         if (!(this._def.catchall instanceof ZodNever && this._def.unknownKeys === "strip")) {
           for (const key in ctx.data) {
@@ -2430,7 +2430,7 @@ var require_types = __commonJS({
         }
         const pairs = [];
         for (const key of shapeKeys) {
-          const keyValidator = shape[key];
+          const keyValidator = shape3[key];
           const value = ctx.data[key];
           pairs.push({
             key: { status: "valid", value: key },
@@ -2636,27 +2636,27 @@ var require_types = __commonJS({
         });
       }
       pick(mask) {
-        const shape = {};
+        const shape3 = {};
         for (const key of util_js_1.util.objectKeys(mask)) {
           if (mask[key] && this.shape[key]) {
-            shape[key] = this.shape[key];
+            shape3[key] = this.shape[key];
           }
         }
         return new _ZodObject({
           ...this._def,
-          shape: () => shape
+          shape: () => shape3
         });
       }
       omit(mask) {
-        const shape = {};
+        const shape3 = {};
         for (const key of util_js_1.util.objectKeys(this.shape)) {
           if (!mask[key]) {
-            shape[key] = this.shape[key];
+            shape3[key] = this.shape[key];
           }
         }
         return new _ZodObject({
           ...this._def,
-          shape: () => shape
+          shape: () => shape3
         });
       }
       /**
@@ -2704,27 +2704,27 @@ var require_types = __commonJS({
       }
     };
     exports2.ZodObject = ZodObject;
-    ZodObject.create = (shape, params) => {
+    ZodObject.create = (shape3, params) => {
       return new ZodObject({
-        shape: () => shape,
+        shape: () => shape3,
         unknownKeys: "strip",
         catchall: ZodNever.create(),
         typeName: ZodFirstPartyTypeKind.ZodObject,
         ...processCreateParams(params)
       });
     };
-    ZodObject.strictCreate = (shape, params) => {
+    ZodObject.strictCreate = (shape3, params) => {
       return new ZodObject({
-        shape: () => shape,
+        shape: () => shape3,
         unknownKeys: "strict",
         catchall: ZodNever.create(),
         typeName: ZodFirstPartyTypeKind.ZodObject,
         ...processCreateParams(params)
       });
     };
-    ZodObject.lazycreate = (shape, params) => {
+    ZodObject.lazycreate = (shape3, params) => {
       return new ZodObject({
-        shape,
+        shape: shape3,
         unknownKeys: "strip",
         catchall: ZodNever.create(),
         typeName: ZodFirstPartyTypeKind.ZodObject,
@@ -4411,9 +4411,9 @@ var require_util2 = __commonJS({
       return valInt % stepInt / 10 ** decCount;
     }
     var EVALUATING = /* @__PURE__ */ Symbol("evaluating");
-    function defineLazy(object3, key, getter) {
+    function defineLazy(object4, key, getter) {
       let value = void 0;
-      Object.defineProperty(object3, key, {
+      Object.defineProperty(object4, key, {
         get() {
           if (value === EVALUATING) {
             return void 0;
@@ -4425,7 +4425,7 @@ var require_util2 = __commonJS({
           return value;
         },
         set(v) {
-          Object.defineProperty(object3, key, {
+          Object.defineProperty(object4, key, {
             value: v
             // configurable: true,
           });
@@ -4646,9 +4646,9 @@ var require_util2 = __commonJS({
         return `"${value}"`;
       return `${value}`;
     }
-    function optionalKeys(shape) {
-      return Object.keys(shape).filter((k) => {
-        return shape[k]._zod.optin === "optional" && shape[k]._zod.optout === "optional";
+    function optionalKeys(shape3) {
+      return Object.keys(shape3).filter((k) => {
+        return shape3[k]._zod.optin === "optional" && shape3[k]._zod.optout === "optional";
       });
     }
     exports2.NUMBER_FORMAT_RANGES = {
@@ -4712,15 +4712,15 @@ var require_util2 = __commonJS({
       });
       return clone(schema, def);
     }
-    function extend(schema, shape) {
-      if (!isPlainObject(shape)) {
+    function extend(schema, shape3) {
+      if (!isPlainObject(shape3)) {
         throw new Error("Invalid input to extend: expected a plain object");
       }
       const checks = schema._zod.def.checks;
       const hasChecks = checks && checks.length > 0;
       if (hasChecks) {
         const existingShape = schema._zod.def.shape;
-        for (const key in shape) {
+        for (const key in shape3) {
           if (Object.getOwnPropertyDescriptor(existingShape, key) !== void 0) {
             throw new Error("Cannot overwrite keys on object schemas containing refinements. Use `.safeExtend()` instead.");
           }
@@ -4728,20 +4728,20 @@ var require_util2 = __commonJS({
       }
       const def = mergeDefs(schema._zod.def, {
         get shape() {
-          const _shape = { ...schema._zod.def.shape, ...shape };
+          const _shape = { ...schema._zod.def.shape, ...shape3 };
           assignProp(this, "shape", _shape);
           return _shape;
         }
       });
       return clone(schema, def);
     }
-    function safeExtend(schema, shape) {
-      if (!isPlainObject(shape)) {
+    function safeExtend(schema, shape3) {
+      if (!isPlainObject(shape3)) {
         throw new Error("Invalid input to safeExtend: expected a plain object");
       }
       const def = mergeDefs(schema._zod.def, {
         get shape() {
-          const _shape = { ...schema._zod.def.shape, ...shape };
+          const _shape = { ...schema._zod.def.shape, ...shape3 };
           assignProp(this, "shape", _shape);
           return _shape;
         }
@@ -4773,7 +4773,7 @@ var require_util2 = __commonJS({
       const def = mergeDefs(schema._zod.def, {
         get shape() {
           const oldShape = schema._zod.def.shape;
-          const shape = { ...oldShape };
+          const shape3 = { ...oldShape };
           if (mask) {
             for (const key in mask) {
               if (!(key in oldShape)) {
@@ -4781,21 +4781,21 @@ var require_util2 = __commonJS({
               }
               if (!mask[key])
                 continue;
-              shape[key] = Class2 ? new Class2({
+              shape3[key] = Class2 ? new Class2({
                 type: "optional",
                 innerType: oldShape[key]
               }) : oldShape[key];
             }
           } else {
             for (const key in oldShape) {
-              shape[key] = Class2 ? new Class2({
+              shape3[key] = Class2 ? new Class2({
                 type: "optional",
                 innerType: oldShape[key]
               }) : oldShape[key];
             }
           }
-          assignProp(this, "shape", shape);
-          return shape;
+          assignProp(this, "shape", shape3);
+          return shape3;
         },
         checks: []
       });
@@ -4805,29 +4805,29 @@ var require_util2 = __commonJS({
       const def = mergeDefs(schema._zod.def, {
         get shape() {
           const oldShape = schema._zod.def.shape;
-          const shape = { ...oldShape };
+          const shape3 = { ...oldShape };
           if (mask) {
             for (const key in mask) {
-              if (!(key in shape)) {
+              if (!(key in shape3)) {
                 throw new Error(`Unrecognized key: "${key}"`);
               }
               if (!mask[key])
                 continue;
-              shape[key] = new Class2({
+              shape3[key] = new Class2({
                 type: "nonoptional",
                 innerType: oldShape[key]
               });
             }
           } else {
             for (const key in oldShape) {
-              shape[key] = new Class2({
+              shape3[key] = new Class2({
                 type: "nonoptional",
                 innerType: oldShape[key]
               });
             }
           }
-          assignProp(this, "shape", shape);
-          return shape;
+          assignProp(this, "shape", shape3);
+          return shape3;
         }
       });
       return clone(schema, def);
@@ -4943,8 +4943,8 @@ var require_util2 = __commonJS({
     function uint8ArrayToBase64url(bytes) {
       return uint8ArrayToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
     }
-    function hexToUint8Array(hex2) {
-      const cleanHex = hex2.replace(/^0x/, "");
+    function hexToUint8Array(hex3) {
+      const cleanHex = hex3.replace(/^0x/, "");
       if (cleanHex.length % 2 !== 0) {
         throw new Error("Invalid hex string length");
       }
@@ -5314,7 +5314,7 @@ var require_regexes = __commonJS({
     exports2.sha384_hex = exports2.sha256_base64url = exports2.sha256_base64 = exports2.sha256_hex = exports2.sha1_base64url = exports2.sha1_base64 = exports2.sha1_hex = exports2.md5_base64url = exports2.md5_base64 = exports2.md5_hex = exports2.hex = exports2.uppercase = exports2.lowercase = exports2.undefined = exports2.null = exports2.boolean = exports2.number = exports2.integer = exports2.bigint = exports2.string = exports2.date = exports2.e164 = exports2.domain = exports2.hostname = exports2.base64url = exports2.base64 = exports2.cidrv6 = exports2.cidrv4 = exports2.mac = exports2.ipv6 = exports2.ipv4 = exports2.browserEmail = exports2.idnEmail = exports2.unicodeEmail = exports2.rfc5322Email = exports2.html5Email = exports2.email = exports2.uuid7 = exports2.uuid6 = exports2.uuid4 = exports2.uuid = exports2.guid = exports2.extendedDuration = exports2.duration = exports2.nanoid = exports2.ksuid = exports2.xid = exports2.ulid = exports2.cuid2 = exports2.cuid = void 0;
     exports2.sha512_base64url = exports2.sha512_base64 = exports2.sha512_hex = exports2.sha384_base64url = exports2.sha384_base64 = void 0;
     exports2.emoji = emoji;
-    exports2.time = time4;
+    exports2.time = time5;
     exports2.datetime = datetime;
     var util = __importStar(require_util2());
     exports2.cuid = /^[cC][^\s-]{8,}$/;
@@ -5366,17 +5366,17 @@ var require_regexes = __commonJS({
       const regex = typeof args.precision === "number" ? args.precision === -1 ? `${hhmm}` : args.precision === 0 ? `${hhmm}:[0-5]\\d` : `${hhmm}:[0-5]\\d\\.\\d{${args.precision}}` : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
       return regex;
     }
-    function time4(args) {
+    function time5(args) {
       return new RegExp(`^${timeSource(args)}$`);
     }
     function datetime(args) {
-      const time5 = timeSource({ precision: args.precision });
+      const time6 = timeSource({ precision: args.precision });
       const opts = ["Z"];
       if (args.local)
         opts.push("");
       if (args.offset)
         opts.push(`([+-](?:[01]\\d|2[0-3]):[0-5]\\d)`);
-      const timeRegex = `${time5}(?:${opts.join("|")})`;
+      const timeRegex = `${time6}(?:${opts.join("|")})`;
       return new RegExp(`^${dateSource}T(?:${timeRegex})$`);
     }
     var string = (params) => {
@@ -6833,10 +6833,10 @@ var require_schemas = __commonJS({
       }
       const _normalized = util.cached(() => normalizeDef(def));
       util.defineLazy(inst._zod, "propValues", () => {
-        const shape = def.shape;
+        const shape3 = def.shape;
         const propValues = {};
-        for (const key in shape) {
-          const field = shape[key]._zod;
+        for (const key in shape3) {
+          const field = shape3[key]._zod;
           if (field.values) {
             propValues[key] ?? (propValues[key] = /* @__PURE__ */ new Set());
             for (const v of field.values)
@@ -6862,9 +6862,9 @@ var require_schemas = __commonJS({
         }
         payload.value = {};
         const proms = [];
-        const shape = value.shape;
+        const shape3 = value.shape;
         for (const key of value.keys) {
-          const el = shape[key];
+          const el = shape3[key];
           const isOptionalOut = el._zod.optout === "optional";
           const r = el._zod.run({ value: input[key], issues: [] }, ctx);
           if (r instanceof Promise) {
@@ -6883,7 +6883,7 @@ var require_schemas = __commonJS({
       exports2.$ZodObject.init(inst, def);
       const superParse = inst._zod.parse;
       const _normalized = util.cached(() => normalizeDef(def));
-      const generateFastpass = (shape) => {
+      const generateFastpass = (shape3) => {
         const doc = new doc_js_1.Doc(["shape", "payload", "ctx"]);
         const normalized = _normalized.value;
         const parseStr = (key) => {
@@ -6898,46 +6898,46 @@ var require_schemas = __commonJS({
         }
         doc.write(`const newResult = {};`);
         for (const key of normalized.keys) {
-          const id3 = ids[key];
+          const id4 = ids[key];
           const k = util.esc(key);
-          const schema = shape[key];
+          const schema = shape3[key];
           const isOptionalOut = schema?._zod?.optout === "optional";
-          doc.write(`const ${id3} = ${parseStr(key)};`);
+          doc.write(`const ${id4} = ${parseStr(key)};`);
           if (isOptionalOut) {
             doc.write(`
-        if (${id3}.issues.length) {
+        if (${id4}.issues.length) {
           if (${k} in input) {
-            payload.issues = payload.issues.concat(${id3}.issues.map(iss => ({
+            payload.issues = payload.issues.concat(${id4}.issues.map(iss => ({
               ...iss,
               path: iss.path ? [${k}, ...iss.path] : [${k}]
             })));
           }
         }
         
-        if (${id3}.value === undefined) {
+        if (${id4}.value === undefined) {
           if (${k} in input) {
             newResult[${k}] = undefined;
           }
         } else {
-          newResult[${k}] = ${id3}.value;
+          newResult[${k}] = ${id4}.value;
         }
         
       `);
           } else {
             doc.write(`
-        if (${id3}.issues.length) {
-          payload.issues = payload.issues.concat(${id3}.issues.map(iss => ({
+        if (${id4}.issues.length) {
+          payload.issues = payload.issues.concat(${id4}.issues.map(iss => ({
             ...iss,
             path: iss.path ? [${k}, ...iss.path] : [${k}]
           })));
         }
         
-        if (${id3}.value === undefined) {
+        if (${id4}.value === undefined) {
           if (${k} in input) {
             newResult[${k}] = undefined;
           }
         } else {
-          newResult[${k}] = ${id3}.value;
+          newResult[${k}] = ${id4}.value;
         }
         
       `);
@@ -6946,7 +6946,7 @@ var require_schemas = __commonJS({
         doc.write(`payload.value = newResult;`);
         doc.write(`return payload;`);
         const fn = doc.compile();
-        return (payload, ctx) => fn(shape, payload, ctx);
+        return (payload, ctx) => fn(shape3, payload, ctx);
       };
       let fastpass;
       const isObject = util.isObject;
@@ -11989,8 +11989,8 @@ var require_lt = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = default_1;
     var util = __importStar(require_util2());
-    var capitalizeFirstCharacter = (text3) => {
-      return text3.charAt(0).toUpperCase() + text3.slice(1);
+    var capitalizeFirstCharacter = (text4) => {
+      return text4.charAt(0).toUpperCase() + text4.slice(1);
     };
     function getUnitTypeFromNumber(number) {
       const abs = Math.abs(number);
@@ -16877,26 +16877,26 @@ var require_to_json_schema = __commonJS({
         throw new Error("Unprocessed schema. This is a bug in Zod.");
       const idToSchema = /* @__PURE__ */ new Map();
       for (const entry of ctx.seen.entries()) {
-        const id3 = ctx.metadataRegistry.get(entry[0])?.id;
-        if (id3) {
-          const existing = idToSchema.get(id3);
+        const id4 = ctx.metadataRegistry.get(entry[0])?.id;
+        if (id4) {
+          const existing = idToSchema.get(id4);
           if (existing && existing !== entry[0]) {
-            throw new Error(`Duplicate schema id "${id3}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`);
+            throw new Error(`Duplicate schema id "${id4}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`);
           }
-          idToSchema.set(id3, entry[0]);
+          idToSchema.set(id4, entry[0]);
         }
       }
       const makeURI = (entry) => {
         const defsSegment = ctx.target === "draft-2020-12" ? "$defs" : "definitions";
         if (ctx.external) {
           const externalId = ctx.external.registry.get(entry[0])?.id;
-          const uriGenerator = ctx.external.uri ?? ((id4) => id4);
+          const uriGenerator = ctx.external.uri ?? ((id5) => id5);
           if (externalId) {
             return { ref: uriGenerator(externalId) };
           }
-          const id3 = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
-          entry[1].defId = id3;
-          return { defId: id3, ref: `${uriGenerator("__shared")}#/${defsSegment}/${id3}` };
+          const id4 = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
+          entry[1].defId = id4;
+          return { defId: id4, ref: `${uriGenerator("__shared")}#/${defsSegment}/${id4}` };
         }
         if (entry[1] === root) {
           return { ref: "#" };
@@ -16944,8 +16944,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
             continue;
           }
         }
-        const id3 = ctx.metadataRegistry.get(entry[0])?.id;
-        if (id3) {
+        const id4 = ctx.metadataRegistry.get(entry[0])?.id;
+        if (id4) {
           extractToDef(entry);
           continue;
         }
@@ -17041,10 +17041,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
       } else {
       }
       if (ctx.external?.uri) {
-        const id3 = ctx.external.registry.get(schema)?.id;
-        if (!id3)
+        const id4 = ctx.external.registry.get(schema)?.id;
+        if (!id4)
           throw new Error("Schema is missing an `id` property");
-        result.$id = ctx.external.uri(id3);
+        result.$id = ctx.external.uri(id4);
       }
       Object.assign(result, root.def ?? root.schema);
       const defs = ctx.external?.defs ?? {};
@@ -17442,14 +17442,14 @@ var require_json_schema_processors = __commonJS({
       const def = schema._zod.def;
       json.type = "object";
       json.properties = {};
-      const shape = def.shape;
-      for (const key in shape) {
-        json.properties[key] = (0, to_json_schema_js_1.process)(shape[key], ctx, {
+      const shape3 = def.shape;
+      for (const key in shape3) {
+        json.properties[key] = (0, to_json_schema_js_1.process)(shape3[key], ctx, {
           ...params,
           path: [...params.path, "properties", key]
         });
       }
-      const allKeys = new Set(Object.keys(shape));
+      const allKeys = new Set(Object.keys(shape3));
       const requiredKeys = new Set([...allKeys].filter((key) => {
         const v = def.shape[key]._zod;
         if (ctx.io === "input") {
@@ -18012,7 +18012,7 @@ var require_schemas2 = __commonJS({
     exports2.jwt = jwt;
     exports2.stringFormat = stringFormat;
     exports2.hostname = hostname;
-    exports2.hex = hex2;
+    exports2.hex = hex3;
     exports2.hash = hash;
     exports2.number = number;
     exports2.int = int;
@@ -18034,7 +18034,7 @@ var require_schemas2 = __commonJS({
     exports2.date = date;
     exports2.array = array;
     exports2.keyof = keyof;
-    exports2.object = object3;
+    exports2.object = object4;
     exports2.strictObject = strictObject;
     exports2.looseObject = looseObject;
     exports2.extend = extend;
@@ -18322,7 +18322,7 @@ var require_schemas2 = __commonJS({
       return core._stringFormat(exports2.ZodMiniCustomStringFormat, "hostname", core.regexes.hostname, _params);
     }
     // @__NO_SIDE_EFFECTS__
-    function hex2(_params) {
+    function hex3(_params) {
       return core._stringFormat(exports2.ZodMiniCustomStringFormat, "hex", core.regexes.hex, _params);
     }
     // @__NO_SIDE_EFFECTS__
@@ -18472,8 +18472,8 @@ var require_schemas2 = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function keyof(schema) {
-      const shape = schema._zod.def.shape;
-      return /* @__PURE__ */ _enum(Object.keys(shape));
+      const shape3 = schema._zod.def.shape;
+      return /* @__PURE__ */ _enum(Object.keys(shape3));
     }
     exports2.ZodMiniObject = core.$constructor("ZodMiniObject", (inst, def) => {
       core.$ZodObject.init(inst, def);
@@ -18481,43 +18481,43 @@ var require_schemas2 = __commonJS({
       util.defineLazy(inst, "shape", () => def.shape);
     });
     // @__NO_SIDE_EFFECTS__
-    function object3(shape, params) {
+    function object4(shape3, params) {
       const def = {
         type: "object",
-        shape: shape ?? {},
+        shape: shape3 ?? {},
         ...util.normalizeParams(params)
       };
       return new exports2.ZodMiniObject(def);
     }
     // @__NO_SIDE_EFFECTS__
-    function strictObject(shape, params) {
+    function strictObject(shape3, params) {
       return new exports2.ZodMiniObject({
         type: "object",
-        shape,
+        shape: shape3,
         catchall: /* @__PURE__ */ never(),
         ...util.normalizeParams(params)
       });
     }
     // @__NO_SIDE_EFFECTS__
-    function looseObject(shape, params) {
+    function looseObject(shape3, params) {
       return new exports2.ZodMiniObject({
         type: "object",
-        shape,
+        shape: shape3,
         catchall: /* @__PURE__ */ unknown(),
         ...util.normalizeParams(params)
       });
     }
     // @__NO_SIDE_EFFECTS__
-    function extend(schema, shape) {
-      return util.extend(schema, shape);
+    function extend(schema, shape3) {
+      return util.extend(schema, shape3);
     }
     // @__NO_SIDE_EFFECTS__
-    function safeExtend(schema, shape) {
-      return util.safeExtend(schema, shape);
+    function safeExtend(schema, shape3) {
+      return util.safeExtend(schema, shape3);
     }
     // @__NO_SIDE_EFFECTS__
-    function merge(schema, shape) {
-      return util.extend(schema, shape);
+    function merge(schema, shape3) {
+      return util.extend(schema, shape3);
     }
     // @__NO_SIDE_EFFECTS__
     function pick(schema, mask) {
@@ -19101,7 +19101,7 @@ var require_iso = __commonJS({
     exports2.ZodMiniISODuration = exports2.ZodMiniISOTime = exports2.ZodMiniISODate = exports2.ZodMiniISODateTime = void 0;
     exports2.datetime = datetime;
     exports2.date = date;
-    exports2.time = time4;
+    exports2.time = time5;
     exports2.duration = duration;
     var core = __importStar(require_core2());
     var schemas = __importStar(require_schemas2());
@@ -19126,7 +19126,7 @@ var require_iso = __commonJS({
       schemas.ZodMiniStringFormat.init(inst, def);
     });
     // @__NO_SIDE_EFFECTS__
-    function time4(params) {
+    function time5(params) {
       return core._isoTime(exports2.ZodMiniISOTime, params);
     }
     exports2.ZodMiniISODuration = core.$constructor("ZodMiniISODuration", (inst, def) => {
@@ -19401,16 +19401,16 @@ var require_zod_compat = __commonJS({
       const schema = s;
       return !!schema._zod;
     }
-    function objectFromShape(shape) {
-      const values = Object.values(shape);
+    function objectFromShape(shape3) {
+      const values = Object.values(shape3);
       if (values.length === 0)
         return z4mini.object({});
       const allV4 = values.every(isZ4Schema);
       const allV3 = values.every((s) => !isZ4Schema(s));
       if (allV4)
-        return z4mini.object(shape);
+        return z4mini.object(shape3);
       if (allV3)
-        return z3rt.object(shape);
+        return z3rt.object(shape3);
       throw new Error("Mixed Zod versions detected in object shape.");
     }
     function safeParse(schema, data) {
@@ -19674,7 +19674,7 @@ var require_iso2 = __commonJS({
     exports2.ZodISODuration = exports2.ZodISOTime = exports2.ZodISODate = exports2.ZodISODateTime = void 0;
     exports2.datetime = datetime;
     exports2.date = date;
-    exports2.time = time4;
+    exports2.time = time5;
     exports2.duration = duration;
     var core = __importStar(require_core2());
     var schemas = __importStar(require_schemas3());
@@ -19696,7 +19696,7 @@ var require_iso2 = __commonJS({
       core.$ZodISOTime.init(inst, def);
       schemas.ZodStringFormat.init(inst, def);
     });
-    function time4(params) {
+    function time5(params) {
       return core._isoTime(exports2.ZodISOTime, params);
     }
     exports2.ZodISODuration = core.$constructor("ZodISODuration", (inst, def) => {
@@ -19897,7 +19897,7 @@ var require_schemas3 = __commonJS({
     exports2.jwt = jwt;
     exports2.stringFormat = stringFormat;
     exports2.hostname = hostname;
-    exports2.hex = hex2;
+    exports2.hex = hex3;
     exports2.hash = hash;
     exports2.number = number;
     exports2.int = int;
@@ -19919,7 +19919,7 @@ var require_schemas3 = __commonJS({
     exports2.date = date;
     exports2.array = array;
     exports2.keyof = keyof;
-    exports2.object = object3;
+    exports2.object = object4;
     exports2.strictObject = strictObject;
     exports2.looseObject = looseObject;
     exports2.union = union;
@@ -20282,7 +20282,7 @@ var require_schemas3 = __commonJS({
     function hostname(_params) {
       return core._stringFormat(exports2.ZodCustomStringFormat, "hostname", core.regexes.hostname, _params);
     }
-    function hex2(_params) {
+    function hex3(_params) {
       return core._stringFormat(exports2.ZodCustomStringFormat, "hex", core.regexes.hex, _params);
     }
     function hash(alg, params) {
@@ -20468,8 +20468,8 @@ var require_schemas3 = __commonJS({
       return core._array(exports2.ZodArray, element, params);
     }
     function keyof(schema) {
-      const shape = schema._zod.def.shape;
-      return _enum(Object.keys(shape));
+      const shape3 = schema._zod.def.shape;
+      return _enum(Object.keys(shape3));
     }
     exports2.ZodObject = core.$constructor("ZodObject", (inst, def) => {
       core.$ZodObjectJIT.init(inst, def);
@@ -20496,26 +20496,26 @@ var require_schemas3 = __commonJS({
       inst.partial = (...args) => index_js_1.util.partial(exports2.ZodOptional, inst, args[0]);
       inst.required = (...args) => index_js_1.util.required(exports2.ZodNonOptional, inst, args[0]);
     });
-    function object3(shape, params) {
+    function object4(shape3, params) {
       const def = {
         type: "object",
-        shape: shape ?? {},
+        shape: shape3 ?? {},
         ...index_js_1.util.normalizeParams(params)
       };
       return new exports2.ZodObject(def);
     }
-    function strictObject(shape, params) {
+    function strictObject(shape3, params) {
       return new exports2.ZodObject({
         type: "object",
-        shape,
+        shape: shape3,
         catchall: never(),
         ...index_js_1.util.normalizeParams(params)
       });
     }
-    function looseObject(shape, params) {
+    function looseObject(shape3, params) {
       return new exports2.ZodObject({
         type: "object",
-        shape,
+        shape: shape3,
         catchall: unknown(),
         ...index_js_1.util.normalizeParams(params)
       });
@@ -21445,21 +21445,21 @@ var require_from_json_schema = __commonJS({
           break;
         }
         case "object": {
-          const shape = {};
+          const shape3 = {};
           const properties = schema.properties || {};
           const requiredSet = new Set(schema.required || []);
           for (const [key, propSchema] of Object.entries(properties)) {
             const propZodSchema = convertSchema(propSchema, ctx);
-            shape[key] = requiredSet.has(key) ? propZodSchema : propZodSchema.optional();
+            shape3[key] = requiredSet.has(key) ? propZodSchema : propZodSchema.optional();
           }
           if (schema.propertyNames) {
             const keySchema = convertSchema(schema.propertyNames, ctx);
             const valueSchema = schema.additionalProperties && typeof schema.additionalProperties === "object" ? convertSchema(schema.additionalProperties, ctx) : z.any();
-            if (Object.keys(shape).length === 0) {
+            if (Object.keys(shape3).length === 0) {
               zodSchema = z.record(keySchema, valueSchema);
               break;
             }
-            const objectSchema2 = z.object(shape).passthrough();
+            const objectSchema2 = z.object(shape3).passthrough();
             const recordSchema = z.looseRecord(keySchema, valueSchema);
             zodSchema = z.intersection(objectSchema2, recordSchema);
             break;
@@ -21474,8 +21474,8 @@ var require_from_json_schema = __commonJS({
               looseRecords.push(z.looseRecord(keySchema, patternValue));
             }
             const schemasToIntersect = [];
-            if (Object.keys(shape).length > 0) {
-              schemasToIntersect.push(z.object(shape).passthrough());
+            if (Object.keys(shape3).length > 0) {
+              schemasToIntersect.push(z.object(shape3).passthrough());
             }
             schemasToIntersect.push(...looseRecords);
             if (schemasToIntersect.length === 0) {
@@ -21491,7 +21491,7 @@ var require_from_json_schema = __commonJS({
             }
             break;
           }
-          const objectSchema = z.object(shape);
+          const objectSchema = z.object(shape3);
           if (schema.additionalProperties === false) {
             zodSchema = objectSchema.strict();
           } else if (typeof schema.additionalProperties === "object") {
@@ -24407,11 +24407,11 @@ var require_nativeEnum = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.parseNativeEnumDef = void 0;
     function parseNativeEnumDef(def) {
-      const object3 = def.values;
+      const object4 = def.values;
       const actualKeys = Object.keys(def.values).filter((key) => {
-        return typeof object3[object3[key]] !== "number";
+        return typeof object4[object4[key]] !== "number";
       });
-      const actualValues = actualKeys.map((key) => object3[key]);
+      const actualValues = actualKeys.map((key) => object4[key]);
       const parsedTypes = Array.from(new Set(actualValues.map((values) => typeof values)));
       return {
         type: parsedTypes.length === 1 ? parsedTypes[0] === "string" ? "string" : "number" : ["string", "number"],
@@ -24650,9 +24650,9 @@ var require_object = __commonJS({
         properties: {}
       };
       const required = [];
-      const shape = def.shape();
-      for (const propName in shape) {
-        let propDef = shape[propName];
+      const shape3 = def.shape();
+      for (const propName in shape3) {
+        let propDef = shape3[propName];
         if (propDef === void 0 || propDef._def === void 0) {
           continue;
         }
@@ -25286,8 +25286,8 @@ var require_zod_json_schema_compat = __commonJS({
       });
     }
     function getMethodLiteral(schema) {
-      const shape = (0, zod_compat_js_1.getObjectShape)(schema);
-      const methodSchema = shape?.method;
+      const shape3 = (0, zod_compat_js_1.getObjectShape)(schema);
+      const methodSchema = shape3?.method;
       if (!methodSchema) {
         throw new Error("Schema is missing a method literal");
       }
@@ -28476,10 +28476,10 @@ var require_resolve = __commonJS({
       }
       return count;
     }
-    function getFullPath(resolver, id3 = "", normalize2) {
+    function getFullPath(resolver, id4 = "", normalize2) {
       if (normalize2 !== false)
-        id3 = normalizeId(id3);
-      const p = resolver.parse(id3);
+        id4 = normalizeId(id4);
+      const p = resolver.parse(id4);
       return _getFullPath(resolver, p);
     }
     exports2.getFullPath = getFullPath;
@@ -28489,13 +28489,13 @@ var require_resolve = __commonJS({
     }
     exports2._getFullPath = _getFullPath;
     var TRAILING_SLASH_HASH = /#\/?$/;
-    function normalizeId(id3) {
-      return id3 ? id3.replace(TRAILING_SLASH_HASH, "") : "";
+    function normalizeId(id4) {
+      return id4 ? id4.replace(TRAILING_SLASH_HASH, "") : "";
     }
     exports2.normalizeId = normalizeId;
-    function resolveUrl(resolver, baseId, id3) {
-      id3 = normalizeId(id3);
-      return resolver.resolve(baseId, id3);
+    function resolveUrl(resolver, baseId, id4) {
+      id4 = normalizeId(id4);
+      return resolver.resolve(baseId, id4);
     }
     exports2.resolveUrl = resolveUrl;
     var ANCHOR = /^[a-z_][-a-z0-9._]*$/i;
@@ -29265,8 +29265,8 @@ var require_compile = __commonJS({
       if (Object.keys(root.schema).length > 0 && refPath === baseId) {
         return getJsonPointer.call(this, p, root);
       }
-      const id3 = (0, resolve_1.normalizeId)(refPath);
-      const schOrRef = this.refs[id3] || this.schemas[id3];
+      const id4 = (0, resolve_1.normalizeId)(refPath);
+      const schOrRef = this.refs[id4] || this.schemas[id4];
       if (typeof schOrRef == "string") {
         const sch = resolveSchema.call(this, root, schOrRef);
         if (typeof (sch === null || sch === void 0 ? void 0 : sch.schema) !== "object")
@@ -29277,7 +29277,7 @@ var require_compile = __commonJS({
         return;
       if (!schOrRef.validate)
         compileSchema.call(this, schOrRef);
-      if (id3 === (0, resolve_1.normalizeId)(ref)) {
+      if (id4 === (0, resolve_1.normalizeId)(ref)) {
         const { schema } = schOrRef;
         const { schemaId } = this.opts;
         const schId = schema[schemaId];
@@ -29593,9 +29593,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex2 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex2)) {
-            const normalizedHex = hex2.toUpperCase();
+          const hex3 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex3)) {
+            const normalizedHex = hex3.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (decodeUnreserved && isUnreserved(decoded)) {
               output += decoded;
@@ -29615,9 +29615,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex2 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex2)) {
-            const normalizedHex = hex2.toUpperCase();
+          const hex3 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex3)) {
+            const normalizedHex = hex3.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (decoded !== "." && isUnreserved(decoded)) {
               output += decoded;
@@ -29657,9 +29657,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex2 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex2)) {
-            output += "%" + hex2.toUpperCase();
+          const hex3 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex3)) {
+            output += "%" + hex3.toUpperCase();
             i += 2;
             continue;
           }
@@ -29695,9 +29695,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex2 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex2)) {
-            output += "%" + hex2.toUpperCase();
+          const hex3 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex3)) {
+            output += "%" + hex3.toUpperCase();
             i += 2;
             continue;
           }
@@ -29742,9 +29742,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex2 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex2)) {
-            const normalizedHex = hex2.toUpperCase();
+          const hex3 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex3)) {
+            const normalizedHex = hex3.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (isUnreserved(decoded)) {
               output += decoded;
@@ -29782,9 +29782,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex2 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex2)) {
-            output += "%" + hex2.toUpperCase();
+          const hex3 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex3)) {
+            output += "%" + hex3.toUpperCase();
             i += 2;
             continue;
           }
@@ -30703,15 +30703,15 @@ var require_core3 = __commonJS({
             this.addSchema(sch, void 0, _meta, _validateSchema);
           return this;
         }
-        let id3;
+        let id4;
         if (typeof schema === "object") {
           const { schemaId } = this.opts;
-          id3 = schema[schemaId];
-          if (id3 !== void 0 && typeof id3 != "string") {
+          id4 = schema[schemaId];
+          if (id4 !== void 0 && typeof id4 != "string") {
             throw new Error(`schema ${schemaId} must be string`);
           }
         }
-        key = (0, resolve_1.normalizeId)(key || id3);
+        key = (0, resolve_1.normalizeId)(key || id4);
         this._checkUnique(key);
         this.schemas[key] = this._addSchema(schema, _meta, key, _validateSchema, true);
         return this;
@@ -30790,11 +30790,11 @@ var require_core3 = __commonJS({
           case "object": {
             const cacheKey = schemaKeyRef;
             this._cache.delete(cacheKey);
-            let id3 = schemaKeyRef[this.opts.schemaId];
-            if (id3) {
-              id3 = (0, resolve_1.normalizeId)(id3);
-              delete this.schemas[id3];
-              delete this.refs[id3];
+            let id4 = schemaKeyRef[this.opts.schemaId];
+            if (id4) {
+              id4 = (0, resolve_1.normalizeId)(id4);
+              delete this.schemas[id4];
+              delete this.refs[id4];
             }
             return this;
           }
@@ -30865,7 +30865,7 @@ var require_core3 = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text3, msg) => text3 + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text4, msg) => text4 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -30901,10 +30901,10 @@ var require_core3 = __commonJS({
         }
       }
       _addSchema(schema, meta, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
-        let id3;
+        let id4;
         const { schemaId } = this.opts;
         if (typeof schema == "object") {
-          id3 = schema[schemaId];
+          id4 = schema[schemaId];
         } else {
           if (this.opts.jtd)
             throw new Error("schema must be object");
@@ -30914,7 +30914,7 @@ var require_core3 = __commonJS({
         let sch = this._cache.get(schema);
         if (sch !== void 0)
           return sch;
-        baseId = (0, resolve_1.normalizeId)(id3 || baseId);
+        baseId = (0, resolve_1.normalizeId)(id4 || baseId);
         const localRefs = resolve_1.getSchemaRefs.call(this, schema, baseId);
         sch = new compile_1.SchemaEnv({ schema, schemaId, meta, baseId, localRefs });
         this._cache.set(sch.schema, sch);
@@ -30927,9 +30927,9 @@ var require_core3 = __commonJS({
           this.validateSchema(schema, true);
         return sch;
       }
-      _checkUnique(id3) {
-        if (this.schemas[id3] || this.refs[id3]) {
-          throw new Error(`schema with key or id "${id3}" already exists`);
+      _checkUnique(id4) {
+        if (this.schemas[id4] || this.refs[id4]) {
+          throw new Error(`schema with key or id "${id4}" already exists`);
         }
       }
       _compileSchemaEnv(sch) {
@@ -33219,7 +33219,7 @@ var require_formats = __commonJS({
     }
     var TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
     function getTime(strictTimeZone) {
-      return function time4(str2) {
+      return function time5(str2) {
         const matches = TIME.exec(str2);
         if (!matches)
           return false;
@@ -33265,10 +33265,10 @@ var require_formats = __commonJS({
     }
     var DATE_TIME_SEPARATOR = /t|\s/i;
     function getDateTime(strictTimeZone) {
-      const time4 = getTime(strictTimeZone);
+      const time5 = getTime(strictTimeZone);
       return function date_time(str2) {
         const dateTime = str2.split(DATE_TIME_SEPARATOR);
-        return dateTime.length === 2 && date(dateTime[0]) && time4(dateTime[1]);
+        return dateTime.length === 2 && date(dateTime[0]) && time5(dateTime[1]);
       };
     }
     function compareDateTime(dt1, dt2) {
@@ -33612,7 +33612,7 @@ var require_server = __commonJS({
           if (hasPreviousToolUse) {
             const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
             const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
-            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id3) => toolResultIds.has(id3))) {
+            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id4) => toolResultIds.has(id4))) {
               throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
             }
           }
@@ -33855,8 +33855,8 @@ var require_server2 = __commonJS({
        * Override request handler registration to enforce server-side validation for tools/call.
        */
       setRequestHandler(requestSchema, handler) {
-        const shape = (0, zod_compat_js_1.getObjectShape)(requestSchema);
-        const methodSchema = shape?.method;
+        const shape3 = (0, zod_compat_js_1.getObjectShape)(requestSchema);
+        const methodSchema = shape3?.method;
         if (!methodSchema) {
           throw new Error("Schema is missing a method literal");
         }
@@ -34068,7 +34068,7 @@ var require_server2 = __commonJS({
           if (hasPreviousToolUse) {
             const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
             const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
-            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id3) => toolResultIds.has(id3))) {
+            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id4) => toolResultIds.has(id4))) {
               throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
             }
           }
@@ -35368,10 +35368,10 @@ var require_mcp = __commonJS({
       return schema;
     }
     function promptArgumentsFromSchema(schema) {
-      const shape = (0, zod_compat_js_1.getObjectShape)(schema);
-      if (!shape)
+      const shape3 = (0, zod_compat_js_1.getObjectShape)(schema);
+      if (!shape3)
         return [];
-      return Object.entries(shape).map(([name, field]) => {
+      return Object.entries(shape3).map(([name, field]) => {
         const description = (0, zod_compat_js_1.getSchemaDescription)(field);
         const isOptional = (0, zod_compat_js_1.isSchemaOptional)(field);
         return {
@@ -35382,8 +35382,8 @@ var require_mcp = __commonJS({
       });
     }
     function getMethodValue(schema) {
-      const shape = (0, zod_compat_js_1.getObjectShape)(schema);
-      const methodSchema = shape?.method;
+      const shape3 = (0, zod_compat_js_1.getObjectShape)(schema);
+      const methodSchema = shape3?.method;
       if (!methodSchema) {
         throw new Error("Schema is missing a method literal");
       }
@@ -35551,6 +35551,7 @@ __export(index_exports, {
   verifyReceipt: () => verifyReceipt,
   verifyRehearsalEvidence: () => verifyRehearsalEvidence,
   verifyRekorAnchor: () => verifyRekorAnchor,
+  verifyRepositoryCollaborationEvidence: () => verifyRepositoryCollaborationEvidence,
   verifyRepositoryEvidence: () => verifyRepositoryEvidence,
   verifySelectiveDisclosurePackage: () => verifySelectiveDisclosurePackage,
   writeConnectorPilots: () => writeConnectorPilots
@@ -35577,9 +35578,9 @@ function invoiceMatchesPurchaseOrder(invoice, fixtures) {
 function bytesToHex(bytes) {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
-function hexToBytes(hex2) {
-  if (!/^(?:[0-9a-f]{2})+$/i.test(hex2)) throw new Error("Invalid hexadecimal data");
-  return Uint8Array.from(hex2.match(/../g).map((x) => parseInt(x, 16)));
+function hexToBytes(hex3) {
+  if (!/^(?:[0-9a-f]{2})+$/i.test(hex3)) throw new Error("Invalid hexadecimal data");
+  return Uint8Array.from(hex3.match(/../g).map((x) => parseInt(x, 16)));
 }
 function validUnicode(value) {
   for (let i = 0; i < value.length; i++) {
@@ -35608,8 +35609,8 @@ function canonical(value) {
   }
   if (typeof value === "object") {
     if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new Error("Expected a plain JSON object");
-    const object3 = value;
-    return "{" + Object.keys(object3).sort().map((k) => canonical(k) + ":" + canonical(object3[k])).join(",") + "}";
+    const object4 = value;
+    return "{" + Object.keys(object4).sort().map((k) => canonical(k) + ":" + canonical(object4[k])).join(",") + "}";
   }
   throw new Error("Not a JSON value");
 }
@@ -35619,14 +35620,14 @@ async function sha256(value) {
 async function payloadHash(input) {
   return sha256(canonical(input));
 }
-async function verify(envelope, expectedSigner) {
+async function verify(envelope2, expectedSigner) {
   try {
-    if (!envelope || !/^[0-9a-f]{64}$/.test(envelope.signer) || !/^[0-9a-f]{64}$/.test(envelope.digest) || !/^[0-9a-f]{128}$/.test(envelope.signature)) return false;
-    if (expectedSigner && expectedSigner !== envelope.signer) return false;
-    const preimage = COORDINATION_DOMAIN + canonical(envelope.payload);
-    if (await sha256(preimage) !== envelope.digest) return false;
-    const key = await crypto.subtle.importKey("raw", hexToBytes(envelope.signer), { name: "Ed25519" }, false, ["verify"]);
-    return await crypto.subtle.verify("Ed25519", key, hexToBytes(envelope.signature), new TextEncoder().encode(preimage));
+    if (!envelope2 || !/^[0-9a-f]{64}$/.test(envelope2.signer) || !/^[0-9a-f]{64}$/.test(envelope2.digest) || !/^[0-9a-f]{128}$/.test(envelope2.signature)) return false;
+    if (expectedSigner && expectedSigner !== envelope2.signer) return false;
+    const preimage = COORDINATION_DOMAIN + canonical(envelope2.payload);
+    if (await sha256(preimage) !== envelope2.digest) return false;
+    const key = await crypto.subtle.importKey("raw", hexToBytes(envelope2.signer), { name: "Ed25519" }, false, ["verify"]);
+    return await crypto.subtle.verify("Ed25519", key, hexToBytes(envelope2.signature), new TextEncoder().encode(preimage));
   } catch {
     return false;
   }
@@ -35665,18 +35666,18 @@ function hasLegacyUnsafeKey(value) {
   if (Object.prototype.hasOwnProperty.call(value, "__proto__")) return true;
   return Object.values(value).some(hasLegacyUnsafeKey);
 }
-function verifyEncoding(payload, envelope, signature, publicKeyHex, shape, allowLegacy) {
+function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape3, allowLegacy) {
   const jcs2 = canonicalize(payload);
   if (import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(jcs2), (0, import_utils.hexToBytes)(publicKeyHex))) {
-    return { valid: true, shape, hash: receiptHash(envelope), canonicalization: "jcs" };
+    return { valid: true, shape: shape3, hash: receiptHash(envelope2), canonicalization: "jcs" };
   }
-  if (!hasLegacyUnsafeKey(envelope)) {
+  if (!hasLegacyUnsafeKey(envelope2)) {
     const legacy = legacyCanonicalize(payload);
     if (legacy !== jcs2 && import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(legacy), (0, import_utils.hexToBytes)(publicKeyHex))) {
-      const legacyHash = (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(legacyCanonicalize(envelope))));
+      const legacyHash = (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(legacyCanonicalize(envelope2))));
       return {
         valid: allowLegacy,
-        shape,
+        shape: shape3,
         canonicalization: "legacy-numeric-key-order",
         legacy_signature_valid: true,
         legacy_hash: legacyHash,
@@ -35685,7 +35686,7 @@ function verifyEncoding(payload, envelope, signature, publicKeyHex, shape, allow
       };
     }
   }
-  return { valid: false, shape, error: "invalid_signature" };
+  return { valid: false, shape: shape3, error: "invalid_signature" };
 }
 function receiptHash(obj) {
   return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
@@ -35719,15 +35720,15 @@ function createReceiptEnvelope(fields, privateKeyHex, kid, issuedAt) {
     issuer_id: kid
   };
   const sig = (0, import_utils.bytesToHex)(import_ed25519.ed25519.sign((0, import_utils.utf8ToBytes)(canonicalize(payload)), (0, import_utils.hexToBytes)(privateKeyHex)));
-  const envelope = { payload, signature: { alg: "EdDSA", kid, sig } };
-  return { envelope, hash: receiptHash(envelope) };
+  const envelope2 = { payload, signature: { alg: "EdDSA", kid, sig } };
+  return { envelope: envelope2, hash: receiptHash(envelope2) };
 }
-function verifyReceipt(envelope, publicKeyHex, options = {}) {
+function verifyReceipt(envelope2, publicKeyHex, options = {}) {
   try {
-    if (!envelope || typeof envelope !== "object") {
+    if (!envelope2 || typeof envelope2 !== "object") {
       return { valid: false, shape: null, error: "not_an_object" };
     }
-    const env = envelope;
+    const env = envelope2;
     const signature = env.signature;
     if (signature && typeof signature === "object" && !Array.isArray(signature)) {
       const sigObj = signature;
@@ -35742,8 +35743,8 @@ function verifyReceipt(envelope, publicKeyHex, options = {}) {
     if (typeof signature === "string") {
       const rest = /* @__PURE__ */ Object.create(null);
       for (const k of Object.keys(env)) if (k !== "signature") rest[k] = env[k];
-      const shape = env.v === 2 ? "legacy-v2" : "legacy-v1";
-      return verifyEncoding(rest, env, signature, publicKeyHex, shape, options.allowLegacyNumericKeys === true);
+      const shape3 = env.v === 2 ? "legacy-v2" : "legacy-v1";
+      return verifyEncoding(rest, env, signature, publicKeyHex, shape3, options.allowLegacyNumericKeys === true);
     }
     return { valid: false, shape: null, error: "missing_signature" };
   } catch (err) {
@@ -35754,9 +35755,9 @@ function verifyReceipt(envelope, publicKeyHex, options = {}) {
     };
   }
 }
-function receiptIdentity(envelope) {
-  if (!envelope || typeof envelope !== "object") return { kid: null, issuer: null, type: null };
-  const env = envelope;
+function receiptIdentity(envelope2) {
+  if (!envelope2 || typeof envelope2 !== "object") return { kid: null, issuer: null, type: null };
+  const env = envelope2;
   if (env.signature && typeof env.signature === "object") {
     const payload = env.payload || {};
     const sig = env.signature;
@@ -35946,8 +35947,8 @@ var EvidenceStore = class {
   save() {
     if (!this.dirty) return;
     const data = {};
-    for (const [id3, record] of this.agents) {
-      data[id3] = record;
+    for (const [id4, record] of this.agents) {
+      data[id4] = record;
     }
     try {
       (0, import_node_fs3.writeFileSync)(this.filePath, JSON.stringify({ v: 1, agents: data }, null, 2) + "\n");
@@ -35964,8 +35965,8 @@ var EvidenceStore = class {
       const raw = (0, import_node_fs3.readFileSync)(this.filePath, "utf-8");
       const parsed = JSON.parse(raw);
       if (parsed.agents && typeof parsed.agents === "object") {
-        for (const [id3, record] of Object.entries(parsed.agents)) {
-          this.agents.set(id3, record);
+        for (const [id4, record] of Object.entries(parsed.agents)) {
+          this.agents.set(id4, record);
         }
       }
     } catch {
@@ -35982,8 +35983,8 @@ var EvidenceStore = class {
    */
   allSummaries() {
     const result = [];
-    for (const [id3] of this.agents) {
-      result.push({ agent_id: id3, summary: this.getSummary(id3) });
+    for (const [id4] of this.agents) {
+      result.push({ agent_id: id4, summary: this.getSummary(id4) });
     }
     return result;
   }
@@ -36903,8 +36904,8 @@ function startStatusServer(config, receiptBuffer, approvalStore, approvalNonce) 
       } else if (path === "/receipts/latest") {
         handleReceiptLatest(res, receiptBuffer);
       } else if (path.startsWith("/receipts/")) {
-        const id3 = path.slice("/receipts/".length);
-        handleReceiptById(res, receiptBuffer, id3);
+        const id4 = path.slice("/receipts/".length);
+        handleReceiptById(res, receiptBuffer, id4);
       } else if (path === "/approve" && req.method === "POST") {
         handleApprove(req, res, approvalStore, approvalNonce);
       } else if (path === "/approvals" && req.method === "GET") {
@@ -36998,11 +36999,11 @@ function handleReceiptLatest(res, buffer) {
   res.writeHead(200);
   res.end(JSON.stringify(latest));
 }
-function handleReceiptById(res, buffer, id3) {
-  const receipt = buffer.getById(id3);
+function handleReceiptById(res, buffer, id4) {
+  const receipt = buffer.getById(id4);
   if (!receipt) {
     res.writeHead(404);
-    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id3 }));
+    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id4 }));
     return;
   }
   res.writeHead(200);
@@ -37805,8 +37806,8 @@ var ProtectGateway = class {
       this.reporter.record(void 0, callLine);
     }
   }
-  makeErrorResponse(id3, code2, message) {
-    return { jsonrpc: "2.0", id: id3, error: { code: code2, message } };
+  makeErrorResponse(id4, code2, message) {
+    return { jsonrpc: "2.0", id: id4, error: { code: code2, message } };
   }
   sendToChild(message) {
     if (this.child?.stdin?.writable) this.child.stdin.write(message + "\n");
@@ -37903,22 +37904,22 @@ var ProtectGateway = class {
       }
     }
     return new Promise((resolve2, reject) => {
-      const id3 = jsonRpc.id;
-      if (id3 === void 0 || id3 === null) {
+      const id4 = jsonRpc.id;
+      if (id4 === void 0 || id4 === null) {
         const modified2 = this.injectParamsCredentials(jsonRpc);
         this.sendToChild(JSON.stringify(modified2));
         resolve2(JSON.stringify({ jsonrpc: "2.0", result: {}, id: null }));
         return;
       }
       const timeout = setTimeout(() => {
-        this.pendingResponses.delete(id3);
+        this.pendingResponses.delete(id4);
         resolve2(JSON.stringify({
           jsonrpc: "2.0",
           error: { code: -32e3, message: "Request timeout (30s)" },
-          id: id3
+          id: id4
         }));
       }, REQUEST_TIMEOUT_MS);
-      this.pendingResponses.set(id3, { resolve: resolve2, timeout });
+      this.pendingResponses.set(id4, { resolve: resolve2, timeout });
       const modified = this.injectParamsCredentials(jsonRpc);
       this.sendToChild(JSON.stringify(modified));
     });
@@ -38045,7 +38046,7 @@ function parseRepairProposal(value, budget) {
 }
 function defaultRehearsalCases(fixtures) {
   const invoice = fixtures.invoices.find((i) => !i.duplicate_of);
-  const make = (id3, title, kind, requirement) => ({ id: `required-${id3}`, title, kind, invoice_id: invoice.invoice_id, expected: "invariant", requirement, required: true });
+  const make = (id4, title, kind, requirement) => ({ id: `required-${id4}`, title, kind, invoice_id: invoice.invoice_id, expected: "invariant", requirement, required: true });
   return [
     make("valid", "A legitimate payment can complete", "approved_invoice", "An exact, authorized invoice can be paid once. Required review must not prevent approved work from completing."),
     make("duplicate", "Submit the same invoice twice", "duplicate_invoice", "A second operation for an already-paid invoice must not create another payment."),
@@ -38223,7 +38224,7 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
     const authority = authorityKey ?? a.registrar_key;
     add("Owner signed the bounded source agreement and exact fixture snapshot", boundedAgreement(a) && boundedFixtures(e.fixtures) && await verifyOwnerAgreement(e.agreement, e.source_negotiation, depth + 1) && a.registrar_key === authority);
     add("Named authority signed a bounded session tied to this source", await signed(e.session, authority) && exact2(s, keys("type id room_id agreement_digest fixture_digest owner_key registrar_key invitation_digest created_at expires_at max_proposals"), ["parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]) && s.type === "scopeblind.coordination.negotiation-session.v1" && id2(s.id) && s.room_id === a.id && s.agreement_digest === e.agreement.digest && s.fixture_digest === await negotiationDigest(e.fixtures) && (s.parent_session_id === void 0 || id2(s.parent_session_id) && s.parent_session_id !== s.id) && s.parent_session_id === i.parent_session_id && s.source_operation_id === i.source_operation_id && (s.source_operation_id === void 0 ? s.source_invoice_id === void 0 && s.source_operation_digest === void 0 : id2(s.source_operation_id) && text(s.source_invoice_id, 60) && HEX.test(s.source_operation_digest ?? "") && e.fixtures.invoices.some((v) => !v.duplicate_of && v.invoice_id === s.source_invoice_id)) && s.owner_key === a.owner_key && s.registrar_key === authority && s.invitation_digest === e.invitation.digest && s.max_proposals === 3 && time2(s.created_at) >= time2(a.issued_at) - 3e5 && time2(s.expires_at) > time2(s.created_at) && time2(s.expires_at) <= time2(s.created_at) + 864e5);
-    const during = (at) => time2(at) >= time2(s.created_at) - 3e5 && time2(at) < time2(s.expires_at);
+    const during = (at2) => time2(at2) >= time2(s.created_at) - 3e5 && time2(at2) < time2(s.expires_at);
     add("Owner invited one counterparty for this exact session", await signed(e.invitation, a.owner_key) && exact2(i, keys("type session_id room_id agreement_digest fixture_digest issuer registrar_key role token_hash max_claims expires_at"), ["parent_session_id", "source_operation_id"]) && i.type === "scopeblind.coordination.negotiation-invitation.v1" && i.session_id === s.id && i.room_id === a.id && i.agreement_digest === e.agreement.digest && i.fixture_digest === s.fixture_digest && i.issuer === a.owner_key && i.registrar_key === authority && i.role === "counterparty" && i.max_claims === 1 && HEX.test(i.token_hash) && i.expires_at === s.expires_at);
     const claim = b.claim.payload, partner = b.guest_key, principals = [a.owner_key, partner];
     add("Distinct counterparty signed its claim and the authority bound that claim", await signed(e.binding, authority) && await signed(b.claim, partner) && exact2(b, keys("type session_id room_id invitation_digest guest_key name issued_at expires_at claim")) && b.type === "scopeblind.coordination.negotiation-binding.v1" && b.session_id === s.id && b.room_id === a.id && b.invitation_digest === e.invitation.digest && HEX.test(partner) && partner !== a.owner_key && during(b.issued_at) && b.expires_at === s.expires_at && exact2(claim, keys("type session_id room_id guest_key name issued_at nonce")) && claim.type === "scopeblind.coordination.negotiation-claim.v1" && claim.session_id === s.id && claim.room_id === a.id && claim.guest_key === partner && text(claim.name, 60) && claim.name === b.name && id2(claim.nonce) && Math.abs(time2(claim.issued_at) - time2(b.issued_at)) <= 3e5);
@@ -38233,9 +38234,9 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
       const m = e.mandates[n].payload;
       add(`Principal ${n + 1} signed bounded negotiation-only authority`, await verifyHuman(e.mandates[n], principals[n], { requireRecordedUse: true, authorityKey: authority }) && exact2(m, keys("type session_id room_id principal_key version agreement_digest fixture_digest min_threshold_minor max_threshold_minor required_invoices private_brief_commitment agent_mode actions issued_at expires_at"), ["min_budget_minor", "max_budget_minor"]) && m.type === "scopeblind.coordination.negotiation-mandate.v1" && m.session_id === s.id && m.room_id === a.id && m.principal_key === principals[n] && m.agreement_digest === e.agreement.digest && m.fixture_digest === s.fixture_digest && integer(m.version, 1, 1e6) && (m.min_budget_minor === void 0 && m.max_budget_minor === void 0 || integer(m.min_budget_minor, 1, 1e7) && integer(m.max_budget_minor, m.min_budget_minor, 1e7)) && integer(m.min_threshold_minor, 0, mandateBudget(m, a.budget_minor).max) && integer(m.max_threshold_minor, m.min_threshold_minor, mandateBudget(m, a.budget_minor).max) && Array.isArray(m.required_invoices) && m.required_invoices.length <= 2 && new Set(m.required_invoices.map((r2) => r2.invoice_id)).size === m.required_invoices.length && m.required_invoices.every((r2) => exact2(r2, keys("invoice_id expected")) && ["allow", "ask"].includes(r2.expected) && e.fixtures.invoices.some((v) => v.invoice_id === r2.invoice_id && !v.duplicate_of)) && (s.source_invoice_id === void 0 || m.required_invoices.some((r2) => r2.invoice_id === s.source_invoice_id)) && HEX.test(m.private_brief_commitment) && ["hosted", "own", "manual"].includes(m.agent_mode) && same(m.actions, NEGOTIATION_AGENT_ACTIONS) && during(m.issued_at) && time2(m.expires_at) > time2(m.issued_at) && time2(m.expires_at) <= time2(s.expires_at));
     }
-    const validAt = (principal, at) => {
+    const validAt = (principal, at2) => {
       const m = e.mandates.find((m2) => m2.payload.principal_key === principal)?.payload;
-      return !!m && during(at) && time2(at) >= time2(m.issued_at) - 3e5 && time2(at) < time2(m.expires_at);
+      return !!m && during(at2) && time2(at2) >= time2(m.issued_at) - 3e5 && time2(at2) < time2(m.expires_at);
     };
     const agentBindings = e.agent_bindings ?? [];
     add("Installed agent bindings are bounded and independently scoped per principal", Array.isArray(agentBindings) && agentBindings.length <= 12 && new Set(agentBindings.map((v) => v.payload.pair_id)).size === agentBindings.length);
@@ -38252,8 +38253,8 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
     };
     add("At most three uniquely identified proposals are included", Array.isArray(e.proposals) && e.proposals.length >= 1 && e.proposals.length <= 3 && new Set(e.proposals.map((p2) => p2.payload.id)).size === e.proposals.length);
     for (let n = 0; n < e.proposals.length; n++) {
-      const envelope = e.proposals[n], p2 = envelope.payload, mine = e.mandates.find((m) => m.payload.principal_key === p2.principal_key)?.payload, g = p2.reviewer_grant;
-      add(`Candidate ${n + 1} has a signed source, parent and principal authority`, await signed(envelope, authority) && exact2(p2, keys("type id approval_above_minor session_id room_id round principal_key agent_mode agreement_digest fixture_digest mandate_digests next_agreement next_agreement_digest reviewer_grant reviewer_grant_digest issued_at"), keys("parent_digest agent_key budget_minor exploration")) && p2.type === "scopeblind.coordination.negotiation-proposal.v1" && typeof p2.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(p2.id) && p2.session_id === s.id && p2.room_id === a.id && p2.round === n + 1 && p2.parent_digest === e.proposals[n - 1]?.digest && p2.agreement_digest === e.agreement.digest && p2.fixture_digest === s.fixture_digest && same(p2.mandate_digests, mandateDigests) && (p2.exploration === void 0 || p2.exploration === true && p2.agent_mode === "manual" && !p2.agent_key) && !!mine && negotiationPlanWithinMandate(mine, p2.approval_above_minor, p2.budget_minor ?? a.budget_minor, a.budget_minor) && actorBound(p2) && (n === 0 || time2(p2.issued_at) >= time2(e.proposals[n - 1].payload.issued_at)));
+      const envelope2 = e.proposals[n], p2 = envelope2.payload, mine = e.mandates.find((m) => m.payload.principal_key === p2.principal_key)?.payload, g = p2.reviewer_grant;
+      add(`Candidate ${n + 1} has a signed source, parent and principal authority`, await signed(envelope2, authority) && exact2(p2, keys("type id approval_above_minor session_id room_id round principal_key agent_mode agreement_digest fixture_digest mandate_digests next_agreement next_agreement_digest reviewer_grant reviewer_grant_digest issued_at"), keys("parent_digest agent_key budget_minor exploration")) && p2.type === "scopeblind.coordination.negotiation-proposal.v1" && typeof p2.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(p2.id) && p2.session_id === s.id && p2.room_id === a.id && p2.round === n + 1 && p2.parent_digest === e.proposals[n - 1]?.digest && p2.agreement_digest === e.agreement.digest && p2.fixture_digest === s.fixture_digest && same(p2.mandate_digests, mandateDigests) && (p2.exploration === void 0 || p2.exploration === true && p2.agent_mode === "manual" && !p2.agent_key) && !!mine && negotiationPlanWithinMandate(mine, p2.approval_above_minor, p2.budget_minor ?? a.budget_minor, a.budget_minor) && actorBound(p2) && (n === 0 || time2(p2.issued_at) >= time2(e.proposals[n - 1].payload.issued_at)));
       add(`Candidate ${n + 1} changes only the tested threshold and authorized budget in a separate task`, boundedAgreement(p2.next_agreement) && p2.next_agreement.id !== a.id && same(p2.next_agreement, { ...a, id: p2.next_agreement.id, issued_at: p2.issued_at, approval_above_minor: p2.approval_above_minor, budget_minor: p2.budget_minor ?? a.budget_minor }) && p2.next_agreement_digest === await negotiationPayloadDigest(p2.next_agreement));
       add(`Candidate ${n + 1} fixes the partner's future reviewer role before approval`, exact2(g, keys("type grant_id room_id agreement_digest issuer registrar_key role actions expires_at token_hash max_claims")) && g.type === "scopeblind.coordination.grant.v1" && id2(g.grant_id) && g.room_id === p2.next_agreement.id && g.agreement_digest === p2.next_agreement_digest && g.issuer === a.owner_key && g.registrar_key === authority && g.role === "reviewer" && same(g.actions, ["decide", "accept"]) && HEX.test(g.token_hash) && g.max_claims === 1 && g.expires_at === s.expires_at && p2.reviewer_grant_digest === await negotiationPayloadDigest(g));
     }
@@ -38630,27 +38631,27 @@ var CoordinationClient = class {
     const keys2 = (value, allowed) => {
       if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !allowed.includes(key))) invalid();
     };
-    const envelope = (value) => keys2(value, ["payload", "signer", "digest", "signature"]);
+    const envelope2 = (value) => keys2(value, ["payload", "signer", "digest", "signature"]);
     const humanEnvelope = (value) => keys2(value, ["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"]);
     try {
       keys2(state, ["session", "invitation", "binding", "agreement", "fixtures", "principals", "status", "proposals", "responses", "reports", "approvals", "adoption", "adopted_agreement", "run", "feasibility", "next_principal_key", "model_steps", "max_model_steps", "error", "viewer", "started", "reviewer_grant", "reviewer_binding", "agent_bindings", "selected_proposal_digest", "runtime_changed", "source_negotiation"]);
       const session = state.session?.payload, agreement = state.agreement?.payload;
       if (!session || !agreement || session.type !== "scopeblind.coordination.negotiation-session.v1" || session.id !== sessionId || session.room_id !== this.#config.roomId || session.registrar_key !== this.#config.authorityKey || !await verify(state.session, this.#config.authorityKey) || agreement.type !== "scopeblind.coordination.agreement.v1" || agreement.id !== this.#config.roomId || agreement.owner_key !== session.owner_key || agreement.registrar_key !== this.#config.authorityKey || !await verifyOwnerAgreement(state.agreement, state.source_negotiation) || state.agreement.digest !== session.agreement_digest || session.max_proposals !== NEGOTIATION_MAX_PROPOSALS || state.max_model_steps !== NEGOTIATION_MAX_MODEL_STEPS || !Number.isSafeInteger(state.model_steps) || state.model_steps < 0 || state.model_steps > NEGOTIATION_MAX_MODEL_STEPS || !state.fixtures || await negotiationDigest(state.fixtures) !== session.fixture_digest) invalid();
       if (!Number.isFinite(Date.parse(session.created_at)) || !Number.isFinite(Date.parse(session.expires_at)) || Date.parse(session.expires_at) <= Date.parse(session.created_at) || Date.parse(session.expires_at) > Date.parse(session.created_at) + 864e5) invalid();
-      envelope(state.session);
+      envelope2(state.session);
       keys2(session, ["type", "id", "room_id", "agreement_digest", "fixture_digest", "owner_key", "registrar_key", "invitation_digest", "created_at", "expires_at", "max_proposals", "parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]);
       const invitation = state.invitation?.payload;
       if (!invitation || !await verify(state.invitation, session.owner_key) || invitation.type !== "scopeblind.coordination.negotiation-invitation.v1" || state.invitation.digest !== session.invitation_digest || invitation.session_id !== sessionId || invitation.room_id !== session.room_id || invitation.agreement_digest !== session.agreement_digest || invitation.fixture_digest !== session.fixture_digest || invitation.issuer !== session.owner_key || invitation.registrar_key !== this.#config.authorityKey) invalid();
       if (invitation.role !== "counterparty" || invitation.max_claims !== 1 || invitation.expires_at !== session.expires_at || !/^[0-9a-f]{64}$/.test(invitation.token_hash)) invalid();
-      envelope(state.invitation);
+      envelope2(state.invitation);
       keys2(invitation, ["type", "session_id", "room_id", "agreement_digest", "fixture_digest", "issuer", "registrar_key", "role", "token_hash", "max_claims", "expires_at", "parent_session_id", "source_operation_id"]);
       if (!Array.isArray(state.principals) || state.principals.length < 1 || state.principals.length > 2 || new Set(state.principals.map((p) => p.key)).size !== state.principals.length || new Set(state.principals.map((p) => p.side)).size !== state.principals.length) invalid();
       if (state.binding) {
         const binding = state.binding.payload;
-        envelope(state.binding);
+        envelope2(state.binding);
         keys2(binding, ["type", "session_id", "room_id", "invitation_digest", "guest_key", "name", "issued_at", "expires_at", "claim"]);
         if (!await verify(state.binding, this.#config.authorityKey) || binding.type !== "scopeblind.coordination.negotiation-binding.v1" || binding.session_id !== sessionId || binding.room_id !== session.room_id || binding.invitation_digest !== state.invitation.digest || !await verify(binding.claim, binding.guest_key) || binding.claim.payload.session_id !== sessionId || binding.claim.payload.room_id !== session.room_id || binding.claim.payload.guest_key !== binding.guest_key || binding.guest_key === session.owner_key) invalid();
-        envelope(binding.claim);
+        envelope2(binding.claim);
         keys2(binding.claim.payload, ["type", "session_id", "room_id", "guest_key", "name", "issued_at", "nonce"]);
       }
       for (const principal of state.principals) {
@@ -38688,11 +38689,11 @@ var CoordinationClient = class {
       const agentBindings = state.agent_bindings ?? [];
       if (!Array.isArray(agentBindings) || agentBindings.length > 12) invalid();
       for (const signed2 of agentBindings) {
-        envelope(signed2);
+        envelope2(signed2);
         const b = signed2.payload, auth = b.owner_authorization, q = auth?.payload;
         keys2(b, ["type", "pair_id", "room_id", "session_id", "principal_key", "agreement_digest", "owner_key", "agent_key", "name", "scope", "audience", "issued_at", "expires_at", "owner_authorization"]);
         if (!await verify(signed2, this.#config.authorityKey) || b.type !== "scopeblind.coordination.agent-binding.v1" || b.audience !== "scopeblind.coordination.negotiation" || b.session_id !== sessionId || b.room_id !== session.room_id || b.agreement_digest !== session.agreement_digest || b.owner_key !== b.principal_key || !state.principals.some((p) => p.key === b.principal_key) || state.principals.some((p) => p.key === b.agent_key) || canonical(b.scope) !== canonical(NEGOTIATION_AGENT_ACTIONS) || !await verify(auth, b.principal_key) || q.type !== "scopeblind.coordination.request.v1" || q.action !== "negotiation_pair_create" || q.room_id !== session.room_id || q.body.session_id !== sessionId || q.body.pair_id !== b.pair_id || q.body.token_expires_at !== b.expires_at || canonical(q.body.scope) !== canonical(NEGOTIATION_AGENT_ACTIONS)) invalid();
-        envelope(auth);
+        envelope2(auth);
         keys2(q, ["type", "action", "room_id", "body", "issued_at", "nonce"]);
         keys2(q.body, ["session_id", "pair_id", "secret_hash", "name", "expires_at", "token_expires_at", "scope", "expected_agent_key"]);
         if (q.body.expected_agent_key !== void 0 && q.body.expected_agent_key !== b.agent_key) invalid();
@@ -38707,7 +38708,7 @@ var CoordinationClient = class {
       };
       for (let index = 0; index < state.proposals.length; index++) {
         const signed2 = state.proposals[index], proposal = signed2.payload;
-        envelope(signed2);
+        envelope2(signed2);
         keys2(proposal, ["type", "id", "approval_above_minor", "budget_minor", "exploration", "parent_digest", "session_id", "room_id", "round", "principal_key", "agent_key", "agent_mode", "agreement_digest", "fixture_digest", "mandate_digests", "next_agreement", "next_agreement_digest", "reviewer_grant", "reviewer_grant_digest", "issued_at"]);
         if (!actorBound(proposal) || !await verify(signed2, this.#config.authorityKey) || proposal.type !== "scopeblind.coordination.negotiation-proposal.v1" || proposal.session_id !== sessionId || proposal.room_id !== session.room_id || proposal.round !== index + 1 || proposal.agreement_digest !== session.agreement_digest || proposal.fixture_digest !== session.fixture_digest || mandateDigests.length !== 2 || canonical(proposal.mandate_digests) !== canonical(mandateDigests) || !state.principals.some((p) => p.key === proposal.principal_key) || !Number.isSafeInteger(proposal.approval_above_minor) || proposal.approval_above_minor < 0 || proposal.approval_above_minor > (proposal.budget_minor ?? agreement.budget_minor) || proposal.next_agreement?.approval_above_minor !== proposal.approval_above_minor || await negotiationPayloadDigest(proposal.next_agreement) !== proposal.next_agreement_digest || (index === 0 ? proposal.parent_digest !== void 0 : proposal.parent_digest !== state.proposals[index - 1].digest)) invalid();
       }
@@ -38721,13 +38722,13 @@ var CoordinationClient = class {
       }
       for (const signed2 of state.responses) {
         const response2 = signed2.payload;
-        envelope(signed2);
+        envelope2(signed2);
         keys2(response2, ["type", "session_id", "principal_key", "proposal_digest", "mandate_digest", "decision", "agent_key", "agent_mode", "issued_at"]);
         if (!actorBound(response2) || !await verify(signed2, this.#config.authorityKey) || response2.type !== "scopeblind.coordination.negotiation-response.v1" || response2.session_id !== sessionId || !["support", "no_agreement"].includes(response2.decision) || !state.proposals.some((p) => p.digest === response2.proposal_digest) || state.principals.find((p) => p.key === response2.principal_key)?.mandate?.digest !== response2.mandate_digest) invalid();
       }
       for (const signed2 of state.reports) {
         const report = signed2.payload;
-        envelope(signed2);
+        envelope2(signed2);
         keys2(report, ["type", "session_id", "room_id", "proposal_digest", "agreement_digest", "fixture_digest", "mandate_digests", "cases_digest", "runtime_revision", "adapter", "isolation", "issued_at", "before_approval_above_minor", "after_approval_above_minor", "before_budget_minor", "after_budget_minor", "results", "required_passed", "expectations_met", "mandates_met"]);
         if (!await verify(signed2, this.#config.authorityKey) || report.type !== "scopeblind.coordination.negotiation-report.v1" || report.session_id !== sessionId || report.room_id !== session.room_id || report.agreement_digest !== session.agreement_digest || report.fixture_digest !== session.fixture_digest || canonical(report.mandate_digests) !== canonical(mandateDigests) || !state.proposals.some((p) => p.digest === report.proposal_digest) || report.adapter !== "coordination-d1-sandbox" || report.isolation !== "separate-fixture-ledgers") invalid();
       }
@@ -39163,9 +39164,9 @@ var CoordinationClient = class {
     return { manifest, manifest_signature_verified: true, next_step: "The recipient can accept this exact result or request changes in the shared room. Delivery does not imply their acceptance." };
   }
   async checkAdmission(value, request, agreement, hash, fresh) {
-    const envelope = value;
-    if (!await verify(envelope, this.#config.authorityKey)) throw new CoordinationError("invalid_admission", "Admission signature does not match the pinned authority. No execution was requested.");
-    const a = envelope.payload;
+    const envelope2 = value;
+    if (!await verify(envelope2, this.#config.authorityKey)) throw new CoordinationError("invalid_admission", "Admission signature does not match the pinned authority. No execution was requested.");
+    const a = envelope2.payload;
     if (a.type !== "scopeblind.coordination.admission.v1" || a.room_id !== this.#config.roomId || a.run_id !== request.run_id || a.operation_id !== request.operation_id || a.agreement_digest !== agreement.digest || a.payload_hash !== hash || canonical(a.input) !== canonical(request.input) || a.destination !== request.input.destination || !["admitted", "held", "refused"].includes(a.decision)) {
       throw new CoordinationError("invalid_admission", "Admission does not authorize these exact operation terms. No execution was requested.");
     }
@@ -39173,16 +39174,16 @@ var CoordinationClient = class {
     if (!Number.isFinite(issued) || !Number.isFinite(expiry) || expiry <= issued || issued > Date.now() + 3e4 || fresh && expiry <= Date.now()) {
       throw new CoordinationError("expired_admission", "Admission validity could not be established. No execution was requested.");
     }
-    return envelope;
+    return envelope2;
   }
   async checkOutcome(value, request, hash) {
-    const envelope = value;
-    if (!await verify(envelope, this.#config.authorityKey)) throw new CoordinationError("invalid_outcome", "Destination outcome signature does not match the pinned authority.");
-    const o = envelope.payload;
+    const envelope2 = value;
+    if (!await verify(envelope2, this.#config.authorityKey)) throw new CoordinationError("invalid_outcome", "Destination outcome signature does not match the pinned authority.");
+    const o = envelope2.payload;
     if (o.type !== "scopeblind.coordination.outcome.v1" || o.room_id !== this.#config.roomId || o.run_id !== request.run_id || o.operation_id !== request.operation_id || o.payload_hash !== hash || o.amount_minor !== request.input.amount_minor || o.destination !== request.input.destination || !["confirmed", "failed", "unknown"].includes(o.status) || o.observed_by !== "sandbox-ledger" && !(o.status === "unknown" && o.observed_by === "gateway-report") || !Number.isFinite(Date.parse(o.issued_at)) || Date.parse(o.issued_at) > Date.now() + 3e4 || o.status === "confirmed" && !o.transaction_id) {
       throw new CoordinationError("invalid_outcome", "Destination outcome does not establish the result of these exact operation terms.");
     }
-    return envelope;
+    return envelope2;
   }
   async pay(payment) {
     validateCoordinationPayment(payment);
@@ -39891,8 +39892,8 @@ function generateReport(logPath, receiptPath, periodDays) {
       policyDigests.set(entry.policy_digest, new Date(entry.timestamp).toISOString());
     }
   }
-  const policyChanges = Array.from(policyDigests.entries()).map(([digest, at]) => ({
-    at,
+  const policyChanges = Array.from(policyDigests.entries()).map(([digest, at2]) => ({
+    at: at2,
     policy_digest: digest
   })).sort((a, b) => a.at.localeCompare(b.at));
   return {
@@ -40020,11 +40021,11 @@ function validateManifest(manifest) {
   if (!m.identity || typeof m.identity !== "object") {
     errors.push("identity is required");
   } else {
-    const id3 = m.identity;
-    if (typeof id3.public_key !== "string" || !id3.public_key.startsWith("ed25519:")) {
+    const id4 = m.identity;
+    if (typeof id4.public_key !== "string" || !id4.public_key.startsWith("ed25519:")) {
       errors.push("identity.public_key must be an ed25519: prefixed key");
     }
-    if (id3.key_algorithm !== "Ed25519") {
+    if (id4.key_algorithm !== "Ed25519") {
       errors.push('identity.key_algorithm must be "Ed25519"');
     }
   }
@@ -40223,10 +40224,10 @@ function category(tool) {
   if (/(trade|order|pms|broker|position)/.test(value)) return "finance";
   return "other";
 }
-function toEgressSummary(envelope, opts) {
+function toEgressSummary(envelope2, opts) {
   if (!opts?.pseudonymKey || typeof opts.pseudonymKey === "string" && !opts.pseudonymKey.length || opts.pseudonymKey instanceof Uint8Array && !opts.pseudonymKey.length) return null;
-  if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) return null;
-  const env = envelope;
+  if (!envelope2 || typeof envelope2 !== "object" || Array.isArray(envelope2)) return null;
+  const env = envelope2;
   const p = env.payload;
   if (!p || typeof p !== "object" || typeof p.type !== "string" || !KNOWN_RECEIPT_TYPES.has(p.type)) return null;
   const ar = p.action_readback;
@@ -40236,7 +40237,7 @@ function toEgressSummary(envelope, opts) {
   const summary = {
     type: EGRESS_SUMMARY_TYPE,
     version: EGRESS_SUMMARY_VERSION,
-    source_receipt_commitment: `sha256:${receiptHash(envelope)}`,
+    source_receipt_commitment: `sha256:${receiptHash(envelope2)}`,
     request_pseudonym: hmacCommitment("scopeblind.egress.request.v1", p.request_id || p.scope || "", opts),
     decision: rawDecision && DECISIONS.has(rawDecision) ? rawDecision : "other",
     reason_code: code(p.reason),
@@ -40413,12 +40414,12 @@ var ScopeBlindBridge = class {
           continue;
         }
         try {
-          const envelope = JSON.parse(signed2.signed);
-          const signedGuard = inspectEgress(envelope?.payload, { signed: true });
-          if (!signedGuard.safe || envelope?.signature?.alg !== "EdDSA") {
+          const envelope2 = JSON.parse(signed2.signed);
+          const signedGuard = inspectEgress(envelope2?.payload, { signed: true });
+          if (!signedGuard.safe || envelope2?.signature?.alg !== "EdDSA") {
             throw new Error(signedGuard.violations.slice(0, 2).map((v) => v.path).join(", "));
           }
-          summaries.push(envelope);
+          summaries.push(envelope2);
         } catch (err) {
           this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
           process.stderr.write(`[PROTECT_MCP] egress summary dropped after signing: ${String(err?.message || err)}
@@ -40479,8 +40480,8 @@ var ScopeBlindBridge = class {
         })
       });
       if (!res.ok) {
-        const text3 = await res.text().catch(() => "");
-        this.stats.last_error = `brass-issue: HTTP ${res.status} ${text3.slice(0, 160)}`;
+        const text4 = await res.text().catch(() => "");
+        this.stats.last_error = `brass-issue: HTTP ${res.status} ${text4.slice(0, 160)}`;
         return null;
       }
       const body = await res.json();
@@ -40601,15 +40602,15 @@ var RULES = [
 ];
 function deriveCapabilities(tool, input) {
   const t = String(tool || "").toLowerCase();
-  let text3 = "";
+  let text4 = "";
   try {
-    text3 = canonicalJson(input).toLowerCase();
+    text4 = canonicalJson(input).toLowerCase();
   } catch {
   }
   const caps = /* @__PURE__ */ new Set();
   for (const r of RULES) {
     if (r.tool && r.tool.test(t)) caps.add(r.cap);
-    if (r.text && r.text.test(text3)) caps.add(r.cap);
+    if (r.text && r.text.test(text4)) caps.add(r.cap);
   }
   return Array.from(caps).sort();
 }
@@ -40922,10 +40923,10 @@ function signLifecycleEvent(signer, fields, issuedAt) {
     ...signer.issuer ? { gate_issuer: signer.issuer } : {}
   }, signer.privateKey, signer.kid, issuedAt).envelope;
 }
-function verifyGateEnvelope(envelope, gate) {
-  const check = verifyReceipt(envelope, gate.public_key);
+function verifyGateEnvelope(envelope2, gate) {
+  const check = verifyReceipt(envelope2, gate.public_key);
   if (!check.valid) return false;
-  const payload = envelope.payload;
+  const payload = envelope2.payload;
   return payload.issuer_id === gate.kid && payload.gate_public_key === gate.public_key;
 }
 function writeAtomic(path, contents) {
@@ -41015,7 +41016,7 @@ function proposalUnsigned(input) {
 function approvalDigest(approval) {
   return stableDigest(approval);
 }
-function transition(registry, signer, event, headBefore, headAfter, fields = {}, at = nowIso()) {
+function transition(registry, signer, event, headBefore, headAfter, fields = {}, at2 = nowIso()) {
   const sequence = registry.history.length + 1;
   const body = {
     event,
@@ -41028,11 +41029,11 @@ function transition(registry, signer, event, headBefore, headAfter, fields = {},
   return {
     sequence,
     event,
-    occurred_at: at,
+    occurred_at: at2,
     head_before: headBefore,
     head_after: headAfter,
     ...fields,
-    transition_receipt: signLifecycleEvent(signer, body, at)
+    transition_receipt: signLifecycleEvent(signer, body, at2)
   };
 }
 function initializeMandateRegistry(input) {
@@ -41294,7 +41295,7 @@ function installSnapshotAtomically(cedarDir, snapshot) {
     if ((0, import_node_fs12.existsSync)(backup) && !(0, import_node_fs12.existsSync)(target)) (0, import_node_fs12.renameSync)(backup, target);
   }
 }
-function addTransition(registry, signer, item, at) {
+function addTransition(registry, signer, item, at2) {
   const previous = registry.history[registry.history.length - 1];
   const previousTransitionHash = previous ? stableDigest(previous.transition_receipt) : void 0;
   const trans = transition(registry, signer, item.event, item.head_before, item.head_after, {
@@ -41303,7 +41304,7 @@ function addTransition(registry, signer, item, at) {
     ...item.policy_digest ? { policy_digest: item.policy_digest } : {},
     ...item.expiry ? { expiry: item.expiry } : {},
     ...previousTransitionHash ? { previous_transition_hash: previousTransitionHash } : {}
-  }, at || item.occurred_at);
+  }, at2 || item.occurred_at);
   registry.history.push(trans);
   return trans;
 }
@@ -41405,11 +41406,11 @@ function createWebAuthnPolicyChallenge(input) {
   persistRegistry(input.cedarDir, registry);
   return challenge;
 }
-function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at) {
-  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at)));
+function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at2) {
+  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at2)));
   if (!integrity.valid && integrity.code !== "active_grant_expired") throw new Error(`cannot activate against invalid registry: ${integrity.code}`);
   if (registry.active.policy_digest !== proposal.base_policy_digest) throw new Error("active policy changed after proposal; create a new proposal against the current head");
-  if (Date.parse(proposal.expires_at) <= Date.parse(at)) throw new Error("proposal expired before approval; it cannot be activated");
+  if (Date.parse(proposal.expires_at) <= Date.parse(at2)) throw new Error("proposal expired before approval; it cannot be activated");
   const controller = registry.controllers.find((item) => item.id === approval.controller_id);
   if (!controller) throw new Error("approval controller is not registered");
   const error = approval.method === "ed25519" ? verifyDirectApproval(registry, proposal, approval) : verifyWebAuthnApproval(registry, proposal, approval);
@@ -41426,35 +41427,35 @@ function activateApprovedProposal(cedarDir, registry, signer, proposal, approval
     snapshot_digest: stableDigest(candidate),
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval)
-  }, at);
+  }, at2);
   registry.policies[candidate.policy_digest] = candidate;
   registry.approvals[proposal.proposal_id] = approval;
   registry.active = {
     policy_digest: candidate.policy_digest,
     baseline_policy_digest: before,
-    activated_at: at,
+    activated_at: at2,
     expires_at: proposal.expires_at,
     proposal_id: proposal.proposal_id,
     compilation_receipt: compilationReceipt
   };
   addTransition(registry, signer, {
     event: "proposal_approved",
-    occurred_at: at,
+    occurred_at: at2,
     head_before: before,
     head_after: before,
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval)
-  }, at);
+  }, at2);
   addTransition(registry, signer, {
     event: "policy_activated",
-    occurred_at: at,
+    occurred_at: at2,
     head_before: before,
     head_after: candidate.policy_digest,
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval),
     policy_digest: candidate.policy_digest,
     expiry: proposal.expires_at
-  }, at);
+  }, at2);
   delete registry.pending_webauthn[proposal.proposal_id];
   persistRegistry(cedarDir, registry);
   return registry;
@@ -41477,12 +41478,12 @@ function approvePolicyProposalWithWebAuthn(input) {
   if (pending.challenge.challenge !== policyApprovalChallenge(proposal, controller.id)) {
     throw new Error("pending WebAuthn challenge is not bound to this proposal");
   }
-  const at = nowIso(input.now);
+  const at2 = nowIso(input.now);
   const result = verifyApprovalAssertion(pending.challenge, input.assertion, controller.credential_public_key, {
     expectedOrigin: input.expectedOrigin,
     requireUserVerification: true,
     prevSignCount: controller.sign_count,
-    now: Date.parse(at)
+    now: Date.parse(at2)
   });
   if (!result.valid || !result.userVerified) throw new Error(`WebAuthn approval rejected: ${result.reason || "user verification required"}`);
   controller.sign_count = result.signCount;
@@ -41494,9 +41495,9 @@ function approvePolicyProposalWithWebAuthn(input) {
     assertion: input.assertion,
     result,
     expected_origin: input.expectedOrigin,
-    approved_at: at
+    approved_at: at2
   };
-  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at);
+  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at2);
 }
 function refreshManagedMandate(input) {
   const registry = loadMandateRegistry(input.cedarDir);
@@ -41513,7 +41514,7 @@ function refreshManagedMandate(input) {
     if (!baseline) return { valid: false, code: "expiry_baseline_missing", message: "Expired policy has no baseline snapshot to restore." };
     try {
       installSnapshotAtomically(input.cedarDir, baseline);
-      const at = nowIso(now);
+      const at2 = nowIso(now);
       const before = registry.active.policy_digest;
       const compilationReceipt = signLifecycleEvent(input.signer, {
         event: "compiled",
@@ -41521,21 +41522,21 @@ function refreshManagedMandate(input) {
         policy_digest: baseline.policy_digest,
         snapshot_digest: stableDigest(baseline),
         reverted_from: before
-      }, at);
+      }, at2);
       registry.active = {
         policy_digest: baseline.policy_digest,
         baseline_policy_digest: baseline.policy_digest,
-        activated_at: at,
+        activated_at: at2,
         compilation_receipt: compilationReceipt
       };
       addTransition(registry, input.signer, {
         event: "policy_expired_reverted",
-        occurred_at: at,
+        occurred_at: at2,
         head_before: before,
         head_after: baseline.policy_digest,
         policy_digest: baseline.policy_digest,
         expiry: savedExpiry
-      }, at);
+      }, at2);
       persistRegistry(input.cedarDir, registry);
       return { valid: true, registry, expired_reverted: true };
     } catch (error) {
@@ -43589,7 +43590,7 @@ function generateSchemaStub(namespace = "ScopeBlind") {
 }
 
 // src/policy-packs.ts
-var header = (id3, description) => `// ScopeBlind protect-mcp policy pack: ${id3}
+var header = (id4, description) => `// ScopeBlind protect-mcp policy pack: ${id4}
 // ${description}
 // Start in shadow mode, review receipts, then run with --enforce.
 
@@ -43809,8 +43810,8 @@ var POLICY_PACKS = [
     files: [{ path: "finance-mandate-safe.cedar", contents: financeMandateSafe }]
   }
 ];
-function getPolicyPack(id3) {
-  return POLICY_PACKS.find((pack) => pack.id === id3);
+function getPolicyPack(id4) {
+  return POLICY_PACKS.find((pack) => pack.id === id4);
 }
 function policyPackIds() {
   return POLICY_PACKS.map((pack) => pack.id);
@@ -44405,8 +44406,8 @@ when { context.tool == "nautilus.strategy.deploy" && context.strategy_pack_signe
 function connectorPilotIds() {
   return CONNECTOR_PILOTS.map((pilot) => pilot.id);
 }
-function getConnectorPilot(id3) {
-  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id3);
+function getConnectorPilot(id4) {
+  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id4);
 }
 function connectorDirectory(dir) {
   return (0, import_node_path9.join)(dir, ".protect-mcp", "connectors");
@@ -44414,9 +44415,9 @@ function connectorDirectory(dir) {
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
   (0, import_node_fs14.mkdirSync)(directory, { recursive: true });
-  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id3) => {
-    const pilot = getConnectorPilot(id3);
-    if (!pilot) throw new Error(`Unknown connector pilot: ${id3}`);
+  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id4) => {
+    const pilot = getConnectorPilot(id4);
+    if (!pilot) throw new Error(`Unknown connector pilot: ${id4}`);
     return pilot;
   }) : CONNECTOR_PILOTS;
   const written = [];
@@ -44457,15 +44458,15 @@ function readInstalledConnectorPilots(dir) {
     const configPath = (0, import_node_path9.join)(directory, name);
     try {
       const parsed = JSON.parse((0, import_node_fs14.readFileSync)(configPath, "utf-8"));
-      const id3 = String(parsed.id || name.replace(/\.json$/, ""));
-      const pilot = getConnectorPilot(id3);
+      const id4 = String(parsed.id || name.replace(/\.json$/, ""));
+      const pilot = getConnectorPilot(id4);
       return {
-        id: id3,
-        name: String(parsed.name || pilot?.name || id3),
+        id: id4,
+        name: String(parsed.name || pilot?.name || id4),
         category: String(parsed.category || pilot?.category || "unknown"),
         status: String(parsed.status || parsed.type || "installed"),
         config_path: configPath,
-        policy_path: (0, import_node_path9.join)(directory, `${id3}.cedar`)
+        policy_path: (0, import_node_path9.join)(directory, `${id4}.cedar`)
       };
     } catch {
       return null;
@@ -45014,20 +45015,20 @@ async function createE2BSandbox(config) {
 async function createDockerSandbox(config) {
   const { execSync } = await import("child_process");
   const { randomUUID: randomUUID5 } = await import("crypto");
-  const id3 = `scopeblind-sandbox-${randomUUID5().slice(0, 8)}`;
+  const id4 = `scopeblind-sandbox-${randomUUID5().slice(0, 8)}`;
   const image = config.template.includes(":") ? config.template : `node:${config.template.replace("node-", "")}`;
   const memoryFlag = config.memoryMB ? `--memory=${config.memoryMB}m` : "";
   const timeout = config.timeoutSeconds || 300;
   try {
     execSync(
-      `docker run -d --name ${id3} ${memoryFlag} --network=none --stop-timeout=${timeout} ${image} sleep ${timeout}`,
+      `docker run -d --name ${id4} ${memoryFlag} --network=none --stop-timeout=${timeout} ${image} sleep ${timeout}`,
       { stdio: "pipe" }
     );
   } catch (err) {
     throw new Error(`Docker sandbox creation failed: ${err instanceof Error ? err.message : err}`);
   }
   return {
-    id: id3,
+    id: id4,
     runtime: "docker",
     createdAt: (/* @__PURE__ */ new Date()).toISOString(),
     status: "running",
@@ -45495,10 +45496,10 @@ var ReceiptPropagator = class {
   traceChain(receiptId) {
     const chain = [];
     const visited = /* @__PURE__ */ new Set();
-    const walk = (id3) => {
-      if (visited.has(id3)) return;
-      visited.add(id3);
-      const receipt = this.receipts.get(id3);
+    const walk = (id4) => {
+      if (visited.has(id4)) return;
+      visited.add(id4);
+      const receipt = this.receipts.get(id4);
       if (!receipt) return;
       for (const parentId of receipt.parent_receipts) {
         walk(parentId);
@@ -45962,7 +45963,7 @@ function validRepositoryProposal(v, task, taskDigest) {
   return Array.isArray(v.checks) && v.checks.length === task.required_checks.length && v.checks.every((c) => object2(c) && exact4(c, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(c.id) && Number(c.id) > 0 && c.head_sha === v.head_sha && c.conclusion === "success" && task.required_checks.some((r) => r.name === c.name && r.app_id === c.app_id)) && new Set(v.checks.map((c) => `${c.name}:${c.app_id}`)).size === v.checks.length;
 }
 async function repositorySnapshotDigest(p) {
-  const { id: id3, observed_at, ...snapshot } = p;
+  const { id: id4, observed_at, ...snapshot } = p;
   return sha256(canonical(snapshot));
 }
 function validRepositoryRecord(v, kind) {
@@ -46016,6 +46017,162 @@ async function verifyRepositoryEvidence(value, pin) {
     errors.push("Malformed repository evidence");
   }
   return { valid: errors.length === 0, errors, accepted: accepted && errors.length === 0, authorityPinned: !!pin && errors.length === 0, limitations: ["The pinned receiver attests to GitHub API observations; this is not a GitHub-signed receipt.", "This controls the installed receiver\u2019s exact branch update. Other credentials and repository actions are outside its coverage.", "Destination readback establishes resulting repository state. After a lost reply it does not establish which actor caused that state.", "The checked files, commits and named checks do not prove the code is safe or universally correct.", "Signatures identify keys, not a person\u2019s legal identity.", ...!pin ? ["No independent authority key was supplied. Only consistency with the included authority was checked."] : []] };
+}
+
+// src/coordination-repository-collaboration.ts
+var DEMO_REPOSITORY = "ScopeBlind/scopeblind-repository-demo";
+var DEMO_CHECK = { name: "ScopeBlind contact validation", app_id: 4962726 };
+var CONTACT_PATH = "demo/contact.json";
+var object3 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
+var shape = (value, required, optional = []) => object3(value) && required.every((key) => key in value) && Object.keys(value).every((key) => required.includes(key) || optional.includes(key));
+var text3 = (value, max, empty = false) => typeof value === "string" && (empty || value.trim().length > 0) && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
+var hex2 = (value) => typeof value === "string" && REPOSITORY_HEX.test(value);
+var id3 = (value) => typeof value === "string" && REPOSITORY_ID.test(value);
+var sha = (value) => typeof value === "string" && REPOSITORY_SHA.test(value);
+var at = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+var span = (issued, expires, max) => at(issued) && at(expires) && Date.parse(String(expires)) > Date.parse(String(issued)) && Date.parse(String(expires)) - Date.parse(String(issued)) <= max;
+function validContactPage(value) {
+  return shape(value, ["type", "button_label", "target", "accent"]) && value.type === "scopeblind.contact-page.v1" && text3(value.button_label, 40) && ["broken", "contact"].includes(String(value.target)) && ["indigo", "emerald", "rose"].includes(String(value.accent));
+}
+function contactPageBytes(value) {
+  if (!validContactPage(value))
+    throw new Error("invalid_contact_page");
+  return canonical(value) + "\n";
+}
+function validRepositoryParticipants(v) {
+  return shape(v, ["type", "task_id", "task_digest", "owner_key", "receiver_key", "reviewer_key", "reviewer_claim_digest", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.participants.v1" && id3(v.task_id) && [v.task_digest, v.owner_key, v.receiver_key, v.reviewer_key, v.reviewer_claim_digest].every(hex2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.reviewer_key])).size === 3 && span(v.issued_at, v.expires_at, 7 * 864e5);
+}
+function validRepositoryPreview(v) {
+  return shape(v, ["type", "task_id", "task_digest", "proposal_digest", "base_sha", "head_sha", "merge_sha", "tree_sha", "path", "before", "after", "renderer", "observed_at"]) && v.type === "scopeblind.repository.preview.v1" && id3(v.task_id) && hex2(v.task_digest) && hex2(v.proposal_digest) && [v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every(sha) && v.path === CONTACT_PATH && v.renderer === "scopeblind.contact-page.v1" && at(v.observed_at) && [v.before, v.after].every((side) => shape(side, ["model", "blob_sha", "content_sha256"]) && validContactPage(side.model) && sha(side.blob_sha) && hex2(side.content_sha256));
+}
+function validRepositoryAgentGrant(v) {
+  return shape(v, ["type", "id", "task_id", "task_digest", "issuer_key", "agent_key", "permissions", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.agent-grant.v1" && id3(v.id) && id3(v.task_id) && [v.task_digest, v.issuer_key, v.agent_key].every(hex2) && v.issuer_key !== v.agent_key && Array.isArray(v.permissions) && v.permissions.length > 0 && v.permissions.length <= 2 && new Set(v.permissions).size === v.permissions.length && v.permissions.every((p) => p === "read_task" || p === "request_revision") && v.permissions.includes("read_task") && span(v.issued_at, v.expires_at, 36e5);
+}
+function validRepositoryRevisionRequest(v) {
+  return shape(v, ["type", "id", "task_id", "task_digest", "basis_digest", "requester_key", "message", "proposed", "issued_at"], ["grant_digest"]) && v.type === "scopeblind.repository.revision-request.v1" && id3(v.id) && id3(v.task_id) && [v.task_digest, v.basis_digest, v.requester_key].every(hex2) && (v.grant_digest === void 0 || hex2(v.grant_digest)) && text3(v.message, 600) && validContactPage(v.proposed) && at(v.issued_at);
+}
+function validRepositoryRevisionLink(v) {
+  return shape(v, ["type", "id", "parent_task_id", "parent_task_digest", "parent_basis_digest", "request_digest", "child_task_id", "child_task_digest", "owner_key", "issued_at"]) && v.type === "scopeblind.repository.revision-link.v1" && [v.id, v.parent_task_id, v.child_task_id].every(id3) && v.parent_task_id !== v.child_task_id && [v.parent_task_digest, v.parent_basis_digest, v.request_digest, v.child_task_digest, v.owner_key].every(hex2) && at(v.issued_at);
+}
+function validRepositoryDemoRequest(v) {
+  if (!shape(v, ["type", "id", "owner_key", "receiver_key", "authority_key", "title", "goal", "proposed", "reviewer_secret_hash", "issued_at", "expires_at"], ["parent_task_id", "parent_task_digest", "parent_basis_digest", "revision_request_digest"]))
+    return false;
+  const parent = ["parent_task_id", "parent_task_digest", "parent_basis_digest", "revision_request_digest"];
+  return v.type === "scopeblind.repository.demo-request.v1" && id3(v.id) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every(hex2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && text3(v.title, 140) && text3(v.goal, 600) && validContactPage(v.proposed) && span(v.issued_at, v.expires_at, 864e5) && (parent.every((k) => v[k] === void 0) || id3(v.parent_task_id) && [v.parent_task_digest, v.parent_basis_digest, v.revision_request_digest].every(hex2));
+}
+function validRepositoryDemoProvision(v) {
+  return shape(v, ["type", "request_id", "request_digest", "repository", "base_branch", "head_branch", "pull_number", "initial_base_sha", "initial_head_sha", "receiver_key", "required_checks", "observed_at"]) && v.type === "scopeblind.repository.demo-provision.v1" && id3(v.request_id) && [v.request_digest, v.receiver_key].every(hex2) && v.repository === DEMO_REPOSITORY && v.base_branch === `scopeblind/demo/${v.request_id}/base` && v.head_branch === `scopeblind/demo/${v.request_id}/change` && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && sha(v.initial_base_sha) && sha(v.initial_head_sha) && Array.isArray(v.required_checks) && canonical(v.required_checks) === canonical([DEMO_CHECK]) && at(v.observed_at);
+}
+function repositoryRevisionBasis(state) {
+  return state.acceptance?.digest ?? state.outcome?.digest ?? state.proposal?.digest ?? null;
+}
+
+// src/coordination-repository-collaboration-evidence.ts
+var shape2 = (v, required, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+var envelope = (v) => shape2(v, ["payload", "signer", "digest", "signature"]);
+var time4 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var within = (at2, start, end) => Date.parse(at2) >= Date.parse(start) && Date.parse(at2) <= Date.parse(end);
+function requireValid(condition, message) {
+  if (!condition) throw new Error(message);
+}
+var baseLimitations = [
+  "A preview is the receiver\u2019s signed observation of canonical contact-page data, rendered by ScopeBlind\u2019s fixed template. It does not execute repository code or prove a deployed website.",
+  "Agent grants allow only the recorded reading and revision suggestions. They do not convey human approval or receiver execution authority.",
+  "Revocation flags and the completeness of the collaboration history are statements by the service. The included record does not prove a currently live grant."
+];
+async function verifyRepositoryCollaborationEvidence(input, pins) {
+  const result = { valid: false, accepted: false, authorityPinned: false, previewVerified: false, revisionLinked: false, errors: [], limitations: [...baseLimitations] };
+  try {
+    requireValid(shape2(input, ["type", "repository", "collaboration"], ["demo", "parent", "parent_request", "parent_agent_grant"]) && input.type === "scopeblind.repository.collaboration-evidence.v1", "Unsupported collaboration evidence shape.");
+    const bundle = input;
+    const core = await verifyRepositoryEvidence(bundle.repository, pins);
+    result.limitations.push(...core.limitations);
+    requireValid(core.valid, core.errors.join("; "));
+    result.authorityPinned = core.authorityPinned;
+    const state = bundle.repository.state.payload, task = state.task.payload, collaboration = bundle.collaboration, c = collaboration?.payload;
+    requireValid(envelope(collaboration) && await verify(collaboration, task.authority_key) && shape2(c, ["type", "task_id", "task_digest", "participants", "preview", "requests", "revisions", "agent_grants", "observed_at"]) && c.type === "scopeblind.repository.collaboration.v1" && c.task_id === task.id && c.task_digest === state.task.digest && time4(c.observed_at), "Collaboration must be signed by this task\u2019s authority and name the exact task.");
+    const principals = [task.owner_key, ...state.reviewer ? [state.reviewer.payload.reviewer_key] : []];
+    if (c.participants !== null) {
+      const signed2 = c.participants, p = signed2?.payload;
+      requireValid(envelope(signed2) && validRepositoryParticipants(p) && await verify(signed2, task.owner_key) && p.task_id === task.id && p.task_digest === state.task.digest && p.owner_key === task.owner_key && p.receiver_key === task.receiver_key && p.reviewer_key === state.reviewer?.payload.reviewer_key && p.reviewer_claim_digest === state.reviewer?.digest && within(p.issued_at, task.issued_at, task.expires_at) && Date.parse(p.expires_at) <= Date.parse(task.expires_at), "The owner\u2019s participant binding does not match this task and enrolled reviewer.");
+    }
+    if (c.preview !== null) {
+      const signed2 = c.preview, p = signed2?.payload, proposal = state.proposal;
+      requireValid(envelope(signed2) && validRepositoryPreview(p) && await verify(signed2, task.receiver_key) && proposal && p.task_id === task.id && p.task_digest === state.task.digest && p.proposal_digest === proposal.digest && ["base_sha", "head_sha", "merge_sha", "tree_sha"].every((k) => p[k] === proposal.payload[k]) && proposal.payload.files.some((f) => f.path === CONTACT_PATH), "The preview is not bound to this exact receiver-reviewed proposal.");
+      for (const side of [p.before, p.after]) {
+        const bytes = new TextEncoder().encode(contactPageBytes(side.model)), header2 = new TextEncoder().encode(`blob ${bytes.length}\0`), blob = new Uint8Array(header2.length + bytes.length);
+        blob.set(header2);
+        blob.set(bytes, header2.length);
+        const gitSha = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", blob)), (n) => n.toString(16).padStart(2, "0")).join("");
+        requireValid(await sha256(contactPageBytes(side.model)) === side.content_sha256 && gitSha === side.blob_sha, "Preview content does not match its canonical bytes and Git blob digest.");
+      }
+      requireValid(Date.parse(p.observed_at) >= Date.parse(proposal.payload.observed_at) && Date.parse(p.observed_at) <= Date.parse(c.observed_at), "Preview timing does not follow the reviewed proposal.");
+      result.previewVerified = true;
+    }
+    requireValid(Array.isArray(c.agent_grants) && c.agent_grants.length <= 100 && Array.isArray(c.requests) && c.requests.length <= 100 && Array.isArray(c.revisions) && c.revisions.length <= 100, "Collaboration collections exceed their supported bounds.");
+    const incomingLinks = c.revisions.filter((link) => link?.payload?.child_task_id === task.id);
+    requireValid(incomingLinks.length <= 1 && (incomingLinks.length === 1 || !["parent", "parent_request", "parent_agent_grant"].some((key) => Object.hasOwn(bundle, key))), "Predecessor records must be consumed by exactly one incoming revision link.");
+    const grants = /* @__PURE__ */ new Map(), requestIds = /* @__PURE__ */ new Set(), requests = /* @__PURE__ */ new Map();
+    for (const entry of c.agent_grants) {
+      const signed2 = entry.grant, g = signed2?.payload;
+      requireValid(shape2(entry, ["grant", "revoked"]) && typeof entry.revoked === "boolean" && envelope(signed2) && validRepositoryAgentGrant(g) && await verify(signed2, g.issuer_key) && principals.includes(g.issuer_key) && ![...principals, task.receiver_key, task.authority_key].includes(g.agent_key) && g.task_id === task.id && g.task_digest === state.task.digest && within(g.issued_at, task.issued_at, task.expires_at) && Date.parse(g.issued_at) <= Date.parse(c.observed_at) && Date.parse(g.expires_at) <= Date.parse(task.expires_at) && !grants.has(signed2.digest), "An agent grant is invalid, duplicated, or crosses a human/receiver boundary.");
+      grants.set(signed2.digest, entry);
+    }
+    for (const signed2 of c.requests) {
+      const r = signed2?.payload;
+      requireValid(envelope(signed2) && validRepositoryRevisionRequest(r) && await verify(signed2, r.requester_key) && r.task_id === task.id && r.task_digest === state.task.digest && within(r.issued_at, task.issued_at, task.expires_at) && Date.parse(r.issued_at) <= Date.parse(c.observed_at) && !requestIds.has(r.id) && !requests.has(signed2.digest), "A revision request is invalid or duplicated.");
+      requestIds.add(r.id);
+      requests.set(signed2.digest, signed2);
+      if (principals.includes(r.requester_key)) requireValid(r.grant_digest === void 0, "A human revision must not borrow an agent grant.");
+      else {
+        const g = r.grant_digest ? grants.get(r.grant_digest)?.grant.payload : void 0;
+        requireValid(g && g.agent_key === r.requester_key && g.permissions.includes("request_revision") && within(r.issued_at, g.issued_at, g.expires_at), "The suggesting agent did not hold the exact recorded revision scope.");
+      }
+    }
+    let parent;
+    if (bundle.parent) {
+      const checked = await verifyRepositoryEvidence(bundle.parent, pins);
+      requireValid(checked.valid, "The predecessor repository evidence does not verify.");
+      parent = bundle.parent.state.payload;
+      requireValid(parent.task.payload.owner_key === task.owner_key && parent.task.payload.receiver_key === task.receiver_key && parent.task.payload.authority_key === task.authority_key && parent.task.payload.repository === task.repository, "The predecessor crosses this repository or participant authority.");
+    }
+    const linkIds = /* @__PURE__ */ new Set();
+    for (const signed2 of c.revisions) {
+      const l = signed2?.payload;
+      requireValid(envelope(signed2) && validRepositoryRevisionLink(l) && await verify(signed2, task.owner_key) && l.owner_key === task.owner_key && time4(l.issued_at) && Date.parse(l.issued_at) <= Date.parse(c.observed_at) && !linkIds.has(l.id), "A revision link is invalid or duplicated.");
+      linkIds.add(l.id);
+      if (l.child_task_id === task.id) {
+        requireValid(l.child_task_digest === state.task.digest && parent && l.parent_task_id === parent.task.payload.id && l.parent_task_digest === parent.task.digest && l.parent_basis_digest === repositoryRevisionBasis(parent), "The child revision does not bind the included predecessor and exact feedback.");
+        const signedRequest = bundle.parent_request, r = signedRequest?.payload, pt = parent.task.payload;
+        requireValid(envelope(signedRequest) && validRepositoryRevisionRequest(r) && await verify(signedRequest, r.requester_key) && signedRequest.digest === l.request_digest && r.task_id === pt.id && r.task_digest === parent.task.digest && r.basis_digest === l.parent_basis_digest && within(r.issued_at, pt.issued_at, pt.expires_at) && Date.parse(r.issued_at) <= Date.parse(l.issued_at), "The original signed feedback is missing or does not match this revision.");
+        const parentPrincipals = [pt.owner_key, ...parent.reviewer ? [parent.reviewer.payload.reviewer_key] : []];
+        if (parentPrincipals.includes(r.requester_key)) requireValid(r.grant_digest === void 0 && bundle.parent_agent_grant === void 0, "Human feedback must not borrow an agent grant.");
+        else {
+          const signedGrant = bundle.parent_agent_grant, g = signedGrant?.payload;
+          requireValid(envelope(signedGrant) && validRepositoryAgentGrant(g) && await verify(signedGrant, g.issuer_key) && signedGrant.digest === r.grant_digest && parentPrincipals.includes(g.issuer_key) && ![...parentPrincipals, pt.receiver_key, pt.authority_key].includes(g.agent_key) && g.agent_key === r.requester_key && g.task_id === pt.id && g.task_digest === parent.task.digest && g.permissions.includes("request_revision") && within(g.issued_at, pt.issued_at, pt.expires_at) && Date.parse(g.expires_at) <= Date.parse(pt.expires_at) && within(r.issued_at, g.issued_at, g.expires_at), "The original feedback agent\u2019s exact human-signed scope is missing or invalid.");
+        }
+        result.revisionLinked = true;
+      } else {
+        requireValid(l.parent_task_id === task.id && l.parent_task_digest === state.task.digest && requests.has(l.request_digest) && requests.get(l.request_digest).payload.basis_digest === l.parent_basis_digest, "The outgoing revision link does not name this task and an included suggestion.");
+      }
+    }
+    if (bundle.demo) {
+      const signed2 = bundle.demo, d = signed2?.payload, r = d?.request?.payload, p = d?.provision?.payload;
+      requireValid(envelope(signed2) && await verify(signed2, task.authority_key) && shape2(d, ["type", "request", "provision", "task", "status", "dispatch", "error", "observed_at"]) && d.type === "scopeblind.repository.demo-state.v1" && ["queued", "provisioning", "ready_to_review", "active", "failed", "expired"].includes(d.status) && ["requested", "unconfigured", "unavailable"].includes(d.dispatch) && (d.error === null || typeof d.error === "string" && d.error.length <= 100) && time4(d.observed_at), "The demo\u2019s service record is invalid.");
+      requireValid(envelope(d.request) && validRepositoryDemoRequest(r) && await verify(d.request, task.owner_key) && r.id === task.id && r.owner_key === task.owner_key && r.authority_key === task.authority_key && r.receiver_key === task.receiver_key && r.reviewer_secret_hash === task.reviewer_secret_hash && r.title === task.title && Date.parse(task.expires_at) <= Date.parse(r.expires_at), "The demo request is not the task owner\u2019s exact provisioning authority.");
+      requireValid(d.task && canonical(d.task) === canonical(state.task) && envelope(d.provision) && validRepositoryDemoProvision(p) && await verify(d.provision, task.receiver_key) && p.request_id === task.id && p.request_digest === d.request.digest && p.repository === task.repository && p.base_branch === task.base_branch && p.pull_number === task.pull_number && p.receiver_key === task.receiver_key && canonical(p.required_checks) === canonical(task.required_checks) && canonical(task.allowed_paths) === canonical([CONTACT_PATH]), "The provisioned workspace does not match the signed task.");
+      if (c.preview) requireValid(c.preview.payload.base_sha === p.initial_base_sha && c.preview.payload.head_sha === p.initial_head_sha && canonical(c.preview.payload.after.model) === canonical(r.proposed), "The demo preview differs from the exact requested and provisioned change.");
+      if (r.parent_task_id) requireValid(result.revisionLinked && parent && r.parent_task_id === parent.task.payload.id && r.parent_task_digest === parent.task.digest && r.parent_basis_digest === repositoryRevisionBasis(parent) && canonical(bundle.parent_request?.payload.proposed) === canonical(r.proposed) && c.revisions.some((l) => l.payload.child_task_id === task.id && l.payload.request_digest === r.revision_request_digest), "The demo revision lacks its exact predecessor link.");
+    }
+    result.valid = true;
+    result.accepted = core.accepted;
+  } catch (error) {
+    result.errors.push(error instanceof Error ? error.message : "The collaboration evidence could not be verified.");
+    result.previewVerified = false;
+    result.revisionLinked = false;
+    result.accepted = false;
+  }
+  return result;
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
@@ -46156,6 +46313,7 @@ async function verifyRepositoryEvidence(value, pin) {
   verifyReceipt,
   verifyRehearsalEvidence,
   verifyRekorAnchor,
+  verifyRepositoryCollaborationEvidence,
   verifyRepositoryEvidence,
   verifySelectiveDisclosurePackage,
   writeConnectorPilots

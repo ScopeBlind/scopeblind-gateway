@@ -7,6 +7,7 @@ import {validateCoordinationConfig,type CoordinationConfig} from './coordination
 import {readPrivateConfig,coordinationConfigFromFile} from './coordination-pair-cli.js';
 import type {AgentBinding} from './coordination-pairing.js';
 import type {AgentTaskDraft,AgentHandoffView} from './coordination-agent-requests.js';
+import {validRepositoryAgentGrant,validRepositoryRevisionRequest,type RepositoryAgentGrant,type RepositoryRevisionRequest} from './coordination-repository-collaboration.js';
 
 export const DEFAULT_AGENT_PROFILE=resolve(homedir(),'.scopeblind','agent.json');
 export interface ProfileConnection extends CoordinationConfig {
@@ -16,13 +17,20 @@ export interface ProfileTaskRequest {
   draft:AgentTaskDraft;reviewSecret:string;pairingSecret:string;expiresAt:string;
   pendingToken?:string;pendingPairId?:string;
 }
+export interface ProfileRepositoryConnection {taskId:string;taskDigest:string;grant:Signed<RepositoryAgentGrant>}
+export interface ProfileRepositoryRevision {connectionId:string;request:Signed<RepositoryRevisionRequest>}
 export interface AgentProfile {
   type:'scopeblind.coordination.agent-profile.v1';endpoint:string;authorityKey:string;agentKey:string;privateKey:string;
   requests:Record<string,ProfileTaskRequest>;
   connections:Record<string,ProfileConnection>;
   pendingHandoffs:Record<string,{handoff:AgentHandoffView;token:string}>;
+  /** Optional v1 extensions. Repository grants never become invoice/execution tokens. */
+  repositoryConnections?:Record<string,ProfileRepositoryConnection>;
+  repositoryRevisions?:Record<string,ProfileRepositoryRevision>;
 }
 export const profileId=(value:unknown):value is string=>typeof value==='string'&&/^[A-Za-z0-9_-]{8,100}$/.test(value);
+/** JSON object maps must not turn a valid opaque ID into prototype access. */
+export function profileEntry<T>(entries:Record<string,T>|undefined,id:string):T|undefined{return entries&&Object.hasOwn(entries,id)?entries[id]:undefined;}
 export function validateProfileDestination(endpoint:string,authorityKey:string){
   const checked=validateCoordinationConfig({endpoint,authorityKey,roomId:'profile-placeholder',token:'profile-placeholder'});
   return {endpoint:checked.endpoint,authorityKey:checked.authorityKey};
@@ -38,9 +46,18 @@ export function readAgentProfile(path:string):AgentProfile {
     if(value?.type!=='scopeblind.coordination.agent-profile.v1'||!/^[a-f0-9]{64}$/.test(value.agentKey)||!/^[a-f0-9]{96,256}$/.test(value.privateKey)||[value.requests,value.connections,value.pendingHandoffs].some(v=>!v||typeof v!=='object'||Array.isArray(v)))throw new Error('The private agent profile has an unsupported format.');
     validateProfileDestination(value.endpoint,value.authorityKey);
     if(Object.keys(value.requests).length>50||Object.keys(value.connections).length>50||Object.keys(value.pendingHandoffs).length>50)throw new Error('This private profile reached its connection limit. Use a separate profile for new work.');
+    for(const entries of [value.repositoryConnections,value.repositoryRevisions])if(entries!==undefined&&(!entries||typeof entries!=='object'||Array.isArray(entries)||Object.keys(entries).length>50))throw new Error('The private repository profile has an unsupported format or reached its connection limit.');
     for(const [id,connection] of Object.entries(value.connections)){
       validateCoordinationConfig(connection);
       if(!profileId(id)||connection.endpoint!==value.endpoint||connection.authorityKey!==value.authorityKey||!connection.binding||connection.binding.payload.pair_id!==id||connection.binding.payload.agent_key!==connection.agentKey)throw new Error('A saved connection does not match this private profile.');
+    }
+    for(const [id,connection] of Object.entries(value.repositoryConnections??{})){
+      const grant=connection?.grant?.payload;
+      if(!profileId(id)||!validRepositoryAgentGrant(grant)||grant.id!==id||grant.agent_key!==value.agentKey||grant.task_id!==connection.taskId||grant.task_digest!==connection.taskDigest)throw new Error('A saved repository grant does not match this private profile.');
+    }
+    for(const [id,revision] of Object.entries(value.repositoryRevisions??{})){
+      const r=revision?.request?.payload,c=profileEntry(value.repositoryConnections,revision?.connectionId);
+      if(!profileId(id)||!c||!validRepositoryRevisionRequest(r)||r.id!==id||r.requester_key!==value.agentKey||r.task_id!==c.taskId||r.task_digest!==c.taskDigest||r.grant_digest!==c.grant.digest)throw new Error('A saved repository revision does not match its exact grant.');
     }
     return value;
   }finally{closeSync(fd);}
@@ -57,8 +74,9 @@ export async function updateAgentProfile<T>(path:string,change:(profile:AgentPro
   const temporary=path+'.'+randomBytes(8).toString('hex')+'.tmp';
   try{
     const profile=readAgentProfile(path),result=change(profile);
-    if([profile.requests,profile.connections,profile.pendingHandoffs].some(entries=>Object.keys(entries).length>50))throw new Error('This private profile reached its connection limit. Use a separate profile for new work.');
-    writeFileSync(temporary,JSON.stringify(profile)+'\n',{flag:'wx',mode:0o600});renameSync(temporary,path);return result;
+    if([profile.requests,profile.connections,profile.pendingHandoffs,profile.repositoryConnections??{},profile.repositoryRevisions??{}].some(entries=>Object.keys(entries).length>50))throw new Error('This private profile reached its connection limit. Use a separate profile for new work.');
+    const serialized=JSON.stringify(profile)+'\n';if(Buffer.byteLength(serialized)>2_000_000)throw new Error('This private profile reached its storage limit. Use a separate profile for new work.');
+    writeFileSync(temporary,serialized,{flag:'wx',mode:0o600});renameSync(temporary,path);return result;
   }finally{try{unlinkSync(temporary);}catch{}try{rmdirSync(lock);}catch{}}
 }
 

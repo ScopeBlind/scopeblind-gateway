@@ -1,6 +1,6 @@
 import {
   coordinationConfigFromFile
-} from "./chunk-GDQ3RE5B.mjs";
+} from "./chunk-7LONQW6Q.mjs";
 import {
   CoordinationClient,
   CoordinationError
@@ -124,7 +124,7 @@ var textResult = (id, value, isError = false) => ({ jsonrpc: "2.0", id, result: 
 async function handleCoordinationRequest(client, request, signal) {
   if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") return { jsonrpc: "2.0", id: request?.id ?? null, error: { code: -32600, message: "Invalid JSON-RPC request." } };
   if (request.id === void 0) return void 0;
-  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-coordination", version: process.env.PROTECT_MCP_VERSION || "0.21.0" }, capabilities: { tools: {} } } };
+  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-coordination", version: process.env.PROTECT_MCP_VERSION || "0.22.0" }, capabilities: { tools: {} } } };
   if (request.method === "ping") return { jsonrpc: "2.0", id: request.id, result: {} };
   if (request.method === "tools/list") return { jsonrpc: "2.0", id: request.id, result: { tools: toolsForPurpose(client.purpose) } };
   if (request.method !== "tools/call") return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found." } };

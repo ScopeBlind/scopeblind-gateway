@@ -1049,6 +1049,144 @@ declare function verifyRepositoryEvidence(value: unknown, pin?: string | {
     limitations: string[];
 }>;
 
+/** Companion records for repository v1 tasks. None widens a v1 human/receiver role. */
+
+declare const REPOSITORY_COLLABORATION_ACTIONS: readonly ["repository_connection_save", "repository_connection_get", "repository_readiness_record", "repository_participants_bind", "repository_collaboration_get", "repository_collaboration_export", "repository_preview_record", "repository_agent_grant", "repository_agent_revoke", "repository_agent_get", "repository_revision_request", "repository_revision_create", "repository_demo_info", "repository_demo_create", "repository_demo_get", "repository_demo_activate", "repository_demo_enqueue", "repository_demo_poll", "repository_demo_complete"];
+type RepositoryCollaborationAction = typeof REPOSITORY_COLLABORATION_ACTIONS[number];
+interface RepositoryParticipants {
+    type: 'scopeblind.repository.participants.v1';
+    task_id: string;
+    task_digest: string;
+    owner_key: string;
+    receiver_key: string;
+    reviewer_key: string;
+    reviewer_claim_digest: string;
+    issued_at: string;
+    expires_at: string;
+}
+interface ContactPage {
+    type: 'scopeblind.contact-page.v1';
+    button_label: string;
+    target: 'broken' | 'contact';
+    accent: 'indigo' | 'emerald' | 'rose';
+}
+interface RepositoryPreview {
+    type: 'scopeblind.repository.preview.v1';
+    task_id: string;
+    task_digest: string;
+    proposal_digest: string;
+    base_sha: string;
+    head_sha: string;
+    merge_sha: string;
+    tree_sha: string;
+    path: 'demo/contact.json';
+    before: {
+        model: ContactPage;
+        blob_sha: string;
+        content_sha256: string;
+    };
+    after: {
+        model: ContactPage;
+        blob_sha: string;
+        content_sha256: string;
+    };
+    renderer: 'scopeblind.contact-page.v1';
+    observed_at: string;
+}
+interface RepositoryAgentGrant {
+    type: 'scopeblind.repository.agent-grant.v1';
+    id: string;
+    task_id: string;
+    task_digest: string;
+    issuer_key: string;
+    agent_key: string;
+    permissions: Array<'read_task' | 'request_revision'>;
+    issued_at: string;
+    expires_at: string;
+}
+interface RepositoryRevisionRequest {
+    type: 'scopeblind.repository.revision-request.v1';
+    id: string;
+    task_id: string;
+    task_digest: string;
+    basis_digest: string;
+    requester_key: string;
+    grant_digest?: string;
+    message: string;
+    proposed: ContactPage;
+    issued_at: string;
+}
+interface RepositoryRevisionLink {
+    type: 'scopeblind.repository.revision-link.v1';
+    id: string;
+    parent_task_id: string;
+    parent_task_digest: string;
+    parent_basis_digest: string;
+    request_digest: string;
+    child_task_id: string;
+    child_task_digest: string;
+    owner_key: string;
+    issued_at: string;
+}
+interface RepositoryCollaboration {
+    type: 'scopeblind.repository.collaboration.v1';
+    task_id: string;
+    task_digest: string;
+    participants: Signed<RepositoryParticipants> | null;
+    preview: Signed<RepositoryPreview> | null;
+    requests: Array<Signed<RepositoryRevisionRequest>>;
+    revisions: Array<Signed<RepositoryRevisionLink>>;
+    agent_grants: Array<{
+        grant: Signed<RepositoryAgentGrant>;
+        revoked: boolean;
+    }>;
+    observed_at: string;
+}
+interface RepositoryDemoRequest {
+    type: 'scopeblind.repository.demo-request.v1';
+    id: string;
+    owner_key: string;
+    receiver_key: string;
+    authority_key: string;
+    title: string;
+    goal: string;
+    proposed: ContactPage;
+    reviewer_secret_hash: string;
+    issued_at: string;
+    expires_at: string;
+    parent_task_id?: string;
+    parent_task_digest?: string;
+    parent_basis_digest?: string;
+    revision_request_digest?: string;
+}
+interface RepositoryDemoProvision {
+    type: 'scopeblind.repository.demo-provision.v1';
+    request_id: string;
+    request_digest: string;
+    repository: string;
+    base_branch: string;
+    head_branch: string;
+    pull_number: number;
+    initial_base_sha: string;
+    initial_head_sha: string;
+    receiver_key: string;
+    required_checks: Array<{
+        name: string;
+        app_id: number;
+    }>;
+    observed_at: string;
+}
+interface RepositoryDemoState {
+    type: 'scopeblind.repository.demo-state.v1';
+    request: Signed<RepositoryDemoRequest>;
+    provision: Signed<RepositoryDemoProvision> | null;
+    task: Signed<RepositoryTask> | null;
+    status: 'queued' | 'provisioning' | 'ready_to_review' | 'active' | 'failed' | 'expired';
+    dispatch: 'requested' | 'unconfigured' | 'unavailable';
+    error: string | null;
+    observed_at: string;
+}
+
 /** Explicit, room-bound human device delegation. Raw signature verification stays separate. */
 
 declare const DEVICE_ACTIONS: readonly ["inspect", "decision_inbox", "negotiation_get", "decide", "accept", "negotiation_mandate", "negotiation_approve"];
@@ -1299,7 +1437,7 @@ interface GrantView {
     binding?: Signed<GuestBinding>;
     revoked: boolean;
 }
-type RpcAction = 'create' | 'invite' | 'claim' | 'revoke' | 'admit' | 'execute' | 'outcome' | 'decide' | 'revise' | 'finalize' | 'accept' | 'pause' | 'actor_token' | 'inspect' | 'deliver' | 'fixtures_update' | 'restart' | 'live_start' | 'live_tick' | 'live_retry' | 'pair_create' | 'pair_revoke' | 'pair_claim' | 'brief_draft' | RehearsalAction | 'rehearsal_invite' | 'rehearsal_claim' | 'rehearsal_revoke' | 'rehearsal_adopt' | 'rehearsal_draft' | 'rehearsal_case_review' | NegotiationAction | 'negotiation_share' | 'negotiation_invitation_rotate' | 'result_share' | DeviceAction | RepositoryAction | typeof AGENT_REQUEST_ACTIONS[number] | typeof DECISION_ACTIONS[number];
+type RpcAction = 'create' | 'invite' | 'claim' | 'revoke' | 'admit' | 'execute' | 'outcome' | 'decide' | 'revise' | 'finalize' | 'accept' | 'pause' | 'actor_token' | 'inspect' | 'deliver' | 'fixtures_update' | 'restart' | 'live_start' | 'live_tick' | 'live_retry' | 'pair_create' | 'pair_revoke' | 'pair_claim' | 'brief_draft' | RehearsalAction | 'rehearsal_invite' | 'rehearsal_claim' | 'rehearsal_revoke' | 'rehearsal_adopt' | 'rehearsal_draft' | 'rehearsal_case_review' | NegotiationAction | 'negotiation_share' | 'negotiation_invitation_rotate' | 'result_share' | DeviceAction | RepositoryAction | RepositoryCollaborationAction | typeof AGENT_REQUEST_ACTIONS[number] | typeof DECISION_ACTIONS[number];
 interface RpcRequest {
     type: 'scopeblind.coordination.request.v1';
     action: RpcAction;
@@ -4619,4 +4757,25 @@ declare function verifyPublicSnapshot(value: unknown, authorityKey: string): Pro
 
 declare function verifyOwnerAgreement(agreement: Signed<Agreement>, negotiation?: NegotiationExport, depth?: number): Promise<boolean>;
 
-export { type ActaEnvelope, type ActaSignature, type ActionReceipt, type AdmissionResult, type AgentId, type AgentManifest, type ApprovalAssertion, type ApprovalChallenge, type ApprovalNotification, type ApprovalResult, type ArenaPayload, type ArenaReceipt, type AttestationDocument, type AttestationPayload, type AttestationProvider, type AttestationReceipt, type AttestationResult, type AuditBundle, type AuditBundleOptions, type BenchmarkPayload, type BenchmarkReceipt, type BuilderId, type C2PAAssertion, type C2PAIngredient, type C2PAManifest, type C2PAOptions, type CCRConnectorConfig, type CCRSessionContext, CONNECTOR_PILOTS, type CalibrationScore, type CedarEvalOptions, type CedarEvalRequest, type CedarPolicySet, type CedarSchema, type CedarSchemaResult, type CommittedFieldOpening, type CommittedSignResult, type ComplianceReport, ConfidentialGate, type ConfidentialGateConfig, type ConfidentialInferenceConfig, type ConnectorAction, type ConnectorEnvVar, type ConnectorPilot, type ConnectorPilotId, CoordinationClient, type CoordinationConfig, CoordinationError, type CoordinationPayment, type CoordinationPaymentResult, type CredentialConfig, type DecisionContext, type DecisionLog, type DelegationReceipt, type DeviceAuthorization, type DevicePermission, type DeviceUse, type DirectController, type DisclosureMode, EGRESS_SUMMARY_FIELDS, type Ed25519PublicKey, type EvidenceAttestation, type EvidenceAttestationInput, type EvidenceIssuer, type EvidenceReceipt, type EvidenceReceiptBase, type EvidenceSummary, type EvidenceSummaryEntry, type EvidenceType, type ExternalDecision, type ExternalPDPConfig, type GateSigner, type HFDatasetMetadata, type HFReceiptRow, type HookEventName, type HookInput, type HookResponse, type HumanContext, type InstalledConnectorPilot, type IssuerType, type JsonRpcRequest, type JsonRpcResponse, type LeaseCompatibility, type MandateApproval, type MandateController, type MandateProposal, type MandateRegistry, type MandateTransition, type ManifestBuilder, type ManifestCapabilities, type ManifestConfig, type ManifestIdentity, type ManifestPresentation, type ManifestSignature, type ManifestStatus, type McpToolDescription, type MinimalDisclosure, type NegotiationExport, type NegotiationMandate, type NegotiationProposal, type NegotiationReport, type NegotiationVerification, type NotificationConfig, POLICY_PACKS, type PassportTokenClaims, type PayloadDigest, type PlanReceipt, type PolicyDiff, type PolicyEngineMode, type PolicyPack, type PolicySnapshot, type PredictionReceipt, type PredictionResolution, type PropagatorConfig, type ProtectConfig, ProtectGateway, type ProtectPolicy, type PublicSnapshot, type RateLimit, ReceiptPropagator, type ReceiptShape, type ReceiptVerification, type RedactedResult, type RedactionSalt, type RegistryCheck, type RehearsalExport, type RehearsalVerification, type RekorAnchor, type RekorVerification, type RepositoryAcceptance, type RepositoryApproval, type RepositoryClaim, type RepositoryEvidence, type RepositoryExecution, type RepositoryOutcome, type RepositoryProposal, type RepositoryState, type RepositoryTask, type RestraintPayload, type RestraintReceipt, type SHA256Hash, type SafetyTranscript, type Sandbox, type SandboxConfig, type SandboxReceipt, type SandboxResult, type SandboxToolCall, type SchemaGeneratorConfig, ScopeBlindBridge, type SelectiveDisclosurePackageV0, type SelectiveDisclosureVerification, type SelfTestCase, type SelfTestReport, type SigningConfig, type SimulationResult, type SimulationSummary, type SnapshotReceipt, type SnapshotVerification, type SwarmContext, type TierOverrides, type TimingMetrics, type ToolPolicy, type TrustTier, type WebAuthnController, type WorkPayload, type WorkReceipt, anchorToRekor, approvePolicyProposalWithDirectSignature, approvePolicyProposalWithWebAuthn, assertEgressSafe, buildDecisionContext, checkRateLimit, collectSignedReceipts, computeCalibration, computeSbIssuerKid, confidentialInference, connectorDirectory, connectorDoctor, connectorPilotIds, coordinationConfigFromArgs, createApprovalChallenge, createApprovalReceiptPayload, createAttestationField, createAuditBundle, createC2PAManifest, createDirectControllerApproval, createDisclosurePackage, createEvidenceAttestation, createLogAnchorField, createPolicyProposal, createReceiptChannel, createReceiptEnvelope, createSandbox, createSelectiveDisclosurePackage, createWebAuthnPolicyChallenge, describePolicyDiff, destroySandbox, discloseField, ed25519ToDIDKey, evaluateCedar, evaluateTier, exportC2PAManifestJSON, exportJSONL, exportMandateDisciplineRecord, formatReportMarkdown, formatSimulation, forwardReceipt, generateC2PACommand, generateCedarSchema, generateDatasetCard, generateHFMetadata, generateReport, generateSafetyTranscript, generateSchemaStub, getConnectorPilot, getPolicyPack, getScopeBlindBridge, getSignerInfo, getToolPolicy, hashReceipt, hashResponseBody, humanPrincipal, initSigning, initializeMandateRegistry, inspectEgress, isAgentId, isCedarAvailable, isDisclosureMode, isEvidenceType, isManifestStatus, isSigningEnabled, listCredentialLabels, loadCedarPolicies, loadGateSigner, loadMandateRegistry, loadPolicy, mandatePaths, manifestToVC, meetsMinTier, parseLogFile, parseNotificationConfigFromEnv, parseRateLimit, policyPackIds, policySetFromSource, publicMandateStatus, queryExternalPDP, readInstalledConnectorPilots, receiptHash, receiptIdentity, receiptToVP, receiptsToHFRows, redactFields, refreshManagedMandate, repositorySnapshotDigest, resolveCredential, revealField, runEgressSelfCheck, runEvaluatorSelfTest, runInSandbox, sendApprovalNotification, signCommittedDecision, signDecision, simulate, snapshotFromDirectory, toCredentialRequestOptions, toEgressSummary, toManifoldFormat, toMetaculusFormat, validateCoordinationConfig, validateCoordinationPayment, validateCredentials, validateEvidenceReceipt, validateManifest, verifyActaC2PAAssertions, verifyAllCommitments, verifyApprovalAssertion, verifyCommitment, verifyDeviceAuthorization, verifyEvidenceAttestation, verifyHuman, verifyMandateLifecycleExport, verifyMandateRegistry, verifyNegotiationEvidence, verifyOwnerAgreement, verifyPublicSnapshot, verifyReceipt, verifyRehearsalEvidence, verifyRekorAnchor, verifyRepositoryEvidence, verifySelectiveDisclosurePackage, writeConnectorPilots };
+/** Offline verification of optional collaboration records around immutable v1 tasks. */
+
+interface RepositoryCollaborationEvidence {
+    type: 'scopeblind.repository.collaboration-evidence.v1';
+    repository: RepositoryEvidence;
+    collaboration: Signed<RepositoryCollaboration>;
+    demo?: Signed<RepositoryDemoState>;
+    parent?: RepositoryEvidence;
+    parent_request?: Signed<RepositoryRevisionRequest>;
+    parent_agent_grant?: Signed<RepositoryAgentGrant>;
+}
+declare function verifyRepositoryCollaborationEvidence(input: unknown, pins?: Parameters<typeof verifyRepositoryEvidence>[1]): Promise<{
+    valid: boolean;
+    accepted: boolean;
+    authorityPinned: boolean;
+    previewVerified: boolean;
+    revisionLinked: boolean;
+    errors: string[];
+    limitations: string[];
+}>;
+
+export { type ActaEnvelope, type ActaSignature, type ActionReceipt, type AdmissionResult, type AgentId, type AgentManifest, type ApprovalAssertion, type ApprovalChallenge, type ApprovalNotification, type ApprovalResult, type ArenaPayload, type ArenaReceipt, type AttestationDocument, type AttestationPayload, type AttestationProvider, type AttestationReceipt, type AttestationResult, type AuditBundle, type AuditBundleOptions, type BenchmarkPayload, type BenchmarkReceipt, type BuilderId, type C2PAAssertion, type C2PAIngredient, type C2PAManifest, type C2PAOptions, type CCRConnectorConfig, type CCRSessionContext, CONNECTOR_PILOTS, type CalibrationScore, type CedarEvalOptions, type CedarEvalRequest, type CedarPolicySet, type CedarSchema, type CedarSchemaResult, type CommittedFieldOpening, type CommittedSignResult, type ComplianceReport, ConfidentialGate, type ConfidentialGateConfig, type ConfidentialInferenceConfig, type ConnectorAction, type ConnectorEnvVar, type ConnectorPilot, type ConnectorPilotId, CoordinationClient, type CoordinationConfig, CoordinationError, type CoordinationPayment, type CoordinationPaymentResult, type CredentialConfig, type DecisionContext, type DecisionLog, type DelegationReceipt, type DeviceAuthorization, type DevicePermission, type DeviceUse, type DirectController, type DisclosureMode, EGRESS_SUMMARY_FIELDS, type Ed25519PublicKey, type EvidenceAttestation, type EvidenceAttestationInput, type EvidenceIssuer, type EvidenceReceipt, type EvidenceReceiptBase, type EvidenceSummary, type EvidenceSummaryEntry, type EvidenceType, type ExternalDecision, type ExternalPDPConfig, type GateSigner, type HFDatasetMetadata, type HFReceiptRow, type HookEventName, type HookInput, type HookResponse, type HumanContext, type InstalledConnectorPilot, type IssuerType, type JsonRpcRequest, type JsonRpcResponse, type LeaseCompatibility, type MandateApproval, type MandateController, type MandateProposal, type MandateRegistry, type MandateTransition, type ManifestBuilder, type ManifestCapabilities, type ManifestConfig, type ManifestIdentity, type ManifestPresentation, type ManifestSignature, type ManifestStatus, type McpToolDescription, type MinimalDisclosure, type NegotiationExport, type NegotiationMandate, type NegotiationProposal, type NegotiationReport, type NegotiationVerification, type NotificationConfig, POLICY_PACKS, type PassportTokenClaims, type PayloadDigest, type PlanReceipt, type PolicyDiff, type PolicyEngineMode, type PolicyPack, type PolicySnapshot, type PredictionReceipt, type PredictionResolution, type PropagatorConfig, type ProtectConfig, ProtectGateway, type ProtectPolicy, type PublicSnapshot, type RateLimit, ReceiptPropagator, type ReceiptShape, type ReceiptVerification, type RedactedResult, type RedactionSalt, type RegistryCheck, type RehearsalExport, type RehearsalVerification, type RekorAnchor, type RekorVerification, type RepositoryAcceptance, type RepositoryApproval, type RepositoryClaim, type RepositoryCollaborationEvidence, type RepositoryEvidence, type RepositoryExecution, type RepositoryOutcome, type RepositoryProposal, type RepositoryState, type RepositoryTask, type RestraintPayload, type RestraintReceipt, type SHA256Hash, type SafetyTranscript, type Sandbox, type SandboxConfig, type SandboxReceipt, type SandboxResult, type SandboxToolCall, type SchemaGeneratorConfig, ScopeBlindBridge, type SelectiveDisclosurePackageV0, type SelectiveDisclosureVerification, type SelfTestCase, type SelfTestReport, type SigningConfig, type SimulationResult, type SimulationSummary, type SnapshotReceipt, type SnapshotVerification, type SwarmContext, type TierOverrides, type TimingMetrics, type ToolPolicy, type TrustTier, type WebAuthnController, type WorkPayload, type WorkReceipt, anchorToRekor, approvePolicyProposalWithDirectSignature, approvePolicyProposalWithWebAuthn, assertEgressSafe, buildDecisionContext, checkRateLimit, collectSignedReceipts, computeCalibration, computeSbIssuerKid, confidentialInference, connectorDirectory, connectorDoctor, connectorPilotIds, coordinationConfigFromArgs, createApprovalChallenge, createApprovalReceiptPayload, createAttestationField, createAuditBundle, createC2PAManifest, createDirectControllerApproval, createDisclosurePackage, createEvidenceAttestation, createLogAnchorField, createPolicyProposal, createReceiptChannel, createReceiptEnvelope, createSandbox, createSelectiveDisclosurePackage, createWebAuthnPolicyChallenge, describePolicyDiff, destroySandbox, discloseField, ed25519ToDIDKey, evaluateCedar, evaluateTier, exportC2PAManifestJSON, exportJSONL, exportMandateDisciplineRecord, formatReportMarkdown, formatSimulation, forwardReceipt, generateC2PACommand, generateCedarSchema, generateDatasetCard, generateHFMetadata, generateReport, generateSafetyTranscript, generateSchemaStub, getConnectorPilot, getPolicyPack, getScopeBlindBridge, getSignerInfo, getToolPolicy, hashReceipt, hashResponseBody, humanPrincipal, initSigning, initializeMandateRegistry, inspectEgress, isAgentId, isCedarAvailable, isDisclosureMode, isEvidenceType, isManifestStatus, isSigningEnabled, listCredentialLabels, loadCedarPolicies, loadGateSigner, loadMandateRegistry, loadPolicy, mandatePaths, manifestToVC, meetsMinTier, parseLogFile, parseNotificationConfigFromEnv, parseRateLimit, policyPackIds, policySetFromSource, publicMandateStatus, queryExternalPDP, readInstalledConnectorPilots, receiptHash, receiptIdentity, receiptToVP, receiptsToHFRows, redactFields, refreshManagedMandate, repositorySnapshotDigest, resolveCredential, revealField, runEgressSelfCheck, runEvaluatorSelfTest, runInSandbox, sendApprovalNotification, signCommittedDecision, signDecision, simulate, snapshotFromDirectory, toCredentialRequestOptions, toEgressSummary, toManifoldFormat, toMetaculusFormat, validateCoordinationConfig, validateCoordinationPayment, validateCredentials, validateEvidenceReceipt, validateManifest, verifyActaC2PAAssertions, verifyAllCommitments, verifyApprovalAssertion, verifyCommitment, verifyDeviceAuthorization, verifyEvidenceAttestation, verifyHuman, verifyMandateLifecycleExport, verifyMandateRegistry, verifyNegotiationEvidence, verifyOwnerAgreement, verifyPublicSnapshot, verifyReceipt, verifyRehearsalEvidence, verifyRekorAnchor, verifyRepositoryCollaborationEvidence, verifyRepositoryEvidence, verifySelectiveDisclosurePackage, writeConnectorPilots };

@@ -1,28 +1,29 @@
-# Install only on the repository's trusted default branch. No PR checkout.
-# Config and receiver digest are repository-owner-controlled Actions variables.
+# Template only: repository setup substitutes reviewed artifact pins.
+# Install its generated scopeblind-receiver.yml, not these placeholders.
+# Review on the trusted default branch before enabling. Setup grants no task approval.
 name: ScopeBlind receiver
 on:
   workflow_dispatch:
     inputs:
-      task_id:
-        description: ScopeBlind repository task ID
-        required: true
-        type: string
       operation:
-        description: Inspect, execute a jointly approved change, or reconcile only
+        description: Read-only readiness, inspect, jointly approved execute, or reconcile
         required: true
+        default: ready
         type: choice
-        options: [inspect, execute, reconcile]
+        options: [ready, inspect, execute, reconcile]
+      task_id:
+        description: Exact task ID (required except for ready)
+        required: false
+        type: string
 permissions:
   contents: write
   pull-requests: read
   checks: read
 concurrency:
-  group: scopeblind-receiver-${{ inputs.task_id }}
+  group: scopeblind-receiver-${{ inputs.task_id || 'readiness' }}
   cancel-in-progress: false
 jobs:
   receiver:
-    # CLI also requires workflow_dispatch and the exact configured base branch.
     if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -31,22 +32,20 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22.22.3'
-      # A single hash-pinned artifact. No checkout, npm install, or PR code runs.
-      - name: Verify the installed receiver bytes
+      - name: Verify the reviewed receiver artifact
         env:
-          RECEIVER_URL: ${{ vars.SCOPEBLIND_RECEIVER_URL }}
-          RECEIVER_SHA256: ${{ vars.SCOPEBLIND_RECEIVER_SHA256 }}
+          RECEIVER_URL: __RECEIVER_URL__
+          RECEIVER_SHA256: __RECEIVER_SHA256__
         shell: bash
         run: |
           set -euo pipefail
-          node -e 'const u=new URL(process.env.RECEIVER_URL); if(u.protocol!=="https:"||u.username||u.password||u.hash||!/^https:\/\/scopeblind\.com\/releases\//.test(u.href)||!/^[0-9a-f]{64}$/.test(process.env.RECEIVER_SHA256))process.exit(1)'
           curl --fail --silent --show-error --proto '=https' --max-time 30 "$RECEIVER_URL" --output receiver.cjs
           printf '%s  receiver.cjs\n' "$RECEIVER_SHA256" | sha256sum --check --strict
-          node -e 'if(Number(process.versions.node.split(".")[0])<22)process.exit(1)'
       - name: Run the constrained receiver
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SCOPEBLIND_RECEIVER_PRIVATE_KEY: ${{ secrets.SCOPEBLIND_RECEIVER_PRIVATE_KEY }}
+          CONNECTION_CONFIG: ${{ vars.SCOPEBLIND_CONNECTION_CONFIG }}
           RECEIVER_CONFIG: ${{ vars.SCOPEBLIND_RECEIVER_CONFIG }}
           TASK_ID: ${{ inputs.task_id }}
           OPERATION: ${{ inputs.operation }}
@@ -54,5 +53,17 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          node -e 'const fs=require("node:fs"); fs.writeFileSync("receiver-config.json",process.env.RECEIVER_CONFIG,{mode:0o600,flag:"wx"})'
-          node receiver.cjs "$OPERATION" --config receiver-config.json --task "$TASK_ID" --output repository-evidence.json
+          if [ "$OPERATION" = ready ]; then
+            node -e 'require("node:fs").writeFileSync("connection-config.json",process.env.CONNECTION_CONFIG,{mode:0o600,flag:"wx"})'
+            node receiver.cjs ready --connection connection-config.json --output repository-evidence.json
+          else
+            node -e 'require("node:fs").writeFileSync("receiver-config.json",process.env.RECEIVER_CONFIG,{mode:0o600,flag:"wx"})'
+            node receiver.cjs "$OPERATION" --config receiver-config.json --task "$TASK_ID" --output repository-evidence.json
+          fi
+      - name: Keep the public signed observation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: scopeblind-repository-evidence
+          path: repository-evidence.json
+          retention-days: 7
+          if-no-files-found: error

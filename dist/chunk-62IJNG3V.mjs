@@ -33,7 +33,7 @@ function validRepositoryProposal(v, task, taskDigest) {
   return Array.isArray(v.checks) && v.checks.length === task.required_checks.length && v.checks.every((c) => object(c) && exact(c, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(c.id) && Number(c.id) > 0 && c.head_sha === v.head_sha && c.conclusion === "success" && task.required_checks.some((r) => r.name === c.name && r.app_id === c.app_id)) && new Set(v.checks.map((c) => `${c.name}:${c.app_id}`)).size === v.checks.length;
 }
 async function repositorySnapshotDigest(p) {
-  const { id, observed_at, ...snapshot } = p;
+  const { id: id2, observed_at, ...snapshot } = p;
   return sha256(canonical(snapshot));
 }
 function validRepositoryRecord(v, kind) {
@@ -89,13 +89,108 @@ async function verifyRepositoryEvidence(value, pin) {
   return { valid: errors.length === 0, errors, accepted: accepted && errors.length === 0, authorityPinned: !!pin && errors.length === 0, limitations: ["The pinned receiver attests to GitHub API observations; this is not a GitHub-signed receipt.", "This controls the installed receiver\u2019s exact branch update. Other credentials and repository actions are outside its coverage.", "Destination readback establishes resulting repository state. After a lost reply it does not establish which actor caused that state.", "The checked files, commits and named checks do not prove the code is safe or universally correct.", "Signatures identify keys, not a person\u2019s legal identity.", ...!pin ? ["No independent authority key was supplied. Only consistency with the included authority was checked."] : []] };
 }
 
+// src/coordination-repository-collaboration.ts
+var DEMO_REPOSITORY = "ScopeBlind/scopeblind-repository-demo";
+var DEMO_CHECK = { name: "ScopeBlind contact validation", app_id: 4962726 };
+var CONTACT_PATH = "demo/contact.json";
+var object2 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
+var shape = (value, required, optional = []) => object2(value) && required.every((key) => key in value) && Object.keys(value).every((key) => required.includes(key) || optional.includes(key));
+var text2 = (value, max, empty = false) => typeof value === "string" && (empty || value.trim().length > 0) && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
+var hex = (value) => typeof value === "string" && REPOSITORY_HEX.test(value);
+var id = (value) => typeof value === "string" && REPOSITORY_ID.test(value);
+var sha = (value) => typeof value === "string" && REPOSITORY_SHA.test(value);
+var at = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+var span = (issued, expires, max) => at(issued) && at(expires) && Date.parse(String(expires)) > Date.parse(String(issued)) && Date.parse(String(expires)) - Date.parse(String(issued)) <= max;
+var repository = (value) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(value);
+function validContactPage(value) {
+  return shape(value, ["type", "button_label", "target", "accent"]) && value.type === "scopeblind.contact-page.v1" && text2(value.button_label, 40) && ["broken", "contact"].includes(String(value.target)) && ["indigo", "emerald", "rose"].includes(String(value.accent));
+}
+function contactPageBytes(value) {
+  if (!validContactPage(value))
+    throw new Error("invalid_contact_page");
+  return canonical(value) + "\n";
+}
+function parseContactPageJson(source) {
+  if (typeof source !== "string" || new TextEncoder().encode(source).length > 1024)
+    throw new Error("invalid_contact_page");
+  let value;
+  try {
+    value = JSON.parse(source);
+  } catch {
+    throw new Error("invalid_contact_page");
+  }
+  if (!validContactPage(value) || contactPageBytes(value) !== source)
+    throw new Error("noncanonical_contact_page");
+  return value;
+}
+function validRepositoryConnection(v) {
+  if (!shape(v, ["type", "id", "endpoint", "repository", "base_branch", "owner_key", "receiver_key", "authority_key", "issued_at", "expires_at"]))
+    return false;
+  let endpoint;
+  try {
+    endpoint = new URL(String(v.endpoint));
+  } catch {
+    return false;
+  }
+  return v.type === "scopeblind.repository.connection.v1" && id(v.id) && endpoint.protocol === "https:" && endpoint.pathname === "/api/coordination" && !endpoint.search && !endpoint.hash && !endpoint.username && !endpoint.password && endpoint.href === v.endpoint && repository(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(hex) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && span(v.issued_at, v.expires_at, 30 * 864e5);
+}
+function validRepositoryReadiness(v) {
+  if (!shape(v, ["type", "connection_digest", "repository", "base_branch", "owner_key", "receiver_key", "authority_key", "checks", "base_sha", "check_head_sha", "protection", "runtime", "workflow", "observed_at", "expires_at"], ["required_checks", "workflow_sha"]))
+    return false;
+  return v.type === "scopeblind.repository.readiness.v1" && hex(v.connection_digest) && repository(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(hex) && sha(v.base_sha) && sha(v.check_head_sha) && ["observed", "unavailable"].includes(String(v.protection)) && ["local", "github_actions"].includes(String(v.runtime)) && ["not_checked", "missing", "matching", "different", "unavailable"].includes(String(v.workflow)) && (v.workflow_sha === void 0 || sha(v.workflow_sha)) && span(v.observed_at, v.expires_at, 864e5) && Array.isArray(v.checks) && v.checks.length <= 100 && v.checks.every((c) => shape(c, ["name", "app_id"], ["app_name"]) && text2(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0 && (c.app_name === void 0 || text2(c.app_name, 100))) && (v.required_checks === void 0 || Array.isArray(v.required_checks) && v.required_checks.length <= 100 && v.required_checks.every((c) => shape(c, ["name", "app_id"]) && text2(c.name, 100) && (c.app_id === null || Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0)));
+}
+function validRepositoryParticipants(v) {
+  return shape(v, ["type", "task_id", "task_digest", "owner_key", "receiver_key", "reviewer_key", "reviewer_claim_digest", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.participants.v1" && id(v.task_id) && [v.task_digest, v.owner_key, v.receiver_key, v.reviewer_key, v.reviewer_claim_digest].every(hex) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.reviewer_key])).size === 3 && span(v.issued_at, v.expires_at, 7 * 864e5);
+}
+function validRepositoryPreview(v) {
+  return shape(v, ["type", "task_id", "task_digest", "proposal_digest", "base_sha", "head_sha", "merge_sha", "tree_sha", "path", "before", "after", "renderer", "observed_at"]) && v.type === "scopeblind.repository.preview.v1" && id(v.task_id) && hex(v.task_digest) && hex(v.proposal_digest) && [v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every(sha) && v.path === CONTACT_PATH && v.renderer === "scopeblind.contact-page.v1" && at(v.observed_at) && [v.before, v.after].every((side) => shape(side, ["model", "blob_sha", "content_sha256"]) && validContactPage(side.model) && sha(side.blob_sha) && hex(side.content_sha256));
+}
+function validRepositoryAgentGrant(v) {
+  return shape(v, ["type", "id", "task_id", "task_digest", "issuer_key", "agent_key", "permissions", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.agent-grant.v1" && id(v.id) && id(v.task_id) && [v.task_digest, v.issuer_key, v.agent_key].every(hex) && v.issuer_key !== v.agent_key && Array.isArray(v.permissions) && v.permissions.length > 0 && v.permissions.length <= 2 && new Set(v.permissions).size === v.permissions.length && v.permissions.every((p) => p === "read_task" || p === "request_revision") && v.permissions.includes("read_task") && span(v.issued_at, v.expires_at, 36e5);
+}
+function validRepositoryRevisionRequest(v) {
+  return shape(v, ["type", "id", "task_id", "task_digest", "basis_digest", "requester_key", "message", "proposed", "issued_at"], ["grant_digest"]) && v.type === "scopeblind.repository.revision-request.v1" && id(v.id) && id(v.task_id) && [v.task_digest, v.basis_digest, v.requester_key].every(hex) && (v.grant_digest === void 0 || hex(v.grant_digest)) && text2(v.message, 600) && validContactPage(v.proposed) && at(v.issued_at);
+}
+function validRepositoryRevisionLink(v) {
+  return shape(v, ["type", "id", "parent_task_id", "parent_task_digest", "parent_basis_digest", "request_digest", "child_task_id", "child_task_digest", "owner_key", "issued_at"]) && v.type === "scopeblind.repository.revision-link.v1" && [v.id, v.parent_task_id, v.child_task_id].every(id) && v.parent_task_id !== v.child_task_id && [v.parent_task_digest, v.parent_basis_digest, v.request_digest, v.child_task_digest, v.owner_key].every(hex) && at(v.issued_at);
+}
+function validRepositoryDemoRequest(v) {
+  if (!shape(v, ["type", "id", "owner_key", "receiver_key", "authority_key", "title", "goal", "proposed", "reviewer_secret_hash", "issued_at", "expires_at"], ["parent_task_id", "parent_task_digest", "parent_basis_digest", "revision_request_digest"]))
+    return false;
+  const parent = ["parent_task_id", "parent_task_digest", "parent_basis_digest", "revision_request_digest"];
+  return v.type === "scopeblind.repository.demo-request.v1" && id(v.id) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every(hex) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && text2(v.title, 140) && text2(v.goal, 600) && validContactPage(v.proposed) && span(v.issued_at, v.expires_at, 864e5) && (parent.every((k) => v[k] === void 0) || id(v.parent_task_id) && [v.parent_task_digest, v.parent_basis_digest, v.revision_request_digest].every(hex));
+}
+function validRepositoryDemoProvision(v) {
+  return shape(v, ["type", "request_id", "request_digest", "repository", "base_branch", "head_branch", "pull_number", "initial_base_sha", "initial_head_sha", "receiver_key", "required_checks", "observed_at"]) && v.type === "scopeblind.repository.demo-provision.v1" && id(v.request_id) && [v.request_digest, v.receiver_key].every(hex) && v.repository === DEMO_REPOSITORY && v.base_branch === `scopeblind/demo/${v.request_id}/base` && v.head_branch === `scopeblind/demo/${v.request_id}/change` && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && sha(v.initial_base_sha) && sha(v.initial_head_sha) && Array.isArray(v.required_checks) && canonical(v.required_checks) === canonical([DEMO_CHECK]) && at(v.observed_at);
+}
+function repositoryRevisionBasis(state) {
+  return state.acceptance?.digest ?? state.outcome?.digest ?? state.proposal?.digest ?? null;
+}
+
 export {
   REPOSITORY_HEX,
   REPOSITORY_SHA,
   REPOSITORY_ID,
   repositoryBranch,
   pathAllowed,
+  validRepositoryTask,
   validRepositoryProposal,
   repositorySnapshotDigest,
-  verifyRepositoryEvidence
+  verifyRepositoryEvidence,
+  DEMO_REPOSITORY,
+  DEMO_CHECK,
+  CONTACT_PATH,
+  validContactPage,
+  contactPageBytes,
+  parseContactPageJson,
+  validRepositoryConnection,
+  validRepositoryReadiness,
+  validRepositoryParticipants,
+  validRepositoryPreview,
+  validRepositoryAgentGrant,
+  validRepositoryRevisionRequest,
+  validRepositoryRevisionLink,
+  validRepositoryDemoRequest,
+  validRepositoryDemoProvision,
+  repositoryRevisionBasis
 };

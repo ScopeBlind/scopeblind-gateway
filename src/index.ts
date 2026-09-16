@@ -283,4 +283,6 @@ export { verifyOwnerAgreement } from './coordination-evidence.js';
 
 // Real repository tasks: offline verification of the exact review/action/acceptance chain.
 export {verifyRepositoryEvidence,repositorySnapshotDigest} from './coordination-repository.js';
+export {verifyRepositoryCollaborationEvidence} from './coordination-repository-collaboration-evidence.js';
+export type {RepositoryCollaborationEvidence} from './coordination-repository-collaboration-evidence.js';
 export type {RepositoryTask,RepositoryClaim,RepositoryProposal,RepositoryApproval,RepositoryExecution,RepositoryOutcome,RepositoryAcceptance,RepositoryState,RepositoryEvidence} from './coordination-repository.js';

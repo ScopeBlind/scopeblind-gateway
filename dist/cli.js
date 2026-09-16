@@ -34,9 +34,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 function bytesToHex(bytes) {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
-function hexToBytes(hex3) {
-  if (!/^(?:[0-9a-f]{2})+$/i.test(hex3)) throw new Error("Invalid hexadecimal data");
-  return Uint8Array.from(hex3.match(/../g).map((x) => parseInt(x, 16)));
+function hexToBytes(hex5) {
+  if (!/^(?:[0-9a-f]{2})+$/i.test(hex5)) throw new Error("Invalid hexadecimal data");
+  return Uint8Array.from(hex5.match(/../g).map((x) => parseInt(x, 16)));
 }
 function validUnicode(value) {
   for (let i = 0; i < value.length; i++) {
@@ -65,8 +65,8 @@ function canonical(value) {
   }
   if (typeof value === "object") {
     if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new Error("Expected a plain JSON object");
-    const object3 = value;
-    return "{" + Object.keys(object3).sort().map((k) => canonical(k) + ":" + canonical(object3[k])).join(",") + "}";
+    const object4 = value;
+    return "{" + Object.keys(object4).sort().map((k) => canonical(k) + ":" + canonical(object4[k])).join(",") + "}";
   }
   throw new Error("Not a JSON value");
 }
@@ -87,22 +87,22 @@ async function importIdentity(pkcs8Hex, publicKey) {
 async function sign(payload, identity) {
   const preimage = COORDINATION_DOMAIN + canonical(payload);
   const signature = await crypto.subtle.sign("Ed25519", identity.privateKey, new TextEncoder().encode(preimage));
-  const envelope2 = { payload, signer: identity.publicKey, digest: await sha256(preimage), signature: bytesToHex(new Uint8Array(signature)) };
+  const envelope3 = { payload, signer: identity.publicKey, digest: await sha256(preimage), signature: bytesToHex(new Uint8Array(signature)) };
   if (identity.deviceAuthorization) {
-    envelope2.authorization = identity.deviceAuthorization;
-    const binding = "scopeblind.coordination.device-authorization.v1\n" + envelope2.digest + "\n" + identity.deviceAuthorization.digest;
-    envelope2.authorization_signature = bytesToHex(new Uint8Array(await crypto.subtle.sign("Ed25519", identity.privateKey, new TextEncoder().encode(binding))));
+    envelope3.authorization = identity.deviceAuthorization;
+    const binding = "scopeblind.coordination.device-authorization.v1\n" + envelope3.digest + "\n" + identity.deviceAuthorization.digest;
+    envelope3.authorization_signature = bytesToHex(new Uint8Array(await crypto.subtle.sign("Ed25519", identity.privateKey, new TextEncoder().encode(binding))));
   }
-  return envelope2;
+  return envelope3;
 }
-async function verify(envelope2, expectedSigner) {
+async function verify(envelope3, expectedSigner) {
   try {
-    if (!envelope2 || !/^[0-9a-f]{64}$/.test(envelope2.signer) || !/^[0-9a-f]{64}$/.test(envelope2.digest) || !/^[0-9a-f]{128}$/.test(envelope2.signature)) return false;
-    if (expectedSigner && expectedSigner !== envelope2.signer) return false;
-    const preimage = COORDINATION_DOMAIN + canonical(envelope2.payload);
-    if (await sha256(preimage) !== envelope2.digest) return false;
-    const key = await crypto.subtle.importKey("raw", hexToBytes(envelope2.signer), { name: "Ed25519" }, false, ["verify"]);
-    return await crypto.subtle.verify("Ed25519", key, hexToBytes(envelope2.signature), new TextEncoder().encode(preimage));
+    if (!envelope3 || !/^[0-9a-f]{64}$/.test(envelope3.signer) || !/^[0-9a-f]{64}$/.test(envelope3.digest) || !/^[0-9a-f]{128}$/.test(envelope3.signature)) return false;
+    if (expectedSigner && expectedSigner !== envelope3.signer) return false;
+    const preimage = COORDINATION_DOMAIN + canonical(envelope3.payload);
+    if (await sha256(preimage) !== envelope3.digest) return false;
+    const key = await crypto.subtle.importKey("raw", hexToBytes(envelope3.signer), { name: "Ed25519" }, false, ["verify"]);
+    return await crypto.subtle.verify("Ed25519", key, hexToBytes(envelope3.signature), new TextEncoder().encode(preimage));
   } catch {
     return false;
   }
@@ -151,18 +151,18 @@ function hasLegacyUnsafeKey(value) {
   if (Object.prototype.hasOwnProperty.call(value, "__proto__")) return true;
   return Object.values(value).some(hasLegacyUnsafeKey);
 }
-function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape, allowLegacy) {
+function verifyEncoding(payload, envelope3, signature, publicKeyHex, shape3, allowLegacy) {
   const jcs2 = canonicalize(payload);
   if (import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(jcs2), (0, import_utils.hexToBytes)(publicKeyHex))) {
-    return { valid: true, shape, hash: receiptHash(envelope2), canonicalization: "jcs" };
+    return { valid: true, shape: shape3, hash: receiptHash(envelope3), canonicalization: "jcs" };
   }
-  if (!hasLegacyUnsafeKey(envelope2)) {
+  if (!hasLegacyUnsafeKey(envelope3)) {
     const legacy = legacyCanonicalize(payload);
     if (legacy !== jcs2 && import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(legacy), (0, import_utils.hexToBytes)(publicKeyHex))) {
-      const legacyHash = (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(legacyCanonicalize(envelope2))));
+      const legacyHash = (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(legacyCanonicalize(envelope3))));
       return {
         valid: allowLegacy,
-        shape,
+        shape: shape3,
         canonicalization: "legacy-numeric-key-order",
         legacy_signature_valid: true,
         legacy_hash: legacyHash,
@@ -171,7 +171,7 @@ function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape, allo
       };
     }
   }
-  return { valid: false, shape, error: "invalid_signature" };
+  return { valid: false, shape: shape3, error: "invalid_signature" };
 }
 function receiptHash(obj) {
   return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
@@ -204,15 +204,15 @@ function createReceiptEnvelope(fields, privateKeyHex, kid, issuedAt) {
     issuer_id: kid
   };
   const sig = (0, import_utils.bytesToHex)(import_ed25519.ed25519.sign((0, import_utils.utf8ToBytes)(canonicalize(payload)), (0, import_utils.hexToBytes)(privateKeyHex)));
-  const envelope2 = { payload, signature: { alg: "EdDSA", kid, sig } };
-  return { envelope: envelope2, hash: receiptHash(envelope2) };
+  const envelope3 = { payload, signature: { alg: "EdDSA", kid, sig } };
+  return { envelope: envelope3, hash: receiptHash(envelope3) };
 }
-function verifyReceipt(envelope2, publicKeyHex, options2 = {}) {
+function verifyReceipt(envelope3, publicKeyHex, options2 = {}) {
   try {
-    if (!envelope2 || typeof envelope2 !== "object") {
+    if (!envelope3 || typeof envelope3 !== "object") {
       return { valid: false, shape: null, error: "not_an_object" };
     }
-    const env = envelope2;
+    const env = envelope3;
     const signature = env.signature;
     if (signature && typeof signature === "object" && !Array.isArray(signature)) {
       const sigObj = signature;
@@ -227,8 +227,8 @@ function verifyReceipt(envelope2, publicKeyHex, options2 = {}) {
     if (typeof signature === "string") {
       const rest = /* @__PURE__ */ Object.create(null);
       for (const k of Object.keys(env)) if (k !== "signature") rest[k] = env[k];
-      const shape = env.v === 2 ? "legacy-v2" : "legacy-v1";
-      return verifyEncoding(rest, env, signature, publicKeyHex, shape, options2.allowLegacyNumericKeys === true);
+      const shape3 = env.v === 2 ? "legacy-v2" : "legacy-v1";
+      return verifyEncoding(rest, env, signature, publicKeyHex, shape3, options2.allowLegacyNumericKeys === true);
     }
     return { valid: false, shape: null, error: "missing_signature" };
   } catch (err) {
@@ -239,9 +239,9 @@ function verifyReceipt(envelope2, publicKeyHex, options2 = {}) {
     };
   }
 }
-function receiptIdentity(envelope2) {
-  if (!envelope2 || typeof envelope2 !== "object") return { kid: null, issuer: null, type: null };
-  const env = envelope2;
+function receiptIdentity(envelope3) {
+  if (!envelope3 || typeof envelope3 !== "object") return { kid: null, issuer: null, type: null };
+  const env = envelope3;
   if (env.signature && typeof env.signature === "object") {
     const payload = env.payload || {};
     const sig = env.signature;
@@ -495,8 +495,8 @@ var init_evidence_store = __esm({
       save() {
         if (!this.dirty) return;
         const data = {};
-        for (const [id4, record] of this.agents) {
-          data[id4] = record;
+        for (const [id5, record] of this.agents) {
+          data[id5] = record;
         }
         try {
           (0, import_node_fs3.writeFileSync)(this.filePath, JSON.stringify({ v: 1, agents: data }, null, 2) + "\n");
@@ -513,8 +513,8 @@ var init_evidence_store = __esm({
           const raw = (0, import_node_fs3.readFileSync)(this.filePath, "utf-8");
           const parsed = JSON.parse(raw);
           if (parsed.agents && typeof parsed.agents === "object") {
-            for (const [id4, record] of Object.entries(parsed.agents)) {
-              this.agents.set(id4, record);
+            for (const [id5, record] of Object.entries(parsed.agents)) {
+              this.agents.set(id5, record);
             }
           }
         } catch {
@@ -531,8 +531,8 @@ var init_evidence_store = __esm({
        */
       allSummaries() {
         const result2 = [];
-        for (const [id4] of this.agents) {
-          result2.push({ agent_id: id4, summary: this.getSummary(id4) });
+        for (const [id5] of this.agents) {
+          result2.push({ agent_id: id5, summary: this.getSummary(id5) });
         }
         return result2;
       }
@@ -1455,8 +1455,8 @@ function startStatusServer(config, receiptBuffer, approvalStore, approvalNonce) 
       } else if (path === "/receipts/latest") {
         handleReceiptLatest(res, receiptBuffer);
       } else if (path.startsWith("/receipts/")) {
-        const id4 = path.slice("/receipts/".length);
-        handleReceiptById(res, receiptBuffer, id4);
+        const id5 = path.slice("/receipts/".length);
+        handleReceiptById(res, receiptBuffer, id5);
       } else if (path === "/approve" && req.method === "POST") {
         handleApprove(req, res, approvalStore, approvalNonce);
       } else if (path === "/approvals" && req.method === "GET") {
@@ -1550,11 +1550,11 @@ function handleReceiptLatest(res, buffer) {
   res.writeHead(200);
   res.end(JSON.stringify(latest));
 }
-function handleReceiptById(res, buffer, id4) {
-  const receipt = buffer.getById(id4);
+function handleReceiptById(res, buffer, id5) {
+  const receipt = buffer.getById(id5);
   if (!receipt) {
     res.writeHead(404);
-    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id4 }));
+    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id5 }));
     return;
   }
   res.writeHead(200);
@@ -2426,8 +2426,8 @@ var init_gateway = __esm({
           this.reporter.record(void 0, callLine);
         }
       }
-      makeErrorResponse(id4, code2, message) {
-        return { jsonrpc: "2.0", id: id4, error: { code: code2, message } };
+      makeErrorResponse(id5, code2, message) {
+        return { jsonrpc: "2.0", id: id5, error: { code: code2, message } };
       }
       sendToChild(message) {
         if (this.child?.stdin?.writable) this.child.stdin.write(message + "\n");
@@ -2524,22 +2524,22 @@ var init_gateway = __esm({
           }
         }
         return new Promise((resolve5, reject) => {
-          const id4 = jsonRpc.id;
-          if (id4 === void 0 || id4 === null) {
+          const id5 = jsonRpc.id;
+          if (id5 === void 0 || id5 === null) {
             const modified2 = this.injectParamsCredentials(jsonRpc);
             this.sendToChild(JSON.stringify(modified2));
             resolve5(JSON.stringify({ jsonrpc: "2.0", result: {}, id: null }));
             return;
           }
           const timeout = setTimeout(() => {
-            this.pendingResponses.delete(id4);
+            this.pendingResponses.delete(id5);
             resolve5(JSON.stringify({
               jsonrpc: "2.0",
               error: { code: -32e3, message: "Request timeout (30s)" },
-              id: id4
+              id: id5
             }));
           }, REQUEST_TIMEOUT_MS);
-          this.pendingResponses.set(id4, { resolve: resolve5, timeout });
+          this.pendingResponses.set(id5, { resolve: resolve5, timeout });
           const modified = this.injectParamsCredentials(jsonRpc);
           this.sendToChild(JSON.stringify(modified));
         });
@@ -2562,8 +2562,8 @@ var init_gateway = __esm({
 });
 
 // src/policy-packs.ts
-function getPolicyPack(id4) {
-  return POLICY_PACKS.find((pack) => pack.id === id4);
+function getPolicyPack(id5) {
+  return POLICY_PACKS.find((pack) => pack.id === id5);
 }
 function policyPackIds() {
   return POLICY_PACKS.map((pack) => pack.id);
@@ -2572,7 +2572,7 @@ var header, defaultPermit, filesystemSafe, gitSafe, emailSafe, databaseSafe, clo
 var init_policy_packs = __esm({
   "src/policy-packs.ts"() {
     "use strict";
-    header = (id4, description) => `// ScopeBlind protect-mcp policy pack: ${id4}
+    header = (id5, description) => `// ScopeBlind protect-mcp policy pack: ${id5}
 // ${description}
 // Start in shadow mode, review receipts, then run with --enforce.
 
@@ -2812,7 +2812,7 @@ function createApprovalChallenge(requestId, toolName, agentId, rpId = "scopeblin
 }
 function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts = {}) {
   const now = opts.now ?? Date.now();
-  const fail2 = (reason, partial = {}) => ({
+  const fail3 = (reason, partial = {}) => ({
     valid: false,
     reason,
     credentialId: assertion.credentialId,
@@ -2824,32 +2824,32 @@ function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts
     ...partial
   });
   const createdAt = new Date(challenge.createdAt).getTime();
-  if (now - createdAt > challenge.timeoutSeconds * 1e3) return fail2("challenge_expired");
-  if (!credentialPublicKey?.publicKeyHex) return fail2("missing_credential_public_key");
+  if (now - createdAt > challenge.timeoutSeconds * 1e3) return fail3("challenge_expired");
+  if (!credentialPublicKey?.publicKeyHex) return fail3("missing_credential_public_key");
   const clientDataBytes = base64urlDecode(assertion.clientDataJSON);
   let clientData;
   try {
     clientData = JSON.parse(Buffer.from(clientDataBytes).toString("utf8"));
   } catch {
-    return fail2("client_data_parse_error");
+    return fail3("client_data_parse_error");
   }
-  if (clientData.type !== "webauthn.get") return fail2("wrong_client_data_type");
-  if (!constantTimeStrEqual(clientData.challenge ?? "", challenge.challenge)) return fail2("challenge_mismatch");
+  if (clientData.type !== "webauthn.get") return fail3("wrong_client_data_type");
+  if (!constantTimeStrEqual(clientData.challenge ?? "", challenge.challenge)) return fail3("challenge_mismatch");
   const allowedOrigins = opts.expectedOrigin ? Array.isArray(opts.expectedOrigin) ? opts.expectedOrigin : [opts.expectedOrigin] : [`https://${challenge.rpId}`];
-  if (!clientData.origin || !allowedOrigins.includes(clientData.origin)) return fail2("origin_mismatch");
+  if (!clientData.origin || !allowedOrigins.includes(clientData.origin)) return fail3("origin_mismatch");
   const authData = base64urlDecode(assertion.authenticatorData);
-  if (authData.length < 37) return fail2("authenticator_data_too_short");
+  if (authData.length < 37) return fail3("authenticator_data_too_short");
   const rpIdHash = authData.slice(0, 32);
   const expectedRpIdHash = (0, import_sha2562.sha256)(new TextEncoder().encode(challenge.rpId));
-  if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail2("rp_id_hash_mismatch");
+  if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail3("rp_id_hash_mismatch");
   const flags = authData[32];
   const userPresent = !!(flags & 1);
   const userVerified = !!(flags & 4);
-  if (!userPresent) return fail2("user_not_present");
-  if ((opts.requireUserVerification ?? true) && !userVerified) return fail2("user_verification_required", { userVerified });
+  if (!userPresent) return fail3("user_not_present");
+  if ((opts.requireUserVerification ?? true) && !userVerified) return fail3("user_verification_required", { userVerified });
   const signCount = authData[33] << 24 | authData[34] << 16 | authData[35] << 8 | authData[36];
   if (typeof opts.prevSignCount === "number" && signCount !== 0 && signCount <= opts.prevSignCount) {
-    return fail2("sign_count_regression", { userVerified, signCount });
+    return fail3("sign_count_regression", { userVerified, signCount });
   }
   const signedData = concatBytes(authData, (0, import_sha2562.sha256)(clientDataBytes));
   const sigBytes = base64urlDecode(assertion.signature);
@@ -2860,12 +2860,12 @@ function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts
     } else if (credentialPublicKey.alg === -8) {
       sigOk = import_ed255192.ed25519.verify(sigBytes, signedData, (0, import_utils2.hexToBytes)(credentialPublicKey.publicKeyHex));
     } else {
-      return fail2("unsupported_algorithm", { userVerified, signCount });
+      return fail3("unsupported_algorithm", { userVerified, signCount });
     }
   } catch {
     sigOk = false;
   }
-  if (!sigOk) return fail2("invalid_signature", { userVerified, signCount });
+  if (!sigOk) return fail3("invalid_signature", { userVerified, signCount });
   return {
     valid: true,
     credentialId: assertion.credentialId,
@@ -3011,10 +3011,10 @@ function signLifecycleEvent(signer, fields, issuedAt) {
     ...signer.issuer ? { gate_issuer: signer.issuer } : {}
   }, signer.privateKey, signer.kid, issuedAt).envelope;
 }
-function verifyGateEnvelope(envelope2, gate) {
-  const check = verifyReceipt(envelope2, gate.public_key);
+function verifyGateEnvelope(envelope3, gate) {
+  const check = verifyReceipt(envelope3, gate.public_key);
   if (!check.valid) return false;
-  const payload = envelope2.payload;
+  const payload = envelope3.payload;
   return payload.issuer_id === gate.kid && payload.gate_public_key === gate.public_key;
 }
 function writeAtomic(path, contents) {
@@ -3104,7 +3104,7 @@ function proposalUnsigned(input) {
 function approvalDigest(approval) {
   return stableDigest(approval);
 }
-function transition(registry, signer, event, headBefore, headAfter, fields = {}, at = nowIso()) {
+function transition(registry, signer, event, headBefore, headAfter, fields = {}, at2 = nowIso()) {
   const sequence = registry.history.length + 1;
   const body = {
     event,
@@ -3117,11 +3117,11 @@ function transition(registry, signer, event, headBefore, headAfter, fields = {},
   return {
     sequence,
     event,
-    occurred_at: at,
+    occurred_at: at2,
     head_before: headBefore,
     head_after: headAfter,
     ...fields,
-    transition_receipt: signLifecycleEvent(signer, body, at)
+    transition_receipt: signLifecycleEvent(signer, body, at2)
   };
 }
 function initializeMandateRegistry(input) {
@@ -3383,7 +3383,7 @@ function installSnapshotAtomically(cedarDir, snapshot) {
     if ((0, import_node_fs11.existsSync)(backup) && !(0, import_node_fs11.existsSync)(target)) (0, import_node_fs11.renameSync)(backup, target);
   }
 }
-function addTransition(registry, signer, item, at) {
+function addTransition(registry, signer, item, at2) {
   const previous = registry.history[registry.history.length - 1];
   const previousTransitionHash = previous ? stableDigest(previous.transition_receipt) : void 0;
   const trans = transition(registry, signer, item.event, item.head_before, item.head_after, {
@@ -3392,7 +3392,7 @@ function addTransition(registry, signer, item, at) {
     ...item.policy_digest ? { policy_digest: item.policy_digest } : {},
     ...item.expiry ? { expiry: item.expiry } : {},
     ...previousTransitionHash ? { previous_transition_hash: previousTransitionHash } : {}
-  }, at || item.occurred_at);
+  }, at2 || item.occurred_at);
   registry.history.push(trans);
   return trans;
 }
@@ -3494,11 +3494,11 @@ function createWebAuthnPolicyChallenge(input) {
   persistRegistry(input.cedarDir, registry);
   return challenge;
 }
-function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at) {
-  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at)));
+function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at2) {
+  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at2)));
   if (!integrity.valid && integrity.code !== "active_grant_expired") throw new Error(`cannot activate against invalid registry: ${integrity.code}`);
   if (registry.active.policy_digest !== proposal.base_policy_digest) throw new Error("active policy changed after proposal; create a new proposal against the current head");
-  if (Date.parse(proposal.expires_at) <= Date.parse(at)) throw new Error("proposal expired before approval; it cannot be activated");
+  if (Date.parse(proposal.expires_at) <= Date.parse(at2)) throw new Error("proposal expired before approval; it cannot be activated");
   const controller = registry.controllers.find((item) => item.id === approval.controller_id);
   if (!controller) throw new Error("approval controller is not registered");
   const error = approval.method === "ed25519" ? verifyDirectApproval(registry, proposal, approval) : verifyWebAuthnApproval(registry, proposal, approval);
@@ -3515,35 +3515,35 @@ function activateApprovedProposal(cedarDir, registry, signer, proposal, approval
     snapshot_digest: stableDigest(candidate),
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval)
-  }, at);
+  }, at2);
   registry.policies[candidate.policy_digest] = candidate;
   registry.approvals[proposal.proposal_id] = approval;
   registry.active = {
     policy_digest: candidate.policy_digest,
     baseline_policy_digest: before,
-    activated_at: at,
+    activated_at: at2,
     expires_at: proposal.expires_at,
     proposal_id: proposal.proposal_id,
     compilation_receipt: compilationReceipt
   };
   addTransition(registry, signer, {
     event: "proposal_approved",
-    occurred_at: at,
+    occurred_at: at2,
     head_before: before,
     head_after: before,
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval)
-  }, at);
+  }, at2);
   addTransition(registry, signer, {
     event: "policy_activated",
-    occurred_at: at,
+    occurred_at: at2,
     head_before: before,
     head_after: candidate.policy_digest,
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval),
     policy_digest: candidate.policy_digest,
     expiry: proposal.expires_at
-  }, at);
+  }, at2);
   delete registry.pending_webauthn[proposal.proposal_id];
   persistRegistry(cedarDir, registry);
   return registry;
@@ -3566,12 +3566,12 @@ function approvePolicyProposalWithWebAuthn(input) {
   if (pending.challenge.challenge !== policyApprovalChallenge(proposal, controller.id)) {
     throw new Error("pending WebAuthn challenge is not bound to this proposal");
   }
-  const at = nowIso(input.now);
+  const at2 = nowIso(input.now);
   const result2 = verifyApprovalAssertion(pending.challenge, input.assertion, controller.credential_public_key, {
     expectedOrigin: input.expectedOrigin,
     requireUserVerification: true,
     prevSignCount: controller.sign_count,
-    now: Date.parse(at)
+    now: Date.parse(at2)
   });
   if (!result2.valid || !result2.userVerified) throw new Error(`WebAuthn approval rejected: ${result2.reason || "user verification required"}`);
   controller.sign_count = result2.signCount;
@@ -3583,9 +3583,9 @@ function approvePolicyProposalWithWebAuthn(input) {
     assertion: input.assertion,
     result: result2,
     expected_origin: input.expectedOrigin,
-    approved_at: at
+    approved_at: at2
   };
-  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at);
+  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at2);
 }
 function refreshManagedMandate(input) {
   const registry = loadMandateRegistry(input.cedarDir);
@@ -3602,7 +3602,7 @@ function refreshManagedMandate(input) {
     if (!baseline) return { valid: false, code: "expiry_baseline_missing", message: "Expired policy has no baseline snapshot to restore." };
     try {
       installSnapshotAtomically(input.cedarDir, baseline);
-      const at = nowIso(now);
+      const at2 = nowIso(now);
       const before = registry.active.policy_digest;
       const compilationReceipt = signLifecycleEvent(input.signer, {
         event: "compiled",
@@ -3610,21 +3610,21 @@ function refreshManagedMandate(input) {
         policy_digest: baseline.policy_digest,
         snapshot_digest: stableDigest(baseline),
         reverted_from: before
-      }, at);
+      }, at2);
       registry.active = {
         policy_digest: baseline.policy_digest,
         baseline_policy_digest: baseline.policy_digest,
-        activated_at: at,
+        activated_at: at2,
         compilation_receipt: compilationReceipt
       };
       addTransition(registry, input.signer, {
         event: "policy_expired_reverted",
-        occurred_at: at,
+        occurred_at: at2,
         head_before: before,
         head_after: baseline.policy_digest,
         policy_digest: baseline.policy_digest,
         expiry: savedExpiry
-      }, at);
+      }, at2);
       persistRegistry(input.cedarDir, registry);
       return { valid: true, registry, expired_reverted: true };
     } catch (error) {
@@ -3878,7 +3878,7 @@ function localAnchors(records, org, now, verifierBaseUrl) {
   }));
 }
 async function hostedAnchors(opts) {
-  const endpoint = opts.endpoint.replace(/\/$/, "") + "/v1/receipt-registry/anchor";
+  const endpoint2 = opts.endpoint.replace(/\/$/, "") + "/v1/receipt-registry/anchor";
   const payload = {
     type: "scopeblind.receipt_registry_anchor_request.v1",
     org: {
@@ -3906,7 +3906,7 @@ async function hostedAnchors(opts) {
   for (const forbidden of ["payload_preview", "raw_receipt", "prompt", "tool_output", "privateKey"]) {
     if (bodyText.includes(`${JSON.stringify(forbidden)}:`)) throw new Error(`hosted anchor payload contains forbidden field: ${forbidden}`);
   }
-  const res = await fetch(endpoint, {
+  const res = await fetch(endpoint2, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -3916,8 +3916,8 @@ async function hostedAnchors(opts) {
     body: JSON.stringify(payload)
   });
   if (!res.ok) {
-    const text4 = await res.text().catch(() => "");
-    throw new Error(`hosted anchor failed: HTTP ${res.status} ${text4.slice(0, 200)}`);
+    const text5 = await res.text().catch(() => "");
+    throw new Error(`hosted anchor failed: HTTP ${res.status} ${text5.slice(0, 200)}`);
   }
   const response = await res.json().catch(() => ({}));
   const anchors = Array.isArray(response.anchors) ? response.anchors : [];
@@ -4114,15 +4114,15 @@ function sha256Hex2(s) {
 }
 function deriveCapabilities(tool, input) {
   const t = String(tool || "").toLowerCase();
-  let text4 = "";
+  let text5 = "";
   try {
-    text4 = canonicalJson(input).toLowerCase();
+    text5 = canonicalJson(input).toLowerCase();
   } catch {
   }
   const caps = /* @__PURE__ */ new Set();
   for (const r of RULES) {
     if (r.tool && r.tool.test(t)) caps.add(r.cap);
-    if (r.text && r.text.test(text4)) caps.add(r.cap);
+    if (r.text && r.text.test(text5)) caps.add(r.cap);
   }
   return Array.from(caps).sort();
 }
@@ -4383,27 +4383,27 @@ function buildAnchorEnvelope(pack, key, issuedAt) {
   const signature = (0, import_utils4.bytesToHex)(import_ed255193.ed25519.sign(hash, (0, import_utils4.hexToBytes)(key.privateKey)));
   return { ...signed2, signature, digest };
 }
-function verifyAnchorEnvelope(pack, envelope2) {
+function verifyAnchorEnvelope(pack, envelope3) {
   const reasons = [];
-  if (!envelope2 || envelope2.type !== "evidence_pack" || envelope2.anchors !== "protect-mcp-claim") {
+  if (!envelope3 || envelope3.type !== "evidence_pack" || envelope3.anchors !== "protect-mcp-claim") {
     return { ok: false, reasons: ["sidecar does not contain a protect-mcp claim anchor envelope"] };
   }
   const expected = claimDigest(pack);
-  if (envelope2.claim_digest !== expected) {
+  if (envelope3.claim_digest !== expected) {
     reasons.push("anchored envelope binds a DIFFERENT claim (claim_digest mismatch)");
   }
-  if (envelope2.record_root !== pack.record.root) {
+  if (envelope3.record_root !== pack.record.root) {
     reasons.push("anchored envelope commits to a different record root");
   }
-  if (pack.issuer && envelope2.verification_key !== pack.issuer.publicKey) {
+  if (pack.issuer && envelope3.verification_key !== pack.issuer.publicKey) {
     reasons.push("anchor was signed by a different key than the claim issuer");
   }
   try {
-    const { signature, digest, ...signed2 } = envelope2;
+    const { signature, digest, ...signed2 } = envelope3;
     const hash = (0, import_sha2564.sha256)(new TextEncoder().encode(JSON.stringify(anchorDeepSort(signed2))));
     if ((0, import_utils4.bytesToHex)(hash) !== String(digest).toLowerCase()) {
       reasons.push("envelope digest does not match its contents");
-    } else if (!import_ed255193.ed25519.verify((0, import_utils4.hexToBytes)(String(signature)), hash, (0, import_utils4.hexToBytes)(envelope2.verification_key))) {
+    } else if (!import_ed255193.ed25519.verify((0, import_utils4.hexToBytes)(String(signature)), hash, (0, import_utils4.hexToBytes)(envelope3.verification_key))) {
       reasons.push("envelope signature does not verify");
     }
   } catch {
@@ -4413,11 +4413,11 @@ function verifyAnchorEnvelope(pack, envelope2) {
 }
 async function checkClaimAnchor(pack, sidecar, opts) {
   const reasons = [];
-  const envelope2 = sidecar && sidecar.envelope;
-  if (!envelope2) {
+  const envelope3 = sidecar && sidecar.envelope;
+  if (!envelope3) {
     return { local_ok: false, log_ok: null, reasons: ["sidecar has no anchor envelope"] };
   }
-  const local = verifyAnchorEnvelope(pack, envelope2);
+  const local = verifyAnchorEnvelope(pack, envelope3);
   reasons.push(...local.reasons);
   const base = (sidecar.log || DEFAULT_LOG).replace(/\/+$/, "");
   const out2 = {
@@ -4432,7 +4432,7 @@ async function checkClaimAnchor(pack, sidecar, opts) {
   const doFetch = opts?.fetchImpl || globalThis.fetch;
   if (!doFetch) return out2;
   try {
-    const resp = await doFetch(`${base}/fn/log/digest/sha256:${envelope2.digest}`, { headers: { accept: "application/json" } });
+    const resp = await doFetch(`${base}/fn/log/digest/sha256:${envelope3.digest}`, { headers: { accept: "application/json" } });
     const data = await resp.json().catch(() => null);
     if (!resp.ok || !data) {
       out2.log_ok = null;
@@ -4456,10 +4456,10 @@ async function checkClaimAnchor(pack, sidecar, opts) {
     return out2;
   }
 }
-async function submitEnvelope(envelope2, base, fetchImpl) {
+async function submitEnvelope(envelope3, base, fetchImpl) {
   const doFetch = fetchImpl || globalThis.fetch;
   if (!doFetch) return { ok: false, error: "fetch_unavailable" };
-  const encoded = toBase64(new TextEncoder().encode(JSON.stringify(envelope2)));
+  const encoded = toBase64(new TextEncoder().encode(JSON.stringify(envelope3)));
   try {
     const resp = await doFetch(`${base}/fn/log/anchor-pack`, {
       method: "POST",
@@ -4476,18 +4476,18 @@ async function submitEnvelope(envelope2, base, fetchImpl) {
   }
 }
 async function anchorClaim(pack, key, opts) {
-  const envelope2 = buildAnchorEnvelope(pack, key, opts.issuedAt);
+  const envelope3 = buildAnchorEnvelope(pack, key, opts.issuedAt);
   const base = (opts.log || DEFAULT_LOG).replace(/\/+$/, "");
-  const out2 = await submitEnvelope(envelope2, base, opts.fetchImpl);
-  if (!out2.ok) return { ok: false, claim_digest: envelope2.claim_digest, error: out2.error, envelope: envelope2 };
+  const out2 = await submitEnvelope(envelope3, base, opts.fetchImpl);
+  if (!out2.ok) return { ok: false, claim_digest: envelope3.claim_digest, error: out2.error, envelope: envelope3 };
   return {
     ok: true,
-    claim_digest: envelope2.claim_digest,
+    claim_digest: envelope3.claim_digest,
     seq: out2.seq,
     entry_url: `${base}/fn/log/${out2.seq}`,
     anchored_at: out2.anchored_at,
     already_anchored: out2.already_anchored,
-    envelope: envelope2
+    envelope: envelope3
   };
 }
 function buildRecordCheckpoint(receipts, key, issuedAt) {
@@ -5500,10 +5500,10 @@ function category(tool) {
   if (/(trade|order|pms|broker|position)/.test(value)) return "finance";
   return "other";
 }
-function toEgressSummary(envelope2, opts) {
+function toEgressSummary(envelope3, opts) {
   if (!opts?.pseudonymKey || typeof opts.pseudonymKey === "string" && !opts.pseudonymKey.length || opts.pseudonymKey instanceof Uint8Array && !opts.pseudonymKey.length) return null;
-  if (!envelope2 || typeof envelope2 !== "object" || Array.isArray(envelope2)) return null;
-  const env = envelope2;
+  if (!envelope3 || typeof envelope3 !== "object" || Array.isArray(envelope3)) return null;
+  const env = envelope3;
   const p = env.payload;
   if (!p || typeof p !== "object" || typeof p.type !== "string" || !KNOWN_RECEIPT_TYPES.has(p.type)) return null;
   const ar = p.action_readback;
@@ -5513,7 +5513,7 @@ function toEgressSummary(envelope2, opts) {
   const summary = {
     type: EGRESS_SUMMARY_TYPE,
     version: EGRESS_SUMMARY_VERSION,
-    source_receipt_commitment: `sha256:${receiptHash(envelope2)}`,
+    source_receipt_commitment: `sha256:${receiptHash(envelope3)}`,
     request_pseudonym: hmacCommitment("scopeblind.egress.request.v1", p.request_id || p.scope || "", opts),
     decision: rawDecision && DECISIONS.has(rawDecision) ? rawDecision : "other",
     reason_code: code(p.reason),
@@ -5730,8 +5730,8 @@ async function callSign(args) {
     public_key: publicKey
   });
   const artifactType = decision === "deny" ? "gateway_restraint" : "decision_receipt";
-  const { envelope: envelope2 } = createReceiptEnvelope(payload, privateKey, computeSbIssuerKid(publicKey));
-  return { receipt: envelope2, artifact_type: artifactType, public_key: publicKey, ephemeral };
+  const { envelope: envelope3 } = createReceiptEnvelope(payload, privateKey, computeSbIssuerKid(publicKey));
+  return { receipt: envelope3, artifact_type: artifactType, public_key: publicKey, ephemeral };
 }
 async function callVerify(args) {
   const receipt = args.receipt;
@@ -5781,8 +5781,8 @@ async function callSelfTest() {
     note: "No network was contacted."
   };
 }
-function textResult(id4, value) {
-  return JSON.stringify({ jsonrpc: "2.0", id: id4, result: { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] } });
+function textResult(id5, value) {
+  return JSON.stringify({ jsonrpc: "2.0", id: id5, result: { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] } });
 }
 async function handleRequest(request) {
   if (request.method === "initialize") {
@@ -5947,7 +5947,7 @@ function validRepositoryProposal(v, task, taskDigest) {
   return Array.isArray(v.checks) && v.checks.length === task.required_checks.length && v.checks.every((c2) => object(c2) && exact(c2, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(c2.id) && Number(c2.id) > 0 && c2.head_sha === v.head_sha && c2.conclusion === "success" && task.required_checks.some((r) => r.name === c2.name && r.app_id === c2.app_id)) && new Set(v.checks.map((c2) => `${c2.name}:${c2.app_id}`)).size === v.checks.length;
 }
 async function repositorySnapshotDigest(p) {
-  const { id: id4, observed_at, ...snapshot } = p;
+  const { id: id5, observed_at, ...snapshot } = p;
   return sha256(canonical(snapshot));
 }
 function validRepositoryRecord(v, kind) {
@@ -6017,14 +6017,80 @@ var init_coordination_repository = __esm({
   }
 });
 
-// src/repository-receiver.ts
-var repository_receiver_exports = {};
-__export(repository_receiver_exports, {
-  RepositoryReceiver: () => RepositoryReceiver,
-  RepositoryReceiverError: () => RepositoryReceiverError,
-  parseRepositoryReceiverConfig: () => parseRepositoryReceiverConfig,
-  runRepositoryReceiver: () => runRepositoryReceiver
+// src/coordination-repository-collaboration.ts
+function validContactPage(value) {
+  return shape(value, ["type", "button_label", "target", "accent"]) && value.type === "scopeblind.contact-page.v1" && text2(value.button_label, 40) && ["broken", "contact"].includes(String(value.target)) && ["indigo", "emerald", "rose"].includes(String(value.accent));
+}
+function contactPageBytes(value) {
+  if (!validContactPage(value))
+    throw new Error("invalid_contact_page");
+  return canonical(value) + "\n";
+}
+function validRepositoryConnection(v) {
+  if (!shape(v, ["type", "id", "endpoint", "repository", "base_branch", "owner_key", "receiver_key", "authority_key", "issued_at", "expires_at"]))
+    return false;
+  let endpoint2;
+  try {
+    endpoint2 = new URL(String(v.endpoint));
+  } catch {
+    return false;
+  }
+  return v.type === "scopeblind.repository.connection.v1" && id(v.id) && endpoint2.protocol === "https:" && endpoint2.pathname === "/api/coordination" && !endpoint2.search && !endpoint2.hash && !endpoint2.username && !endpoint2.password && endpoint2.href === v.endpoint && repository(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(hex) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && span(v.issued_at, v.expires_at, 30 * 864e5);
+}
+function validRepositoryReadiness(v) {
+  if (!shape(v, ["type", "connection_digest", "repository", "base_branch", "owner_key", "receiver_key", "authority_key", "checks", "base_sha", "check_head_sha", "protection", "runtime", "workflow", "observed_at", "expires_at"], ["required_checks", "workflow_sha"]))
+    return false;
+  return v.type === "scopeblind.repository.readiness.v1" && hex(v.connection_digest) && repository(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(hex) && sha(v.base_sha) && sha(v.check_head_sha) && ["observed", "unavailable"].includes(String(v.protection)) && ["local", "github_actions"].includes(String(v.runtime)) && ["not_checked", "missing", "matching", "different", "unavailable"].includes(String(v.workflow)) && (v.workflow_sha === void 0 || sha(v.workflow_sha)) && span(v.observed_at, v.expires_at, 864e5) && Array.isArray(v.checks) && v.checks.length <= 100 && v.checks.every((c2) => shape(c2, ["name", "app_id"], ["app_name"]) && text2(c2.name, 100) && Number.isSafeInteger(c2.app_id) && Number(c2.app_id) > 0 && (c2.app_name === void 0 || text2(c2.app_name, 100))) && (v.required_checks === void 0 || Array.isArray(v.required_checks) && v.required_checks.length <= 100 && v.required_checks.every((c2) => shape(c2, ["name", "app_id"]) && text2(c2.name, 100) && (c2.app_id === null || Number.isSafeInteger(c2.app_id) && Number(c2.app_id) > 0)));
+}
+function validRepositoryParticipants(v) {
+  return shape(v, ["type", "task_id", "task_digest", "owner_key", "receiver_key", "reviewer_key", "reviewer_claim_digest", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.participants.v1" && id(v.task_id) && [v.task_digest, v.owner_key, v.receiver_key, v.reviewer_key, v.reviewer_claim_digest].every(hex) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.reviewer_key])).size === 3 && span(v.issued_at, v.expires_at, 7 * 864e5);
+}
+function validRepositoryPreview(v) {
+  return shape(v, ["type", "task_id", "task_digest", "proposal_digest", "base_sha", "head_sha", "merge_sha", "tree_sha", "path", "before", "after", "renderer", "observed_at"]) && v.type === "scopeblind.repository.preview.v1" && id(v.task_id) && hex(v.task_digest) && hex(v.proposal_digest) && [v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every(sha) && v.path === CONTACT_PATH && v.renderer === "scopeblind.contact-page.v1" && at(v.observed_at) && [v.before, v.after].every((side) => shape(side, ["model", "blob_sha", "content_sha256"]) && validContactPage(side.model) && sha(side.blob_sha) && hex(side.content_sha256));
+}
+function validRepositoryAgentGrant(v) {
+  return shape(v, ["type", "id", "task_id", "task_digest", "issuer_key", "agent_key", "permissions", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.agent-grant.v1" && id(v.id) && id(v.task_id) && [v.task_digest, v.issuer_key, v.agent_key].every(hex) && v.issuer_key !== v.agent_key && Array.isArray(v.permissions) && v.permissions.length > 0 && v.permissions.length <= 2 && new Set(v.permissions).size === v.permissions.length && v.permissions.every((p) => p === "read_task" || p === "request_revision") && v.permissions.includes("read_task") && span(v.issued_at, v.expires_at, 36e5);
+}
+function validRepositoryRevisionRequest(v) {
+  return shape(v, ["type", "id", "task_id", "task_digest", "basis_digest", "requester_key", "message", "proposed", "issued_at"], ["grant_digest"]) && v.type === "scopeblind.repository.revision-request.v1" && id(v.id) && id(v.task_id) && [v.task_digest, v.basis_digest, v.requester_key].every(hex) && (v.grant_digest === void 0 || hex(v.grant_digest)) && text2(v.message, 600) && validContactPage(v.proposed) && at(v.issued_at);
+}
+function validRepositoryRevisionLink(v) {
+  return shape(v, ["type", "id", "parent_task_id", "parent_task_digest", "parent_basis_digest", "request_digest", "child_task_id", "child_task_digest", "owner_key", "issued_at"]) && v.type === "scopeblind.repository.revision-link.v1" && [v.id, v.parent_task_id, v.child_task_id].every(id) && v.parent_task_id !== v.child_task_id && [v.parent_task_digest, v.parent_basis_digest, v.request_digest, v.child_task_digest, v.owner_key].every(hex) && at(v.issued_at);
+}
+function validRepositoryDemoRequest(v) {
+  if (!shape(v, ["type", "id", "owner_key", "receiver_key", "authority_key", "title", "goal", "proposed", "reviewer_secret_hash", "issued_at", "expires_at"], ["parent_task_id", "parent_task_digest", "parent_basis_digest", "revision_request_digest"]))
+    return false;
+  const parent = ["parent_task_id", "parent_task_digest", "parent_basis_digest", "revision_request_digest"];
+  return v.type === "scopeblind.repository.demo-request.v1" && id(v.id) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every(hex) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && text2(v.title, 140) && text2(v.goal, 600) && validContactPage(v.proposed) && span(v.issued_at, v.expires_at, 864e5) && (parent.every((k) => v[k] === void 0) || id(v.parent_task_id) && [v.parent_task_digest, v.parent_basis_digest, v.revision_request_digest].every(hex));
+}
+function validRepositoryDemoProvision(v) {
+  return shape(v, ["type", "request_id", "request_digest", "repository", "base_branch", "head_branch", "pull_number", "initial_base_sha", "initial_head_sha", "receiver_key", "required_checks", "observed_at"]) && v.type === "scopeblind.repository.demo-provision.v1" && id(v.request_id) && [v.request_digest, v.receiver_key].every(hex) && v.repository === DEMO_REPOSITORY && v.base_branch === `scopeblind/demo/${v.request_id}/base` && v.head_branch === `scopeblind/demo/${v.request_id}/change` && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && sha(v.initial_base_sha) && sha(v.initial_head_sha) && Array.isArray(v.required_checks) && canonical(v.required_checks) === canonical([DEMO_CHECK]) && at(v.observed_at);
+}
+function repositoryRevisionBasis(state) {
+  return state.acceptance?.digest ?? state.outcome?.digest ?? state.proposal?.digest ?? null;
+}
+var DEMO_REPOSITORY, DEMO_CHECK, CONTACT_PATH, object2, shape, text2, hex, id, sha, at, span, repository;
+var init_coordination_repository_collaboration = __esm({
+  "src/coordination-repository-collaboration.ts"() {
+    "use strict";
+    init_coordination_protocol();
+    init_coordination_repository();
+    DEMO_REPOSITORY = "ScopeBlind/scopeblind-repository-demo";
+    DEMO_CHECK = { name: "ScopeBlind contact validation", app_id: 4962726 };
+    CONTACT_PATH = "demo/contact.json";
+    object2 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
+    shape = (value, required, optional = []) => object2(value) && required.every((key) => key in value) && Object.keys(value).every((key) => required.includes(key) || optional.includes(key));
+    text2 = (value, max, empty = false) => typeof value === "string" && (empty || value.trim().length > 0) && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
+    hex = (value) => typeof value === "string" && REPOSITORY_HEX.test(value);
+    id = (value) => typeof value === "string" && REPOSITORY_ID.test(value);
+    sha = (value) => typeof value === "string" && REPOSITORY_SHA.test(value);
+    at = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+    span = (issued, expires, max) => at(issued) && at(expires) && Date.parse(String(expires)) > Date.parse(String(issued)) && Date.parse(String(expires)) - Date.parse(String(issued)) <= max;
+    repository = (value) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(value);
+  }
 });
+
+// src/repository-receiver.ts
 function requireValue(value, code2) {
   if (!value) throw new RepositoryReceiverError(code2);
 }
@@ -6121,13 +6187,13 @@ var init_repository_receiver = __esm({
       }
     };
     RepositoryReceiver = class {
-      constructor(config, identity, githubToken, fetchImpl = fetch) {
+      constructor(config, identity, githubToken2, fetchImpl = fetch) {
         this.identity = identity;
-        this.githubToken = githubToken;
+        this.githubToken = githubToken2;
         this.fetchImpl = fetchImpl;
         this.config = parseRepositoryReceiverConfig(config);
         requireValue(identity.publicKey === config.receiver_key && !identity.deviceAuthorization, "receiver_key_mismatch");
-        requireValue(typeof githubToken === "string" && githubToken.length > 0, "github_token_required");
+        requireValue(typeof githubToken2 === "string" && githubToken2.length > 0, "github_token_required");
       }
       config;
       async rpc(action, taskId, body = {}) {
@@ -6179,9 +6245,9 @@ var init_repository_receiver = __esm({
         }
         return pr;
       }
-      async tree(sha) {
-        const body = (await this.github(`${this.repo}/git/trees/${sha}?recursive=1`)).body;
-        requireValue(body.sha === sha && !body.truncated && Array.isArray(body.tree) && body.tree.length <= 1e4, "repository_tree_incomplete");
+      async tree(sha2) {
+        const body = (await this.github(`${this.repo}/git/trees/${sha2}?recursive=1`)).body;
+        requireValue(body.sha === sha2 && !body.truncated && Array.isArray(body.tree) && body.tree.length <= 1e4, "repository_tree_incomplete");
         return new Map(body.tree.map((v) => [v.path, { type: v.type, mode: v.mode, sha: v.sha }]));
       }
       async snapshot(task, proposalId = crypto.randomUUID()) {
@@ -6264,18 +6330,18 @@ var init_repository_receiver = __esm({
       async reconcileState(state, note = "Reconciled the existing operation by reading GitHub; no new reference update was sent.", requestId = "") {
         requireValue(state.payload.execution && state.payload.proposal, "repository_execution_missing");
         if (state.payload.outcome && state.payload.outcome.payload.status !== "unknown") return state;
-        let sha = null, readback = "not_confirmed";
+        let sha2 = null, readback = "not_confirmed";
         try {
-          sha = await this.ref(state.payload.task.payload.base_branch);
-          if (sha === state.payload.proposal.payload.merge_sha) readback = "exact_ref";
-          else if (sha !== state.payload.proposal.payload.base_sha) {
-            const compare = (await this.github(`${this.repo}/compare/${state.payload.proposal.payload.merge_sha}...${sha}`)).body;
+          sha2 = await this.ref(state.payload.task.payload.base_branch);
+          if (sha2 === state.payload.proposal.payload.merge_sha) readback = "exact_ref";
+          else if (sha2 !== state.payload.proposal.payload.base_sha) {
+            const compare = (await this.github(`${this.repo}/compare/${state.payload.proposal.payload.merge_sha}...${sha2}`)).body;
             if (compare.base_commit?.sha === state.payload.proposal.payload.merge_sha && compare.merge_base_commit?.sha === state.payload.proposal.payload.merge_sha && ["ahead", "identical"].includes(compare.status)) readback = "descendant_ref";
           }
         } catch {
           note = "GitHub readback was unavailable. Keep this operation unresolved; do not dispatch a replacement.";
         }
-        return this.report(state, { status: readback === "not_confirmed" ? "unknown" : "confirmed", observed_base_sha: sha, readback, note, ...requestId ? { github_request_id: requestId } : {} });
+        return this.report(state, { status: readback === "not_confirmed" ? "unknown" : "confirmed", observed_base_sha: sha2, readback, note, ...requestId ? { github_request_id: requestId } : {} });
       }
       async report(state, result2) {
         const s = state.payload, x = s.execution;
@@ -6286,6 +6352,408 @@ var init_repository_receiver = __esm({
   }
 });
 
+// src/repository-setup.ts
+var repository_setup_exports = {};
+__export(repository_setup_exports, {
+  REPOSITORY_SETUP_VERSION: () => REPOSITORY_SETUP_VERSION,
+  createRepositoryReadiness: () => createRepositoryReadiness,
+  discoverRepository: () => discoverRepository,
+  parseRepositoryConnectionConfig: () => parseRepositoryConnectionConfig,
+  renderRepositoryWorkflow: () => renderRepositoryWorkflow,
+  runRepositoryCommand: () => runRepositoryCommand
+});
+function need(v, code2) {
+  if (!v) throw new RepositoryReceiverError(code2);
+}
+async function readJson(response, max = 2e6) {
+  const reader = response.body?.getReader();
+  need(reader, "setup_empty_response");
+  const parts = [];
+  let size = 0;
+  try {
+    for (; ; ) {
+      const next = await reader.read();
+      if (next.done) break;
+      size += next.value.length;
+      if (size > max) {
+        await reader.cancel();
+        throw new RepositoryReceiverError("setup_response_too_large");
+      }
+      parts.push(next.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const out2 = new Uint8Array(size);
+  let offset = 0;
+  for (const part of parts) {
+    out2.set(part, offset);
+    offset += part.length;
+  }
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(out2));
+  } catch {
+    throw new RepositoryReceiverError("setup_invalid_json");
+  }
+}
+async function github(path, token, fetchImpl) {
+  let response;
+  try {
+    response = await fetchImpl(`https://api.github.com${path}`, { method: "GET", headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2026-03-10" }, redirect: "error", signal: AbortSignal.timeout(2e4) });
+  } catch {
+    throw new RepositoryReceiverError("setup_github_unavailable");
+  }
+  if ([403, 404].includes(response.status)) return { status: response.status, body: null };
+  need(response.ok, `setup_github_http_${response.status}`);
+  return { status: response.status, body: await readJson(response) };
+}
+async function discoverRepository(input, token, fetchImpl = fetch) {
+  need(REPO.test(input.repository) && token.length > 0, "setup_repository_and_github_login_required");
+  if (input.pull_number !== void 0) need(Number.isSafeInteger(input.pull_number) && input.pull_number > 0, "setup_invalid_pull_number");
+  const path = `/repos/${input.repository.split("/").map(encodeURIComponent).join("/")}`;
+  const repo = await github(path, token, fetchImpl);
+  need(repo.status === 200 && REPO.test(repo.body.full_name) && repo.body.full_name.toLowerCase() === input.repository.toLowerCase() && repositoryBranch(repo.body.default_branch) && !repo.body.archived && !repo.body.disabled, "setup_repository_unavailable");
+  const base = input.base_branch ?? repo.body.default_branch;
+  need(repositoryBranch(base) && base === repo.body.default_branch, "setup_use_trusted_default_branch");
+  const branch = await github(`${path}/branches/${encodeURIComponent(base)}`, token, fetchImpl);
+  need(branch.status === 200 && branch.body.name === base && REPOSITORY_SHA.test(branch.body.commit?.sha), "setup_base_branch_unavailable");
+  let head = branch.body.commit.sha;
+  if (input.pull_number) {
+    const pr = await github(`${path}/pulls/${input.pull_number}`, token, fetchImpl);
+    need(pr.status === 200 && pr.body.number === input.pull_number && pr.body.state === "open" && !pr.body.merged && pr.body.base?.ref === base && pr.body.base?.repo?.full_name === repo.body.full_name && pr.body.head?.repo?.full_name === repo.body.full_name && REPOSITORY_SHA.test(pr.body.head?.sha), "setup_same_repository_pull_required");
+    head = pr.body.head.sha;
+  }
+  const [runs, protection, rules, workflow] = await Promise.all([
+    github(`${path}/commits/${head}/check-runs?per_page=100&filter=latest`, token, fetchImpl),
+    github(`${path}/branches/${encodeURIComponent(base)}/protection`, token, fetchImpl),
+    github(`${path}/rules/branches/${encodeURIComponent(base)}`, token, fetchImpl),
+    github(`${path}/contents/${WORKFLOW_PATH}?ref=${encodeURIComponent(base)}`, token, fetchImpl)
+  ]);
+  need(runs.status === 200 && Number.isSafeInteger(runs.body.total_count) && runs.body.total_count >= 0 && runs.body.total_count <= 100 && Array.isArray(runs.body.check_runs) && runs.body.check_runs.length === runs.body.total_count, "setup_checks_incomplete");
+  const checks = [];
+  for (const run of runs.body.check_runs) {
+    need(run.head_sha === head && safeText(run.name, 100) && Number.isSafeInteger(run.app?.id) && run.app.id > 0, "setup_invalid_check_provider");
+    if (!checks.some((c2) => c2.name === run.name && c2.app_id === run.app.id)) checks.push({ name: run.name, app_id: run.app.id, ...safeText(run.app.name, 100) ? { app_name: run.app.name } : {} });
+  }
+  need(checks.length <= 100, "setup_checks_incomplete");
+  checks.sort((a, b) => a.name.localeCompare(b.name) || a.app_id - b.app_id);
+  const required = [];
+  const add = (name, id5) => {
+    need(safeText(name, 100) && (id5 === null || id5 === void 0 || id5 === -1 || Number.isSafeInteger(id5) && Number(id5) > 0), "setup_invalid_required_check");
+    const check = { name, app_id: Number.isSafeInteger(id5) && Number(id5) > 0 ? Number(id5) : null };
+    if (!required.some((c2) => c2.name === check.name && c2.app_id === check.app_id)) required.push(check);
+    need(required.length <= 100, "setup_rules_incomplete");
+  };
+  if (protection.status === 200) {
+    const status = protection.body.required_status_checks;
+    if (status) {
+      need(Array.isArray(status.contexts) && Array.isArray(status.checks), "setup_invalid_branch_protection");
+      for (const c2 of status.checks) add(c2.context, c2.app_id);
+      for (const context of status.contexts) if (!status.checks.some((c2) => c2.context === context)) add(context, null);
+    }
+  }
+  if (rules.status === 200) {
+    need(Array.isArray(rules.body) && rules.body.length <= 100, "setup_rules_incomplete");
+    for (const rule of rules.body) if (rule.type === "required_status_checks") {
+      need(Array.isArray(rule.parameters?.required_status_checks), "setup_invalid_repository_rules");
+      for (const c2 of rule.parameters.required_status_checks) add(c2.context, c2.integration_id);
+    }
+  }
+  let workflowSha, workflowHash;
+  if (workflow.status === 200) {
+    need(workflow.body.type === "file" && workflow.body.path === WORKFLOW_PATH && REPOSITORY_SHA.test(workflow.body.sha) && workflow.body.encoding === "base64" && typeof workflow.body.content === "string" && workflow.body.content.length <= 1e5, "setup_invalid_workflow_response");
+    workflowSha = workflow.body.sha;
+    workflowHash = await sha256(Buffer.from(workflow.body.content, "base64").toString("utf8"));
+  }
+  const warnings = [];
+  if (!checks.length) warnings.push("No check runs were observed on this commit. Run the repository\u2019s existing CI or repeat setup with --pull NUMBER; do not invent a check name or provider.");
+  if (protection.status !== 200 || rules.status !== 200) warnings.push("Some repository protection requirements could not be read. This does not mean the branch is unprotected; review its rules in GitHub.");
+  if (required.some((c2) => c2.app_id === null)) warnings.push("Some required status checks do not pin an app. Select the actual observed provider explicitly; setup does not treat an unpinned name as a verified provider.");
+  if (required.some((c2) => !checks.some((o) => o.name === c2.name && (c2.app_id === null || o.app_id === c2.app_id)))) warnings.push("Some required checks were not observed on this commit. Repeat discovery on a representative pull request before choosing task requirements.");
+  if (checks.some((c2) => checks.some((other) => other.name === c2.name && other.app_id !== c2.app_id))) warnings.push("A check name is used by more than one app. Review the provider ID as well as the name.");
+  return { repository: repo.body.full_name, base_branch: base, base_sha: branch.body.commit.sha, observed_head_sha: head, checks, required_checks: required, protection_read: protection.status === 200 ? "observed" : "unavailable", rules_read: rules.status === 200 ? "observed" : "unavailable", repository_permissions: repo.body.permissions ? { admin: repo.body.permissions.admin === true, push: repo.body.permissions.push === true } : null, workflow_state: workflow.status === 200 ? "present" : workflow.status === 404 ? "absent" : "not_checked", ...workflowSha ? { workflow_sha: workflowSha, workflow_sha256: workflowHash } : {}, warnings };
+}
+function endpoint(value) {
+  let url;
+  try {
+    url = new URL(String(value));
+  } catch {
+    throw new RepositoryReceiverError("setup_invalid_endpoint");
+  }
+  need(url.protocol === "https:" && url.pathname === "/api/coordination" && !url.username && !url.password && !url.search && !url.hash && url.href === value, "setup_invalid_endpoint");
+  return url.href;
+}
+function parseRepositoryConnectionConfig(value) {
+  const c2 = value, t = c2?.connection;
+  need(c2 && Object.keys(c2).sort().join(",") === "connection,receiver_sha256,receiver_url,type,workflow_path,workflow_sha256" && c2.type === "scopeblind.repository.connection-config.v1" && t && Object.keys(t).sort().join(",") === "authority_key,base_branch,endpoint,expires_at,id,issued_at,owner_key,receiver_key,repository,type", "setup_invalid_connection_config");
+  need(validRepositoryConnection(t), "setup_invalid_connection_config");
+  endpoint(t.endpoint);
+  need(/^https:\/\/scopeblind\.com\/releases\/repository-receiver-[0-9]+\.[0-9]+\.[0-9]+\.cjs$/.test(c2.receiver_url) && REPOSITORY_HEX.test(c2.receiver_sha256) && c2.workflow_path === WORKFLOW_PATH && REPOSITORY_HEX.test(c2.workflow_sha256), "setup_invalid_artifact_pin");
+  return c2;
+}
+function renderRepositoryWorkflow(artifact) {
+  need(/^https:\/\/scopeblind\.com\/releases\/repository-receiver-[0-9]+\.[0-9]+\.[0-9]+\.cjs$/.test(artifact.url) && REPOSITORY_HEX.test(artifact.sha256), "setup_invalid_artifact_pin");
+  return WORKFLOW_TEMPLATE.replace("__RECEIVER_URL__", artifact.url).replace("__RECEIVER_SHA256__", artifact.sha256);
+}
+async function createRepositoryReadiness(connection, identity, discovery, options2 = {}) {
+  const now = options2.now ?? Date.now();
+  need(identity.publicKey === connection.receiver_key && !identity.deviceAuthorization && discovery.repository === connection.repository && discovery.base_branch === connection.base_branch && Date.parse(connection.expires_at) > now, "setup_connection_scope_mismatch");
+  const workflow = discovery.workflow_state === "absent" ? "missing" : discovery.workflow_state === "not_checked" ? "unavailable" : !options2.workflow_sha256 ? "not_checked" : discovery.workflow_sha256 === options2.workflow_sha256 ? "matching" : "different";
+  const readiness = { type: "scopeblind.repository.readiness.v1", connection_digest: await sha256(COORDINATION_DOMAIN + canonical(connection)), repository: connection.repository, base_branch: connection.base_branch, owner_key: connection.owner_key, receiver_key: identity.publicKey, authority_key: connection.authority_key, checks: discovery.checks, base_sha: discovery.base_sha, check_head_sha: discovery.observed_head_sha, required_checks: discovery.required_checks, protection: discovery.protection_read, runtime: options2.runtime ?? "local", workflow, ...discovery.workflow_sha ? { workflow_sha: discovery.workflow_sha } : {}, observed_at: new Date(now).toISOString(), expires_at: new Date(Math.min(now + 864e5, Date.parse(connection.expires_at))).toISOString() };
+  need(validRepositoryConnection(connection) && validRepositoryReadiness(readiness), "setup_invalid_readiness");
+  return { type: "scopeblind.repository.connection-import.v1", connection, readiness: await sign(readiness, identity) };
+}
+async function githubToken(env) {
+  const value = env.GITHUB_TOKEN || env.GH_TOKEN;
+  if (value) {
+    need(!/[\r\n\u0000]/.test(value), "setup_invalid_github_token");
+    return value;
+  }
+  const { execFile } = await import("child_process");
+  const token = await new Promise((resolve5, reject) => execFile("gh", ["auth", "token", "--hostname", "github.com"], { encoding: "utf8", timeout: 1e4, maxBuffer: 8192, env }, (error, stdout) => error ? reject(new RepositoryReceiverError("setup_github_login_required", "Sign in locally with gh auth login, or set GITHUB_TOKEN on this trusted machine.")) : resolve5(stdout.trim())));
+  need(token.length > 0 && !/[\r\n\u0000]/.test(token), "setup_github_login_required");
+  return token;
+}
+async function localIdentity(file, expected, env) {
+  const { readFile, stat } = await import("fs/promises");
+  let privateKey = env.SCOPEBLIND_RECEIVER_PRIVATE_KEY, publicKey = expected;
+  if (file) {
+    const meta = await stat(file);
+    need(meta.isFile() && (process.platform === "win32" || (meta.mode & 63) === 0), "setup_private_key_permissions");
+    let key;
+    try {
+      key = JSON.parse(await readFile(file, "utf8"));
+    } catch {
+      throw new RepositoryReceiverError("setup_invalid_private_key_file");
+    }
+    need(key.type === "scopeblind.repository.receiver-key.v1" && (!expected || key.public_key === expected), "receiver_key_mismatch");
+    privateKey = key.private_key;
+    publicKey = key.public_key;
+  }
+  need(typeof privateKey === "string" && /^[0-9a-f]{96,300}$/.test(privateKey) && typeof publicKey === "string" && REPOSITORY_HEX.test(publicKey), "receiver_private_key_required");
+  try {
+    return await importIdentity(privateKey, publicKey);
+  } catch {
+    throw new RepositoryReceiverError("receiver_key_mismatch");
+  }
+}
+async function checkServicePin(url, pin, fetchImpl) {
+  let response;
+  try {
+    response = await fetchImpl(`${endpoint(url)}?op=info`, { method: "GET", redirect: "error", signal: AbortSignal.timeout(2e4) });
+  } catch {
+    throw new RepositoryReceiverError("setup_service_unavailable");
+  }
+  const info = await readJson(response, 1e4);
+  need(response.ok && info.ok === true && info.authority_key === pin && info.protocol === "scopeblind.coordination.v1", "setup_service_pin_mismatch");
+}
+async function artifactPin(url, pin, fetchImpl) {
+  need(/^https:\/\/scopeblind\.com\/releases\/repository-receiver-[0-9]+\.[0-9]+\.[0-9]+\.cjs$/.test(url), "setup_invalid_artifact_pin");
+  if (pin) {
+    need(REPOSITORY_HEX.test(pin), "setup_invalid_artifact_pin");
+    return pin;
+  }
+  let response;
+  try {
+    response = await fetchImpl(`${url}.sha256`, { method: "GET", redirect: "error", signal: AbortSignal.timeout(2e4) });
+  } catch {
+    throw new RepositoryReceiverError("setup_release_checksum_unavailable");
+  }
+  need(response.ok, "setup_release_checksum_unavailable");
+  const value = await response.text();
+  need(value.length < 1e3 && /^[0-9a-f]{64}(?:\s+[^\r\n]+)?\s*$/.test(value), "setup_invalid_release_checksum");
+  return value.slice(0, 64);
+}
+async function runRepositoryCommand(args, dependencies = {}) {
+  if (!["setup", "ready"].includes(args[0])) return runRepositoryReceiver(args);
+  const { readFile, writeFile, mkdir, stat } = await import("fs/promises"), { resolve: resolve5, join: join13 } = await import("path");
+  const options2 = /* @__PURE__ */ new Map();
+  const allowed = args[0] === "setup" ? ["--repository", "--owner-key", "--authority-key", "--endpoint", "--base", "--pull", "--key-file", "--output", "--receiver-url", "--receiver-sha256"] : ["--connection", "--key-file", "--pull", "--output"];
+  for (let i = 1; i < args.length; i += 2) {
+    need(allowed.includes(args[i]) && !options2.has(args[i]) && typeof args[i + 1] === "string" && !args[i + 1].startsWith("--"), "setup_invalid_arguments");
+    options2.set(args[i], args[i + 1]);
+  }
+  const env = dependencies.env ?? process.env, fetchImpl = dependencies.fetchImpl ?? fetch, stdout = dependencies.stdout ?? ((s) => process.stdout.write(s));
+  const pull = options2.get("--pull");
+  if (pull !== void 0) need(/^[1-9][0-9]*$/.test(pull) && Number.isSafeInteger(Number(pull)), "setup_invalid_pull_number");
+  const token = await githubToken(env);
+  if (args[0] === "ready") {
+    need(options2.get("--connection") && options2.get("--output"), "setup_connection_and_output_required");
+    let value;
+    try {
+      value = JSON.parse(await readFile(options2.get("--connection"), "utf8"));
+    } catch {
+      throw new RepositoryReceiverError("setup_invalid_connection_config");
+    }
+    const config2 = parseRepositoryConnectionConfig(value), identity2 = await localIdentity(options2.get("--key-file"), config2.connection.receiver_key, env);
+    await checkServicePin(config2.connection.endpoint, config2.connection.authority_key, fetchImpl);
+    const discovery2 = await discoverRepository({ repository: config2.connection.repository, base_branch: config2.connection.base_branch, ...pull ? { pull_number: Number(pull) } : {} }, token, fetchImpl);
+    const actions = env.GITHUB_ACTIONS === "true";
+    if (actions) need(env.GITHUB_REPOSITORY === config2.connection.repository && env.GITHUB_EVENT_NAME === "workflow_dispatch" && env.GITHUB_REF === `refs/heads/${config2.connection.base_branch}` && discovery2.workflow_sha256 === config2.workflow_sha256 && env.GITHUB_WORKFLOW_REF === `${config2.connection.repository}/${WORKFLOW_PATH}@refs/heads/${config2.connection.base_branch}`, "receiver_trusted_workflow_required");
+    const result3 = await createRepositoryReadiness(config2.connection, identity2, discovery2, { runtime: actions ? "github_actions" : "local", workflow_sha256: config2.workflow_sha256 });
+    await writeFile(options2.get("--output"), JSON.stringify(result3, null, 2) + "\n", { mode: 384, flag: "wx" });
+    stdout(`Read-only readiness recorded for ${config2.connection.repository}. No task was approved or executed. Import the public observation into the repository connection.
+`);
+    return;
+  }
+  const repository2 = options2.get("--repository"), owner = options2.get("--owner-key"), authority = options2.get("--authority-key"), output = options2.get("--output");
+  need(repository2 && REPO.test(repository2) && owner && REPOSITORY_HEX.test(owner) && authority && REPOSITORY_HEX.test(authority) && owner !== authority && output, "setup_repository_owner_pin_and_output_required");
+  const service = endpoint(options2.get("--endpoint") ?? "https://scopeblind.com/api/coordination");
+  await checkServicePin(service, authority, fetchImpl);
+  const discovery = await discoverRepository({ repository: repository2, base_branch: options2.get("--base"), ...pull ? { pull_number: Number(pull) } : {} }, token, fetchImpl);
+  const url = options2.get("--receiver-url") ?? `https://scopeblind.com/releases/repository-receiver-${REPOSITORY_SETUP_VERSION}.cjs`, hash = await artifactPin(url, options2.get("--receiver-sha256"), fetchImpl), workflow = renderRepositoryWorkflow({ url, sha256: hash });
+  const directory = resolve5(output);
+  let exists = false;
+  try {
+    await stat(directory);
+    exists = true;
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+  need(!exists, "setup_output_exists");
+  await mkdir(directory, { mode: 448 });
+  let keyFile = options2.get("--key-file");
+  if (!keyFile) {
+    keyFile = join13(directory, "receiver-key.json");
+    const pair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]);
+    const key = { type: "scopeblind.repository.receiver-key.v1", public_key: bytesToHex(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))), private_key: bytesToHex(new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey))) };
+    await writeFile(keyFile, JSON.stringify(key, null, 2) + "\n", { mode: 384, flag: "wx" });
+  }
+  const identity = await localIdentity(keyFile, void 0, env);
+  need(identity.publicKey !== owner && identity.publicKey !== authority, "setup_independent_receiver_key_required");
+  const now = Date.now(), connection = { type: "scopeblind.repository.connection.v1", id: crypto.randomUUID(), endpoint: service, repository: discovery.repository, base_branch: discovery.base_branch, owner_key: owner, receiver_key: identity.publicKey, authority_key: authority, issued_at: new Date(now).toISOString(), expires_at: new Date(now + 30 * 864e5).toISOString() };
+  const config = { type: "scopeblind.repository.connection-config.v1", connection, receiver_url: url, receiver_sha256: hash, workflow_path: WORKFLOW_PATH, workflow_sha256: await sha256(workflow) };
+  parseRepositoryConnectionConfig(config);
+  const result2 = await createRepositoryReadiness(connection, identity, discovery, { now, workflow_sha256: config.workflow_sha256 });
+  const review = installationReview(config, discovery, !!options2.get("--receiver-sha256"));
+  for (const [file, data] of [["connection.json", JSON.stringify(result2, null, 2) + "\n"], ["connection-config.json", JSON.stringify(config, null, 2) + "\n"], ["discovery.json", JSON.stringify(discovery, null, 2) + "\n"], ["scopeblind-receiver.yml", workflow], ["INSTALL.md", review]]) await writeFile(join13(directory, file), data, { mode: 384, flag: "wx" });
+  stdout(`Read-only repository setup prepared for ${discovery.repository}.
+Receiver public key: ${identity.publicKey}
+Review ${join13(directory, "INSTALL.md")} and import ${join13(directory, "connection.json")} in your original authorized browser.
+No workflow, secret, repository setting, task approval or branch update was installed. Private keys and GitHub credentials stay local.
+`);
+}
+function installationReview(config, d, independentPin) {
+  return `# Review this repository connection
+
+Repository: ${d.repository}
+Trusted default branch: ${d.base_branch}
+Receiver public key: ${config.connection.receiver_key}
+Service: ${config.connection.endpoint}
+Service authority key: ${config.connection.authority_key}
+Connection expires: ${config.connection.expires_at}
+
+This is a signed observation of read access from this machine. It does not prove that a workflow is installed, give a task approval, or establish that branch rules allow an update. Import connection.json and explicitly authorize its exact public fields in your original browser.
+
+## Observed checks
+
+${d.checks.length ? d.checks.map((c2) => `- ${JSON.stringify(c2.name)} \u2014 app ${c2.app_id}${c2.app_name ? " " + JSON.stringify(c2.app_name) : ""}`).join("\n") : "No check runs were observed."}
+
+These are available observed checks, not a claim that all are required. GitHub requirements observed: ${JSON.stringify(d.required_checks)}. Protection read: ${d.protection_read}; rules read: ${d.rules_read}.
+
+${d.warnings.map((w) => "- " + w).join("\n")}
+
+## Review before installing
+
+1. Keep receiver-key.json private; never upload the setup directory, private key, GitHub token, or an environment file to ScopeBlind or a repository. The public import is connection.json only.
+2. Inspect scopeblind-receiver.yml, then copy just that file to ${WORKFLOW_PATH} on the trusted default branch through your normal repository review. It never checks out or runs PR code. It requests contents:write for a later separately approved update, pull-requests:read, and checks:read. It cannot bypass repository rules.
+3. Set repository Actions variable SCOPEBLIND_CONNECTION_CONFIG to the exact contents of connection-config.json. Set Actions secret SCOPEBLIND_RECEIVER_PRIVATE_KEY to the private_key field using your local secret manager. The GitHub token is provided by Actions; never add a personal token to the workflow.
+4. Run the workflow manually on ${d.base_branch}, operation ready. Download its public scopeblind-repository-evidence artifact and import repository-evidence.json. Local discovery and a signed response from the installed workflow are separate observations.
+5. For each task, review the exact owner/reviewer binding and download its receiver config. Set SCOPEBLIND_RECEIVER_CONFIG to that config; it does not reuse a previous task's reviewer permission. Inspect, obtain both current exact approvals, then choose execute for that task ID. After an uncertain response use reconcile, never a replacement operation.
+
+## Reproducible receiver artifact
+
+URL: ${config.receiver_url}
+SHA-256: ${config.receiver_sha256}
+Workflow SHA-256: ${config.workflow_sha256}
+Checksum source: ${independentPin ? "explicit --receiver-sha256 pin supplied by the owner" : "published HTTPS checksum; compare with your independently reviewed release before enabling"}
+
+No GitHub changes were made by setup. Re-running setup writes to a new output directory; --key-file reuses the existing private receiver key. To refresh read access without a new connection, run repository ready --connection connection-config.json --key-file PRIVATE_KEY_FILE --output new-readiness.json.
+`;
+}
+var REPOSITORY_SETUP_VERSION, REPO, WORKFLOW_PATH, safeText, WORKFLOW_TEMPLATE;
+var init_repository_setup = __esm({
+  "src/repository-setup.ts"() {
+    "use strict";
+    init_coordination_protocol();
+    init_coordination_repository();
+    init_coordination_repository_collaboration();
+    init_repository_receiver();
+    REPOSITORY_SETUP_VERSION = "0.22.0";
+    REPO = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/;
+    WORKFLOW_PATH = ".github/workflows/scopeblind-receiver.yml";
+    safeText = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
+    WORKFLOW_TEMPLATE = `# Review on the trusted default branch before enabling. Setup grants no task approval.
+name: ScopeBlind receiver
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Read-only readiness, inspect, jointly approved execute, or reconcile
+        required: true
+        default: ready
+        type: choice
+        options: [ready, inspect, execute, reconcile]
+      task_id:
+        description: Exact task ID (required except for ready)
+        required: false
+        type: string
+permissions:
+  contents: write
+  pull-requests: read
+  checks: read
+concurrency:
+  group: scopeblind-receiver-\${{ inputs.task_id || 'readiness' }}
+  cancel-in-progress: false
+jobs:
+  receiver:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Use the reviewed Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.22.3'
+      - name: Verify the reviewed receiver artifact
+        env:
+          RECEIVER_URL: __RECEIVER_URL__
+          RECEIVER_SHA256: __RECEIVER_SHA256__
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --proto '=https' --max-time 30 "$RECEIVER_URL" --output receiver.cjs
+          printf '%s  receiver.cjs\\n' "$RECEIVER_SHA256" | sha256sum --check --strict
+      - name: Run the constrained receiver
+        env:
+          GITHUB_TOKEN: \${{ github.token }}
+          SCOPEBLIND_RECEIVER_PRIVATE_KEY: \${{ secrets.SCOPEBLIND_RECEIVER_PRIVATE_KEY }}
+          CONNECTION_CONFIG: \${{ vars.SCOPEBLIND_CONNECTION_CONFIG }}
+          RECEIVER_CONFIG: \${{ vars.SCOPEBLIND_RECEIVER_CONFIG }}
+          TASK_ID: \${{ inputs.task_id }}
+          OPERATION: \${{ inputs.operation }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          if [ "$OPERATION" = ready ]; then
+            node -e 'require("node:fs").writeFileSync("connection-config.json",process.env.CONNECTION_CONFIG,{mode:0o600,flag:"wx"})'
+            node receiver.cjs ready --connection connection-config.json --output repository-evidence.json
+          else
+            node -e 'require("node:fs").writeFileSync("receiver-config.json",process.env.RECEIVER_CONFIG,{mode:0o600,flag:"wx"})'
+            node receiver.cjs "$OPERATION" --config receiver-config.json --task "$TASK_ID" --output repository-evidence.json
+          fi
+      - name: Keep the public signed observation
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: scopeblind-repository-evidence
+          path: repository-evidence.json
+          retention-days: 7
+          if-no-files-found: error
+`;
+  }
+});
+
 // src/coordination-devices.ts
 function deviceAuthorizationPreimage(payloadDigest, authorizationDigest) {
   return DEVICE_AUTHORIZATION_DOMAIN + payloadDigest + "\n" + authorizationDigest;
@@ -6293,7 +6761,7 @@ function deviceAuthorizationPreimage(payloadDigest, authorizationDigest) {
 async function verifyDeviceAuthorization(value) {
   try {
     const g = value.payload;
-    return exact2(value, "payload signer digest signature") && await verify(value, g.principal_key) && exact2(g, "type id link_id room_id agreement_digest principal_key device_key device_name actions issued_at expires_at authority_key") && g.type === "scopeblind.coordination.device-authorization.v1" && id(g.id) && id(g.link_id) && id(g.room_id) && hex(g.agreement_digest) && hex(g.principal_key) && hex(g.device_key) && g.device_key !== g.principal_key && hex(g.authority_key) && typeof g.device_name === "string" && g.device_name.trim() === g.device_name && g.device_name.length > 0 && g.device_name.length <= 60 && Array.isArray(g.actions) && g.actions.length > 0 && g.actions.length <= DEVICE_ACTIONS.length && new Set(g.actions).size === g.actions.length && g.actions.every((action) => DEVICE_ACTIONS.includes(action)) && Number.isFinite(time2(g.issued_at)) && time2(g.expires_at) > time2(g.issued_at) && time2(g.expires_at) - time2(g.issued_at) <= DEVICE_MAX_TTL_MS;
+    return exact2(value, "payload signer digest signature") && await verify(value, g.principal_key) && exact2(g, "type id link_id room_id agreement_digest principal_key device_key device_name actions issued_at expires_at authority_key") && g.type === "scopeblind.coordination.device-authorization.v1" && id2(g.id) && id2(g.link_id) && id2(g.room_id) && hex2(g.agreement_digest) && hex2(g.principal_key) && hex2(g.device_key) && g.device_key !== g.principal_key && hex2(g.authority_key) && typeof g.device_name === "string" && g.device_name.trim() === g.device_name && g.device_name.length > 0 && g.device_name.length <= 60 && Array.isArray(g.actions) && g.actions.length > 0 && g.actions.length <= DEVICE_ACTIONS.length && new Set(g.actions).size === g.actions.length && g.actions.every((action) => DEVICE_ACTIONS.includes(action)) && Number.isFinite(time2(g.issued_at)) && time2(g.expires_at) > time2(g.issued_at) && time2(g.expires_at) - time2(g.issued_at) <= DEVICE_MAX_TTL_MS;
   } catch {
     return false;
   }
@@ -6304,7 +6772,7 @@ async function contextProposal(context, g) {
 }
 async function humanPermission(value, context = {}) {
   const p = value.payload, g = value.authorization?.payload;
-  if (!g || !object2(p)) return null;
+  if (!g || !object3(p)) return null;
   const direct = (action) => typeof p.issued_at === "string" && p.room_id === g.room_id && (p.agreement_digest === void 0 || p.agreement_digest === g.agreement_digest) ? { action, at: p.issued_at } : null;
   switch (p.type) {
     case "scopeblind.coordination.request.v1":
@@ -6333,7 +6801,7 @@ async function humanPermission(value, context = {}) {
 }
 async function verifyHuman(value, expectedPrincipal, context = {}) {
   try {
-    if (!value || !object2(value) || Object.keys(value).some((key2) => !["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"].includes(key2))) return false;
+    if (!value || !object3(value) || Object.keys(value).some((key2) => !["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"].includes(key2))) return false;
     if (!value.authorization) return !value.authorization_signature && !value.authorization_use && await verify(value, expectedPrincipal);
     const authorization = value.authorization, g = authorization.payload;
     if (context.authorityKey !== void 0 && g.authority_key !== context.authorityKey) return false;
@@ -6352,7 +6820,7 @@ async function verifyHuman(value, expectedPrincipal, context = {}) {
     return false;
   }
 }
-var DEVICE_AUTHORIZATION_DOMAIN, DEVICE_ACTIONS, DEVICE_LINK_TTL_MS, DEVICE_MAX_TTL_MS, hex, id, object2, time2, exact2;
+var DEVICE_AUTHORIZATION_DOMAIN, DEVICE_ACTIONS, DEVICE_LINK_TTL_MS, DEVICE_MAX_TTL_MS, hex2, id2, object3, time2, exact2;
 var init_coordination_devices = __esm({
   "src/coordination-devices.ts"() {
     "use strict";
@@ -6361,9 +6829,9 @@ var init_coordination_devices = __esm({
     DEVICE_ACTIONS = ["inspect", "decision_inbox", "negotiation_get", "decide", "accept", "negotiation_mandate", "negotiation_approve"];
     DEVICE_LINK_TTL_MS = 10 * 60 * 1e3;
     DEVICE_MAX_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
-    hex = (value) => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
-    id = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(value);
-    object2 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
+    hex2 = (value) => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+    id2 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(value);
+    object3 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
     time2 = (value) => typeof value === "string" ? Date.parse(value) : NaN;
     exact2 = (value, fields) => Object.keys(value).sort().join(" ") === fields.split(" ").sort().join(" ");
   }
@@ -6414,7 +6882,7 @@ function parseRepairProposal(value, budget) {
 }
 function defaultRehearsalCases(fixtures) {
   const invoice = fixtures.invoices.find((i) => !i.duplicate_of);
-  const make = (id4, title, kind, requirement) => ({ id: `required-${id4}`, title, kind, invoice_id: invoice.invoice_id, expected: "invariant", requirement, required: true });
+  const make = (id5, title, kind, requirement) => ({ id: `required-${id5}`, title, kind, invoice_id: invoice.invoice_id, expected: "invariant", requirement, required: true });
   return [
     make("valid", "A legitimate payment can complete", "approved_invoice", "An exact, authorized invoice can be paid once. Required review must not prevent approved work from completing."),
     make("duplicate", "Submit the same invoice twice", "duplicate_invoice", "A second operation for an already-paid invoice must not create another payment."),
@@ -6514,13 +6982,13 @@ async function signed(v, key) {
   return exact3(v, keys("payload signer digest signature")) && HEX.test(key) && await verify(v, key);
 }
 function boundedAgreement(a) {
-  return exact3(a, keys("type id version title owner_key registrar_key currency budget_minor approval_above_minor approval_ttl_seconds allowed_destinations issued_at"), keys("mode brief preferences assumptions require_po_match")) && a.type === "scopeblind.coordination.agreement.v1" && id2(a.id) && a.version === 1 && text2(a.title, 200) && HEX.test(a.owner_key) && HEX.test(a.registrar_key) && a.currency === "USD" && integer2(a.budget_minor, 1, 1e7) && integer2(a.approval_above_minor, 0, a.budget_minor) && integer2(a.approval_ttl_seconds, 30, 900) && Number.isFinite(time3(a.issued_at)) && Array.isArray(a.allowed_destinations) && a.allowed_destinations.length > 0 && a.allowed_destinations.length <= 100 && new Set(a.allowed_destinations).size === a.allowed_destinations.length && a.allowed_destinations.every((d) => text2(d, 500)) && (a.mode === void 0 || ["guided", "live"].includes(a.mode)) && (a.require_po_match === void 0 || typeof a.require_po_match === "boolean") && (a.brief === void 0 || typeof a.brief === "string" && a.brief.length <= 1e4) && [a.preferences, a.assumptions].every((v) => v === void 0 || Array.isArray(v) && v.length <= 100 && v.every((t) => typeof t === "string" && t.length <= 2e3));
+  return exact3(a, keys("type id version title owner_key registrar_key currency budget_minor approval_above_minor approval_ttl_seconds allowed_destinations issued_at"), keys("mode brief preferences assumptions require_po_match")) && a.type === "scopeblind.coordination.agreement.v1" && id3(a.id) && a.version === 1 && text3(a.title, 200) && HEX.test(a.owner_key) && HEX.test(a.registrar_key) && a.currency === "USD" && integer2(a.budget_minor, 1, 1e7) && integer2(a.approval_above_minor, 0, a.budget_minor) && integer2(a.approval_ttl_seconds, 30, 900) && Number.isFinite(time3(a.issued_at)) && Array.isArray(a.allowed_destinations) && a.allowed_destinations.length > 0 && a.allowed_destinations.length <= 100 && new Set(a.allowed_destinations).size === a.allowed_destinations.length && a.allowed_destinations.every((d) => text3(d, 500)) && (a.mode === void 0 || ["guided", "live"].includes(a.mode)) && (a.require_po_match === void 0 || typeof a.require_po_match === "boolean") && (a.brief === void 0 || typeof a.brief === "string" && a.brief.length <= 1e4) && [a.preferences, a.assumptions].every((v) => v === void 0 || Array.isArray(v) && v.length <= 100 && v.every((t) => typeof t === "string" && t.length <= 2e3));
 }
 function boundedFixtures(f) {
-  return exact3(f, keys("revision invoices purchase_orders")) && integer2(f.revision, 1, 1e7) && Array.isArray(f.invoices) && f.invoices.length > 0 && f.invoices.length <= 100 && f.invoices.some((i) => !i.duplicate_of) && new Set(f.invoices.filter((i) => !i.duplicate_of).map((i) => i.invoice_id)).size === f.invoices.filter((i) => !i.duplicate_of).length && f.invoices.every((i) => !i.duplicate_of || f.invoices.some((base) => !base.duplicate_of && base.id === i.duplicate_of && base.invoice_id === i.invoice_id && base.amount_minor === i.amount_minor && base.destination === i.destination && base.vendor === i.vendor)) && new Set(f.invoices.map((i) => i.id)).size === f.invoices.length && f.invoices.every((i) => exact3(i, keys("id invoice_id vendor description amount_minor destination"), keys("duplicate_of purchase_order_id")) && text2(i.id, 100) && text2(i.invoice_id, 60) && text2(i.vendor, 300) && typeof i.description === "string" && i.description.length <= 2e3 && integer2(i.amount_minor, 1, 1e7) && text2(i.destination, 500) && (i.duplicate_of === void 0 || text2(i.duplicate_of, 60)) && (i.purchase_order_id === void 0 || text2(i.purchase_order_id, 100))) && Array.isArray(f.purchase_orders) && f.purchase_orders.length <= 100 && new Set(f.purchase_orders.map((p) => p.id)).size === f.purchase_orders.length && f.purchase_orders.every((p) => exact3(p, keys("id vendor destination amount_minor currency")) && text2(p.id, 100) && text2(p.vendor, 300) && text2(p.destination, 500) && integer2(p.amount_minor, 1, 1e7) && p.currency === "USD");
+  return exact3(f, keys("revision invoices purchase_orders")) && integer2(f.revision, 1, 1e7) && Array.isArray(f.invoices) && f.invoices.length > 0 && f.invoices.length <= 100 && f.invoices.some((i) => !i.duplicate_of) && new Set(f.invoices.filter((i) => !i.duplicate_of).map((i) => i.invoice_id)).size === f.invoices.filter((i) => !i.duplicate_of).length && f.invoices.every((i) => !i.duplicate_of || f.invoices.some((base) => !base.duplicate_of && base.id === i.duplicate_of && base.invoice_id === i.invoice_id && base.amount_minor === i.amount_minor && base.destination === i.destination && base.vendor === i.vendor)) && new Set(f.invoices.map((i) => i.id)).size === f.invoices.length && f.invoices.every((i) => exact3(i, keys("id invoice_id vendor description amount_minor destination"), keys("duplicate_of purchase_order_id")) && text3(i.id, 100) && text3(i.invoice_id, 60) && text3(i.vendor, 300) && typeof i.description === "string" && i.description.length <= 2e3 && integer2(i.amount_minor, 1, 1e7) && text3(i.destination, 500) && (i.duplicate_of === void 0 || text3(i.duplicate_of, 60)) && (i.purchase_order_id === void 0 || text3(i.purchase_order_id, 100))) && Array.isArray(f.purchase_orders) && f.purchase_orders.length <= 100 && new Set(f.purchase_orders.map((p) => p.id)).size === f.purchase_orders.length && f.purchase_orders.every((p) => exact3(p, keys("id vendor destination amount_minor currency")) && text3(p.id, 100) && text3(p.vendor, 300) && text3(p.destination, 500) && integer2(p.amount_minor, 1, 1e7) && p.currency === "USD");
 }
 function observationConsistent(c2, o, a, f) {
-  if (!exact3(o, keys("actual matched reason steps payments spent_minor"), ["invariant_passed"]) || !["allow", "ask", "refuse", "error"].includes(o.actual) || typeof o.matched !== "boolean" || typeof o.reason !== "string" || o.reason.length > 2e3 || !integer2(o.payments, 0, 2) || !integer2(o.spent_minor, 0, 2e7) || !Array.isArray(o.steps) || o.steps.length < 1 || o.steps.length > 50 || !o.steps.every((s) => exact3(s, keys("action decision reason"), keys("operation_id payload_hash")) && ["setup", "admit", "submit_changed_request", "approve_exact", "submit_expired_approval", "execute"].includes(s.action) && ["allow", "ask", "refuse", "confirmed", "rejected"].includes(s.decision) && typeof s.reason === "string" && s.reason.length <= 2e3 && (s.operation_id === void 0 || id2(s.operation_id)) && (s.payload_hash === void 0 || HEX.test(s.payload_hash)))) return false;
+  if (!exact3(o, keys("actual matched reason steps payments spent_minor"), ["invariant_passed"]) || !["allow", "ask", "refuse", "error"].includes(o.actual) || typeof o.matched !== "boolean" || typeof o.reason !== "string" || o.reason.length > 2e3 || !integer2(o.payments, 0, 2) || !integer2(o.spent_minor, 0, 2e7) || !Array.isArray(o.steps) || o.steps.length < 1 || o.steps.length > 50 || !o.steps.every((s) => exact3(s, keys("action decision reason"), keys("operation_id payload_hash")) && ["setup", "admit", "submit_changed_request", "approve_exact", "submit_expired_approval", "execute"].includes(s.action) && ["allow", "ask", "refuse", "confirmed", "rejected"].includes(s.decision) && typeof s.reason === "string" && s.reason.length <= 2e3 && (s.operation_id === void 0 || id3(s.operation_id)) && (s.payload_hash === void 0 || HEX.test(s.payload_hash)))) return false;
   if (c2.expected === "invariant" ? typeof o.invariant_passed !== "boolean" : o.invariant_passed !== void 0) return false;
   if (o.matched !== (c2.expected === "invariant" ? o.invariant_passed === true : o.actual === c2.expected)) return false;
   if (o.actual === "error") return !o.matched && o.invariant_passed !== true;
@@ -6576,26 +7044,26 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
     const a = e.agreement.payload, s = e.session.payload, i = e.invitation.payload, b = e.binding.payload;
     const authority = authorityKey ?? a.registrar_key;
     add("Owner signed the bounded source agreement and exact fixture snapshot", boundedAgreement(a) && boundedFixtures(e.fixtures) && await verifyOwnerAgreement(e.agreement, e.source_negotiation, depth + 1) && a.registrar_key === authority);
-    add("Named authority signed a bounded session tied to this source", await signed(e.session, authority) && exact3(s, keys("type id room_id agreement_digest fixture_digest owner_key registrar_key invitation_digest created_at expires_at max_proposals"), ["parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]) && s.type === "scopeblind.coordination.negotiation-session.v1" && id2(s.id) && s.room_id === a.id && s.agreement_digest === e.agreement.digest && s.fixture_digest === await negotiationDigest(e.fixtures) && (s.parent_session_id === void 0 || id2(s.parent_session_id) && s.parent_session_id !== s.id) && s.parent_session_id === i.parent_session_id && s.source_operation_id === i.source_operation_id && (s.source_operation_id === void 0 ? s.source_invoice_id === void 0 && s.source_operation_digest === void 0 : id2(s.source_operation_id) && text2(s.source_invoice_id, 60) && HEX.test(s.source_operation_digest ?? "") && e.fixtures.invoices.some((v) => !v.duplicate_of && v.invoice_id === s.source_invoice_id)) && s.owner_key === a.owner_key && s.registrar_key === authority && s.invitation_digest === e.invitation.digest && s.max_proposals === 3 && time3(s.created_at) >= time3(a.issued_at) - 3e5 && time3(s.expires_at) > time3(s.created_at) && time3(s.expires_at) <= time3(s.created_at) + 864e5);
-    const during = (at) => time3(at) >= time3(s.created_at) - 3e5 && time3(at) < time3(s.expires_at);
+    add("Named authority signed a bounded session tied to this source", await signed(e.session, authority) && exact3(s, keys("type id room_id agreement_digest fixture_digest owner_key registrar_key invitation_digest created_at expires_at max_proposals"), ["parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]) && s.type === "scopeblind.coordination.negotiation-session.v1" && id3(s.id) && s.room_id === a.id && s.agreement_digest === e.agreement.digest && s.fixture_digest === await negotiationDigest(e.fixtures) && (s.parent_session_id === void 0 || id3(s.parent_session_id) && s.parent_session_id !== s.id) && s.parent_session_id === i.parent_session_id && s.source_operation_id === i.source_operation_id && (s.source_operation_id === void 0 ? s.source_invoice_id === void 0 && s.source_operation_digest === void 0 : id3(s.source_operation_id) && text3(s.source_invoice_id, 60) && HEX.test(s.source_operation_digest ?? "") && e.fixtures.invoices.some((v) => !v.duplicate_of && v.invoice_id === s.source_invoice_id)) && s.owner_key === a.owner_key && s.registrar_key === authority && s.invitation_digest === e.invitation.digest && s.max_proposals === 3 && time3(s.created_at) >= time3(a.issued_at) - 3e5 && time3(s.expires_at) > time3(s.created_at) && time3(s.expires_at) <= time3(s.created_at) + 864e5);
+    const during = (at2) => time3(at2) >= time3(s.created_at) - 3e5 && time3(at2) < time3(s.expires_at);
     add("Owner invited one counterparty for this exact session", await signed(e.invitation, a.owner_key) && exact3(i, keys("type session_id room_id agreement_digest fixture_digest issuer registrar_key role token_hash max_claims expires_at"), ["parent_session_id", "source_operation_id"]) && i.type === "scopeblind.coordination.negotiation-invitation.v1" && i.session_id === s.id && i.room_id === a.id && i.agreement_digest === e.agreement.digest && i.fixture_digest === s.fixture_digest && i.issuer === a.owner_key && i.registrar_key === authority && i.role === "counterparty" && i.max_claims === 1 && HEX.test(i.token_hash) && i.expires_at === s.expires_at);
     const claim = b.claim.payload, partner = b.guest_key, principals = [a.owner_key, partner];
-    add("Distinct counterparty signed its claim and the authority bound that claim", await signed(e.binding, authority) && await signed(b.claim, partner) && exact3(b, keys("type session_id room_id invitation_digest guest_key name issued_at expires_at claim")) && b.type === "scopeblind.coordination.negotiation-binding.v1" && b.session_id === s.id && b.room_id === a.id && b.invitation_digest === e.invitation.digest && HEX.test(partner) && partner !== a.owner_key && during(b.issued_at) && b.expires_at === s.expires_at && exact3(claim, keys("type session_id room_id guest_key name issued_at nonce")) && claim.type === "scopeblind.coordination.negotiation-claim.v1" && claim.session_id === s.id && claim.room_id === a.id && claim.guest_key === partner && text2(claim.name, 60) && claim.name === b.name && id2(claim.nonce) && Math.abs(time3(claim.issued_at) - time3(b.issued_at)) <= 3e5);
+    add("Distinct counterparty signed its claim and the authority bound that claim", await signed(e.binding, authority) && await signed(b.claim, partner) && exact3(b, keys("type session_id room_id invitation_digest guest_key name issued_at expires_at claim")) && b.type === "scopeblind.coordination.negotiation-binding.v1" && b.session_id === s.id && b.room_id === a.id && b.invitation_digest === e.invitation.digest && HEX.test(partner) && partner !== a.owner_key && during(b.issued_at) && b.expires_at === s.expires_at && exact3(claim, keys("type session_id room_id guest_key name issued_at nonce")) && claim.type === "scopeblind.coordination.negotiation-claim.v1" && claim.session_id === s.id && claim.room_id === a.id && claim.guest_key === partner && text3(claim.name, 60) && claim.name === b.name && id3(claim.nonce) && Math.abs(time3(claim.issued_at) - time3(b.issued_at)) <= 3e5);
     add("Exactly two distinct principal mandates are included in organizer/partner order", Array.isArray(e.mandates) && e.mandates.length === 2 && e.mandates.every((m, n) => m.payload.principal_key === principals[n]) && new Set(e.mandates.map((m) => m.digest)).size === 2);
     const mandateDigests = e.mandates.map((m) => m.digest);
     for (let n = 0; n < e.mandates.length; n++) {
       const m = e.mandates[n].payload;
       add(`Principal ${n + 1} signed bounded negotiation-only authority`, await verifyHuman(e.mandates[n], principals[n], { requireRecordedUse: true, authorityKey: authority }) && exact3(m, keys("type session_id room_id principal_key version agreement_digest fixture_digest min_threshold_minor max_threshold_minor required_invoices private_brief_commitment agent_mode actions issued_at expires_at"), ["min_budget_minor", "max_budget_minor"]) && m.type === "scopeblind.coordination.negotiation-mandate.v1" && m.session_id === s.id && m.room_id === a.id && m.principal_key === principals[n] && m.agreement_digest === e.agreement.digest && m.fixture_digest === s.fixture_digest && integer2(m.version, 1, 1e6) && (m.min_budget_minor === void 0 && m.max_budget_minor === void 0 || integer2(m.min_budget_minor, 1, 1e7) && integer2(m.max_budget_minor, m.min_budget_minor, 1e7)) && integer2(m.min_threshold_minor, 0, mandateBudget(m, a.budget_minor).max) && integer2(m.max_threshold_minor, m.min_threshold_minor, mandateBudget(m, a.budget_minor).max) && Array.isArray(m.required_invoices) && m.required_invoices.length <= 2 && new Set(m.required_invoices.map((r2) => r2.invoice_id)).size === m.required_invoices.length && m.required_invoices.every((r2) => exact3(r2, keys("invoice_id expected")) && ["allow", "ask"].includes(r2.expected) && e.fixtures.invoices.some((v) => v.invoice_id === r2.invoice_id && !v.duplicate_of)) && (s.source_invoice_id === void 0 || m.required_invoices.some((r2) => r2.invoice_id === s.source_invoice_id)) && HEX.test(m.private_brief_commitment) && ["hosted", "own", "manual"].includes(m.agent_mode) && same(m.actions, NEGOTIATION_AGENT_ACTIONS) && during(m.issued_at) && time3(m.expires_at) > time3(m.issued_at) && time3(m.expires_at) <= time3(s.expires_at));
     }
-    const validAt = (principal, at) => {
+    const validAt = (principal, at2) => {
       const m = e.mandates.find((m2) => m2.payload.principal_key === principal)?.payload;
-      return !!m && during(at) && time3(at) >= time3(m.issued_at) - 3e5 && time3(at) < time3(m.expires_at);
+      return !!m && during(at2) && time3(at2) >= time3(m.issued_at) - 3e5 && time3(at2) < time3(m.expires_at);
     };
     const agentBindings = e.agent_bindings ?? [];
     add("Installed agent bindings are bounded and independently scoped per principal", Array.isArray(agentBindings) && agentBindings.length <= 12 && new Set(agentBindings.map((v) => v.payload.pair_id)).size === agentBindings.length);
     for (const binding of agentBindings) {
       const g = binding.payload, auth = g.owner_authorization, q = auth.payload, body = q.body, principal = g.principal_key;
-      add("Principal signed the installed agent pairing authorization", await signed(binding, authority) && await signed(auth, principal) && exact3(g, keys("type pair_id room_id session_id principal_key agreement_digest owner_key agent_key name scope audience issued_at expires_at owner_authorization")) && g.type === "scopeblind.coordination.agent-binding.v1" && g.audience === "scopeblind.coordination.negotiation" && id2(g.pair_id) && g.room_id === a.id && g.session_id === s.id && principals.includes(principal) && g.owner_key === principal && HEX.test(g.agent_key) && !principals.includes(g.agent_key) && g.agreement_digest === e.agreement.digest && same(g.scope, NEGOTIATION_AGENT_ACTIONS) && validAt(principal, g.issued_at) && time3(g.expires_at) > time3(g.issued_at) && time3(g.expires_at) <= time3(e.mandates.find((m) => m.payload.principal_key === principal).payload.expires_at) && exact3(q, keys("type action room_id body issued_at nonce")) && q.type === "scopeblind.coordination.request.v1" && q.action === "negotiation_pair_create" && q.room_id === a.id && id2(q.nonce) && exact3(body, keys("session_id pair_id secret_hash name expires_at token_expires_at scope"), ["expected_agent_key"]) && (body.expected_agent_key === void 0 || body.expected_agent_key === g.agent_key) && body.session_id === s.id && body.pair_id === g.pair_id && HEX.test(String(body.secret_hash)) && text2(body.name, 60) && text2(g.name, 60) && same(body.scope, NEGOTIATION_AGENT_ACTIONS) && body.token_expires_at === g.expires_at && validAt(principal, q.issued_at) && time3(body.expires_at) > time3(q.issued_at) && time3(body.expires_at) <= time3(q.issued_at) + 9e5 && time3(g.issued_at) < time3(body.expires_at) && time3(g.issued_at) >= time3(q.issued_at) - 3e5 && time3(body.expires_at) <= time3(g.expires_at) && !agentBindings.some((other) => other.payload.agent_key === g.agent_key && other.payload.principal_key !== principal));
+      add("Principal signed the installed agent pairing authorization", await signed(binding, authority) && await signed(auth, principal) && exact3(g, keys("type pair_id room_id session_id principal_key agreement_digest owner_key agent_key name scope audience issued_at expires_at owner_authorization")) && g.type === "scopeblind.coordination.agent-binding.v1" && g.audience === "scopeblind.coordination.negotiation" && id3(g.pair_id) && g.room_id === a.id && g.session_id === s.id && principals.includes(principal) && g.owner_key === principal && HEX.test(g.agent_key) && !principals.includes(g.agent_key) && g.agreement_digest === e.agreement.digest && same(g.scope, NEGOTIATION_AGENT_ACTIONS) && validAt(principal, g.issued_at) && time3(g.expires_at) > time3(g.issued_at) && time3(g.expires_at) <= time3(e.mandates.find((m) => m.payload.principal_key === principal).payload.expires_at) && exact3(q, keys("type action room_id body issued_at nonce")) && q.type === "scopeblind.coordination.request.v1" && q.action === "negotiation_pair_create" && q.room_id === a.id && id3(q.nonce) && exact3(body, keys("session_id pair_id secret_hash name expires_at token_expires_at scope"), ["expected_agent_key"]) && (body.expected_agent_key === void 0 || body.expected_agent_key === g.agent_key) && body.session_id === s.id && body.pair_id === g.pair_id && HEX.test(String(body.secret_hash)) && text3(body.name, 60) && text3(g.name, 60) && same(body.scope, NEGOTIATION_AGENT_ACTIONS) && body.token_expires_at === g.expires_at && validAt(principal, q.issued_at) && time3(body.expires_at) > time3(q.issued_at) && time3(body.expires_at) <= time3(q.issued_at) + 9e5 && time3(g.issued_at) < time3(body.expires_at) && time3(g.issued_at) >= time3(q.issued_at) - 3e5 && time3(body.expires_at) <= time3(g.expires_at) && !agentBindings.some((other) => other.payload.agent_key === g.agent_key && other.payload.principal_key !== principal));
     }
     const actorBound = (p2) => {
       const mandate = e.mandates.find((m) => m.payload.principal_key === p2.principal_key)?.payload;
@@ -6606,10 +7074,10 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
     };
     add("At most three uniquely identified proposals are included", Array.isArray(e.proposals) && e.proposals.length >= 1 && e.proposals.length <= 3 && new Set(e.proposals.map((p2) => p2.payload.id)).size === e.proposals.length);
     for (let n = 0; n < e.proposals.length; n++) {
-      const envelope2 = e.proposals[n], p2 = envelope2.payload, mine = e.mandates.find((m) => m.payload.principal_key === p2.principal_key)?.payload, g = p2.reviewer_grant;
-      add(`Candidate ${n + 1} has a signed source, parent and principal authority`, await signed(envelope2, authority) && exact3(p2, keys("type id approval_above_minor session_id room_id round principal_key agent_mode agreement_digest fixture_digest mandate_digests next_agreement next_agreement_digest reviewer_grant reviewer_grant_digest issued_at"), keys("parent_digest agent_key budget_minor exploration")) && p2.type === "scopeblind.coordination.negotiation-proposal.v1" && typeof p2.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(p2.id) && p2.session_id === s.id && p2.room_id === a.id && p2.round === n + 1 && p2.parent_digest === e.proposals[n - 1]?.digest && p2.agreement_digest === e.agreement.digest && p2.fixture_digest === s.fixture_digest && same(p2.mandate_digests, mandateDigests) && (p2.exploration === void 0 || p2.exploration === true && p2.agent_mode === "manual" && !p2.agent_key) && !!mine && negotiationPlanWithinMandate(mine, p2.approval_above_minor, p2.budget_minor ?? a.budget_minor, a.budget_minor) && actorBound(p2) && (n === 0 || time3(p2.issued_at) >= time3(e.proposals[n - 1].payload.issued_at)));
+      const envelope3 = e.proposals[n], p2 = envelope3.payload, mine = e.mandates.find((m) => m.payload.principal_key === p2.principal_key)?.payload, g = p2.reviewer_grant;
+      add(`Candidate ${n + 1} has a signed source, parent and principal authority`, await signed(envelope3, authority) && exact3(p2, keys("type id approval_above_minor session_id room_id round principal_key agent_mode agreement_digest fixture_digest mandate_digests next_agreement next_agreement_digest reviewer_grant reviewer_grant_digest issued_at"), keys("parent_digest agent_key budget_minor exploration")) && p2.type === "scopeblind.coordination.negotiation-proposal.v1" && typeof p2.id === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(p2.id) && p2.session_id === s.id && p2.room_id === a.id && p2.round === n + 1 && p2.parent_digest === e.proposals[n - 1]?.digest && p2.agreement_digest === e.agreement.digest && p2.fixture_digest === s.fixture_digest && same(p2.mandate_digests, mandateDigests) && (p2.exploration === void 0 || p2.exploration === true && p2.agent_mode === "manual" && !p2.agent_key) && !!mine && negotiationPlanWithinMandate(mine, p2.approval_above_minor, p2.budget_minor ?? a.budget_minor, a.budget_minor) && actorBound(p2) && (n === 0 || time3(p2.issued_at) >= time3(e.proposals[n - 1].payload.issued_at)));
       add(`Candidate ${n + 1} changes only the tested threshold and authorized budget in a separate task`, boundedAgreement(p2.next_agreement) && p2.next_agreement.id !== a.id && same(p2.next_agreement, { ...a, id: p2.next_agreement.id, issued_at: p2.issued_at, approval_above_minor: p2.approval_above_minor, budget_minor: p2.budget_minor ?? a.budget_minor }) && p2.next_agreement_digest === await negotiationPayloadDigest(p2.next_agreement));
-      add(`Candidate ${n + 1} fixes the partner's future reviewer role before approval`, exact3(g, keys("type grant_id room_id agreement_digest issuer registrar_key role actions expires_at token_hash max_claims")) && g.type === "scopeblind.coordination.grant.v1" && id2(g.grant_id) && g.room_id === p2.next_agreement.id && g.agreement_digest === p2.next_agreement_digest && g.issuer === a.owner_key && g.registrar_key === authority && g.role === "reviewer" && same(g.actions, ["decide", "accept"]) && HEX.test(g.token_hash) && g.max_claims === 1 && g.expires_at === s.expires_at && p2.reviewer_grant_digest === await negotiationPayloadDigest(g));
+      add(`Candidate ${n + 1} fixes the partner's future reviewer role before approval`, exact3(g, keys("type grant_id room_id agreement_digest issuer registrar_key role actions expires_at token_hash max_claims")) && g.type === "scopeblind.coordination.grant.v1" && id3(g.grant_id) && g.room_id === p2.next_agreement.id && g.agreement_digest === p2.next_agreement_digest && g.issuer === a.owner_key && g.registrar_key === authority && g.role === "reviewer" && same(g.actions, ["decide", "accept"]) && HEX.test(g.token_hash) && g.max_claims === 1 && g.expires_at === s.expires_at && p2.reviewer_grant_digest === await negotiationPayloadDigest(g));
     }
     add("Recommendations are distinct from human approvals and uniquely bound", Array.isArray(e.responses) && e.responses.length <= 6 && new Set(e.responses.map((r2) => `${r2.payload.proposal_digest}:${r2.payload.principal_key}`)).size === e.responses.length);
     for (const response of e.responses) {
@@ -6631,7 +7099,7 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
       const d = e.adoption.payload, next = e.adopted_agreement, g = e.reviewer_grant, binding = e.reviewer_binding, rb = binding.payload, claim2 = rb.claim.payload;
       add("Both unexpired human approvals authorize adoption of this exact tested candidate", e.approvals.length === 2 && e.approvals.every((v) => v.payload.decision === "approve" && time3(d.issued_at) >= time3(v.payload.issued_at) - 3e5 && time3(d.issued_at) < time3(v.payload.expires_at)) && selected.digest === e.proposals.at(-1).digest && principals.every((key) => validAt(key, d.issued_at)) && r.required_passed && r.expectations_met && r.mandates_met && (e.approvals.every((v) => v.payload.selection_basis === "human-selected-tested-plan") || principals.every((key) => e.responses.some((v) => v.payload.principal_key === key && v.payload.proposal_digest === selected.digest && v.payload.decision === "support"))));
       add("Authority recorded exact lineage into a new separately authorized sample task", await signed(e.adoption, authority) && exact3(d, keys("type session_id source_room_id room_id source_agreement_digest agreement_digest proposal_digest report_digest approval_digests issued_at scope")) && d.type === "scopeblind.coordination.negotiation-adoption.v1" && d.session_id === s.id && d.source_room_id === a.id && d.room_id === p.next_agreement.id && d.room_id !== a.id && d.source_agreement_digest === e.agreement.digest && d.agreement_digest === p.next_agreement_digest && d.proposal_digest === selected.digest && d.report_digest === e.report.digest && same(d.approval_digests, principals.map((key) => e.approvals.find((v) => v.payload.principal_key === key).digest)) && d.scope === "new-separate-sample-task" && await verifyHuman(next, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(next.payload, p.next_agreement) && next.digest === d.agreement_digest);
-      add("Partner independently claimed the fixed reviewer role in the new task", await signed(binding, authority) && await verifyHuman(rb.claim, partner, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === partner), requireRecordedUse: true, authorityKey: authority }) && exact3(rb, keys("type grant_id grant_digest room_id guest_key name issued_at expires_at claim")) && rb.type === "scopeblind.coordination.binding.v1" && rb.grant_id === g.payload.grant_id && rb.grant_digest === g.digest && rb.room_id === d.room_id && rb.guest_key === partner && rb.expires_at === g.payload.expires_at && time3(rb.issued_at) >= time3(d.issued_at) && time3(rb.issued_at) < time3(rb.expires_at) && exact3(claim2, keys("type grant_id room_id guest_key name issued_at nonce")) && claim2.type === "scopeblind.coordination.claim.v1" && claim2.grant_id === rb.grant_id && claim2.room_id === d.room_id && claim2.guest_key === partner && text2(claim2.name, 60) && claim2.name === rb.name && id2(claim2.nonce) && time3(claim2.issued_at) >= time3(r.issued_at) - 3e5 && time3(claim2.issued_at) <= time3(rb.issued_at) + 3e5);
+      add("Partner independently claimed the fixed reviewer role in the new task", await signed(binding, authority) && await verifyHuman(rb.claim, partner, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === partner), requireRecordedUse: true, authorityKey: authority }) && exact3(rb, keys("type grant_id grant_digest room_id guest_key name issued_at expires_at claim")) && rb.type === "scopeblind.coordination.binding.v1" && rb.grant_id === g.payload.grant_id && rb.grant_digest === g.digest && rb.room_id === d.room_id && rb.guest_key === partner && rb.expires_at === g.payload.expires_at && time3(rb.issued_at) >= time3(d.issued_at) && time3(rb.issued_at) < time3(rb.expires_at) && exact3(claim2, keys("type grant_id room_id guest_key name issued_at nonce")) && claim2.type === "scopeblind.coordination.claim.v1" && claim2.grant_id === rb.grant_id && claim2.room_id === d.room_id && claim2.guest_key === partner && text3(claim2.name, 60) && claim2.name === rb.name && id3(claim2.nonce) && time3(claim2.issued_at) >= time3(r.issued_at) - 3e5 && time3(claim2.issued_at) <= time3(rb.issued_at) + 3e5);
     } else add("No unbound adopted agreement or reviewer binding is present", !e.adopted_agreement && !e.reviewer_binding);
   } catch {
     add("Complete, well-formed negotiation evidence", false);
@@ -6644,7 +7112,7 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
     "Expiry is checked at recorded actions. An export does not establish present authorization, revocation status, or permission to make a payment."
   ] };
 }
-var NEGOTIATION_MAX_PROPOSALS, NEGOTIATION_MAX_MODEL_STEPS, NEGOTIATION_AGENT_ACTIONS, NEGOTIATION_ACTIONS, negotiationDigest, negotiationPayloadDigest, HEX, id2, integer2, time3, exact3, same, keys, text2;
+var NEGOTIATION_MAX_PROPOSALS, NEGOTIATION_MAX_MODEL_STEPS, NEGOTIATION_AGENT_ACTIONS, NEGOTIATION_ACTIONS, negotiationDigest, negotiationPayloadDigest, HEX, id3, integer2, time3, exact3, same, keys, text3;
 var init_coordination_negotiation = __esm({
   "src/coordination-negotiation.ts"() {
     "use strict";
@@ -6671,13 +7139,13 @@ var init_coordination_negotiation = __esm({
     negotiationDigest = (value) => sha256(canonical(value));
     negotiationPayloadDigest = (value) => sha256(COORDINATION_DOMAIN + canonical(value));
     HEX = /^[0-9a-f]{64}$/;
-    id2 = (v, max = 100) => typeof v === "string" && /^[A-Za-z0-9_-]+$/.test(v) && v.length >= 8 && v.length <= max;
+    id3 = (v, max = 100) => typeof v === "string" && /^[A-Za-z0-9_-]+$/.test(v) && v.length >= 8 && v.length <= max;
     integer2 = (v, min, max) => Number.isSafeInteger(v) && Number(v) >= min && Number(v) <= max;
     time3 = (v) => typeof v === "string" ? Date.parse(v) : NaN;
     exact3 = (v, required, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
     same = (a, b) => canonical(a) === canonical(b);
     keys = (s) => s.split(" ");
-    text2 = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max;
+    text3 = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max;
   }
 });
 
@@ -6727,17 +7195,17 @@ function validateCoordinationConfig(config) {
     if (!config.sessionId || !/^[A-Za-z0-9_-]{8,100}$/.test(config.sessionId)) throw new Error("A negotiation connection requires its exact paired session ID.");
     if (!config.principalKey || !/^[0-9a-f]{64}$/.test(config.principalKey)) throw new Error("A negotiation connection requires its paired principal public key.");
   } else if (config.sessionId !== void 0 || config.principalKey !== void 0) throw new Error("Negotiation session and principal fields require a negotiation connection.");
-  let endpoint;
+  let endpoint2;
   try {
-    endpoint = new URL(config.endpoint);
+    endpoint2 = new URL(config.endpoint);
   } catch {
     throw new Error("Coordination endpoint must be an absolute URL.");
   }
-  const local = ["localhost", "127.0.0.1", "[::1]"].includes(endpoint.hostname);
-  if (endpoint.protocol !== "https:" && !(endpoint.protocol === "http:" && local)) {
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(endpoint2.hostname);
+  if (endpoint2.protocol !== "https:" && !(endpoint2.protocol === "http:" && local)) {
     throw new Error("Coordination endpoint requires HTTPS (HTTP is permitted only on loopback for local trials).");
   }
-  if (endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
+  if (endpoint2.username || endpoint2.password || endpoint2.search || endpoint2.hash) {
     throw new Error("Coordination endpoint must not contain credentials, query parameters, or a fragment.");
   }
   if (!/^[a-fA-F0-9]{64}$/.test(config.authorityKey)) {
@@ -6749,7 +7217,7 @@ function validateCoordinationConfig(config) {
   if (config.timeoutMs !== void 0 && (!Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1 || config.timeoutMs > 12e4)) {
     throw new Error("Coordination timeout must be an integer from 1 to 120000 milliseconds.");
   }
-  return { ...config, endpoint: endpoint.href, authorityKey: config.authorityKey.toLowerCase() };
+  return { ...config, endpoint: endpoint2.href, authorityKey: config.authorityKey.toLowerCase() };
 }
 function coordinationConfigFromArgs(args, env = process.env) {
   const values = /* @__PURE__ */ new Map();
@@ -6812,7 +7280,7 @@ var AGENT_PACKAGE_URL, AGENT_CLIENTS, shellQuote;
 var init_coordination_agent_setup = __esm({
   "src/coordination-agent-setup.ts"() {
     "use strict";
-    AGENT_PACKAGE_URL = "protect-mcp@0.21.0";
+    AGENT_PACKAGE_URL = "protect-mcp@0.22.0";
     AGENT_CLIENTS = [
       { id: "claude-code", label: "Claude Code" },
       { id: "codex", label: "Codex CLI" },
@@ -7178,27 +7646,27 @@ var init_coordination_client = __esm({
         const keys2 = (value, allowed) => {
           if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !allowed.includes(key))) invalid();
         };
-        const envelope2 = (value) => keys2(value, ["payload", "signer", "digest", "signature"]);
+        const envelope3 = (value) => keys2(value, ["payload", "signer", "digest", "signature"]);
         const humanEnvelope = (value) => keys2(value, ["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"]);
         try {
           keys2(state, ["session", "invitation", "binding", "agreement", "fixtures", "principals", "status", "proposals", "responses", "reports", "approvals", "adoption", "adopted_agreement", "run", "feasibility", "next_principal_key", "model_steps", "max_model_steps", "error", "viewer", "started", "reviewer_grant", "reviewer_binding", "agent_bindings", "selected_proposal_digest", "runtime_changed", "source_negotiation"]);
           const session = state.session?.payload, agreement = state.agreement?.payload;
           if (!session || !agreement || session.type !== "scopeblind.coordination.negotiation-session.v1" || session.id !== sessionId || session.room_id !== this.#config.roomId || session.registrar_key !== this.#config.authorityKey || !await verify(state.session, this.#config.authorityKey) || agreement.type !== "scopeblind.coordination.agreement.v1" || agreement.id !== this.#config.roomId || agreement.owner_key !== session.owner_key || agreement.registrar_key !== this.#config.authorityKey || !await verifyOwnerAgreement(state.agreement, state.source_negotiation) || state.agreement.digest !== session.agreement_digest || session.max_proposals !== NEGOTIATION_MAX_PROPOSALS || state.max_model_steps !== NEGOTIATION_MAX_MODEL_STEPS || !Number.isSafeInteger(state.model_steps) || state.model_steps < 0 || state.model_steps > NEGOTIATION_MAX_MODEL_STEPS || !state.fixtures || await negotiationDigest(state.fixtures) !== session.fixture_digest) invalid();
           if (!Number.isFinite(Date.parse(session.created_at)) || !Number.isFinite(Date.parse(session.expires_at)) || Date.parse(session.expires_at) <= Date.parse(session.created_at) || Date.parse(session.expires_at) > Date.parse(session.created_at) + 864e5) invalid();
-          envelope2(state.session);
+          envelope3(state.session);
           keys2(session, ["type", "id", "room_id", "agreement_digest", "fixture_digest", "owner_key", "registrar_key", "invitation_digest", "created_at", "expires_at", "max_proposals", "parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]);
           const invitation = state.invitation?.payload;
           if (!invitation || !await verify(state.invitation, session.owner_key) || invitation.type !== "scopeblind.coordination.negotiation-invitation.v1" || state.invitation.digest !== session.invitation_digest || invitation.session_id !== sessionId || invitation.room_id !== session.room_id || invitation.agreement_digest !== session.agreement_digest || invitation.fixture_digest !== session.fixture_digest || invitation.issuer !== session.owner_key || invitation.registrar_key !== this.#config.authorityKey) invalid();
           if (invitation.role !== "counterparty" || invitation.max_claims !== 1 || invitation.expires_at !== session.expires_at || !/^[0-9a-f]{64}$/.test(invitation.token_hash)) invalid();
-          envelope2(state.invitation);
+          envelope3(state.invitation);
           keys2(invitation, ["type", "session_id", "room_id", "agreement_digest", "fixture_digest", "issuer", "registrar_key", "role", "token_hash", "max_claims", "expires_at", "parent_session_id", "source_operation_id"]);
           if (!Array.isArray(state.principals) || state.principals.length < 1 || state.principals.length > 2 || new Set(state.principals.map((p) => p.key)).size !== state.principals.length || new Set(state.principals.map((p) => p.side)).size !== state.principals.length) invalid();
           if (state.binding) {
             const binding = state.binding.payload;
-            envelope2(state.binding);
+            envelope3(state.binding);
             keys2(binding, ["type", "session_id", "room_id", "invitation_digest", "guest_key", "name", "issued_at", "expires_at", "claim"]);
             if (!await verify(state.binding, this.#config.authorityKey) || binding.type !== "scopeblind.coordination.negotiation-binding.v1" || binding.session_id !== sessionId || binding.room_id !== session.room_id || binding.invitation_digest !== state.invitation.digest || !await verify(binding.claim, binding.guest_key) || binding.claim.payload.session_id !== sessionId || binding.claim.payload.room_id !== session.room_id || binding.claim.payload.guest_key !== binding.guest_key || binding.guest_key === session.owner_key) invalid();
-            envelope2(binding.claim);
+            envelope3(binding.claim);
             keys2(binding.claim.payload, ["type", "session_id", "room_id", "guest_key", "name", "issued_at", "nonce"]);
           }
           for (const principal of state.principals) {
@@ -7236,11 +7704,11 @@ var init_coordination_client = __esm({
           const agentBindings = state.agent_bindings ?? [];
           if (!Array.isArray(agentBindings) || agentBindings.length > 12) invalid();
           for (const signed2 of agentBindings) {
-            envelope2(signed2);
+            envelope3(signed2);
             const b = signed2.payload, auth = b.owner_authorization, q = auth?.payload;
             keys2(b, ["type", "pair_id", "room_id", "session_id", "principal_key", "agreement_digest", "owner_key", "agent_key", "name", "scope", "audience", "issued_at", "expires_at", "owner_authorization"]);
             if (!await verify(signed2, this.#config.authorityKey) || b.type !== "scopeblind.coordination.agent-binding.v1" || b.audience !== "scopeblind.coordination.negotiation" || b.session_id !== sessionId || b.room_id !== session.room_id || b.agreement_digest !== session.agreement_digest || b.owner_key !== b.principal_key || !state.principals.some((p) => p.key === b.principal_key) || state.principals.some((p) => p.key === b.agent_key) || canonical(b.scope) !== canonical(NEGOTIATION_AGENT_ACTIONS) || !await verify(auth, b.principal_key) || q.type !== "scopeblind.coordination.request.v1" || q.action !== "negotiation_pair_create" || q.room_id !== session.room_id || q.body.session_id !== sessionId || q.body.pair_id !== b.pair_id || q.body.token_expires_at !== b.expires_at || canonical(q.body.scope) !== canonical(NEGOTIATION_AGENT_ACTIONS)) invalid();
-            envelope2(auth);
+            envelope3(auth);
             keys2(q, ["type", "action", "room_id", "body", "issued_at", "nonce"]);
             keys2(q.body, ["session_id", "pair_id", "secret_hash", "name", "expires_at", "token_expires_at", "scope", "expected_agent_key"]);
             if (q.body.expected_agent_key !== void 0 && q.body.expected_agent_key !== b.agent_key) invalid();
@@ -7255,7 +7723,7 @@ var init_coordination_client = __esm({
           };
           for (let index = 0; index < state.proposals.length; index++) {
             const signed2 = state.proposals[index], proposal = signed2.payload;
-            envelope2(signed2);
+            envelope3(signed2);
             keys2(proposal, ["type", "id", "approval_above_minor", "budget_minor", "exploration", "parent_digest", "session_id", "room_id", "round", "principal_key", "agent_key", "agent_mode", "agreement_digest", "fixture_digest", "mandate_digests", "next_agreement", "next_agreement_digest", "reviewer_grant", "reviewer_grant_digest", "issued_at"]);
             if (!actorBound(proposal) || !await verify(signed2, this.#config.authorityKey) || proposal.type !== "scopeblind.coordination.negotiation-proposal.v1" || proposal.session_id !== sessionId || proposal.room_id !== session.room_id || proposal.round !== index + 1 || proposal.agreement_digest !== session.agreement_digest || proposal.fixture_digest !== session.fixture_digest || mandateDigests.length !== 2 || canonical(proposal.mandate_digests) !== canonical(mandateDigests) || !state.principals.some((p) => p.key === proposal.principal_key) || !Number.isSafeInteger(proposal.approval_above_minor) || proposal.approval_above_minor < 0 || proposal.approval_above_minor > (proposal.budget_minor ?? agreement.budget_minor) || proposal.next_agreement?.approval_above_minor !== proposal.approval_above_minor || await negotiationPayloadDigest(proposal.next_agreement) !== proposal.next_agreement_digest || (index === 0 ? proposal.parent_digest !== void 0 : proposal.parent_digest !== state.proposals[index - 1].digest)) invalid();
           }
@@ -7269,13 +7737,13 @@ var init_coordination_client = __esm({
           }
           for (const signed2 of state.responses) {
             const response2 = signed2.payload;
-            envelope2(signed2);
+            envelope3(signed2);
             keys2(response2, ["type", "session_id", "principal_key", "proposal_digest", "mandate_digest", "decision", "agent_key", "agent_mode", "issued_at"]);
             if (!actorBound(response2) || !await verify(signed2, this.#config.authorityKey) || response2.type !== "scopeblind.coordination.negotiation-response.v1" || response2.session_id !== sessionId || !["support", "no_agreement"].includes(response2.decision) || !state.proposals.some((p) => p.digest === response2.proposal_digest) || state.principals.find((p) => p.key === response2.principal_key)?.mandate?.digest !== response2.mandate_digest) invalid();
           }
           for (const signed2 of state.reports) {
             const report = signed2.payload;
-            envelope2(signed2);
+            envelope3(signed2);
             keys2(report, ["type", "session_id", "room_id", "proposal_digest", "agreement_digest", "fixture_digest", "mandate_digests", "cases_digest", "runtime_revision", "adapter", "isolation", "issued_at", "before_approval_above_minor", "after_approval_above_minor", "before_budget_minor", "after_budget_minor", "results", "required_passed", "expectations_met", "mandates_met"]);
             if (!await verify(signed2, this.#config.authorityKey) || report.type !== "scopeblind.coordination.negotiation-report.v1" || report.session_id !== sessionId || report.room_id !== session.room_id || report.agreement_digest !== session.agreement_digest || report.fixture_digest !== session.fixture_digest || canonical(report.mandate_digests) !== canonical(mandateDigests) || !state.proposals.some((p) => p.digest === report.proposal_digest) || report.adapter !== "coordination-d1-sandbox" || report.isolation !== "separate-fixture-ledgers") invalid();
           }
@@ -7711,9 +8179,9 @@ var init_coordination_client = __esm({
         return { manifest, manifest_signature_verified: true, next_step: "The recipient can accept this exact result or request changes in the shared room. Delivery does not imply their acceptance." };
       }
       async checkAdmission(value, request, agreement, hash, fresh) {
-        const envelope2 = value;
-        if (!await verify(envelope2, this.#config.authorityKey)) throw new CoordinationError("invalid_admission", "Admission signature does not match the pinned authority. No execution was requested.");
-        const a = envelope2.payload;
+        const envelope3 = value;
+        if (!await verify(envelope3, this.#config.authorityKey)) throw new CoordinationError("invalid_admission", "Admission signature does not match the pinned authority. No execution was requested.");
+        const a = envelope3.payload;
         if (a.type !== "scopeblind.coordination.admission.v1" || a.room_id !== this.#config.roomId || a.run_id !== request.run_id || a.operation_id !== request.operation_id || a.agreement_digest !== agreement.digest || a.payload_hash !== hash || canonical(a.input) !== canonical(request.input) || a.destination !== request.input.destination || !["admitted", "held", "refused"].includes(a.decision)) {
           throw new CoordinationError("invalid_admission", "Admission does not authorize these exact operation terms. No execution was requested.");
         }
@@ -7721,16 +8189,16 @@ var init_coordination_client = __esm({
         if (!Number.isFinite(issued) || !Number.isFinite(expiry) || expiry <= issued || issued > Date.now() + 3e4 || fresh && expiry <= Date.now()) {
           throw new CoordinationError("expired_admission", "Admission validity could not be established. No execution was requested.");
         }
-        return envelope2;
+        return envelope3;
       }
       async checkOutcome(value, request, hash) {
-        const envelope2 = value;
-        if (!await verify(envelope2, this.#config.authorityKey)) throw new CoordinationError("invalid_outcome", "Destination outcome signature does not match the pinned authority.");
-        const o = envelope2.payload;
+        const envelope3 = value;
+        if (!await verify(envelope3, this.#config.authorityKey)) throw new CoordinationError("invalid_outcome", "Destination outcome signature does not match the pinned authority.");
+        const o = envelope3.payload;
         if (o.type !== "scopeblind.coordination.outcome.v1" || o.room_id !== this.#config.roomId || o.run_id !== request.run_id || o.operation_id !== request.operation_id || o.payload_hash !== hash || o.amount_minor !== request.input.amount_minor || o.destination !== request.input.destination || !["confirmed", "failed", "unknown"].includes(o.status) || o.observed_by !== "sandbox-ledger" && !(o.status === "unknown" && o.observed_by === "gateway-report") || !Number.isFinite(Date.parse(o.issued_at)) || Date.parse(o.issued_at) > Date.now() + 3e4 || o.status === "confirmed" && !o.transaction_id) {
           throw new CoordinationError("invalid_outcome", "Destination outcome does not establish the result of these exact operation terms.");
         }
-        return envelope2;
+        return envelope3;
       }
       async pay(payment) {
         validateCoordinationPayment(payment);
@@ -7776,7 +8244,7 @@ function parseAgentTaskDraft(value) {
   };
   if (!value || typeof value !== "object" || Array.isArray(value)) return invalid();
   const v = value;
-  if (Object.keys(v).sort().join(",") !== DRAFT_KEYS || v.type !== "scopeblind.coordination.agent-task-draft.v1" || !text3(v.title, 1, 100) || !v.title.trim() || !text3(v.goal, 1, 2e3) || !v.goal.trim() || !text3(v.counterparty_name, 0, 60) || !text3(v.private_brief, 0, 2e3) || !amount(v.budget_minor, 1) || !amount(v.approval_above_minor) || v.approval_above_minor > v.budget_minor || !Number.isSafeInteger(v.approval_ttl_seconds) || v.approval_ttl_seconds < 30 || v.approval_ttl_seconds > 900 || v.require_po_match !== true || !amount(v.min_budget_minor, 1) || !amount(v.max_budget_minor, 1) || v.min_budget_minor > v.max_budget_minor || !amount(v.min_threshold_minor) || !amount(v.max_threshold_minor) || v.min_threshold_minor > v.max_threshold_minor || v.max_threshold_minor > v.max_budget_minor || typeof v.preference !== "string" || !["fewer_reviews", "more_review", "balanced"].includes(v.preference) || typeof v.budget_preference !== "string" || !["preserve_budget", "lower_budget", "more_capacity"].includes(v.budget_preference) || !Array.isArray(v.assumptions) || v.assumptions.length > 12 || !v.assumptions.every((item) => text3(item, 1, 300))) return invalid();
+  if (Object.keys(v).sort().join(",") !== DRAFT_KEYS || v.type !== "scopeblind.coordination.agent-task-draft.v1" || !text4(v.title, 1, 100) || !v.title.trim() || !text4(v.goal, 1, 2e3) || !v.goal.trim() || !text4(v.counterparty_name, 0, 60) || !text4(v.private_brief, 0, 2e3) || !amount(v.budget_minor, 1) || !amount(v.approval_above_minor) || v.approval_above_minor > v.budget_minor || !Number.isSafeInteger(v.approval_ttl_seconds) || v.approval_ttl_seconds < 30 || v.approval_ttl_seconds > 900 || v.require_po_match !== true || !amount(v.min_budget_minor, 1) || !amount(v.max_budget_minor, 1) || v.min_budget_minor > v.max_budget_minor || !amount(v.min_threshold_minor) || !amount(v.max_threshold_minor) || v.min_threshold_minor > v.max_threshold_minor || v.max_threshold_minor > v.max_budget_minor || typeof v.preference !== "string" || !["fewer_reviews", "more_review", "balanced"].includes(v.preference) || typeof v.budget_preference !== "string" || !["preserve_budget", "lower_budget", "more_capacity"].includes(v.budget_preference) || !Array.isArray(v.assumptions) || v.assumptions.length > 12 || !v.assumptions.every((item) => text4(item, 1, 300))) return invalid();
   return structuredClone(v);
 }
 function prepareAgentTaskDraft(value) {
@@ -7813,19 +8281,22 @@ function prepareAgentTaskDraft(value) {
   if (!assumptions.includes("This draft uses fictional USD invoices and fixed sample destinations. No real payment service is connected.")) assumptions.push("This draft uses fictional USD invoices and fixed sample destinations. No real payment service is connected.");
   return parseAgentTaskDraft(draft);
 }
-var DRAFT_KEYS, text3, amount;
+var DRAFT_KEYS, text4, amount;
 var init_coordination_agent_requests = __esm({
   "src/coordination-agent-requests.ts"() {
     "use strict";
     DRAFT_KEYS = ["type", "title", "goal", "counterparty_name", "budget_minor", "approval_above_minor", "approval_ttl_seconds", "require_po_match", "min_budget_minor", "max_budget_minor", "min_threshold_minor", "max_threshold_minor", "private_brief", "preference", "budget_preference", "assumptions"].sort().join(",");
-    text3 = (value, min, max) => typeof value === "string" && value.length >= min && value.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value);
+    text4 = (value, min, max) => typeof value === "string" && value.length >= min && value.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value);
     amount = (value, min = 0) => Number.isSafeInteger(value) && Number(value) >= min && Number(value) <= 1e7;
   }
 });
 
 // src/coordination-agent-profile.ts
-function validateProfileDestination(endpoint, authorityKey) {
-  const checked = validateCoordinationConfig({ endpoint, authorityKey, roomId: "profile-placeholder", token: "profile-placeholder" });
+function profileEntry(entries, id5) {
+  return entries && Object.hasOwn(entries, id5) ? entries[id5] : void 0;
+}
+function validateProfileDestination(endpoint2, authorityKey) {
+  const checked = validateCoordinationConfig({ endpoint: endpoint2, authorityKey, roomId: "profile-placeholder", token: "profile-placeholder" });
   return { endpoint: checked.endpoint, authorityKey: checked.authorityKey };
 }
 function readAgentProfile(path) {
@@ -7847,9 +8318,18 @@ function readAgentProfile(path) {
     if (value?.type !== "scopeblind.coordination.agent-profile.v1" || !/^[a-f0-9]{64}$/.test(value.agentKey) || !/^[a-f0-9]{96,256}$/.test(value.privateKey) || [value.requests, value.connections, value.pendingHandoffs].some((v) => !v || typeof v !== "object" || Array.isArray(v))) throw new Error("The private agent profile has an unsupported format.");
     validateProfileDestination(value.endpoint, value.authorityKey);
     if (Object.keys(value.requests).length > 50 || Object.keys(value.connections).length > 50 || Object.keys(value.pendingHandoffs).length > 50) throw new Error("This private profile reached its connection limit. Use a separate profile for new work.");
-    for (const [id4, connection] of Object.entries(value.connections)) {
+    for (const entries of [value.repositoryConnections, value.repositoryRevisions]) if (entries !== void 0 && (!entries || typeof entries !== "object" || Array.isArray(entries) || Object.keys(entries).length > 50)) throw new Error("The private repository profile has an unsupported format or reached its connection limit.");
+    for (const [id5, connection] of Object.entries(value.connections)) {
       validateCoordinationConfig(connection);
-      if (!profileId(id4) || connection.endpoint !== value.endpoint || connection.authorityKey !== value.authorityKey || !connection.binding || connection.binding.payload.pair_id !== id4 || connection.binding.payload.agent_key !== connection.agentKey) throw new Error("A saved connection does not match this private profile.");
+      if (!profileId(id5) || connection.endpoint !== value.endpoint || connection.authorityKey !== value.authorityKey || !connection.binding || connection.binding.payload.pair_id !== id5 || connection.binding.payload.agent_key !== connection.agentKey) throw new Error("A saved connection does not match this private profile.");
+    }
+    for (const [id5, connection] of Object.entries(value.repositoryConnections ?? {})) {
+      const grant = connection?.grant?.payload;
+      if (!profileId(id5) || !validRepositoryAgentGrant(grant) || grant.id !== id5 || grant.agent_key !== value.agentKey || grant.task_id !== connection.taskId || grant.task_digest !== connection.taskDigest) throw new Error("A saved repository grant does not match this private profile.");
+    }
+    for (const [id5, revision] of Object.entries(value.repositoryRevisions ?? {})) {
+      const r = revision?.request?.payload, c2 = profileEntry(value.repositoryConnections, revision?.connectionId);
+      if (!profileId(id5) || !c2 || !validRepositoryRevisionRequest(r) || r.id !== id5 || r.requester_key !== value.agentKey || r.task_id !== c2.taskId || r.task_digest !== c2.taskDigest || r.grant_digest !== c2.grant.digest) throw new Error("A saved repository revision does not match its exact grant.");
     }
     return value;
   } finally {
@@ -7874,8 +8354,10 @@ async function updateAgentProfile(path, change) {
   const temporary = path + "." + (0, import_node_crypto11.randomBytes)(8).toString("hex") + ".tmp";
   try {
     const profile = readAgentProfile(path), result2 = change(profile);
-    if ([profile.requests, profile.connections, profile.pendingHandoffs].some((entries) => Object.keys(entries).length > 50)) throw new Error("This private profile reached its connection limit. Use a separate profile for new work.");
-    (0, import_node_fs15.writeFileSync)(temporary, JSON.stringify(profile) + "\n", { flag: "wx", mode: 384 });
+    if ([profile.requests, profile.connections, profile.pendingHandoffs, profile.repositoryConnections ?? {}, profile.repositoryRevisions ?? {}].some((entries) => Object.keys(entries).length > 50)) throw new Error("This private profile reached its connection limit. Use a separate profile for new work.");
+    const serialized = JSON.stringify(profile) + "\n";
+    if (Buffer.byteLength(serialized) > 2e6) throw new Error("This private profile reached its storage limit. Use a separate profile for new work.");
+    (0, import_node_fs15.writeFileSync)(temporary, serialized, { flag: "wx", mode: 384 });
     (0, import_node_fs15.renameSync)(temporary, path);
     return result2;
   } finally {
@@ -7889,11 +8371,11 @@ async function updateAgentProfile(path, change) {
     }
   }
 }
-async function ensureAgentProfile(path, endpoint, authorityKey) {
+async function ensureAgentProfile(path, endpoint2, authorityKey) {
   path = (0, import_node_path11.resolve)(path);
   try {
     const value = readAgentProfile(path);
-    if (endpoint !== void 0 && validateProfileDestination(endpoint, authorityKey || value.authorityKey).endpoint !== value.endpoint || authorityKey !== void 0 && authorityKey.toLowerCase() !== value.authorityKey) throw new Error("This profile is pinned to another authority or endpoint. Use its original settings or a separate profile.");
+    if (endpoint2 !== void 0 && validateProfileDestination(endpoint2, authorityKey || value.authorityKey).endpoint !== value.endpoint || authorityKey !== void 0 && authorityKey.toLowerCase() !== value.authorityKey) throw new Error("This profile is pinned to another authority or endpoint. Use its original settings or a separate profile.");
     await importIdentity(value.privateKey, value.agentKey);
     return value;
   } catch (error) {
@@ -7905,8 +8387,8 @@ async function ensureAgentProfile(path, endpoint, authorityKey) {
       if (check.code !== "ENOENT") throw error;
     }
   }
-  if (!endpoint || !authorityKey) throw new Error("A new profile needs --endpoint and an independently pinned --authority-key.");
-  const destination = validateProfileDestination(endpoint, authorityKey), pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
+  if (!endpoint2 || !authorityKey) throw new Error("A new profile needs --endpoint and an independently pinned --authority-key.");
+  const destination = validateProfileDestination(endpoint2, authorityKey), pair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]);
   const profile = { type: "scopeblind.coordination.agent-profile.v1", ...destination, agentKey: bytesToHex(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))), privateKey: bytesToHex(new Uint8Array(await crypto.subtle.exportKey("pkcs8", pair.privateKey))), requests: {}, connections: {}, pendingHandoffs: {} };
   (0, import_node_fs15.mkdirSync)((0, import_node_path11.dirname)(path), { recursive: true, mode: 448 });
   const fd = (0, import_node_fs15.openSync)(path, import_node_fs15.constants.O_WRONLY | import_node_fs15.constants.O_CREAT | import_node_fs15.constants.O_EXCL | import_node_fs15.constants.O_NOFOLLOW, 384);
@@ -7922,9 +8404,9 @@ async function importProfileConnection(profilePath, configPath) {
   if (!await verify(binding, config.authorityKey) || !await verify(binding.payload.owner_authorization, binding.payload.owner_key)) throw new Error("The saved connection signatures could not be verified.");
   await updateAgentProfile(profilePath, (profile) => {
     if (config.endpoint !== profile.endpoint || config.authorityKey !== profile.authorityKey) throw new Error("Import requires the same pinned endpoint and authority.");
-    const id4 = binding.payload.pair_id, existing = profile.connections[id4];
+    const id5 = binding.payload.pair_id, existing = profile.connections[id5];
     if (existing && existing.binding.digest !== binding.digest) throw new Error("This connection ID already names another signed grant.");
-    profile.connections[id4] = { ...config, type: stored.type, setupVersion: stored.setupVersion, agentKey: stored.agentKey, name: stored.name, binding };
+    profile.connections[id5] = { ...config, type: stored.type, setupVersion: stored.setupVersion, agentKey: stored.agentKey, name: stored.name, binding };
   });
   return binding.payload.pair_id;
 }
@@ -7939,16 +8421,230 @@ var init_coordination_agent_profile = __esm({
     init_coordination_protocol();
     init_coordination_config();
     init_coordination_pair_cli();
+    init_coordination_repository_collaboration();
     DEFAULT_AGENT_PROFILE = (0, import_node_path11.resolve)((0, import_node_os2.homedir)(), ".scopeblind", "agent.json");
     profileId = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(value);
   }
 });
 
-// src/coordination-agent-client.ts
+// src/coordination-repository-collaboration-evidence.ts
+function requireValid(condition, message) {
+  if (!condition) throw new Error(message);
+}
+async function verifyRepositoryCollaborationEvidence(input, pins) {
+  const result2 = { valid: false, accepted: false, authorityPinned: false, previewVerified: false, revisionLinked: false, errors: [], limitations: [...baseLimitations] };
+  try {
+    requireValid(shape2(input, ["type", "repository", "collaboration"], ["demo", "parent", "parent_request", "parent_agent_grant"]) && input.type === "scopeblind.repository.collaboration-evidence.v1", "Unsupported collaboration evidence shape.");
+    const bundle = input;
+    const core = await verifyRepositoryEvidence(bundle.repository, pins);
+    result2.limitations.push(...core.limitations);
+    requireValid(core.valid, core.errors.join("; "));
+    result2.authorityPinned = core.authorityPinned;
+    const state = bundle.repository.state.payload, task = state.task.payload, collaboration = bundle.collaboration, c2 = collaboration?.payload;
+    requireValid(envelope(collaboration) && await verify(collaboration, task.authority_key) && shape2(c2, ["type", "task_id", "task_digest", "participants", "preview", "requests", "revisions", "agent_grants", "observed_at"]) && c2.type === "scopeblind.repository.collaboration.v1" && c2.task_id === task.id && c2.task_digest === state.task.digest && time4(c2.observed_at), "Collaboration must be signed by this task\u2019s authority and name the exact task.");
+    const principals = [task.owner_key, ...state.reviewer ? [state.reviewer.payload.reviewer_key] : []];
+    if (c2.participants !== null) {
+      const signed2 = c2.participants, p = signed2?.payload;
+      requireValid(envelope(signed2) && validRepositoryParticipants(p) && await verify(signed2, task.owner_key) && p.task_id === task.id && p.task_digest === state.task.digest && p.owner_key === task.owner_key && p.receiver_key === task.receiver_key && p.reviewer_key === state.reviewer?.payload.reviewer_key && p.reviewer_claim_digest === state.reviewer?.digest && within(p.issued_at, task.issued_at, task.expires_at) && Date.parse(p.expires_at) <= Date.parse(task.expires_at), "The owner\u2019s participant binding does not match this task and enrolled reviewer.");
+    }
+    if (c2.preview !== null) {
+      const signed2 = c2.preview, p = signed2?.payload, proposal = state.proposal;
+      requireValid(envelope(signed2) && validRepositoryPreview(p) && await verify(signed2, task.receiver_key) && proposal && p.task_id === task.id && p.task_digest === state.task.digest && p.proposal_digest === proposal.digest && ["base_sha", "head_sha", "merge_sha", "tree_sha"].every((k) => p[k] === proposal.payload[k]) && proposal.payload.files.some((f) => f.path === CONTACT_PATH), "The preview is not bound to this exact receiver-reviewed proposal.");
+      for (const side of [p.before, p.after]) {
+        const bytes = new TextEncoder().encode(contactPageBytes(side.model)), header2 = new TextEncoder().encode(`blob ${bytes.length}\0`), blob = new Uint8Array(header2.length + bytes.length);
+        blob.set(header2);
+        blob.set(bytes, header2.length);
+        const gitSha = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", blob)), (n) => n.toString(16).padStart(2, "0")).join("");
+        requireValid(await sha256(contactPageBytes(side.model)) === side.content_sha256 && gitSha === side.blob_sha, "Preview content does not match its canonical bytes and Git blob digest.");
+      }
+      requireValid(Date.parse(p.observed_at) >= Date.parse(proposal.payload.observed_at) && Date.parse(p.observed_at) <= Date.parse(c2.observed_at), "Preview timing does not follow the reviewed proposal.");
+      result2.previewVerified = true;
+    }
+    requireValid(Array.isArray(c2.agent_grants) && c2.agent_grants.length <= 100 && Array.isArray(c2.requests) && c2.requests.length <= 100 && Array.isArray(c2.revisions) && c2.revisions.length <= 100, "Collaboration collections exceed their supported bounds.");
+    const incomingLinks = c2.revisions.filter((link) => link?.payload?.child_task_id === task.id);
+    requireValid(incomingLinks.length <= 1 && (incomingLinks.length === 1 || !["parent", "parent_request", "parent_agent_grant"].some((key) => Object.hasOwn(bundle, key))), "Predecessor records must be consumed by exactly one incoming revision link.");
+    const grants = /* @__PURE__ */ new Map(), requestIds = /* @__PURE__ */ new Set(), requests = /* @__PURE__ */ new Map();
+    for (const entry of c2.agent_grants) {
+      const signed2 = entry.grant, g = signed2?.payload;
+      requireValid(shape2(entry, ["grant", "revoked"]) && typeof entry.revoked === "boolean" && envelope(signed2) && validRepositoryAgentGrant(g) && await verify(signed2, g.issuer_key) && principals.includes(g.issuer_key) && ![...principals, task.receiver_key, task.authority_key].includes(g.agent_key) && g.task_id === task.id && g.task_digest === state.task.digest && within(g.issued_at, task.issued_at, task.expires_at) && Date.parse(g.issued_at) <= Date.parse(c2.observed_at) && Date.parse(g.expires_at) <= Date.parse(task.expires_at) && !grants.has(signed2.digest), "An agent grant is invalid, duplicated, or crosses a human/receiver boundary.");
+      grants.set(signed2.digest, entry);
+    }
+    for (const signed2 of c2.requests) {
+      const r = signed2?.payload;
+      requireValid(envelope(signed2) && validRepositoryRevisionRequest(r) && await verify(signed2, r.requester_key) && r.task_id === task.id && r.task_digest === state.task.digest && within(r.issued_at, task.issued_at, task.expires_at) && Date.parse(r.issued_at) <= Date.parse(c2.observed_at) && !requestIds.has(r.id) && !requests.has(signed2.digest), "A revision request is invalid or duplicated.");
+      requestIds.add(r.id);
+      requests.set(signed2.digest, signed2);
+      if (principals.includes(r.requester_key)) requireValid(r.grant_digest === void 0, "A human revision must not borrow an agent grant.");
+      else {
+        const g = r.grant_digest ? grants.get(r.grant_digest)?.grant.payload : void 0;
+        requireValid(g && g.agent_key === r.requester_key && g.permissions.includes("request_revision") && within(r.issued_at, g.issued_at, g.expires_at), "The suggesting agent did not hold the exact recorded revision scope.");
+      }
+    }
+    let parent;
+    if (bundle.parent) {
+      const checked = await verifyRepositoryEvidence(bundle.parent, pins);
+      requireValid(checked.valid, "The predecessor repository evidence does not verify.");
+      parent = bundle.parent.state.payload;
+      requireValid(parent.task.payload.owner_key === task.owner_key && parent.task.payload.receiver_key === task.receiver_key && parent.task.payload.authority_key === task.authority_key && parent.task.payload.repository === task.repository, "The predecessor crosses this repository or participant authority.");
+    }
+    const linkIds = /* @__PURE__ */ new Set();
+    for (const signed2 of c2.revisions) {
+      const l = signed2?.payload;
+      requireValid(envelope(signed2) && validRepositoryRevisionLink(l) && await verify(signed2, task.owner_key) && l.owner_key === task.owner_key && time4(l.issued_at) && Date.parse(l.issued_at) <= Date.parse(c2.observed_at) && !linkIds.has(l.id), "A revision link is invalid or duplicated.");
+      linkIds.add(l.id);
+      if (l.child_task_id === task.id) {
+        requireValid(l.child_task_digest === state.task.digest && parent && l.parent_task_id === parent.task.payload.id && l.parent_task_digest === parent.task.digest && l.parent_basis_digest === repositoryRevisionBasis(parent), "The child revision does not bind the included predecessor and exact feedback.");
+        const signedRequest = bundle.parent_request, r = signedRequest?.payload, pt = parent.task.payload;
+        requireValid(envelope(signedRequest) && validRepositoryRevisionRequest(r) && await verify(signedRequest, r.requester_key) && signedRequest.digest === l.request_digest && r.task_id === pt.id && r.task_digest === parent.task.digest && r.basis_digest === l.parent_basis_digest && within(r.issued_at, pt.issued_at, pt.expires_at) && Date.parse(r.issued_at) <= Date.parse(l.issued_at), "The original signed feedback is missing or does not match this revision.");
+        const parentPrincipals = [pt.owner_key, ...parent.reviewer ? [parent.reviewer.payload.reviewer_key] : []];
+        if (parentPrincipals.includes(r.requester_key)) requireValid(r.grant_digest === void 0 && bundle.parent_agent_grant === void 0, "Human feedback must not borrow an agent grant.");
+        else {
+          const signedGrant = bundle.parent_agent_grant, g = signedGrant?.payload;
+          requireValid(envelope(signedGrant) && validRepositoryAgentGrant(g) && await verify(signedGrant, g.issuer_key) && signedGrant.digest === r.grant_digest && parentPrincipals.includes(g.issuer_key) && ![...parentPrincipals, pt.receiver_key, pt.authority_key].includes(g.agent_key) && g.agent_key === r.requester_key && g.task_id === pt.id && g.task_digest === parent.task.digest && g.permissions.includes("request_revision") && within(g.issued_at, pt.issued_at, pt.expires_at) && Date.parse(g.expires_at) <= Date.parse(pt.expires_at) && within(r.issued_at, g.issued_at, g.expires_at), "The original feedback agent\u2019s exact human-signed scope is missing or invalid.");
+        }
+        result2.revisionLinked = true;
+      } else {
+        requireValid(l.parent_task_id === task.id && l.parent_task_digest === state.task.digest && requests.has(l.request_digest) && requests.get(l.request_digest).payload.basis_digest === l.parent_basis_digest, "The outgoing revision link does not name this task and an included suggestion.");
+      }
+    }
+    if (bundle.demo) {
+      const signed2 = bundle.demo, d = signed2?.payload, r = d?.request?.payload, p = d?.provision?.payload;
+      requireValid(envelope(signed2) && await verify(signed2, task.authority_key) && shape2(d, ["type", "request", "provision", "task", "status", "dispatch", "error", "observed_at"]) && d.type === "scopeblind.repository.demo-state.v1" && ["queued", "provisioning", "ready_to_review", "active", "failed", "expired"].includes(d.status) && ["requested", "unconfigured", "unavailable"].includes(d.dispatch) && (d.error === null || typeof d.error === "string" && d.error.length <= 100) && time4(d.observed_at), "The demo\u2019s service record is invalid.");
+      requireValid(envelope(d.request) && validRepositoryDemoRequest(r) && await verify(d.request, task.owner_key) && r.id === task.id && r.owner_key === task.owner_key && r.authority_key === task.authority_key && r.receiver_key === task.receiver_key && r.reviewer_secret_hash === task.reviewer_secret_hash && r.title === task.title && Date.parse(task.expires_at) <= Date.parse(r.expires_at), "The demo request is not the task owner\u2019s exact provisioning authority.");
+      requireValid(d.task && canonical(d.task) === canonical(state.task) && envelope(d.provision) && validRepositoryDemoProvision(p) && await verify(d.provision, task.receiver_key) && p.request_id === task.id && p.request_digest === d.request.digest && p.repository === task.repository && p.base_branch === task.base_branch && p.pull_number === task.pull_number && p.receiver_key === task.receiver_key && canonical(p.required_checks) === canonical(task.required_checks) && canonical(task.allowed_paths) === canonical([CONTACT_PATH]), "The provisioned workspace does not match the signed task.");
+      if (c2.preview) requireValid(c2.preview.payload.base_sha === p.initial_base_sha && c2.preview.payload.head_sha === p.initial_head_sha && canonical(c2.preview.payload.after.model) === canonical(r.proposed), "The demo preview differs from the exact requested and provisioned change.");
+      if (r.parent_task_id) requireValid(result2.revisionLinked && parent && r.parent_task_id === parent.task.payload.id && r.parent_task_digest === parent.task.digest && r.parent_basis_digest === repositoryRevisionBasis(parent) && canonical(bundle.parent_request?.payload.proposed) === canonical(r.proposed) && c2.revisions.some((l) => l.payload.child_task_id === task.id && l.payload.request_digest === r.revision_request_digest), "The demo revision lacks its exact predecessor link.");
+    }
+    result2.valid = true;
+    result2.accepted = core.accepted;
+  } catch (error) {
+    result2.errors.push(error instanceof Error ? error.message : "The collaboration evidence could not be verified.");
+    result2.previewVerified = false;
+    result2.revisionLinked = false;
+    result2.accepted = false;
+  }
+  return result2;
+}
+var shape2, envelope, time4, within, baseLimitations;
+var init_coordination_repository_collaboration_evidence = __esm({
+  "src/coordination-repository-collaboration-evidence.ts"() {
+    "use strict";
+    init_coordination_protocol();
+    init_coordination_repository();
+    init_coordination_repository_collaboration();
+    shape2 = (v, required, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
+    envelope = (v) => shape2(v, ["payload", "signer", "digest", "signature"]);
+    time4 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+    within = (at2, start, end) => Date.parse(at2) >= Date.parse(start) && Date.parse(at2) <= Date.parse(end);
+    baseLimitations = [
+      "A preview is the receiver\u2019s signed observation of canonical contact-page data, rendered by ScopeBlind\u2019s fixed template. It does not execute repository code or prove a deployed website.",
+      "Agent grants allow only the recorded reading and revision suggestions. They do not convey human approval or receiver execution authority.",
+      "Revocation flags and the completeness of the collaboration history are statements by the service. The included record does not prove a currently live grant."
+    ];
+  }
+});
+
+// src/coordination-repository-agent.ts
 function fail(code2, message) {
   throw new CoordinationError(code2, message);
 }
-var import_node_crypto12, hex2, exact4, envelope, CoordinationAgentClient;
+function repositoryConnectionSummary(id5, c2, agentKey) {
+  return { connection_id: id5, purpose: "repository", room_id: c2.taskId, task_id: c2.taskId, task_digest: c2.taskDigest, principal_key: c2.grant.payload.issuer_key, agent_key: agentKey, expires_at: c2.grant.payload.expires_at, locally_expired: Date.parse(c2.grant.payload.expires_at) <= Date.now(), same_profile_key: true, scope: c2.grant.payload.permissions };
+}
+var exact4, hex3, RepositoryAgentClient;
+var init_coordination_repository_agent = __esm({
+  "src/coordination-repository-agent.ts"() {
+    "use strict";
+    init_coordination_protocol();
+    init_coordination_client();
+    init_coordination_agent_profile();
+    init_coordination_repository_collaboration();
+    init_coordination_repository_collaboration_evidence();
+    exact4 = (v, keys2) => !!v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === keys2.length && keys2.every((k) => Object.hasOwn(v, k));
+    hex3 = (v) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
+    RepositoryAgentClient = class {
+      constructor(profilePath, transport) {
+        this.profilePath = profilePath;
+        this.transport = transport;
+      }
+      profile() {
+        return readAgentProfile(this.profilePath);
+      }
+      async checked(response, taskId, grantId) {
+        const profile = this.profile(), e = response.evidence;
+        const checked = await verifyRepositoryCollaborationEvidence(e, profile.authorityKey);
+        if (!checked.valid || !checked.authorityPinned || !response.repository_task || !response.collaboration || canonical(response.repository_task) !== canonical(e.repository.state) || canonical(response.collaboration) !== canonical(e.collaboration)) fail("repository_evidence_invalid", "The repository evidence did not verify against this profile\u2019s pinned authority. No grant was saved or revision reported as recorded.");
+        const s = e.repository.state.payload, c2 = e.collaboration.payload, task = s.task.payload, now = Date.now();
+        if (task.id !== taskId || Math.abs(now - Date.parse(s.observed_at)) > 12e4 || Math.abs(now - Date.parse(c2.observed_at)) > 12e4) fail("repository_state_stale", "Inspect this exact repository task again; the signed observation is stale or belongs to another task.");
+        const entries = c2.agent_grants.filter((entry2) => entry2.grant.payload.id === grantId);
+        if (entries.length !== 1) fail("repository_agent_grant_missing", "The signed task does not contain this exact agent grant. Ask your person to authorize this profile\u2019s public key.");
+        const entry = entries[0], grant = entry.grant, g = grant.payload;
+        if (entry.revoked || g.agent_key !== profile.agentKey || !g.permissions.includes("read_task") || Date.parse(g.issued_at) > now + 6e4 || Date.parse(g.expires_at) <= now || Date.parse(task.expires_at) <= now) fail("repository_agent_grant_inactive", "The exact repository grant is inactive, revoked, expired or belongs to another agent. No authority is inherited from another connection.");
+        const saved = profileEntry(profile.repositoryConnections, grantId);
+        if (saved && (saved.taskId !== taskId || saved.taskDigest !== s.task.digest || saved.grant.digest !== grant.digest)) fail("repository_agent_grant_conflict", "This connection ID already names a different signed repository grant.");
+        return { evidence: e, grant, connection: { taskId, taskDigest: s.task.digest, grant } };
+      }
+      async read(taskId, grantId) {
+        if (!profileId(taskId) || !profileId(grantId)) fail("invalid_repository_connection", "Use the task_id and grant_id supplied by the person after they authorize this profile key.");
+        const response = await this.transport("repository_agent_get", taskId, { grant_id: grantId });
+        return this.checked(response, taskId, grantId);
+      }
+      summary(e) {
+        const s = e.repository.state.payload, c2 = e.collaboration.payload;
+        return { task: s.task.payload, status: s.status, reviewer_key: s.reviewer?.payload.reviewer_key ?? null, proposal: s.proposal?.payload ?? null, preview: c2.preview?.payload ?? null, current_basis_digest: repositoryRevisionBasis(s), approvals: s.approvals.map((a) => ({ principal_key: a.payload.principal_key, decision: a.payload.decision, expires_at: a.payload.expires_at })), outcome: s.outcome?.payload ?? null, acceptance: s.acceptance?.payload ?? null, revision_requests: c2.requests.map((r) => ({ ...r.payload, digest: r.digest })), revisions: c2.revisions.map((r) => r.payload), observed_at: s.observed_at };
+      }
+      async inspect(taskId, grantId) {
+        const checked = await this.read(taskId, grantId);
+        await updateAgentProfile(this.profilePath, (p) => {
+          const prior = profileEntry(p.repositoryConnections, grantId);
+          if (prior && prior.grant.digest !== checked.grant.digest) fail("repository_agent_grant_conflict", "A different repository grant was saved concurrently.");
+          p.repositoryConnections ??= /* @__PURE__ */ Object.create(null);
+          Object.defineProperty(p.repositoryConnections, grantId, { value: checked.connection, enumerable: true, writable: true, configurable: true });
+        });
+        return { ...repositoryConnectionSummary(grantId, checked.connection, this.profile().agentKey), ...this.summary(checked.evidence), evidence: checked.evidence, next_step: "Read the verified task and exact current_basis_digest. If this grant permits request_revision, you may suggest only the supported contact-page model. Humans must review the suggestion, create any revision task, and approve its fresh exact snapshot. You cannot claim a human role, approve, accept, install a receiver, or execute a branch update." };
+      }
+      async requestRevision(input) {
+        if (!exact4(input, ["connection_id", "request_id", "basis_digest", "message", "proposed"]) || !profileId(input.connection_id) || !profileId(input.request_id) || !hex3(input.basis_digest) || typeof input.message !== "string" || !input.message.trim() || input.message.length > 600 || /[\u0000-\u001f\u007f]/.test(input.message) || !validContactPage(input.proposed)) fail("invalid_repository_revision", "Use a stable request_id, the exact inspected basis_digest, a brief message, and only the supported contact-page model.");
+        const p = this.profile(), saved = profileEntry(p.repositoryConnections, input.connection_id);
+        if (!saved) fail("unknown_repository_connection", "Call coordination.inspect_repository with the person\u2019s exact task and grant IDs first.");
+        const pending = profileEntry(p.repositoryRevisions, input.request_id);
+        if (pending && (pending.connectionId !== input.connection_id || pending.request.payload.basis_digest !== input.basis_digest || pending.request.payload.message !== input.message || canonical(pending.request.payload.proposed) !== canonical(input.proposed))) fail("repository_revision_id_conflict", "This request ID already names another exact suggestion. Preserve it for retries; use a new ID for a different intended revision.");
+        const checked = await this.read(saved.taskId, input.connection_id), c2 = checked.evidence.collaboration.payload;
+        if (!checked.grant.payload.permissions.includes("request_revision")) fail("repository_revision_outside_grant", "This connection permits reading only. Ask the person to review any additional revision permission.");
+        if (pending) {
+          if (!await verify(pending.request, p.agentKey)) fail("repository_revision_invalid", "The locally saved revision signature is invalid; it cannot be replayed.");
+          if (c2.requests.some((r) => r.digest === pending.request.digest)) return this.recorded(input.connection_id, pending.request);
+        }
+        if (repositoryRevisionBasis(checked.evidence.repository.state.payload) !== input.basis_digest) fail("repository_revision_basis_stale", "The task now has a different inspected change or result. Inspect it and ask whether a new suggestion is still appropriate; the saved suggestion was not rewritten.");
+        if (!pending) {
+          const payload = { type: "scopeblind.repository.revision-request.v1", id: input.request_id, task_id: saved.taskId, task_digest: saved.taskDigest, basis_digest: input.basis_digest, requester_key: p.agentKey, grant_digest: checked.grant.digest, message: input.message, proposed: input.proposed, issued_at: (/* @__PURE__ */ new Date()).toISOString() };
+          if (!validRepositoryRevisionRequest(payload)) fail("invalid_repository_revision", "The proposed revision cannot be represented by this bounded protocol.");
+          const request2 = await sign(payload, await importIdentity(p.privateKey, p.agentKey));
+          await updateAgentProfile(this.profilePath, (current) => {
+            const prior = profileEntry(current.repositoryRevisions, input.request_id);
+            if (prior && (prior.connectionId !== input.connection_id || prior.request.payload.basis_digest !== input.basis_digest || prior.request.payload.message !== input.message || canonical(prior.request.payload.proposed) !== canonical(input.proposed))) fail("repository_revision_id_conflict", "Another writer used this request ID for a different exact suggestion.");
+            current.repositoryRevisions ??= /* @__PURE__ */ Object.create(null);
+            if (!prior) Object.defineProperty(current.repositoryRevisions, input.request_id, { value: { connectionId: input.connection_id, request: request2 }, enumerable: true, writable: true, configurable: true });
+          });
+        }
+        const request = profileEntry(this.profile().repositoryRevisions, input.request_id).request;
+        const response = await this.transport("repository_revision_request", saved.taskId, { request });
+        const recorded = await this.checked(response, saved.taskId, input.connection_id);
+        if (!recorded.evidence.collaboration.payload.requests.some((r) => r.digest === request.digest && canonical(r) === canonical(request))) fail("repository_revision_unverified", "The reply did not include this exact signed revision request. Retry the same request_id; its original signature is saved locally.");
+        return this.recorded(input.connection_id, request);
+      }
+      recorded(connectionId, request) {
+        return { connection_id: connectionId, request_id: request.payload.id, request_digest: request.digest, basis_digest: request.payload.basis_digest, status: "recorded", next_step: "The signed suggestion is recorded for human review. It did not create or approve a task, execute a change, or accept a result. Keep this request_id for retries." };
+      }
+    };
+  }
+});
+
+// src/coordination-agent-client.ts
+function fail2(code2, message) {
+  throw new CoordinationError(code2, message);
+}
+var import_node_crypto12, hex4, exact5, envelope2, CoordinationAgentClient;
 var init_coordination_agent_client = __esm({
   "src/coordination-agent-client.ts"() {
     "use strict";
@@ -7959,9 +8655,10 @@ var init_coordination_agent_client = __esm({
     init_coordination_client();
     init_coordination_agent_requests();
     init_coordination_agent_profile();
-    hex2 = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
-    exact4 = (value, required, optional = []) => !!value && typeof value === "object" && !Array.isArray(value) && required.every((k) => Object.hasOwn(value, k)) && Object.keys(value).every((k) => required.includes(k) || optional.includes(k));
-    envelope = (value) => exact4(value, ["payload", "signer", "digest", "signature"]);
+    init_coordination_repository_agent();
+    hex4 = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+    exact5 = (value, required, optional = []) => !!value && typeof value === "object" && !Array.isArray(value) && required.every((k) => Object.hasOwn(value, k)) && Object.keys(value).every((k) => required.includes(k) || optional.includes(k));
+    envelope2 = (value) => exact5(value, ["payload", "signer", "digest", "signature"]);
     CoordinationAgentClient = class {
       constructor(profilePath, fetchImpl = fetch) {
         this.profilePath = profilePath;
@@ -7977,146 +8674,155 @@ var init_coordination_agent_client = __esm({
         try {
           const response = await this.fetchImpl(profile.endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request }), redirect: "error", cache: "no-store", signal: abort.signal });
           const raw = await response.text();
-          if (raw.length > 2e6) fail("invalid_agent_response", "The service response was too large.");
+          if (raw.length > 2e6) fail2("invalid_agent_response", "The service response was too large.");
           let result2;
           try {
             result2 = JSON.parse(raw);
           } catch {
-            fail("invalid_agent_response", "The service did not return a readable response.");
+            fail2("invalid_agent_response", "The service did not return a readable response.");
           }
           if (!response.ok || result2.ok !== true) {
             const code2 = typeof result2.error === "string" && /^[a-z_]{3,80}$/.test(result2.error) ? result2.error : "agent_request_refused";
-            fail(code2, "The service refused this agent request. Inspect the current task or ask the person to review its permissions; no authority was added.");
+            fail2(code2, "The service refused this agent request. Inspect the current task or ask the person to review its permissions; no authority was added.");
           }
           return result2;
         } catch (error) {
           if (error instanceof CoordinationError) throw error;
-          fail("agent_connection_interrupted", "The reply was interrupted. Retry the same request or grant ID; its private recovery state is saved locally.");
+          fail2("agent_connection_interrupted", "The reply was interrupted. Retry the same request or grant ID; its private recovery state is saved locally.");
         } finally {
           clearTimeout(timer);
         }
       }
-      async checkedRequest(value, id4) {
-        const profile = this.profile(), pending = profile.requests[id4];
-        if (!pending || !exact4(value, ["request_id", "agent_key", "pairing_secret_hash", "status", "expires_at", "draft"], ["accepted", "connection"])) fail("invalid_agent_request", "The returned draft does not match this profile.");
+      async checkedRequest(value, id5) {
+        const profile = this.profile(), pending = profile.requests[id5];
+        if (!pending || !exact5(value, ["request_id", "agent_key", "pairing_secret_hash", "status", "expires_at", "draft"], ["accepted", "connection"])) fail2("invalid_agent_request", "The returned draft does not match this profile.");
         const v = value;
-        if (v.request_id !== id4 || v.agent_key !== profile.agentKey || v.pairing_secret_hash !== await sha256(pending.pairingSecret) || v.expires_at !== pending.expiresAt || !["pending", "accepted", "ready", "revoked", "expired"].includes(v.status) || canonical(parseAgentTaskDraft(v.draft)) !== canonical(pending.draft)) fail("invalid_agent_request", "The returned draft does not match the exact request prepared here.");
+        if (v.request_id !== id5 || v.agent_key !== profile.agentKey || v.pairing_secret_hash !== await sha256(pending.pairingSecret) || v.expires_at !== pending.expiresAt || !["pending", "accepted", "ready", "revoked", "expired"].includes(v.status) || canonical(parseAgentTaskDraft(v.draft)) !== canonical(pending.draft)) fail2("invalid_agent_request", "The returned draft does not match the exact request prepared here.");
         if (v.accepted) {
           const a = v.accepted;
-          if (!exact4(a, ["owner_key", "room_id", "session_id", "pair_id", "reviewed_draft", "digest"]) || !hex2(a.owner_key) || a.owner_key === profile.agentKey || ![a.room_id, a.session_id, a.pair_id].every(profileId) || !hex2(a.digest)) fail("invalid_agent_request", "The reviewed draft does not name a valid independent principal.");
-          if (a.digest !== await sha256(canonical(parseAgentTaskDraft(a.reviewed_draft)))) fail("invalid_agent_request", "The reviewed draft digest does not match its exact content.");
+          if (!exact5(a, ["owner_key", "room_id", "session_id", "pair_id", "reviewed_draft", "digest"]) || !hex4(a.owner_key) || a.owner_key === profile.agentKey || ![a.room_id, a.session_id, a.pair_id].every(profileId) || !hex4(a.digest)) fail2("invalid_agent_request", "The reviewed draft does not name a valid independent principal.");
+          if (a.digest !== await sha256(canonical(parseAgentTaskDraft(a.reviewed_draft)))) fail2("invalid_agent_request", "The reviewed draft digest does not match its exact content.");
         }
         if (v.connection) {
           const c2 = v.connection, a = v.accepted;
-          if (!a || !exact4(c2, ["purpose", "room_id", "session_id", "pair_id", "principal_key", "authority_key"], ["binding"]) || c2.purpose !== "negotiation" || c2.room_id !== a.room_id || c2.session_id !== a.session_id || c2.pair_id !== a.pair_id || c2.principal_key !== a.owner_key || c2.authority_key !== profile.authorityKey) fail("invalid_agent_request", "The offered connection does not match the person\u2019s reviewed task.");
+          if (!a || !exact5(c2, ["purpose", "room_id", "session_id", "pair_id", "principal_key", "authority_key"], ["binding"]) || c2.purpose !== "negotiation" || c2.room_id !== a.room_id || c2.session_id !== a.session_id || c2.pair_id !== a.pair_id || c2.principal_key !== a.owner_key || c2.authority_key !== profile.authorityKey) fail2("invalid_agent_request", "The offered connection does not match the person\u2019s reviewed task.");
         }
-        if (v.status === "ready" && !v.connection) fail("invalid_agent_request", "A ready connection must name its exact signed task.");
+        if (v.status === "ready" && !v.connection) fail2("invalid_agent_request", "A ready connection must name its exact signed task.");
         return v;
       }
-      reviewLink(id4, secret) {
+      reviewLink(id5, secret) {
         const url = new URL("/standard", this.profile().endpoint);
         url.searchParams.set("trial", "new");
-        url.hash = "agent_request=" + id4 + "." + secret;
+        url.hash = "agent_request=" + id5 + "." + secret;
         return url.href;
       }
       async prepareTask(input) {
-        if (!exact4(input, ["request_id", "draft"]) || !profileId(input.request_id)) fail("invalid_agent_draft", "Use one stable request_id and an explicit draft.");
-        const draft = prepareAgentTaskDraft(input.draft), id4 = input.request_id;
+        if (!exact5(input, ["request_id", "draft"]) || !profileId(input.request_id)) fail2("invalid_agent_draft", "Use one stable request_id and an explicit draft.");
+        const draft = prepareAgentTaskDraft(input.draft), id5 = input.request_id;
         await updateAgentProfile(this.profilePath, (profile) => {
-          if (profile.requests[id4]) {
-            if (canonical(profile.requests[id4].draft) !== canonical(draft)) fail("agent_request_id_conflict", "This request ID already names a different draft. Keep it for retries; use a new ID only for a different intended task.");
+          if (profile.requests[id5]) {
+            if (canonical(profile.requests[id5].draft) !== canonical(draft)) fail2("agent_request_id_conflict", "This request ID already names a different draft. Keep it for retries; use a new ID only for a different intended task.");
             return;
           }
-          if (Object.keys(profile.requests).length >= 50) fail("agent_profile_limit", "This profile has 50 saved requests. Use a separate profile for new work.");
-          profile.requests[id4] = { draft, reviewSecret: (0, import_node_crypto12.randomBytes)(32).toString("hex"), pairingSecret: (0, import_node_crypto12.randomBytes)(32).toString("hex"), expiresAt: new Date(Date.now() + 30 * 60 * 1e3).toISOString() };
+          if (Object.keys(profile.requests).length >= 50) fail2("agent_profile_limit", "This profile has 50 saved requests. Use a separate profile for new work.");
+          profile.requests[id5] = { draft, reviewSecret: (0, import_node_crypto12.randomBytes)(32).toString("hex"), pairingSecret: (0, import_node_crypto12.randomBytes)(32).toString("hex"), expiresAt: new Date(Date.now() + 30 * 60 * 1e3).toISOString() };
         });
-        const saved = this.profile().requests[id4];
-        const response = await this.request("agent_request_create", id4, { request_id: id4, secret_hash: await sha256(saved.reviewSecret), pairing_secret_hash: await sha256(saved.pairingSecret), draft: saved.draft, expires_at: saved.expiresAt });
-        const request = await this.checkedRequest(response.agent_request, id4);
-        return { request_id: id4, status: request.status, private_review_link: this.reviewLink(id4, saved.reviewSecret), draft: { ...draft, private_brief: void 0 }, assumptions: draft.assumptions, scope: "Unsigned suggestions only. Show this private review link to your own person; it includes access to their private draft instructions. They must review the draft, create the shared task, and sign a mandate. This does not create owner authority, invite the colleague, or start a model or payment." };
+        const saved = this.profile().requests[id5];
+        const response = await this.request("agent_request_create", id5, { request_id: id5, secret_hash: await sha256(saved.reviewSecret), pairing_secret_hash: await sha256(saved.pairingSecret), draft: saved.draft, expires_at: saved.expiresAt });
+        const request = await this.checkedRequest(response.agent_request, id5);
+        return { request_id: id5, status: request.status, private_review_link: this.reviewLink(id5, saved.reviewSecret), draft: { ...draft, private_brief: void 0 }, assumptions: draft.assumptions, scope: "Unsigned suggestions only. Show this private review link to your own person; it includes access to their private draft instructions. They must review the draft, create the shared task, and sign a mandate. This does not create owner authority, invite the colleague, or start a model or payment." };
       }
-      async inspectTaskRequest(id4) {
-        if (!profileId(id4) || !this.profile().requests[id4]) fail("unknown_agent_request", "This profile has no saved request with that ID.");
-        const response = await this.request("agent_request_get", id4, { request_id: id4 }), request = await this.checkedRequest(response.agent_request, id4);
-        return { request_id: id4, status: request.status, expires_at: request.expires_at, title: request.draft.title, ...request.accepted ? { reviewed_draft: request.accepted.reviewed_draft, owner_key: request.accepted.owner_key, room_id: request.accepted.room_id, session_id: request.accepted.session_id } : {}, ...request.connection ? { connection_id: request.connection.pair_id } : {}, next_step: request.status === "ready" ? "Call coordination.claim_task_connection with this request_id. Then inspect the exact mandate through the returned connection_id." : request.status === "pending" ? "Your person must open and review the private link. No authority is granted." : request.status === "accepted" ? "The person reviewed the draft. Wait for their signed mandate and explicit agent connection; acceptance of a draft is not an agent grant." : "This request is inactive. Keep its history; ask the person before preparing a new task." };
+      async inspectTaskRequest(id5) {
+        if (!profileId(id5) || !this.profile().requests[id5]) fail2("unknown_agent_request", "This profile has no saved request with that ID.");
+        const response = await this.request("agent_request_get", id5, { request_id: id5 }), request = await this.checkedRequest(response.agent_request, id5);
+        return { request_id: id5, status: request.status, expires_at: request.expires_at, title: request.draft.title, ...request.accepted ? { reviewed_draft: request.accepted.reviewed_draft, owner_key: request.accepted.owner_key, room_id: request.accepted.room_id, session_id: request.accepted.session_id } : {}, ...request.connection ? { connection_id: request.connection.pair_id } : {}, next_step: request.status === "ready" ? "Call coordination.claim_task_connection with this request_id. Then inspect the exact mandate through the returned connection_id." : request.status === "pending" ? "Your person must open and review the private link. No authority is granted." : request.status === "accepted" ? "The person reviewed the draft. Wait for their signed mandate and explicit agent connection; acceptance of a draft is not an agent grant." : "This request is inactive. Keep its history; ask the person before preparing a new task." };
       }
-      async claimTaskConnection(id4) {
-        if (!profileId(id4) || !this.profile().requests[id4]) fail("unknown_agent_request", "This profile has no saved request with that ID.");
-        const response = await this.request("agent_request_get", id4, { request_id: id4 }), view = await this.checkedRequest(response.agent_request, id4);
-        if (view.status !== "ready" || !view.connection) fail("agent_grant_not_ready", "The person has not yet signed an active negotiation grant. A reviewed draft alone is not permission.");
+      async claimTaskConnection(id5) {
+        if (!profileId(id5) || !this.profile().requests[id5]) fail2("unknown_agent_request", "This profile has no saved request with that ID.");
+        const response = await this.request("agent_request_get", id5, { request_id: id5 }), view = await this.checkedRequest(response.agent_request, id5);
+        if (view.status !== "ready" || !view.connection) fail2("agent_grant_not_ready", "The person has not yet signed an active negotiation grant. A reviewed draft alone is not permission.");
         const c2 = view.connection;
         const existing = this.profile().connections[c2.pair_id];
         if (existing) return this.connectionSummary(c2.pair_id, existing);
         await updateAgentProfile(this.profilePath, (profile2) => {
-          const saved2 = profile2.requests[id4];
+          const saved2 = profile2.requests[id5];
           if (saved2.pendingPairId !== c2.pair_id || !saved2.pendingToken) {
             saved2.pendingPairId = c2.pair_id;
             saved2.pendingToken = (0, import_node_crypto12.randomBytes)(32).toString("hex");
           }
         });
-        const profile = this.profile(), saved = profile.requests[id4];
+        const profile = this.profile(), saved = profile.requests[id5];
         const ready = await claimPairing({ type: "scopeblind.coordination.config.v1", setupVersion: 2, endpoint: profile.endpoint, authorityKey: profile.authorityKey, agentKey: profile.agentKey, token: saved.pendingToken, roomId: c2.room_id, purpose: "negotiation", sessionId: c2.session_id, principalKey: c2.principal_key, name: "My agent", pending: { privateKey: profile.privateKey, code: { version: 3, endpoint: profile.endpoint, authority_key: profile.authorityKey, room_id: c2.room_id, session_id: c2.session_id, principal_key: c2.principal_key, pair_id: c2.pair_id, secret: saved.pairingSecret, scope: NEGOTIATION_PAIRING_SCOPE, audience: NEGOTIATION_PAIRING_AUDIENCE } } }, this.fetchImpl);
-        if (ready.binding?.payload.owner_authorization.payload.body.expected_agent_key !== profile.agentKey) fail("agent_grant_wrong_key", "This grant must explicitly name the profile\u2019s agent key.");
+        if (ready.binding?.payload.owner_authorization.payload.body.expected_agent_key !== profile.agentKey) fail2("agent_grant_wrong_key", "This grant must explicitly name the profile\u2019s agent key.");
         await updateAgentProfile(this.profilePath, (current) => {
           const prior = current.connections[c2.pair_id];
-          if (prior && prior.binding.digest !== ready.binding.digest) fail("agent_grant_conflict", "The connection ID already belongs to another signed grant.");
+          if (prior && prior.binding.digest !== ready.binding.digest) fail2("agent_grant_conflict", "The connection ID already belongs to another signed grant.");
           current.connections[c2.pair_id] = ready;
-          delete current.requests[id4].pendingToken;
-          delete current.requests[id4].pendingPairId;
+          delete current.requests[id5].pendingToken;
+          delete current.requests[id5].pendingPairId;
         });
         return { ...this.connectionSummary(c2.pair_id, ready), next_step: "Call coordination.inspect_negotiation with this connection_id before taking any next action. Claiming does not establish readiness or start background work." };
       }
-      connectionSummary(id4, connection) {
-        return { connection_id: id4, purpose: connection.purpose || "execution", room_id: connection.roomId, ...connection.sessionId ? { session_id: connection.sessionId, principal_key: connection.principalKey } : {}, agent_key: connection.agentKey, expires_at: connection.binding.payload.expires_at, locally_expired: Date.parse(connection.binding.payload.expires_at) <= Date.now(), same_profile_key: connection.agentKey === this.profile().agentKey, scope: connection.binding.payload.scope };
+      connectionSummary(id5, connection) {
+        return { connection_id: id5, purpose: connection.purpose || "execution", room_id: connection.roomId, ...connection.sessionId ? { session_id: connection.sessionId, principal_key: connection.principalKey } : {}, agent_key: connection.agentKey, expires_at: connection.binding.payload.expires_at, locally_expired: Date.parse(connection.binding.payload.expires_at) <= Date.now(), same_profile_key: connection.agentKey === this.profile().agentKey, scope: connection.binding.payload.scope };
       }
       connections() {
         const profile = this.profile();
-        return { agent_key: profile.agentKey, connections: Object.entries(profile.connections).map(([id4, c2]) => this.connectionSummary(id4, c2)), scope: "Saved grants only; connection listings do not prove that authority remains active. Inspect the intended connection before acting. Every action is still checked by the service." };
+        return { agent_key: profile.agentKey, connections: [...Object.entries(profile.connections).map(([id5, c2]) => this.connectionSummary(id5, c2)), ...Object.entries(profile.repositoryConnections ?? {}).map(([id5, c2]) => repositoryConnectionSummary(id5, c2, profile.agentKey))], scope: "Saved grants only; connection listings do not prove that authority remains active. Inspect the intended connection before acting. Every action is still checked by the service." };
       }
-      clientFor(id4) {
-        if (!profileId(id4)) fail("unknown_agent_connection", "Use an exact connection_id from coordination.connections.");
-        const c2 = this.profile().connections[id4];
-        if (!c2) fail("unknown_agent_connection", "This profile does not hold that connection.");
+      repositoryClient() {
+        return new RepositoryAgentClient(this.profilePath, (action, taskId, body) => this.request(action, taskId, body));
+      }
+      inspectRepository(taskId, grantId) {
+        return this.repositoryClient().inspect(taskId, grantId);
+      }
+      requestRepositoryRevision(input) {
+        return this.repositoryClient().requestRevision(input);
+      }
+      clientFor(id5) {
+        if (!profileId(id5)) fail2("unknown_agent_connection", "Use an exact connection_id from coordination.connections.");
+        const c2 = this.profile().connections[id5];
+        if (!c2) fail2("unknown_agent_connection", "This profile does not hold that connection.");
         return new CoordinationClient(c2, this.fetchImpl);
       }
-      sourceConnection(id4) {
-        const profile = this.profile(), source = profile.connections[id4];
-        if (!source || source.purpose !== "negotiation" || !source.sessionId || !source.principalKey || source.agentKey !== profile.agentKey) fail("handoff_profile_key_required", "Seamless execution handoff needs a negotiation connection enrolled with this profile\u2019s own key. Imported legacy connections retain their original scope; their discarded private key cannot be recreated.");
+      sourceConnection(id5) {
+        const profile = this.profile(), source = profile.connections[id5];
+        if (!source || source.purpose !== "negotiation" || !source.sessionId || !source.principalKey || source.agentKey !== profile.agentKey) fail2("handoff_profile_key_required", "Seamless execution handoff needs a negotiation connection enrolled with this profile\u2019s own key. Imported legacy connections retain their original scope; their discarded private key cannot be recreated.");
         return source;
       }
       async checkedHandoff(value, source) {
         const p = this.profile();
-        if (!exact4(value, ["pair_id", "room_id", "source_room_id", "session_id", "source_pair_id", "agent_key", "name", "status", "expires_at", "token_expires_at", "authorization"], ["binding"])) fail("invalid_handoff", "The offered execution connection has an unsupported shape.");
+        if (!exact5(value, ["pair_id", "room_id", "source_room_id", "session_id", "source_pair_id", "agent_key", "name", "status", "expires_at", "token_expires_at", "authorization"], ["binding"])) fail2("invalid_handoff", "The offered execution connection has an unsupported shape.");
         const h = value, q = h.authorization?.payload, b = q?.body;
-        if (![h.pair_id, h.room_id].every(profileId) || h.source_room_id !== source.roomId || h.session_id !== source.sessionId || h.source_pair_id !== source.binding.payload.pair_id || h.agent_key !== p.agentKey || typeof h.name !== "string" || !h.name.length || h.name.length > 60 || !["waiting", "connected", "revoked", "expired"].includes(h.status) || ![h.expires_at, h.token_expires_at].every((t) => Number.isFinite(Date.parse(t))) || Date.parse(h.token_expires_at) < Date.parse(h.expires_at) || !envelope(h.authorization) || !await verify(h.authorization, source.principalKey)) fail("invalid_handoff", "The execution handoff is not signed by the expected human principal for this exact source connection.");
-        if (!exact4(q, ["type", "action", "room_id", "body", "issued_at", "nonce"]) || q.type !== "scopeblind.coordination.request.v1" || q.action !== "agent_handoff_create" || q.room_id !== h.room_id || !profileId(q.nonce) || !exact4(b, ["session_id", "source_pair_id", "pair_id", "agent_key", "agreement_digest", "scope", "name", "expires_at", "token_expires_at"]) || b.session_id !== h.session_id || b.source_pair_id !== h.source_pair_id || b.pair_id !== h.pair_id || b.agent_key !== h.agent_key || !hex2(b.agreement_digest) || canonical(b.scope) !== canonical(PAIRING_SCOPE) || b.name !== h.name || b.expires_at !== h.expires_at || b.token_expires_at !== h.token_expires_at) fail("invalid_handoff", "The human authorization does not match the exact execution scope and target agreement.");
+        if (![h.pair_id, h.room_id].every(profileId) || h.source_room_id !== source.roomId || h.session_id !== source.sessionId || h.source_pair_id !== source.binding.payload.pair_id || h.agent_key !== p.agentKey || typeof h.name !== "string" || !h.name.length || h.name.length > 60 || !["waiting", "connected", "revoked", "expired"].includes(h.status) || ![h.expires_at, h.token_expires_at].every((t) => Number.isFinite(Date.parse(t))) || Date.parse(h.token_expires_at) < Date.parse(h.expires_at) || !envelope2(h.authorization) || !await verify(h.authorization, source.principalKey)) fail2("invalid_handoff", "The execution handoff is not signed by the expected human principal for this exact source connection.");
+        if (!exact5(q, ["type", "action", "room_id", "body", "issued_at", "nonce"]) || q.type !== "scopeblind.coordination.request.v1" || q.action !== "agent_handoff_create" || q.room_id !== h.room_id || !profileId(q.nonce) || !exact5(b, ["session_id", "source_pair_id", "pair_id", "agent_key", "agreement_digest", "scope", "name", "expires_at", "token_expires_at"]) || b.session_id !== h.session_id || b.source_pair_id !== h.source_pair_id || b.pair_id !== h.pair_id || b.agent_key !== h.agent_key || !hex4(b.agreement_digest) || canonical(b.scope) !== canonical(PAIRING_SCOPE) || b.name !== h.name || b.expires_at !== h.expires_at || b.token_expires_at !== h.token_expires_at) fail2("invalid_handoff", "The human authorization does not match the exact execution scope and target agreement.");
         return h;
       }
-      async checkHandoffs(id4) {
-        const source = this.sourceConnection(id4), response = await this.request("agent_handoff_get", source.roomId, { session_id: source.sessionId, source_pair_id: source.binding.payload.pair_id });
-        if (!Array.isArray(response.handoffs) || response.handoffs.length > 50) fail("invalid_handoff", "The handoff response is invalid.");
+      async checkHandoffs(id5) {
+        const source = this.sourceConnection(id5), response = await this.request("agent_handoff_get", source.roomId, { session_id: source.sessionId, source_pair_id: source.binding.payload.pair_id });
+        if (!Array.isArray(response.handoffs) || response.handoffs.length > 50) fail2("invalid_handoff", "The handoff response is invalid.");
         const handoffs = await Promise.all(response.handoffs.map((v) => this.checkedHandoff(v, source)));
-        return { source_connection_id: id4, handoffs: handoffs.map((h) => ({ handoff_id: h.pair_id, room_id: h.room_id, name: h.name, status: h.status, expires_at: h.expires_at, token_expires_at: h.token_expires_at, agreement_digest: h.authorization.payload.body.agreement_digest })), next_step: "Only an active, separately human-authorized handoff can be claimed. Claiming never spends money or transfers human approval powers." };
+        return { source_connection_id: id5, handoffs: handoffs.map((h) => ({ handoff_id: h.pair_id, room_id: h.room_id, name: h.name, status: h.status, expires_at: h.expires_at, token_expires_at: h.token_expires_at, agreement_digest: h.authorization.payload.body.agreement_digest })), next_step: "Only an active, separately human-authorized handoff can be claimed. Claiming never spends money or transfers human approval powers." };
       }
-      async claimExecutionConnection(id4, handoffId) {
-        if (!profileId(handoffId)) fail("invalid_handoff", "Use the exact handoff_id returned by coordination.check_handoffs.");
-        const source = this.sourceConnection(id4), response = await this.request("agent_handoff_get", source.roomId, { session_id: source.sessionId, source_pair_id: source.binding.payload.pair_id });
-        if (!Array.isArray(response.handoffs)) fail("invalid_handoff", "The handoff response is invalid.");
+      async claimExecutionConnection(id5, handoffId) {
+        if (!profileId(handoffId)) fail2("invalid_handoff", "Use the exact handoff_id returned by coordination.check_handoffs.");
+        const source = this.sourceConnection(id5), response = await this.request("agent_handoff_get", source.roomId, { session_id: source.sessionId, source_pair_id: source.binding.payload.pair_id });
+        if (!Array.isArray(response.handoffs)) fail2("invalid_handoff", "The handoff response is invalid.");
         const offered = response.handoffs.find((v) => v?.pair_id === handoffId);
-        if (!offered) fail("handoff_not_found", "No execution grant with that ID belongs to this source connection.");
+        if (!offered) fail2("handoff_not_found", "No execution grant with that ID belongs to this source connection.");
         const handoff = await this.checkedHandoff(offered, source);
-        if (["revoked", "expired"].includes(handoff.status) || Date.parse(handoff.token_expires_at) <= Date.now()) fail("handoff_inactive", "This execution grant is expired or revoked. The person must decide whether to grant new access.");
+        if (["revoked", "expired"].includes(handoff.status) || Date.parse(handoff.token_expires_at) <= Date.now()) fail2("handoff_inactive", "This execution grant is expired or revoked. The person must decide whether to grant new access.");
         const prior = this.profile().connections[handoffId];
         if (prior) return this.connectionSummary(handoffId, prior);
-        if (handoff.status === "waiting" && Date.parse(handoff.expires_at) <= Date.now()) fail("handoff_inactive", "This unclaimed execution grant expired.");
+        if (handoff.status === "waiting" && Date.parse(handoff.expires_at) <= Date.now()) fail2("handoff_inactive", "This unclaimed execution grant expired.");
         await updateAgentProfile(this.profilePath, (profile2) => {
           const pending = profile2.pendingHandoffs[handoffId];
-          if (pending && pending.handoff.authorization.digest !== handoff.authorization.digest) fail("handoff_conflict", "The saved handoff ID names a different authorization.");
+          if (pending && pending.handoff.authorization.digest !== handoff.authorization.digest) fail2("handoff_conflict", "The saved handoff ID names a different authorization.");
           profile2.pendingHandoffs[handoffId] ??= { handoff, token: (0, import_node_crypto12.randomBytes)(32).toString("hex") };
         });
         const profile = this.profile(), token = profile.pendingHandoffs[handoffId].token, claimed = await this.request("agent_handoff_claim", handoff.room_id, { pair_id: handoffId, executor_token: token, name: handoff.name });
         const binding = claimed.binding, b = binding?.payload;
-        if (claimed.executor_token !== token || !envelope(binding) || !b || !await verify(binding, profile.authorityKey) || !exact4(b, ["type", "pair_id", "room_id", "agreement_digest", "owner_key", "agent_key", "name", "scope", "audience", "issued_at", "expires_at", "owner_authorization"]) || b.type !== "scopeblind.coordination.agent-binding.v1" || b.pair_id !== handoffId || b.room_id !== handoff.room_id || b.agreement_digest !== handoff.authorization.payload.body.agreement_digest || b.owner_key !== source.principalKey || b.agent_key !== profile.agentKey || b.name !== handoff.name || b.audience !== "scopeblind.coordination.sample-ledger" || canonical(b.scope) !== canonical(PAIRING_SCOPE) || b.expires_at !== handoff.token_expires_at || !Number.isFinite(Date.parse(b.issued_at)) || Date.parse(b.issued_at) >= Date.parse(b.expires_at) || Date.parse(b.issued_at) > Date.now() + 3e5 || canonical(b.owner_authorization) !== canonical(handoff.authorization)) fail("invalid_handoff_binding", "The claimed execution grant did not verify against the pinned authority and exact human authorization. Retry the same ID; no connection is presented as verified.");
+        if (claimed.executor_token !== token || !envelope2(binding) || !b || !await verify(binding, profile.authorityKey) || !exact5(b, ["type", "pair_id", "room_id", "agreement_digest", "owner_key", "agent_key", "name", "scope", "audience", "issued_at", "expires_at", "owner_authorization"]) || b.type !== "scopeblind.coordination.agent-binding.v1" || b.pair_id !== handoffId || b.room_id !== handoff.room_id || b.agreement_digest !== handoff.authorization.payload.body.agreement_digest || b.owner_key !== source.principalKey || b.agent_key !== profile.agentKey || b.name !== handoff.name || b.audience !== "scopeblind.coordination.sample-ledger" || canonical(b.scope) !== canonical(PAIRING_SCOPE) || b.expires_at !== handoff.token_expires_at || !Number.isFinite(Date.parse(b.issued_at)) || Date.parse(b.issued_at) >= Date.parse(b.expires_at) || Date.parse(b.issued_at) > Date.now() + 3e5 || canonical(b.owner_authorization) !== canonical(handoff.authorization)) fail2("invalid_handoff_binding", "The claimed execution grant did not verify against the pinned authority and exact human authorization. Retry the same ID; no connection is presented as verified.");
         const config = { type: "scopeblind.coordination.config.v1", setupVersion: 2, endpoint: profile.endpoint, authorityKey: profile.authorityKey, roomId: handoff.room_id, agentKey: profile.agentKey, token, name: handoff.name, purpose: "execution", binding };
         await updateAgentProfile(this.profilePath, (current) => {
           current.connections[handoffId] = config;
@@ -8140,7 +8846,7 @@ __export(coordination_server_exports, {
 async function handleCoordinationRequest(client, request, signal) {
   if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") return { jsonrpc: "2.0", id: request?.id ?? null, error: { code: -32600, message: "Invalid JSON-RPC request." } };
   if (request.id === void 0) return void 0;
-  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-coordination", version: process.env.PROTECT_MCP_VERSION || "0.21.0" }, capabilities: { tools: {} } } };
+  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-coordination", version: process.env.PROTECT_MCP_VERSION || "0.22.0" }, capabilities: { tools: {} } } };
   if (request.method === "ping") return { jsonrpc: "2.0", id: request.id, result: {} };
   if (request.method === "tools/list") return { jsonrpc: "2.0", id: request.id, result: { tools: toolsForPurpose(client.purpose) } };
   if (request.method !== "tools/call") return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found." } };
@@ -8221,8 +8927,8 @@ async function runCoordinationServer(args) {
       return;
     }
     if (request?.jsonrpc === "2.0" && request.method === "notifications/cancelled") {
-      const id4 = request.params?.requestId;
-      if (typeof id4 === "string" || typeof id4 === "number") waits.get(id4)?.abort();
+      const id5 = request.params?.requestId;
+      if (typeof id5 === "string" || typeof id5 === "number") waits.get(id5)?.abort();
       return;
     }
     const controller = request?.method === "tools/call" && ["coordination.wait", "coordination.run_rehearsal", "coordination.wait_negotiation", "coordination.compare_candidate"].includes(String(request.params?.name)) ? new AbortController() : void 0;
@@ -8361,7 +9067,7 @@ var init_coordination_server = __esm({
       }
     ];
     toolsForPurpose = (purpose) => purpose === "negotiation" ? NEGOTIATION_TOOLS : purpose === "rehearsal" ? REHEARSAL_TOOLS : COORDINATION_TOOLS;
-    textResult2 = (id4, value, isError = false) => ({ jsonrpc: "2.0", id: id4, result: { content: [{ type: "text", text: JSON.stringify(value) }], ...isError ? { isError: true } : {} } });
+    textResult2 = (id5, value, isError = false) => ({ jsonrpc: "2.0", id: id5, result: { content: [{ type: "text", text: JSON.stringify(value) }], ...isError ? { isError: true } : {} } });
   }
 });
 
@@ -8375,7 +9081,7 @@ __export(coordination_agent_server_exports, {
 async function handleAgentProfileRequest(client, request, signal) {
   if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") return { jsonrpc: "2.0", id: request?.id ?? null, error: { code: -32600, message: "Invalid JSON-RPC request." } };
   if (request.id === void 0) return void 0;
-  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-agent", version: process.env.PROTECT_MCP_VERSION || "0.21.0" }, capabilities: { tools: {} } } };
+  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-agent", version: process.env.PROTECT_MCP_VERSION || "0.22.0" }, capabilities: { tools: {} } } };
   if (request.method === "ping") return { jsonrpc: "2.0", id: request.id, result: {} };
   if (request.method === "tools/list") return { jsonrpc: "2.0", id: request.id, result: { tools: [...AGENT_PROFILE_TOOLS, ...scopedTools] } };
   if (request.method !== "tools/call") return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found." } };
@@ -8410,6 +9116,14 @@ async function handleAgentProfileRequest(client, request, signal) {
       only("connection_id", "handoff_id");
       return result(request, await client.claimExecutionConnection(fields.connection_id, fields.handoff_id));
     }
+    if (name === "coordination.inspect_repository") {
+      only("task_id", "grant_id");
+      return result(request, await client.inspectRepository(fields.task_id, fields.grant_id));
+    }
+    if (name === "coordination.request_repository_revision") {
+      only("connection_id", "request_id", "basis_digest", "message", "proposed");
+      return result(request, await client.requestRepositoryRevision(fields));
+    }
     if (!scopedTools.some((tool) => tool.name === name)) throw new CoordinationError("unknown_tool", "This profile does not expose that tool.");
     const { connection_id, ...scoped } = fields;
     return await handleCoordinationRequest(client.clientFor(connection_id), { ...request, params: { name, arguments: scoped } }, signal);
@@ -8438,8 +9152,8 @@ async function runCoordinationAgent(args) {
   }
   if (mode === "import") {
     if (!values.get("--config")) throw new Error("Import needs the existing --config file.");
-    const id4 = await importProfileConnection(path, values.get("--config"));
-    process.stdout.write(`Saved existing scoped connection ${id4}. Its authority is unchanged. Imported legacy keys cannot be recreated for automatic execution handoff.
+    const id5 = await importProfileConnection(path, values.get("--config"));
+    process.stdout.write(`Saved existing scoped connection ${id5}. Its authority is unchanged. Imported legacy keys cannot be recreated for automatic execution handoff.
 `);
     return;
   }
@@ -8461,8 +9175,8 @@ async function runCoordinationAgent(args) {
       return;
     }
     if (request?.jsonrpc === "2.0" && request.method === "notifications/cancelled") {
-      const id4 = request.params?.requestId;
-      if (typeof id4 === "string" || typeof id4 === "number") waits.get(id4)?.abort();
+      const id5 = request.params?.requestId;
+      if (typeof id5 === "string" || typeof id5 === "number") waits.get(id5)?.abort();
       return;
     }
     const controller = request?.method === "tools/call" && ["coordination.wait", "coordination.run_rehearsal", "coordination.wait_negotiation", "coordination.compare_candidate"].includes(String(request.params?.name)) ? new AbortController() : void 0;
@@ -8481,7 +9195,7 @@ async function runCoordinationAgent(args) {
   await chain;
   process.stdout.removeListener("error", cancel);
 }
-var import_node_readline5, import_node_path12, id3, amount2, draftSchema, AGENT_PROFILE_TOOLS, scopedTools, result;
+var import_node_readline5, import_node_path12, id4, amount2, contactPageSchema, draftSchema, AGENT_PROFILE_TOOLS, scopedTools, result;
 var init_coordination_agent_server = __esm({
   "src/coordination-agent-server.ts"() {
     "use strict";
@@ -8492,8 +9206,9 @@ var init_coordination_agent_server = __esm({
     init_coordination_server();
     init_coordination_agent_profile();
     init_coordination_agent_setup();
-    id3 = { type: "string", pattern: "^[A-Za-z0-9_-]{8,100}$" };
+    id4 = { type: "string", pattern: "^[A-Za-z0-9_-]{8,100}$" };
     amount2 = { type: "integer", minimum: 0, maximum: 1e7 };
+    contactPageSchema = { type: "object", additionalProperties: false, properties: { type: { type: "string", const: "scopeblind.contact-page.v1" }, button_label: { type: "string", minLength: 1, maxLength: 40 }, target: { type: "string", enum: ["broken", "contact"] }, accent: { type: "string", enum: ["indigo", "emerald", "rose"] } }, required: ["type", "button_label", "target", "accent"] };
     draftSchema = { type: "object", additionalProperties: false, properties: {
       title: { type: "string", minLength: 1, maxLength: 100 },
       goal: { type: "string", minLength: 1, maxLength: 2e3 },
@@ -8512,14 +9227,16 @@ var init_coordination_agent_server = __esm({
       assumptions: { type: "array", maxItems: 12, items: { type: "string", minLength: 1, maxLength: 300 } }
     }, required: ["title", "goal"] };
     AGENT_PROFILE_TOOLS = [
-      { name: "coordination.prepare_task", description: "Prepare an unsigned shared invoice-task draft for your own person to review. Use a stable request_id for retries. Proposed limits, preferences, and assumptions grant no authority. Returns a private review link intended only for the requesting person; they review and sign in the browser, invite the other person, and explicitly authorize a scoped agent. Do not put unsupported hard rules into a preference. No room, human signature, payment, or hosted model is created by this tool.", inputSchema: { type: "object", additionalProperties: false, properties: { request_id: id3, draft: draftSchema }, required: ["request_id", "draft"] }, annotations: { title: "Prepare a shared task for human review", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
-      { name: "coordination.inspect_task_request", description: "Check a draft prepared by this profile. An accepted draft is still not an agent grant. Ready means the person separately signed the named negotiation grant; use claim_task_connection and inspect the mandate before acting. Does not poll in the background or reveal the draft to another principal.", inputSchema: { type: "object", additionalProperties: false, properties: { request_id: id3 }, required: ["request_id"] }, annotations: { title: "Check the person\u2019s review and agent grant", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
-      { name: "coordination.claim_task_connection", description: "Claim the exact negotiation connection explicitly authorized for this profile\u2019s key after human review. Saves its separate token locally and returns a connection_id. Does not sign a mandate, establish readiness, execute, approve, or grant ownership. Inspect the returned connection before taking its next permitted action.", inputSchema: { type: "object", additionalProperties: false, properties: { request_id: id3 }, required: ["request_id"] }, annotations: { title: "Connect to the human-authorized task", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.prepare_task", description: "Prepare an unsigned shared invoice-task draft for your own person to review. Use a stable request_id for retries. Proposed limits, preferences, and assumptions grant no authority. Returns a private review link intended only for the requesting person; they review and sign in the browser, invite the other person, and explicitly authorize a scoped agent. Do not put unsupported hard rules into a preference. No room, human signature, payment, or hosted model is created by this tool.", inputSchema: { type: "object", additionalProperties: false, properties: { request_id: id4, draft: draftSchema }, required: ["request_id", "draft"] }, annotations: { title: "Prepare a shared task for human review", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.inspect_task_request", description: "Check a draft prepared by this profile. An accepted draft is still not an agent grant. Ready means the person separately signed the named negotiation grant; use claim_task_connection and inspect the mandate before acting. Does not poll in the background or reveal the draft to another principal.", inputSchema: { type: "object", additionalProperties: false, properties: { request_id: id4 }, required: ["request_id"] }, annotations: { title: "Check the person\u2019s review and agent grant", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.claim_task_connection", description: "Claim the exact negotiation connection explicitly authorized for this profile\u2019s key after human review. Saves its separate token locally and returns a connection_id. Does not sign a mandate, establish readiness, execute, approve, or grant ownership. Inspect the returned connection before taking its next permitted action.", inputSchema: { type: "object", additionalProperties: false, properties: { request_id: id4 }, required: ["request_id"] }, annotations: { title: "Connect to the human-authorized task", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
       { name: "coordination.connections", description: "List saved purpose-scoped connections without credentials. A saved grant may have expired or been revoked: inspect before acting. Every scoped tool requires its explicit connection_id so another task or purpose cannot be selected implicitly.", inputSchema: { type: "object", additionalProperties: false, properties: {} }, annotations: { title: "List this agent\u2019s separate connections", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
-      { name: "coordination.check_handoffs", description: "Check whether the organizer separately authorized this same agent to execute the exact jointly adopted task. Requires the original negotiation connection_id. Uses the profile key, never broadens the old negotiation token, and performs no payment. Legacy imported connections without the original private agent key cannot claim this continuity.", inputSchema: { type: "object", additionalProperties: false, properties: { connection_id: id3 }, required: ["connection_id"] }, annotations: { title: "Check for a separately authorized execution handoff", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
-      { name: "coordination.claim_execution_connection", description: "Claim one exact owner-signed execution handoff discovered by check_handoffs. Returns a NEW execution connection_id while preserving the negotiation grant separately. The local token is persisted before claiming so a lost reply can be retried with the same handoff_id. Does not execute or approve anything; inspect the new room before acting.", inputSchema: { type: "object", additionalProperties: false, properties: { connection_id: id3, handoff_id: id3 }, required: ["connection_id", "handoff_id"] }, annotations: { title: "Claim the approved execution handoff", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }
+      { name: "coordination.check_handoffs", description: "Check whether the organizer separately authorized this same agent to execute the exact jointly adopted task. Requires the original negotiation connection_id. Uses the profile key, never broadens the old negotiation token, and performs no payment. Legacy imported connections without the original private agent key cannot claim this continuity.", inputSchema: { type: "object", additionalProperties: false, properties: { connection_id: id4 }, required: ["connection_id"] }, annotations: { title: "Check for a separately authorized execution handoff", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.claim_execution_connection", description: "Claim one exact owner-signed execution handoff discovered by check_handoffs. Returns a NEW execution connection_id while preserving the negotiation grant separately. The local token is persisted before claiming so a lost reply can be retried with the same handoff_id. Does not execute or approve anything; inspect the new room before acting.", inputSchema: { type: "object", additionalProperties: false, properties: { connection_id: id4, handoff_id: id4 }, required: ["connection_id", "handoff_id"] }, annotations: { title: "Claim the approved execution handoff", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.inspect_repository", description: "Inspect a repository task using the exact human-signed grant for this profile\u2019s public agent key. Get that public key from coordination.connections and give it to your person; they must explicitly authorize read_task and optionally request_revision in the repository task. Verifies pinned service, task, receiver, human grant and collaboration signatures, then saves a separate repository connection_id. Returns the exact current_basis_digest and bounded preview, never a human claim, approval, acceptance or receiver execution capability.", inputSchema: { type: "object", additionalProperties: false, properties: { task_id: id4, grant_id: id4 }, required: ["task_id", "grant_id"] }, annotations: { title: "Inspect the authorized repository task", readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
+      { name: "coordination.request_repository_revision", description: "Suggest a bounded contact-page revision under an existing repository connection with request_revision permission. Use a stable request_id and the exact current_basis_digest from inspect_repository. Persists the signed request before transport and reuses it after a lost reply; a changed basis requires fresh inspection and a new deliberate suggestion. Only the fixed contact-page data model is supported, not arbitrary code or permissions. Records a suggestion for humans; never creates or approves a task, updates a branch, or accepts a result.", inputSchema: { type: "object", additionalProperties: false, properties: { connection_id: id4, request_id: id4, basis_digest: { type: "string", pattern: "^[a-f0-9]{64}$" }, message: { type: "string", minLength: 1, maxLength: 600 }, proposed: contactPageSchema }, required: ["connection_id", "request_id", "basis_digest", "message", "proposed"] }, annotations: { title: "Request a repository revision for human review", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } }
     ];
-    scopedTools = [...COORDINATION_TOOLS, ...REHEARSAL_TOOLS, ...NEGOTIATION_TOOLS].map((tool) => ({ ...tool, description: tool.description + " Select the exact saved connection_id for this purpose; permissions are never combined across connections.", inputSchema: { ...tool.inputSchema, properties: { ...tool.inputSchema.properties, connection_id: id3 }, required: [..."required" in tool.inputSchema ? tool.inputSchema.required ?? [] : [], "connection_id"] } }));
+    scopedTools = [...COORDINATION_TOOLS, ...REHEARSAL_TOOLS, ...NEGOTIATION_TOOLS].map((tool) => ({ ...tool, description: tool.description + " Select the exact saved connection_id for this purpose; permissions are never combined across connections.", inputSchema: { ...tool.inputSchema, properties: { ...tool.inputSchema.properties, connection_id: id4 }, required: [..."required" in tool.inputSchema ? tool.inputSchema.required ?? [] : [], "connection_id"] } }));
     result = (request, value, error = false) => ({ jsonrpc: "2.0", id: request.id, result: { content: [{ type: "text", text: JSON.stringify(value) }], ...error ? { isError: true } : {} } });
   }
 });
@@ -8661,12 +9378,12 @@ var init_scopeblind_bridge = __esm({
               continue;
             }
             try {
-              const envelope2 = JSON.parse(signed2.signed);
-              const signedGuard = inspectEgress(envelope2?.payload, { signed: true });
-              if (!signedGuard.safe || envelope2?.signature?.alg !== "EdDSA") {
+              const envelope3 = JSON.parse(signed2.signed);
+              const signedGuard = inspectEgress(envelope3?.payload, { signed: true });
+              if (!signedGuard.safe || envelope3?.signature?.alg !== "EdDSA") {
                 throw new Error(signedGuard.violations.slice(0, 2).map((v) => v.path).join(", "));
               }
-              summaries.push(envelope2);
+              summaries.push(envelope3);
             } catch (err) {
               this.stats.blocked_by_egress_guard = (this.stats.blocked_by_egress_guard || 0) + 1;
               process.stderr.write(`[PROTECT_MCP] egress summary dropped after signing: ${String(err?.message || err)}
@@ -8727,8 +9444,8 @@ var init_scopeblind_bridge = __esm({
             })
           });
           if (!res.ok) {
-            const text4 = await res.text().catch(() => "");
-            this.stats.last_error = `brass-issue: HTTP ${res.status} ${text4.slice(0, 160)}`;
+            const text5 = await res.text().catch(() => "");
+            this.stats.last_error = `brass-issue: HTTP ${res.status} ${text5.slice(0, 160)}`;
             return null;
           }
           const body = await res.json();
@@ -10162,8 +10879,8 @@ __export(onboard_exports, {
   handleOffboard: () => handleOffboard,
   handleOnboard: () => handleOnboard
 });
-function scenarioFor(id4) {
-  return ONBOARD_PACKS.find((p) => p.id === id4)?.scenario;
+function scenarioFor(id5) {
+  return ONBOARD_PACKS.find((p) => p.id === id5)?.scenario;
 }
 function flag(argv, name) {
   const i = argv.indexOf(name);
@@ -11084,8 +11801,8 @@ function generateReport(logPath, receiptPath, periodDays) {
       policyDigests.set(entry.policy_digest, new Date(entry.timestamp).toISOString());
     }
   }
-  const policyChanges = Array.from(policyDigests.entries()).map(([digest, at]) => ({
-    at,
+  const policyChanges = Array.from(policyDigests.entries()).map(([digest, at2]) => ({
+    at: at2,
     policy_digest: digest
   })).sort((a, b) => a.at.localeCompare(b.at));
   return {
@@ -11912,8 +12629,8 @@ when { context.tool == "nautilus.strategy.deploy" && context.strategy_pack_signe
 `
   }
 ];
-function getConnectorPilot(id4) {
-  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id4);
+function getConnectorPilot(id5) {
+  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id5);
 }
 function connectorDirectory(dir) {
   return (0, import_node_path6.join)(dir, ".protect-mcp", "connectors");
@@ -11921,9 +12638,9 @@ function connectorDirectory(dir) {
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
   (0, import_node_fs10.mkdirSync)(directory, { recursive: true });
-  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id4) => {
-    const pilot = getConnectorPilot(id4);
-    if (!pilot) throw new Error(`Unknown connector pilot: ${id4}`);
+  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id5) => {
+    const pilot = getConnectorPilot(id5);
+    if (!pilot) throw new Error(`Unknown connector pilot: ${id5}`);
     return pilot;
   }) : CONNECTOR_PILOTS;
   const written = [];
@@ -11964,15 +12681,15 @@ function readInstalledConnectorPilots(dir) {
     const configPath = (0, import_node_path6.join)(directory, name);
     try {
       const parsed = JSON.parse((0, import_node_fs10.readFileSync)(configPath, "utf-8"));
-      const id4 = String(parsed.id || name.replace(/\.json$/, ""));
-      const pilot = getConnectorPilot(id4);
+      const id5 = String(parsed.id || name.replace(/\.json$/, ""));
+      const pilot = getConnectorPilot(id5);
       return {
-        id: id4,
-        name: String(parsed.name || pilot?.name || id4),
+        id: id5,
+        name: String(parsed.name || pilot?.name || id5),
         category: String(parsed.category || pilot?.category || "unknown"),
         status: String(parsed.status || parsed.type || "installed"),
         config_path: configPath,
-        policy_path: (0, import_node_path6.join)(directory, `${id4}.cedar`)
+        policy_path: (0, import_node_path6.join)(directory, `${id5}.cedar`)
       };
     } catch {
       return null;
@@ -12711,9 +13428,9 @@ function buildReceiptChains(entries, receipts) {
       complete: relatedReceipts.length > 0
     };
   }).sort((a, b) => {
-    const at = a.log_events[0]?.timestamp || 0;
+    const at2 = a.log_events[0]?.timestamp || 0;
     const bt = b.log_events[0]?.timestamp || 0;
-    return bt - at;
+    return bt - at2;
   }).slice(0, 80);
 }
 function riskForTool(toolRaw) {
@@ -13631,8 +14348,8 @@ async function recordApprovalResolution(opts) {
   (0, import_node_fs21.appendFileSync)((0, import_node_path16.join)(opts.dir, ".protect-mcp-approval-resolutions.jsonl"), JSON.stringify(record) + "\n");
   let forwarded = null;
   if (resolution === "approve" && opts.approvalEndpoint && opts.approvalNonce) {
-    const endpoint = opts.approvalEndpoint.replace(/\/$/, "") + "/approve";
-    const response = await fetch(endpoint, {
+    const endpoint2 = opts.approvalEndpoint.replace(/\/$/, "") + "/approve";
+    const response = await fetch(endpoint2, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -13987,10 +14704,10 @@ ${bold2("\u{1F6E1}\uFE0F Recent Receipts")} (last ${recent.length})
     try {
       const entry = JSON.parse(line);
       const payload = entry.payload || {};
-      const time4 = typeof entry.issued_at === "string" ? new Date(entry.issued_at).toLocaleTimeString() : "unknown";
+      const time5 = typeof entry.issued_at === "string" ? new Date(entry.issued_at).toLocaleTimeString() : "unknown";
       const decision = payload.decision || "unknown";
       const icon = decision === "allow" ? green2("\u2713") : decision === "require_approval" ? yellow2("\u23F3") : red2("\u2717");
-      process.stdout.write(`  ${dim2(time4)} ${icon} ${String(payload.tool || "unknown").padEnd(22)} ${String(entry.type || "receipt").padEnd(18)} ${dim2(String(payload.reason_code || "signed"))}
+      process.stdout.write(`  ${dim2(time5)} ${icon} ${String(payload.tool || "unknown").padEnd(22)} ${String(entry.type || "receipt").padEnd(18)} ${dim2(String(payload.reason_code || "signed"))}
 `);
     } catch {
     }
@@ -14974,7 +15691,7 @@ async function handleRegistry(argv) {
   const orgName = flagValue(argv, "--org") || process.env.SCOPEBLIND_ORG;
   const orgId = flagValue(argv, "--org-id") || process.env.SCOPEBLIND_ORG_ID;
   const billingAccountId = flagValue(argv, "--billing-account") || process.env.SCOPEBLIND_BILLING_ACCOUNT;
-  const endpoint = flagValue(argv, "--endpoint") || process.env.SCOPEBLIND_REGISTRY_ENDPOINT || (argv.includes("--hosted") ? "https://api.scopeblind.com" : void 0);
+  const endpoint2 = flagValue(argv, "--endpoint") || process.env.SCOPEBLIND_REGISTRY_ENDPOINT || (argv.includes("--hosted") ? "https://api.scopeblind.com" : void 0);
   const token = flagValue(argv, "--token") || process.env.SCOPEBLIND_TOKEN;
   const verifierBaseUrl = flagValue(argv, "--verifier-base") || process.env.SCOPEBLIND_VERIFIER_BASE || "https://legate.scopeblind.com";
   const registryMod = await Promise.resolve().then(() => (init_receipt_registry(), receipt_registry_exports));
@@ -15016,9 +15733,9 @@ ${bold2("protect-mcp registry anchor")}
       orgName,
       orgId,
       billingAccountId,
-      endpoint,
+      endpoint: endpoint2,
       token,
-      hosted: argv.includes("--hosted") || Boolean(endpoint || token),
+      hosted: argv.includes("--hosted") || Boolean(endpoint2 || token),
       verifierBaseUrl,
       outPath: flagValue(argv, "--output")
     });
@@ -15616,11 +16333,11 @@ async function handleTrace(argv) {
     process.stderr.write("[PROTECT_MCP] Usage: protect-mcp trace <receipt_id> [--endpoint <url>] [--depth <n>]\n");
     process.exit(1);
   }
-  let endpoint = "https://api.scopeblind.com/evidence";
+  let endpoint2 = "https://api.scopeblind.com/evidence";
   let depth = 3;
   for (let i = 1; i < argv.length; i++) {
     if (argv[i] === "--endpoint" && argv[i + 1]) {
-      endpoint = argv[++i];
+      endpoint2 = argv[++i];
     } else if (argv[i] === "--depth" && argv[i + 1]) {
       depth = Math.min(10, Math.max(1, parseInt(argv[++i], 10) || 3));
     }
@@ -15633,12 +16350,12 @@ ${bold2("protect-mcp trace")}
 `);
   process.stdout.write(`  Root:     ${receiptId}
 `);
-  process.stdout.write(`  Endpoint: ${endpoint}
+  process.stdout.write(`  Endpoint: ${endpoint2}
 `);
   process.stdout.write(`  Depth:    ${depth}
 
 `);
-  const url = `${endpoint}/evidence/graph/${encodeURIComponent(receiptId)}?depth=${depth}&direction=both&max=50`;
+  const url = `${endpoint2}/evidence/graph/${encodeURIComponent(receiptId)}?depth=${depth}&direction=both&max=50`;
   let graphData;
   try {
     const resp = await fetch(url);
@@ -15650,7 +16367,7 @@ ${bold2("protect-mcp trace")}
     }
     graphData = await resp.json();
   } catch (err) {
-    process.stderr.write(`[PROTECT_MCP] Could not reach evidence indexer at ${endpoint}
+    process.stderr.write(`[PROTECT_MCP] Could not reach evidence indexer at ${endpoint2}
 `);
     process.stderr.write(`[PROTECT_MCP] Trying local receipts...
 
@@ -15677,23 +16394,23 @@ ${bold2("protect-mcp trace")}
     childMap.get(edge.from).push({ to: edge.to, relation: edge.relation });
   }
   const rendered = /* @__PURE__ */ new Set();
-  function renderNode(id4, prefix, isLast) {
-    const node = nodeMap.get(id4);
+  function renderNode(id5, prefix, isLast) {
+    const node = nodeMap.get(id5);
     const connector = isLast ? "\u2514\u2500\u2500 " : "\u251C\u2500\u2500 ";
     const childPrefix = isLast ? "    " : "\u2502   ";
     const typeEmoji = getTypeEmoji(node?.receipt_type || "unknown");
-    const shortId = id4.length > 16 ? id4.slice(0, 12) + "\u2026" : id4;
-    const time4 = node?.event_time ? new Date(node.event_time).toLocaleTimeString() : "?";
+    const shortId = id5.length > 16 ? id5.slice(0, 12) + "\u2026" : id5;
+    const time5 = node?.event_time ? new Date(node.event_time).toLocaleTimeString() : "?";
     const type = node?.receipt_type?.replace("acta:", "") || "unknown";
-    process.stdout.write(`${prefix}${connector}${typeEmoji} ${bold2(type)} ${dim2(shortId)} ${dim2(time4)}
+    process.stdout.write(`${prefix}${connector}${typeEmoji} ${bold2(type)} ${dim2(shortId)} ${dim2(time5)}
 `);
-    if (rendered.has(id4)) {
+    if (rendered.has(id5)) {
       process.stdout.write(`${prefix}${childPrefix}${dim2("(cycle: already rendered)")}
 `);
       return;
     }
-    rendered.add(id4);
-    const children = childMap.get(id4) || [];
+    rendered.add(id5);
+    const children = childMap.get(id5) || [];
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
       const edgeLabel = dim2(`\u2500\u2500[${child.relation}]\u2500\u2500\u25B6`);
@@ -15706,8 +16423,8 @@ ${bold2("protect-mcp trace")}
   if (rootNode) {
     const typeEmoji = getTypeEmoji(rootNode.receipt_type);
     const type = rootNode.receipt_type?.replace("acta:", "") || "unknown";
-    const time4 = rootNode.event_time ? new Date(rootNode.event_time).toLocaleTimeString() : "?";
-    process.stdout.write(`  ${typeEmoji} ${bold2(type)} ${dim2(receiptId.slice(0, 16) + "\u2026")} ${dim2(time4)} ${bold2("(root)")}
+    const time5 = rootNode.event_time ? new Date(rootNode.event_time).toLocaleTimeString() : "?";
+    process.stdout.write(`  ${typeEmoji} ${bold2(type)} ${dim2(receiptId.slice(0, 16) + "\u2026")} ${dim2(time5)} ${bold2("(root)")}
 `);
     rendered.add(receiptId);
     const children = childMap.get(receiptId) || [];
@@ -15741,7 +16458,7 @@ ${bold2("protect-mcp trace")}
   process.stdout.write(`
 ${"\u2500".repeat(60)}
 `);
-  process.stdout.write(`  ${dim2(`Fetched from ${endpoint}`)}
+  process.stdout.write(`  ${dim2(`Fetched from ${endpoint2}`)}
 
 `);
 }
@@ -16856,7 +17573,7 @@ async function main() {
     return;
   }
   if (args[0] === "repository") {
-    await (await Promise.resolve().then(() => (init_repository_receiver(), repository_receiver_exports))).runRepositoryReceiver(args.slice(1));
+    await (await Promise.resolve().then(() => (init_repository_setup(), repository_setup_exports))).runRepositoryCommand(args.slice(1));
     return;
   }
   if (args[0] === "coordination" && args[1] === "agent") {

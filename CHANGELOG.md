@@ -1,3 +1,10 @@
+## 0.22.0 — 2026-09-16
+
+- Add a real shared contact-page demo with isolated repository branches, exact file previews, two-person approval, receiver readback and linked revisions. The trusted workflow never executes proposed code.
+- Add `repository setup` and `repository readiness`: discover actual check providers, generate a pinned receiver workflow and verify signed read-only setup observations. A saved connection grants no task approval.
+- Add agent-profile repository inspection and revision suggestions. Human-signed, expiring grants remain separate from invoice connections, human approvals and receiver execution; exact signed suggestions survive interrupted replies.
+- Verify portable previews, original revision feedback and scoped agent contributions while preserving repository evidence v1.
+
 ## 0.21.0 — 2026-09-16
 
 - Add repository tasks with bounded paths, exact base/head commit approval by two distinct principals, pinned check providers and receiver-signed destination observations.

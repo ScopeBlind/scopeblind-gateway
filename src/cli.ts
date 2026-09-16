@@ -4728,7 +4728,7 @@ async function main(): Promise<void> {
   // sign_decision, verify_receipt, self_test. Lets an agent call the gate as
   // tools instead of only via hooks. Takes over stdin/stdout until it closes.
   if (args[0] === 'mcp') { await (await import('./mcp-server.js')).runMcpServer(); return; }
-  if (args[0] === 'repository') { await (await import('./repository-receiver.js')).runRepositoryReceiver(args.slice(1)); return; }
+  if (args[0] === 'repository') { await (await import('./repository-setup.js')).runRepositoryCommand(args.slice(1)); return; }
   if (args[0] === 'coordination' && args[1] === 'agent') { await (await import('./coordination-agent-server.js')).runCoordinationAgent(args.slice(2)); return; }
   if (args[0] === 'coordination' && args[1] === 'pair') { await (await import('./coordination-pair-cli.js')).runCoordinationPair(args.slice(2)); return; }
   if (args[0] === 'coordination' && args[1] === 'setup') { (await import('./coordination-pair-cli.js')).runCoordinationSetup(args.slice(2)); return; }

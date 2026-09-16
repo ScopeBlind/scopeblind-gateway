@@ -93,6 +93,7 @@ export type RpcAction = 'create' | 'invite' | 'claim' | 'revoke' | 'admit' | 'ex
   | import('./coordination-negotiation').NegotiationAction | 'negotiation_share' | 'negotiation_invitation_rotate' | 'result_share'
   | import('./coordination-devices').DeviceAction
   | import('./coordination-repository').RepositoryAction
+  | import('./coordination-repository-collaboration').RepositoryCollaborationAction
   | typeof import('./coordination-agent-requests').AGENT_REQUEST_ACTIONS[number]
   | typeof import('./coordination-inbox').DECISION_ACTIONS[number];
 export interface RpcRequest {

@@ -1,0 +1,51 @@
+# ScopeBlind-owned disposable demo only. Install on its trusted main branch.
+# The public site can wake this workflow, but cannot read this workspace key.
+name: ScopeBlind visual repository demo
+on:
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: scopeblind-disposable-demo-queue
+  cancel-in-progress: false
+jobs:
+  demo:
+    if: github.repository == 'ScopeBlind/scopeblind-repository-demo' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Use the reviewed Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.22.3'
+      - name: Verify the trusted demo runner
+        env:
+          RUNNER_URL: ${{ vars.SCOPEBLIND_DEMO_RUNNER_URL }}
+          RUNNER_SHA256: ${{ vars.SCOPEBLIND_DEMO_RUNNER_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'if(!/^https:\/\/scopeblind\.com\/releases\/repository-demo-\d+\.\d+\.\d+\.cjs$/.test(process.env.RUNNER_URL)||!/^[a-f0-9]{64}$/.test(process.env.RUNNER_SHA256))process.exit(1)'
+          curl --fail --silent --show-error --proto '=https' --max-time 30 "$RUNNER_URL" --output demo.cjs
+          printf '%s  demo.cjs\n' "$RUNNER_SHA256" | sha256sum --check --strict
+      - name: Issue a short-lived token for this repository only
+        id: workspace
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+        with:
+          app-id: ${{ vars.SCOPEBLIND_DEMO_WORKSPACE_APP_ID }}
+          private-key: ${{ secrets.SCOPEBLIND_DEMO_WORKSPACE_APP_PRIVATE_KEY }}
+          owner: ScopeBlind
+          repositories: scopeblind-repository-demo
+          permission-contents: write
+          permission-pull-requests: write
+          permission-checks: write
+      - name: Process signed demo work
+        env:
+          GITHUB_TOKEN: ${{ steps.workspace.outputs.token }}
+          SCOPEBLIND_RECEIVER_PRIVATE_KEY: ${{ secrets.SCOPEBLIND_DEMO_RECEIVER_PRIVATE_KEY }}
+          SCOPEBLIND_DEMO_RECEIVER_KEY: ${{ vars.SCOPEBLIND_DEMO_RECEIVER_KEY }}
+          SCOPEBLIND_DEMO_AUTHORITY_KEY: ${{ vars.SCOPEBLIND_DEMO_AUTHORITY_KEY }}
+          SCOPEBLIND_DEMO_TEMPLATE_SHA: ${{ vars.SCOPEBLIND_DEMO_TEMPLATE_SHA }}
+          SCOPEBLIND_DEMO_ENDPOINT: https://scopeblind.com/api/coordination
+        run: node demo.cjs
+# No checkout, dependency installation, arbitrary workflow input or PR code.
+# The app-token action revokes its installation token in its post step.

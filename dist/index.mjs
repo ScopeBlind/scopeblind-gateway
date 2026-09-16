@@ -1,4 +1,12 @@
 import {
+  verifyRepositoryCollaborationEvidence
+} from "./chunk-H64HVW5K.mjs";
+import {
+  CoordinationClient,
+  CoordinationError,
+  validateCoordinationPayment
+} from "./chunk-2SYSTEXK.mjs";
+import {
   formatReportMarkdown,
   generateReport
 } from "./chunk-KV532C3M.mjs";
@@ -12,11 +20,6 @@ import {
   signCommittedDecision,
   verifySelectiveDisclosurePackage
 } from "./chunk-NJX7GOKG.mjs";
-import {
-  CoordinationClient,
-  CoordinationError,
-  validateCoordinationPayment
-} from "./chunk-2SYSTEXK.mjs";
 import {
   coordinationConfigFromArgs,
   humanPrincipal,
@@ -132,7 +135,7 @@ import {
 import {
   repositorySnapshotDigest,
   verifyRepositoryEvidence
-} from "./chunk-BPZXU6OQ.mjs";
+} from "./chunk-62IJNG3V.mjs";
 import {
   canonical,
   sha256,
@@ -1857,6 +1860,7 @@ export {
   verifyReceipt,
   verifyRehearsalEvidence,
   verifyRekorAnchor,
+  verifyRepositoryCollaborationEvidence,
   verifyRepositoryEvidence,
   verifySelectiveDisclosurePackage,
   writeConnectorPilots

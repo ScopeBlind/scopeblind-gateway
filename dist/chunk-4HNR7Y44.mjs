@@ -7,7 +7,7 @@ import {
   repositorySnapshotDigest,
   validRepositoryProposal,
   verifyRepositoryEvidence
-} from "./chunk-BPZXU6OQ.mjs";
+} from "./chunk-62IJNG3V.mjs";
 import {
   bytesToHex,
   canonical,
@@ -272,7 +272,6 @@ Private key saved to the requested owner-only file.
 
 export {
   RepositoryReceiverError,
-  parseRepositoryReceiverConfig,
   RepositoryReceiver,
   runRepositoryReceiver
 };
