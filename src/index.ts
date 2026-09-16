@@ -286,3 +286,10 @@ export {verifyRepositoryEvidence,repositorySnapshotDigest} from './coordination-
 export {verifyRepositoryCollaborationEvidence} from './coordination-repository-collaboration-evidence.js';
 export type {RepositoryCollaborationEvidence} from './coordination-repository-collaboration-evidence.js';
 export type {RepositoryTask,RepositoryClaim,RepositoryProposal,RepositoryApproval,RepositoryExecution,RepositoryOutcome,RepositoryAcceptance,RepositoryState,RepositoryEvidence} from './coordination-repository.js';
+
+export {verifyRepositoryReviewEvidence} from './coordination-repository-review-evidence.js';
+export type {RepositoryReviewEvidence} from './coordination-repository-review-evidence.js';
+export type {RepositoryReviewContent,RepositoryReviewBrief,RepositoryReviewPacket,RepositoryReviewDecision,RepositoryReviewFeedback,RepositoryReviewRecommendation,RepositoryReviewState} from './coordination-repository-review.js';
+
+export {verifyRepositoryWorkspaceState,verifyRepositoryWorkspaceAgentState} from './coordination-repository-workspace.js';
+export type {RepositoryWorkspace,RepositoryWorkspaceState,RepositoryWorkspaceAgentState,WorkspacePreparationMandate,WorkspaceTaskAssignment,WorkspaceReviewDraft,WorkspaceMember,RepositoryWorkspaceInbox} from './coordination-repository-workspace.js';

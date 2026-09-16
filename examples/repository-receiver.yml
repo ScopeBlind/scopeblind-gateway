@@ -19,6 +19,7 @@ permissions:
   contents: write
   pull-requests: read
   checks: read
+  deployments: read
 concurrency:
   group: scopeblind-receiver-${{ inputs.task_id || 'readiness' }}
   cancel-in-progress: false

@@ -6,12 +6,25 @@ import {CoordinationClient,CoordinationError} from './coordination-client.js';
 import {parseAgentTaskDraft,prepareAgentTaskDraft,type AgentTaskRequestView,type AgentHandoffView} from './coordination-agent-requests.js';
 import {readAgentProfile,updateAgentProfile,profileId,type ProfileConnection,type AgentProfile} from './coordination-agent-profile.js';
 import {RepositoryAgentClient,repositoryConnectionSummary} from './coordination-repository-agent.js';
+import {WorkspaceAgentClient,workspaceConnectionSummary,type PrepareRepositoryReviewInput} from './coordination-workspace-agent.js';
+import {WorkspaceReviewAgentClient,type RepositoryCriteriaInput,type RepositoryChangesInput} from './coordination-workspace-review-agent.js';
 import type {ContactPage} from './coordination-repository-collaboration.js';
 
 const hex=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{64}$/.test(value);
 const exact=(value:unknown,required:string[],optional:string[]=[]):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value)&&required.every(k=>Object.hasOwn(value,k))&&Object.keys(value).every(k=>required.includes(k)||optional.includes(k));
 function fail(code:string,message:string):never{throw new CoordinationError(code,message);}
 const envelope=(value:unknown)=>exact(value,['payload','signer','digest','signature']);
+
+/** Bound bytes before decoding or parsing, including chunked responses without Content-Length. */
+export async function readAgentResponse(response:Response):Promise<string>{
+  const limit=4_000_000,announced=response.headers.get('content-length');
+  if(announced&&/^\d+$/.test(announced)&&Number(announced)>limit){await response.body?.cancel();fail('invalid_agent_response','The service response exceeded the supported evidence size.');}
+  if(!response.body)return '';
+  const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true}),parts:string[]=[];let total=0;
+  try{for(;;){const {done,value}=await reader.read();if(done)break;total+=value.byteLength;if(total>limit){await reader.cancel();fail('invalid_agent_response','The service response exceeded the supported evidence size.');}parts.push(decoder.decode(value,{stream:true}));}parts.push(decoder.decode());return parts.join('');}
+  catch(error){try{await reader.cancel();}catch{}if(error instanceof CoordinationError)throw error;fail('invalid_agent_response','The service returned an interrupted or invalid UTF-8 response.');}
+  finally{reader.releaseLock();}
+}
 
 /** The profile key is an agent identity, never a browser principal or an implicit owner grant. */
 export class CoordinationAgentClient {
@@ -23,7 +36,7 @@ export class CoordinationAgentClient {
     const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),25000);
     try{
       const response=await this.fetchImpl(profile.endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({request}),redirect:'error',cache:'no-store',signal:abort.signal});
-      const raw=await response.text();if(raw.length>2_000_000)fail('invalid_agent_response','The service response was too large.');
+      const raw=await readAgentResponse(response);
       let result:Record<string,unknown>;try{result=JSON.parse(raw);}catch{fail('invalid_agent_response','The service did not return a readable response.');}
       if(!response.ok||result!.ok!==true){const code=typeof result!.error==='string'&&/^[a-z_]{3,80}$/.test(result!.error)?result!.error:'agent_request_refused';fail(code,'The service refused this agent request. Inspect the current task or ask the person to review its permissions; no authority was added.');}
       return result!;
@@ -83,7 +96,14 @@ export class CoordinationAgentClient {
     return {...this.connectionSummary(c.pair_id,ready as ProfileConnection),next_step:'Call coordination.inspect_negotiation with this connection_id before taking any next action. Claiming does not establish readiness or start background work.'};
   }
   connectionSummary(id:string,connection:ProfileConnection){return {connection_id:id,purpose:connection.purpose||'execution',room_id:connection.roomId,...(connection.sessionId?{session_id:connection.sessionId,principal_key:connection.principalKey}:{}),agent_key:connection.agentKey,expires_at:connection.binding.payload.expires_at,locally_expired:Date.parse(connection.binding.payload.expires_at)<=Date.now(),same_profile_key:connection.agentKey===this.profile().agentKey,scope:connection.binding.payload.scope};}
-  connections(){const profile=this.profile();return {agent_key:profile.agentKey,connections:[...Object.entries(profile.connections).map(([id,c])=>this.connectionSummary(id,c)),...Object.entries(profile.repositoryConnections??{}).map(([id,c])=>repositoryConnectionSummary(id,c,profile.agentKey))],scope:'Saved grants only; connection listings do not prove that authority remains active. Inspect the intended connection before acting. Every action is still checked by the service.'};}
+  connections(){const profile=this.profile();return {agent_key:profile.agentKey,connections:[...Object.entries(profile.connections).map(([id,c])=>this.connectionSummary(id,c)),...Object.entries(profile.repositoryConnections??{}).map(([id,c])=>repositoryConnectionSummary(id,c,profile.agentKey)),...Object.entries(profile.workspaceConnections??{}).map(([id,c])=>workspaceConnectionSummary(id,c,profile.agentKey))],scope:'Saved grants only; connection listings do not prove that authority remains active. Inspect the intended connection before acting. Every action is still checked by the service.'};}
+  private workspaceClient(){return new WorkspaceAgentClient(this.profilePath,(action,id,body)=>this.request(action,id,body));}
+  inspectWorkspace(workspaceId:string,mandateId:string){return this.workspaceClient().inspect(workspaceId,mandateId);}
+  prepareRepositoryReview(input:PrepareRepositoryReviewInput){return this.workspaceClient().prepare(input);}
+  private workspaceReviewClient(){return new WorkspaceReviewAgentClient(this.profilePath,(action,id,body)=>this.request(action,id,body));}
+  inspectRepositoryReview(connectionId:string,taskId:string){return this.workspaceReviewClient().inspect(connectionId,taskId);}
+  reportRepositoryCriteria(input:RepositoryCriteriaInput){return this.workspaceReviewClient().report(input);}
+  requestRepositoryChanges(input:RepositoryChangesInput){return this.workspaceReviewClient().requestChanges(input);}
   private repositoryClient(){return new RepositoryAgentClient(this.profilePath,(action,taskId,body)=>this.request(action,taskId,body));}
   inspectRepository(taskId:string,grantId:string){return this.repositoryClient().inspect(taskId,grantId);}
   requestRepositoryRevision(input:{connection_id:string;request_id:string;basis_digest:string;message:string;proposed:ContactPage}){return this.repositoryClient().requestRevision(input);}

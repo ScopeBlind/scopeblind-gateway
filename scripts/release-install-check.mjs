@@ -21,6 +21,17 @@ try{
   const result=spawnSync(process.execPath,[entry,...prefix,...check.args],{cwd:dir,encoding:'utf8',timeout:30000,env:{...process.env,GITHUB_TOKEN:'release-check-placeholder',GH_TOKEN:''}});
   assert.equal(result.error,undefined);assert.equal(result.status,1,result.stderr+result.stdout);assert.match(result.stderr,new RegExp(check.error));
  }
+ const profile=join(dir,'private-agent.json');
+ execFileSync(process.execPath,[bin,'coordination','agent','setup','--client','json','--profile',profile,'--endpoint','https://scopeblind.com/api/coordination','--authority-key','a'.repeat(64)],{cwd:dir,stdio:'pipe',timeout:30000});
+ const requests=[{jsonrpc:'2.0',id:1,method:'initialize'},{jsonrpc:'2.0',id:2,method:'tools/list'},{jsonrpc:'2.0',id:3,method:'tools/call',params:{name:'coordination.connections',arguments:{}}}];
+ const agent=spawnSync(process.execPath,[bin,'coordination','agent','--profile',profile],{cwd:dir,input:requests.map(r=>JSON.stringify(r)).join('\n')+'\n',encoding:'utf8',timeout:30000});
+ assert.equal(agent.error,undefined);assert.equal(agent.status,0,agent.stderr);
+ const responses=agent.stdout.trim().split('\n').map(line=>JSON.parse(line)),names=responses.find(r=>r.id===2)?.result?.tools?.map(t=>t.name);
+ for(const name of ['inspect_workspace','prepare_repository_review','inspect_repository_review','report_repository_criteria','request_repository_changes'])assert.ok(names?.includes('coordination.'+name),'Packed agent is missing '+name);
+ for(const name of ['repository_approve','repository_begin','repository_accept','workspace_adopt'])assert.ok(!names.includes('coordination.'+name),'Packed agent exposes human authority');
+ const connections=JSON.parse(responses.find(r=>r.id===3).result.content[0].text);assert.match(connections.agent_key,/^[a-f0-9]{64}$/);assert.deepEqual(connections.connections,[]);
+ const privateProfile=JSON.parse(readFileSync(profile,'utf8'));assert.ok(!agent.stdout.includes(privateProfile.privateKey),'Private agent key appeared in MCP output');
  console.log('The packed package installs and its documented entry points run in an empty directory.');
  console.log('Main and standalone repository setup/ready entry points enforce local input checks.');
+ console.log('The installed MCP agent exposes all five bounded project/review tools and no human approval or execution tools.');
 }finally{rmSync(dir,{recursive:true,force:true});}

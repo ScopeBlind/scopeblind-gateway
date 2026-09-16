@@ -8,12 +8,18 @@ Fail-closed Cedar policy gate plus signed receipts for AI agent tool calls.
 [![node](https://img.shields.io/node/v/protect-mcp)](https://www.npmjs.com/package/protect-mcp)
 
 `protect-mcp` is a gate that sits in front of an AI agent's tool calls. It evaluates
-each call against a [Cedar](https://www.cedarpolicy.com/) policy (the same language
-AWS uses for IAM), blocks what breaks the rules before it runs, and signs an
+each call against a [Cedar](https://www.cedarpolicy.com/) policy,
+blocks what breaks the rules before it runs, and signs an
 offline-verifiable Ed25519 receipt of every decision. The configured gateway runs locally and sends no decision telemetry. The
-separate coordination adapter connects to ScopeBlind’s hosted sample service;
+separate coordination adapter connects to ScopeBlind’s hosted collaboration service;
 its requests and returned records have the data path described below. Both are
 MIT licensed.
+
+For shared repository work, use [client projects](https://scopeblind.com/standard?trial=new&view=workspace):
+people agree on the brief and limits, agents prepare reviews, and both people
+approve an exact version before the owner's receiver can change the repository.
+The [repository workflow below](#recurring-client-reviews-and-agent-preparation)
+includes setup and the five bounded agent tools.
 
 ## Why it is different
 
@@ -35,10 +41,11 @@ MIT licensed.
 # 1. Generate an Ed25519 keypair, config template, and sample policy.
 npx protect-mcp init
 
-# 2. Wrap any MCP server in shadow mode. Nothing is blocked yet; calls are logged.
+# 2. Print a shadow-mode client configuration, then apply it in your MCP host.
+#    This command prints configuration and exits; it does not launch the server.
 npx protect-mcp wrap -- node your-mcp-server.js
 
-# 3. Inspect the local-only dashboard: tool inventory, risk, approvals, receipts.
+# 3. Reopen the host and use its tools, then inspect the local-only dashboard.
 npx protect-mcp dashboard --open
 
 # 4. Draft a reviewable policy from observed calls.
@@ -91,7 +98,7 @@ receipt minted here uses the same Acta envelope. Verification capabilities and
 canonicalization compatibility depend on the verifier version; use the gateway's
 `verifyReceipt` API for the conformance behavior described below.
 
-### Receipt canonicalization compatibility (source-build preview)
+### Receipt canonicalization compatibility
 
 This source tree fixes the integer-key ordering defect present through 0.14.0: signatures and
 chain hashes now use direct JCS member emission, retaining the gateway's ASCII
@@ -110,13 +117,13 @@ the historical chain. These changes are included in `0.15.0`.
 
 ### Start with your agent, then authorize each task
 
-Version `0.22.0` includes a reusable agent profile. Open
+Version `0.23.0` includes a reusable agent profile. Open
 [Start through your agent](https://scopeblind.com/standard?trial=new&view=agent)
 for the setup command with the service’s displayed authority key. Check that key
 against a trusted source before connecting. For example:
 
 ```bash
-npx --yes protect-mcp@0.22.0 coordination agent setup \
+npx --yes protect-mcp@0.23.0 coordination agent setup \
   --client claude-code \
   --profile ~/.scopeblind/agent.json \
   --endpoint https://scopeblind.com/api/coordination \
@@ -205,7 +212,7 @@ permissions.
 
 ### Connect your agent to a shared invoice room
 
-`protect-mcp` version `0.22.0` connects your installed agent to the same admission and
+`protect-mcp` version `0.23.0` connects your installed agent to the same admission and
 sample-ledger service as the shared room. Start a room at
 [ScopeBlind](https://scopeblind.com/standard?trial=new), then choose **Use your
 own agent → Create pairing code**. It is a fictional invoice sandbox; no real
@@ -216,7 +223,7 @@ The release is distributed as a versioned package from scopeblind.com. Its
 is published alongside it. Run the room's command in your terminal. For a single connection:
 
 ```bash
-npx --yes protect-mcp@0.22.0 coordination pair
+npx --yes protect-mcp@0.23.0 coordination pair
 ```
 
 Paste the private code when prompted. It is never a command-line argument or
@@ -235,7 +242,7 @@ Successful pairing prints the Claude Code registration command directly. To
 print it again:
 
 ```bash
-npx --yes protect-mcp@0.22.0 coordination setup --client claude-code
+npx --yes protect-mcp@0.23.0 coordination setup --client claude-code
 ```
 
 Run the command it prints in the project where you use Claude Code. It registers
@@ -284,7 +291,7 @@ that raced with revocation. It does not undo confirmed payments.
 For custom service operators, the original explicit connection remains:
 
 ```bash
-npx --yes protect-mcp@0.22.0 coordination \
+npx --yes protect-mcp@0.23.0 coordination \
   --endpoint https://YOUR-HOST/api/coordination \
   --room ROOM_ID \
   --authority-key PINNED_64_HEX_AUTHORITY_KEY \
@@ -546,7 +553,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.22.0 evaluate --cedar ./cedar --format claude"
+            "command": "npx protect-mcp@0.23.0 evaluate --cedar ./cedar --format claude"
           }
         ]
       }
@@ -557,7 +564,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.22.0 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx protect-mcp@0.23.0 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }
@@ -574,8 +581,8 @@ to the Cedar policy compiled from it, and report to the standard's own page:
 
 ```bash
 # Initialize the signing key once, unless this directory already has one.
-npx protect-mcp@0.22.0 init
-npx protect-mcp@0.22.0 --enforce --cedar ./policy --standard ./standard.json \
+npx protect-mcp@0.23.0 init
+npx protect-mcp@0.23.0 --enforce --cedar ./policy --standard ./standard.json \
   --report 'https://scopeblind.com/api/standard?s=<standard id>' \
   -- <your MCP server command>
 ```
@@ -611,7 +618,7 @@ The hook server takes the same four flags, so a coding agent's calls through
 Claude Code hooks land on the page and are held under the standard the same way:
 
 ```bash
-npx protect-mcp@0.22.0 serve --enforce --cedar ./policy --standard ./standard.json \
+npx protect-mcp@0.23.0 serve --enforce --cedar ./policy --standard ./standard.json \
   --report 'https://scopeblind.com/api/standard?s=<standard id>'
 ```
 
@@ -629,7 +636,7 @@ receipt instead of an unconditional allow. Pass the policy directory and the
 same input and context the hook would pass to `evaluate`:
 
 ```bash
-npx protect-mcp@0.22.0 sign --cedar ./cedar --tool Bash \
+npx protect-mcp@0.23.0 sign --cedar ./cedar --tool Bash \
   --input '{"command":"rm -rf /"}' --context '{"command_pattern":"rm -rf"}' \
   --receipts ./receipts --key ./keys/gateway.json
 ```
@@ -662,10 +669,10 @@ in its contract:
 
 ```bash
 # the PreToolUse / before-tool command for each host
-npx -y protect-mcp@0.22.0 evaluate --format codex  --cedar ./cedar   # OpenAI Codex
-npx -y protect-mcp@0.22.0 evaluate --format gemini --cedar ./cedar   # Gemini CLI BeforeTool
-npx -y protect-mcp@0.22.0 evaluate --format cursor --cedar ./cedar   # Cursor beforeShellExecution
-npx -y protect-mcp@0.22.0 evaluate --format hermes --cedar ./cedar   # Hermes pre_tool_call
+npx -y protect-mcp@0.23.0 evaluate --format codex  --cedar ./cedar   # OpenAI Codex
+npx -y protect-mcp@0.23.0 evaluate --format gemini --cedar ./cedar   # Gemini CLI BeforeTool
+npx -y protect-mcp@0.23.0 evaluate --format cursor --cedar ./cedar   # Cursor beforeShellExecution
+npx -y protect-mcp@0.23.0 evaluate --format hermes --cedar ./cedar   # Hermes pre_tool_call
 ```
 
 Pair each with `sign --format <host>` on the post-tool event for receipts. The
@@ -823,7 +830,7 @@ MIT licensed. Built by [ScopeBlind](https://scopeblind.com).
 
 ### Let your agent negotiate for you
 
-Version `0.22.0` supports the two-person agreement at
+Version `0.23.0` supports the two-person agreement at
 [ScopeBlind](https://scopeblind.com/standard?trial=new&view=negotiate). Each person
 signs their own mandate and creates their own version-3 pairing code. The private
 configuration binds one principal and discussion; it does not inherit payment
@@ -861,7 +868,7 @@ people approve the exact reviewed commits before the trusted receiver applies th
 The recipient can accept the observed result or request a linked fresh revision.
 
 For your own repository, choose **Use your repository** and run the generated
-`protect-mcp@0.22.0 repository setup` command locally. It discovers actual check
+`protect-mcp@0.23.0 repository setup` command locally. It discovers actual check
 names/providers, saves a receiver key with owner-only permissions, and prepares a
 hash-pinned workflow for your review. The returned `connection.json` contains public
 keys and signed discovery evidence. Keep `receiver-key.json` private. Discovery,
@@ -875,7 +882,7 @@ or supply `GITHUB_TOKEN` through your local credential manager. Setup does not s
 or print that token.
 
 ```sh
-npx --yes protect-mcp@0.22.0 repository setup \
+npx --yes protect-mcp@0.23.0 repository setup \
   --repository OWNER/REPOSITORY \
   --owner-key YOUR_PUBLIC_OWNER_KEY \
   --authority-key REVIEWED_SERVICE_AUTHORITY_KEY \
@@ -889,7 +896,7 @@ the workflow or configuring Actions. Import only the public `connection.json`.
 To refresh local read-only readiness for this same connection, use a new output file:
 
 ```sh
-npx --yes protect-mcp@0.22.0 repository ready \
+npx --yes protect-mcp@0.23.0 repository ready \
   --connection ./repository-connection/connection-config.json \
   --key-file ./repository-connection/receiver-key.json \
   --output ./repository-readiness.json
@@ -906,3 +913,48 @@ connection supports `coordination.request_repository_revision` with an explicit
 current basis digest and stable request ID. It can suggest bounded contact-page
 data and a reason; it cannot enroll a reviewer, approve a change, or execute the
 receiver. Reusing a request ID retries the exact original signed suggestion.
+
+### Recurring client reviews and agent preparation
+
+Create a client project from the repository review page to reuse its repository,
+receiver connection and reviewer membership. Each review contains its own brief,
+stable success criteria and exact pull-request snapshot. Both people approve that
+reviewed version; the recipient can separately accept the observed result.
+
+For recurring preparation, both people can sign a mandate naming one public agent
+key, repository, branch, permitted paths, required check providers, expiry and
+request limits. Obtain the profile's public key with `coordination.connections`,
+then authorize it in the project's **Agent permissions** panel. A connected agent
+uses these tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `coordination.inspect_workspace` | Verify the project and joint mandate; inspect remaining allowance and existing drafts. |
+| `coordination.prepare_repository_review` | Submit a signed PR review draft to the project inbox for a person to adopt. |
+| `coordination.inspect_repository_review` | Read the assigned task's exact brief, criteria, receiver packet and attributed feedback. |
+| `coordination.report_repository_criteria` | Report `met`, `not_met` or `unknown` against each criterion, citing evidence present in the packet. |
+| `coordination.request_repository_changes` | Record general revision feedback tied to the exact reviewed version. |
+
+Use the exact `workspace_id` and `mandate_id` shown in the project. After inspection,
+the mandate ID becomes this purpose's `connection_id`. Reuse a stable `request_id`
+after an interrupted submission; the private profile retains the original signed
+intent. New findings against a changed packet require fresh inspection and a new ID.
+To prepare a revision from recorded feedback, include the exact `draft.source`
+reference returned by the review: task ID and digest, basis digest, packet digest
+and feedback digest. The project preserves that reference in the new review's
+portable evidence. The new version requires fresh human approvals.
+
+These permissions prepare and review work. They cannot impersonate a person, adopt
+the mandate, approve a change, merge a PR or accept a result. ScopeBlind does not
+start a hosted model or keep an external agent running. The implementer handles
+requested code changes through their existing development tools and permissions.
+
+A receiver's preview record describes GitHub deployment and check metadata for the
+observed commit. An external preview URL remains mutable; it is not an immutable
+artifact or proof of the bytes subsequently served. Criterion findings are attributed
+agent recommendations, including explicit unknowns, for the human decision.
+
+Project recovery uses a separately enrolled recovery credential. It rotates that
+project member's future authority; it never recreates an old browser private key
+or rewrites historical approvals. Start a new review with the current membership
+before making further decisions on work assigned to a former key.

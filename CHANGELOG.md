@@ -1,3 +1,10 @@
+## 0.23.0 — 2026-09-16
+
+- Add reusable client projects with signed membership, task assignments, decision inboxes and explicit recovery by membership-key rotation. Historical signatures retain their original identity.
+- Add real PR review briefs, stable success criteria and receiver-observed deployment preview packets. Exact human decisions bind the brief, packet and existing repository approval together.
+- Add dual-adopted, expiring agent preparation mandates with repository/path/check limits and atomic request allowances. Agents can prepare recurring reviews, report criterion evidence and request general revisions without receiving human approval or repository execution authority.
+- Preserve exact signed agent submissions across interrupted replies, and verify the authority used for recorded findings. Existing repository evidence and the disposable contact-page demo remain compatible.
+
 ## 0.22.0 — 2026-09-16
 
 - Add a real shared contact-page demo with isolated repository branches, exact file previews, two-person approval, receiver readback and linked revisions. The trusted workflow never executes proposed code.

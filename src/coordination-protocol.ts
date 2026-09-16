@@ -94,6 +94,8 @@ export type RpcAction = 'create' | 'invite' | 'claim' | 'revoke' | 'admit' | 'ex
   | import('./coordination-devices').DeviceAction
   | import('./coordination-repository').RepositoryAction
   | import('./coordination-repository-collaboration').RepositoryCollaborationAction
+  | import('./coordination-repository-workspace').RepositoryWorkspaceAction
+  | import('./coordination-repository-review').RepositoryReviewAction
   | typeof import('./coordination-agent-requests').AGENT_REQUEST_ACTIONS[number]
   | typeof import('./coordination-inbox').DECISION_ACTIONS[number];
 export interface RpcRequest {

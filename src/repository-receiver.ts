@@ -1,5 +1,8 @@
-import {canonical,importIdentity,makeRequest,sign,bytesToHex,type SigningIdentity,type Signed} from './coordination-protocol.js';
+import {canonical,importIdentity,makeRequest,sign,verify,bytesToHex,type SigningIdentity,type Signed} from './coordination-protocol.js';
 import {REPOSITORY_HEX,REPOSITORY_ID,REPOSITORY_SHA,pathAllowed,repositoryBranch,repositorySnapshotDigest,validRepositoryProposal,verifyRepositoryEvidence,type RepositoryTask,type RepositoryProposal,type RepositoryState,type RepositoryFile,type RepositoryCheck,type RepositoryOutcome,type RepositoryAction} from './coordination-repository.js';
+import {validRepositoryReviewBrief,validRepositoryReviewPacket,type RepositoryReviewPacket,type RepositoryReviewState} from './coordination-repository-review.js';
+import {verifyRepositoryReviewEvidence,type RepositoryReviewEvidence} from './coordination-repository-review-evidence.js';
+import {observeRepositoryReviewPreview} from './repository-review-preview.js';
 export interface RepositoryReceiverConfig {type:'scopeblind.repository.receiver-config.v1';endpoint:string;repository:string;base_branch:string;authority_key:string;owner_key:string;reviewer_key:string;receiver_key:string}
 export class RepositoryReceiverError extends Error {constructor(public code:string,message=code,public uncertain=false){super(message);}}
 function requireValue(value:unknown,code:string):asserts value {if(!value)throw new RepositoryReceiverError(code);}
@@ -23,6 +26,19 @@ export class RepositoryReceiver {
   const request=await sign(makeRequest(action,taskId,body),this.identity);let response:Response;
   try{response=await this.fetchImpl(this.config.endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({request}),redirect:'error',signal:AbortSignal.timeout(20000)});}catch{throw new RepositoryReceiverError('repository_service_unavailable','The signed request may have been recorded. Inspect its current state before continuing.',true);}
   const data=await json(response,150000);requireValue(response.ok&&data.ok===true,typeof data.error==='string'?data.error:'repository_service_error');const state=data.repository_task as Signed<RepositoryState>;await this.validateState(state,taskId);return state;
+ }
+ private async review(taskId:string):Promise<{repository_task:Signed<RepositoryState>;review:Signed<RepositoryReviewState>|null;evidence:unknown}>{
+  const request=await sign(makeRequest('repository_review_get',taskId,{}),this.identity);let response:Response;
+  try{response=await this.fetchImpl(this.config.endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({request}),redirect:'error',signal:AbortSignal.timeout(20000)});}catch{throw new RepositoryReceiverError('repository_review_unavailable');}
+  const data=await json(response,4000000);requireValue(response.ok&&data.ok===true,'repository_review_unavailable');await this.validateState(data.repository_task,taskId);
+  if(data.review){const result=await verifyRepositoryReviewEvidence(data.evidence,this.config);requireValue(result.valid,'repository_review_evidence_invalid');requireValue(data.evidence.review.digest===data.review.digest&&data.review.payload.task_digest===data.repository_task.payload.task.digest,'repository_review_scope_mismatch');}
+  return data;
+ }
+ async reviewEvidence(taskId:string){return (await this.review(taskId)).evidence;}
+ private async recordPacket(taskId:string,packet:Signed<RepositoryReviewPacket>){
+  const request=await sign(makeRequest('repository_review_packet',taskId,{packet}),this.identity);let response:Response;
+  try{response=await this.fetchImpl(this.config.endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({request}),redirect:'error',signal:AbortSignal.timeout(20000)});}catch{throw new RepositoryReceiverError('repository_review_record_uncertain','The exact packet may have been recorded. Inspect the existing task before continuing.',true);}
+  const data=await json(response,4000000);requireValue(response.ok&&data.ok===true,typeof data.error==='string'?data.error:'repository_review_record_failed');await this.validateState(data.repository_task,taskId);requireValue((await verifyRepositoryReviewEvidence(data.evidence,this.config)).valid&&data.review?.payload.packet?.digest===packet.digest,'repository_review_evidence_invalid');return data.repository_task as Signed<RepositoryState>;
  }
  private async validateState(state:Signed<RepositoryState>,taskId:string){
   const checked=await verifyRepositoryEvidence({type:'scopeblind.repository.evidence.v1',state},this.config);requireValue(checked.valid,'repository_evidence_invalid');const task=state.payload.task.payload;
@@ -71,14 +87,25 @@ export class RepositoryReceiver {
   requireValue(current.state==='open'&&!current.merged&&!current.draft&&current.head?.sha===pr.head.sha&&current.base?.sha===pr.base.sha&&current.merge_commit_sha===pr.merge_commit_sha&&current.head?.repo?.full_name===t.repository&&current.base?.repo?.full_name===t.repository,'repository_changed_during_inspection');
   const proposal:RepositoryProposal={type:'scopeblind.repository.proposal.v1',id:proposalId,task_id:t.id,task_digest:task.digest,repository_id:repo.body.node_id,base_ref:`refs/heads/${pr.base.ref}`,head_ref:`refs/heads/${pr.head.ref}`,base_sha:pr.base.sha,head_sha:pr.head.sha,merge_sha:pr.merge_commit_sha,tree_sha:merge.body.tree.sha,files,checks,observed_at:new Date().toISOString()};requireValue(validRepositoryProposal(proposal,t,task.digest),'invalid_repository_proposal');return proposal;
  }
- async inspect(taskId:string){requireValue(REPOSITORY_ID.test(taskId),'invalid_repository_task_id');const state=await this.rpc('repository_get',taskId);requireValue(!state.payload.execution&&state.payload.status!=='cancelled'&&Date.parse(state.payload.task.payload.expires_at)>Date.now(),'repository_task_inactive');const proposal=await sign(await this.snapshot(state.payload.task),this.identity);return this.rpc('repository_propose',taskId,{proposal});}
+ async inspect(taskId:string){
+  requireValue(REPOSITORY_ID.test(taskId),'invalid_repository_task_id');const current=await this.review(taskId),state=current.repository_task;
+  requireValue(!state.payload.execution&&state.payload.status!=='cancelled'&&Date.parse(state.payload.task.payload.expires_at)>Date.now(),'repository_task_inactive');
+  const proposal=await sign(await this.snapshot(state.payload.task),this.identity),saved=await this.rpc('repository_propose',taskId,{proposal});if(!current.review)return saved;
+  const brief=current.review.payload.brief;requireValue(validRepositoryReviewBrief(brief.payload,state.payload.task.payload,state.payload.task.digest)&&await verify(brief,this.config.owner_key),'repository_review_brief_invalid');
+  const preview=await observeRepositoryReviewPreview(path=>this.github(path),this.config.repository,brief,proposal),observedAt=new Date().toISOString(),expiresAt=new Date(Math.min(Date.now()+900000,Date.parse(brief.payload.expires_at))).toISOString();
+  const packet=await sign<RepositoryReviewPacket>({type:'scopeblind.repository.review-packet.v1',task_id:taskId,task_digest:state.payload.task.digest,brief_digest:brief.digest,proposal_digest:proposal.digest,base_sha:proposal.payload.base_sha,head_sha:proposal.payload.head_sha,merge_sha:proposal.payload.merge_sha,preview,observed_at:observedAt,expires_at:expiresAt},this.identity);
+  requireValue(validRepositoryReviewPacket(packet.payload,brief,proposal),'repository_review_packet_invalid');return this.recordPacket(taskId,packet);
+ }
  async execute(taskId:string){
   requireValue(REPOSITORY_ID.test(taskId),'invalid_repository_task_id');let state=await this.rpc('repository_get',taskId);if(state.payload.execution)return this.reconcileState(state);
   requireValue(state.payload.status==='approved'&&state.payload.proposal&&Date.parse(state.payload.task.payload.expires_at)>Date.now(),'repository_joint_approval_required');
+  const reviewed=await this.review(taskId);if(reviewed.review){requireValue(reviewed.repository_task.payload.proposal?.digest===state.payload.proposal.digest&&reviewed.review.payload.decisions.length===2&&reviewed.review.payload.packet&&Date.parse(reviewed.review.payload.packet.payload.expires_at)>Date.now(),'repository_review_joint_decision_required');}
+  if(reviewed.review)await this.checkReviewObservation(reviewed.review,state.payload.proposal);
   const approved=state.payload.proposal,observed=await this.snapshot(state.payload.task);requireValue(await repositorySnapshotDigest(approved.payload)===await repositorySnapshotDigest(observed),'repository_approval_stale');
   const operationId=`repo-${taskId}`,attemptId=crypto.randomUUID();state=await this.rpc('repository_begin',taskId,{proposal_digest:approved.digest,operation_id:operationId,attempt_id:attemptId});const execution=state.payload.execution!;requireValue(execution&&execution.payload.receiver_attempt_id===attemptId&&execution.payload.operation_id===operationId&&execution.payload.proposal_digest===approved.digest,'repository_execution_mismatch');requireValue(Date.parse(execution.payload.expires_at)>Date.now(),'repository_execution_expired');
   let sent=false,requestId='',note='';
   try{
+   if(reviewed.review)await this.checkReviewObservation(reviewed.review,approved);
    const final=await this.snapshot(state.payload.task);requireValue(await repositorySnapshotDigest(final)===await repositorySnapshotDigest(approved.payload),'repository_approval_stale');requireValue(Date.parse(execution.payload.expires_at)>Date.now()&&state.payload.approvals.every(a=>Date.parse(a.payload.expires_at)>Date.now()),'repository_execution_expired');
    // GitHub applies both reference preconditions atomically. The no-op head
    // update prevents a changed PR head from borrowing this exact approval.
@@ -87,6 +114,10 @@ export class RepositoryReceiver {
    note='GitHub accepted the exact atomic reference update. The receiver then read back the destination.';
   }catch(error){note=error instanceof RepositoryReceiverError?error.message:'The receiver could not establish the operation outcome.';if(!sent)return this.report(state,{status:'failed',observed_base_sha:null,readback:'not_confirmed',note});}
   return this.reconcileState(state,note,requestId);
+ }
+ private async checkReviewObservation(review:Signed<RepositoryReviewState>,proposal:Signed<RepositoryProposal>){
+  requireValue(review.payload.packet&&Date.parse(review.payload.packet.payload.expires_at)>Date.now(),'repository_review_packet_expired');
+  const observed=await observeRepositoryReviewPreview(path=>this.github(path),this.config.repository,review.payload.brief,proposal);requireValue(canonical(observed)===canonical(review.payload.packet.payload.preview),'repository_review_preview_changed');
  }
  async reconcile(taskId:string){return this.reconcileState(await this.rpc('repository_get',taskId));}
  private async reconcileState(state:Signed<RepositoryState>,note='Reconciled the existing operation by reading GitHub; no new reference update was sent.',requestId=''){
@@ -105,5 +136,5 @@ export async function runRepositoryReceiver(args:string[]){
  if(option('--key-file')){const key=JSON.parse(await readFile(option('--key-file')!,'utf8'));requireValue(key.type==='scopeblind.repository.receiver-key.v1'&&key.public_key===config.receiver_key,'receiver_key_mismatch');privateKey=key.private_key;}
  requireValue(privateKey&&/^[0-9a-f]{96,300}$/.test(privateKey),'receiver_private_key_required');if(process.env.GITHUB_ACTIONS==='true')requireValue(process.env.GITHUB_REPOSITORY===config.repository&&process.env.GITHUB_EVENT_NAME==='workflow_dispatch'&&process.env.GITHUB_REF===`refs/heads/${config.base_branch}`,'receiver_trusted_workflow_required');
  const receiver=new RepositoryReceiver(config,await importIdentity(privateKey,config.receiver_key),process.env.GITHUB_TOKEN||''),result=action==='inspect'?await receiver.inspect(task):action==='execute'?await receiver.execute(task):await receiver.reconcile(task);
- const out=option('--output');if(out)await writeFile(out,JSON.stringify({type:'scopeblind.repository.evidence.v1',state:result},null,2)+'\n',{mode:0o600});process.stdout.write(`Repository task ${task}: ${result.payload.status}. No PR code was executed by this receiver.\n`);
+ const out=option('--output');if(out)await writeFile(out,JSON.stringify(await receiver.reviewEvidence(task),null,2)+'\n',{mode:0o600});process.stdout.write(`Repository task ${task}: ${result.payload.status}. No PR code was executed by this receiver.\n`);
 }

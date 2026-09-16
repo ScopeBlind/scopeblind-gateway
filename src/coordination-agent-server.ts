@@ -5,6 +5,7 @@ import {CoordinationError} from './coordination-client.js';
 import {COORDINATION_TOOLS,REHEARSAL_TOOLS,NEGOTIATION_TOOLS,handleCoordinationRequest} from './coordination-server.js';
 import {DEFAULT_AGENT_PROFILE,ensureAgentProfile,importProfileConnection} from './coordination-agent-profile.js';
 import {agentClient,agentProfileRegistration} from './coordination-agent-setup.js';
+import {WORKSPACE_AGENT_TOOLS} from './coordination-workspace-agent-tools.js';
 
 const id={type:'string',pattern:'^[A-Za-z0-9_-]{8,100}$'};
 const amount={type:'integer',minimum:0,maximum:10_000_000};
@@ -16,6 +17,7 @@ const draftSchema={type:'object',additionalProperties:false,properties:{
   private_brief:{type:'string',maxLength:2000},preference:{type:'string',enum:['fewer_reviews','more_review','balanced']},budget_preference:{type:'string',enum:['preserve_budget','lower_budget','more_capacity']},assumptions:{type:'array',maxItems:12,items:{type:'string',minLength:1,maxLength:300}},
 },required:['title','goal']};
 export const AGENT_PROFILE_TOOLS=[
+  ...WORKSPACE_AGENT_TOOLS,
   {name:'coordination.prepare_task',description:'Prepare an unsigned shared invoice-task draft for your own person to review. Use a stable request_id for retries. Proposed limits, preferences, and assumptions grant no authority. Returns a private review link intended only for the requesting person; they review and sign in the browser, invite the other person, and explicitly authorize a scoped agent. Do not put unsupported hard rules into a preference. No room, human signature, payment, or hosted model is created by this tool.',inputSchema:{type:'object',additionalProperties:false,properties:{request_id:id,draft:draftSchema},required:['request_id','draft']},annotations:{title:'Prepare a shared task for human review',readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false}},
   {name:'coordination.inspect_task_request',description:'Check a draft prepared by this profile. An accepted draft is still not an agent grant. Ready means the person separately signed the named negotiation grant; use claim_task_connection and inspect the mandate before acting. Does not poll in the background or reveal the draft to another principal.',inputSchema:{type:'object',additionalProperties:false,properties:{request_id:id},required:['request_id']},annotations:{title:'Check the person’s review and agent grant',readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false}},
   {name:'coordination.claim_task_connection',description:'Claim the exact negotiation connection explicitly authorized for this profile’s key after human review. Saves its separate token locally and returns a connection_id. Does not sign a mandate, establish readiness, execute, approve, or grant ownership. Inspect the returned connection before taking its next permitted action.',inputSchema:{type:'object',additionalProperties:false,properties:{request_id:id},required:['request_id']},annotations:{title:'Connect to the human-authorized task',readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:false}},
@@ -31,7 +33,7 @@ const result=(request:Request,value:unknown,error=false)=>({jsonrpc:'2.0',id:req
 export async function handleAgentProfileRequest(client:CoordinationAgentClient,request:Request,signal?:AbortSignal):Promise<unknown>{
   if(!request||request.jsonrpc!=='2.0'||typeof request.method!=='string')return {jsonrpc:'2.0',id:request?.id??null,error:{code:-32600,message:'Invalid JSON-RPC request.'}};
   if(request.id===undefined)return undefined;
-  if(request.method==='initialize')return {jsonrpc:'2.0',id:request.id,result:{protocolVersion:'2024-11-05',serverInfo:{name:'protect-mcp-agent',version:process.env.PROTECT_MCP_VERSION||'0.22.0'},capabilities:{tools:{}}}};
+  if(request.method==='initialize')return {jsonrpc:'2.0',id:request.id,result:{protocolVersion:'2024-11-05',serverInfo:{name:'protect-mcp-agent',version:process.env.PROTECT_MCP_VERSION||'0.23.0'},capabilities:{tools:{}}}};
   if(request.method==='ping')return {jsonrpc:'2.0',id:request.id,result:{}};
   if(request.method==='tools/list')return {jsonrpc:'2.0',id:request.id,result:{tools:[...AGENT_PROFILE_TOOLS,...scopedTools]}};
   if(request.method!=='tools/call')return {jsonrpc:'2.0',id:request.id,error:{code:-32601,message:'Method not found.'}};
@@ -44,6 +46,11 @@ export async function handleAgentProfileRequest(client:CoordinationAgentClient,r
     if(name==='coordination.inspect_task_request'){only('request_id');return result(request,await client.inspectTaskRequest(fields.request_id as string));}
     if(name==='coordination.claim_task_connection'){only('request_id');return result(request,await client.claimTaskConnection(fields.request_id as string));}
     if(name==='coordination.connections'){only();return result(request,client.connections());}
+    if(name==='coordination.inspect_workspace'){only('workspace_id','mandate_id');return result(request,await client.inspectWorkspace(fields.workspace_id as string,fields.mandate_id as string));}
+    if(name==='coordination.prepare_repository_review'){only('connection_id','request_id','draft');return result(request,await client.prepareRepositoryReview(fields as unknown as Parameters<CoordinationAgentClient['prepareRepositoryReview']>[0]));}
+    if(name==='coordination.inspect_repository_review'){only('connection_id','task_id');return result(request,await client.inspectRepositoryReview(fields.connection_id as string,fields.task_id as string));}
+    if(name==='coordination.report_repository_criteria'){only('connection_id','task_id','request_id','packet_digest','assessment');return result(request,await client.reportRepositoryCriteria(fields as unknown as Parameters<CoordinationAgentClient['reportRepositoryCriteria']>[0]));}
+    if(name==='coordination.request_repository_changes'){only('connection_id','task_id','request_id','packet_digest','basis_digest','feedback');return result(request,await client.requestRepositoryChanges(fields as unknown as Parameters<CoordinationAgentClient['requestRepositoryChanges']>[0]));}
     if(name==='coordination.check_handoffs'){only('connection_id');return result(request,await client.checkHandoffs(fields.connection_id as string));}
     if(name==='coordination.claim_execution_connection'){only('connection_id','handoff_id');return result(request,await client.claimExecutionConnection(fields.connection_id as string,fields.handoff_id as string));}
     if(name==='coordination.inspect_repository'){only('task_id','grant_id');return result(request,await client.inspectRepository(fields.task_id as string,fields.grant_id as string));}
