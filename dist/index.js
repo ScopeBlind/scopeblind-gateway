@@ -14,9 +14,9 @@ var __export = (target, all) => {
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
-    for (let key4 of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key4) && key4 !== except)
-        __defProp(to, key4, { get: () => from[key4], enumerable: !(desc = __getOwnPropDesc(from, key4)) || desc.enumerable });
+    for (let key5 of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key5) && key5 !== except)
+        __defProp(to, key5, { get: () => from[key5], enumerable: !(desc = __getOwnPropDesc(from, key5)) || desc.enumerable });
   }
   return to;
 };
@@ -48,30 +48,30 @@ var require_util = __commonJS({
       }
       util2.assertNever = assertNever;
       util2.arrayToEnum = (items) => {
-        const obj4 = {};
+        const obj5 = {};
         for (const item of items) {
-          obj4[item] = item;
+          obj5[item] = item;
         }
-        return obj4;
+        return obj5;
       };
-      util2.getValidEnumValues = (obj4) => {
-        const validKeys = util2.objectKeys(obj4).filter((k) => typeof obj4[obj4[k]] !== "number");
+      util2.getValidEnumValues = (obj5) => {
+        const validKeys = util2.objectKeys(obj5).filter((k) => typeof obj5[obj5[k]] !== "number");
         const filtered = {};
         for (const k of validKeys) {
-          filtered[k] = obj4[k];
+          filtered[k] = obj5[k];
         }
         return util2.objectValues(filtered);
       };
-      util2.objectValues = (obj4) => {
-        return util2.objectKeys(obj4).map(function(e) {
-          return obj4[e];
+      util2.objectValues = (obj5) => {
+        return util2.objectKeys(obj5).map(function(e) {
+          return obj5[e];
         });
       };
-      util2.objectKeys = typeof Object.keys === "function" ? (obj4) => Object.keys(obj4) : (object7) => {
+      util2.objectKeys = typeof Object.keys === "function" ? (obj5) => Object.keys(obj5) : (object8) => {
         const keys2 = [];
-        for (const key4 in object7) {
-          if (Object.prototype.hasOwnProperty.call(object7, key4)) {
-            keys2.push(key4);
+        for (const key5 in object8) {
+          if (Object.prototype.hasOwnProperty.call(object8, key5)) {
+            keys2.push(key5);
           }
         }
         return keys2;
@@ -197,9 +197,9 @@ var require_ZodError = __commonJS({
       "not_multiple_of",
       "not_finite"
     ]);
-    var quotelessJson = (obj4) => {
-      const json = JSON.stringify(obj4, null, 2);
-      return json.replace(/"([^"]+)":/g, "$1:");
+    var quotelessJson = (obj5) => {
+      const json3 = JSON.stringify(obj5, null, 2);
+      return json3.replace(/"([^"]+)":/g, "$1:");
     };
     exports2.quotelessJson = quotelessJson;
     var ZodError = class _ZodError extends Error {
@@ -519,10 +519,10 @@ var require_parseUtil = __commonJS({
       static async mergeObjectAsync(status2, pairs) {
         const syncPairs = [];
         for (const pair of pairs) {
-          const key4 = await pair.key;
+          const key5 = await pair.key;
           const value = await pair.value;
           syncPairs.push({
-            key: key4,
+            key: key5,
             value
           });
         }
@@ -531,17 +531,17 @@ var require_parseUtil = __commonJS({
       static mergeObjectSync(status2, pairs) {
         const finalObject = {};
         for (const pair of pairs) {
-          const { key: key4, value } = pair;
-          if (key4.status === "aborted")
+          const { key: key5, value } = pair;
+          if (key5.status === "aborted")
             return exports2.INVALID;
           if (value.status === "aborted")
             return exports2.INVALID;
-          if (key4.status === "dirty")
+          if (key5.status === "dirty")
             status2.dirty();
           if (value.status === "dirty")
             status2.dirty();
-          if (key4.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
-            finalObject[key4.value] = value.value;
+          if (key5.value !== "__proto__" && (typeof value.value !== "undefined" || pair.alwaysSet)) {
+            finalObject[key5.value] = value.value;
           }
         }
         return { status: status2.value, value: finalObject };
@@ -603,12 +603,12 @@ var require_types = __commonJS({
     var parseUtil_js_1 = require_parseUtil();
     var util_js_1 = require_util();
     var ParseInputLazyPath = class {
-      constructor(parent, value, path, key4) {
+      constructor(parent, value, path, key5) {
         this._cachedPath = [];
         this.parent = parent;
         this.data = value;
         this._path = path;
-        this._key = key4;
+        this._key = key5;
       }
       get path() {
         if (!this._cachedPath.length) {
@@ -2369,9 +2369,9 @@ var require_types = __commonJS({
     function deepPartialify(schema) {
       if (schema instanceof ZodObject) {
         const newShape = {};
-        for (const key4 in schema.shape) {
-          const fieldSchema = schema.shape[key4];
-          newShape[key4] = ZodOptional.create(deepPartialify(fieldSchema));
+        for (const key5 in schema.shape) {
+          const fieldSchema = schema.shape[key5];
+          newShape[key5] = ZodOptional.create(deepPartialify(fieldSchema));
         }
         return new ZodObject({
           ...schema._def,
@@ -2402,9 +2402,9 @@ var require_types = __commonJS({
       _getCached() {
         if (this._cached !== null)
           return this._cached;
-        const shape7 = this._def.shape();
-        const keys2 = util_js_1.util.objectKeys(shape7);
-        this._cached = { shape: shape7, keys: keys2 };
+        const shape8 = this._def.shape();
+        const keys2 = util_js_1.util.objectKeys(shape8);
+        this._cached = { shape: shape8, keys: keys2 };
         return this._cached;
       }
       _parse(input) {
@@ -2419,32 +2419,32 @@ var require_types = __commonJS({
           return parseUtil_js_1.INVALID;
         }
         const { status: status2, ctx } = this._processInputParams(input);
-        const { shape: shape7, keys: shapeKeys } = this._getCached();
+        const { shape: shape8, keys: shapeKeys } = this._getCached();
         const extraKeys = [];
         if (!(this._def.catchall instanceof ZodNever && this._def.unknownKeys === "strip")) {
-          for (const key4 in ctx.data) {
-            if (!shapeKeys.includes(key4)) {
-              extraKeys.push(key4);
+          for (const key5 in ctx.data) {
+            if (!shapeKeys.includes(key5)) {
+              extraKeys.push(key5);
             }
           }
         }
         const pairs = [];
-        for (const key4 of shapeKeys) {
-          const keyValidator = shape7[key4];
-          const value = ctx.data[key4];
+        for (const key5 of shapeKeys) {
+          const keyValidator = shape8[key5];
+          const value = ctx.data[key5];
           pairs.push({
-            key: { status: "valid", value: key4 },
-            value: keyValidator._parse(new ParseInputLazyPath(ctx, value, ctx.path, key4)),
-            alwaysSet: key4 in ctx.data
+            key: { status: "valid", value: key5 },
+            value: keyValidator._parse(new ParseInputLazyPath(ctx, value, ctx.path, key5)),
+            alwaysSet: key5 in ctx.data
           });
         }
         if (this._def.catchall instanceof ZodNever) {
           const unknownKeys = this._def.unknownKeys;
           if (unknownKeys === "passthrough") {
-            for (const key4 of extraKeys) {
+            for (const key5 of extraKeys) {
               pairs.push({
-                key: { status: "valid", value: key4 },
-                value: { status: "valid", value: ctx.data[key4] }
+                key: { status: "valid", value: key5 },
+                value: { status: "valid", value: ctx.data[key5] }
               });
             }
           } else if (unknownKeys === "strict") {
@@ -2461,15 +2461,15 @@ var require_types = __commonJS({
           }
         } else {
           const catchall = this._def.catchall;
-          for (const key4 of extraKeys) {
-            const value = ctx.data[key4];
+          for (const key5 of extraKeys) {
+            const value = ctx.data[key5];
             pairs.push({
-              key: { status: "valid", value: key4 },
+              key: { status: "valid", value: key5 },
               value: catchall._parse(
-                new ParseInputLazyPath(ctx, value, ctx.path, key4)
+                new ParseInputLazyPath(ctx, value, ctx.path, key5)
                 //, ctx.child(key), value, getParsedType(value)
               ),
-              alwaysSet: key4 in ctx.data
+              alwaysSet: key5 in ctx.data
             });
           }
         }
@@ -2477,10 +2477,10 @@ var require_types = __commonJS({
           return Promise.resolve().then(async () => {
             const syncPairs = [];
             for (const pair of pairs) {
-              const key4 = await pair.key;
+              const key5 = await pair.key;
               const value = await pair.value;
               syncPairs.push({
-                key: key4,
+                key: key5,
                 value,
                 alwaysSet: pair.alwaysSet
               });
@@ -2605,8 +2605,8 @@ var require_types = __commonJS({
       //   }) as any;
       //   return merged;
       // }
-      setKey(key4, schema) {
-        return this.augment({ [key4]: schema });
+      setKey(key5, schema) {
+        return this.augment({ [key5]: schema });
       }
       // merge<Incoming extends AnyZodObject>(
       //   merging: Incoming
@@ -2636,27 +2636,27 @@ var require_types = __commonJS({
         });
       }
       pick(mask) {
-        const shape7 = {};
-        for (const key4 of util_js_1.util.objectKeys(mask)) {
-          if (mask[key4] && this.shape[key4]) {
-            shape7[key4] = this.shape[key4];
+        const shape8 = {};
+        for (const key5 of util_js_1.util.objectKeys(mask)) {
+          if (mask[key5] && this.shape[key5]) {
+            shape8[key5] = this.shape[key5];
           }
         }
         return new _ZodObject({
           ...this._def,
-          shape: () => shape7
+          shape: () => shape8
         });
       }
       omit(mask) {
-        const shape7 = {};
-        for (const key4 of util_js_1.util.objectKeys(this.shape)) {
-          if (!mask[key4]) {
-            shape7[key4] = this.shape[key4];
+        const shape8 = {};
+        for (const key5 of util_js_1.util.objectKeys(this.shape)) {
+          if (!mask[key5]) {
+            shape8[key5] = this.shape[key5];
           }
         }
         return new _ZodObject({
           ...this._def,
-          shape: () => shape7
+          shape: () => shape8
         });
       }
       /**
@@ -2667,12 +2667,12 @@ var require_types = __commonJS({
       }
       partial(mask) {
         const newShape = {};
-        for (const key4 of util_js_1.util.objectKeys(this.shape)) {
-          const fieldSchema = this.shape[key4];
-          if (mask && !mask[key4]) {
-            newShape[key4] = fieldSchema;
+        for (const key5 of util_js_1.util.objectKeys(this.shape)) {
+          const fieldSchema = this.shape[key5];
+          if (mask && !mask[key5]) {
+            newShape[key5] = fieldSchema;
           } else {
-            newShape[key4] = fieldSchema.optional();
+            newShape[key5] = fieldSchema.optional();
           }
         }
         return new _ZodObject({
@@ -2682,16 +2682,16 @@ var require_types = __commonJS({
       }
       required(mask) {
         const newShape = {};
-        for (const key4 of util_js_1.util.objectKeys(this.shape)) {
-          if (mask && !mask[key4]) {
-            newShape[key4] = this.shape[key4];
+        for (const key5 of util_js_1.util.objectKeys(this.shape)) {
+          if (mask && !mask[key5]) {
+            newShape[key5] = this.shape[key5];
           } else {
-            const fieldSchema = this.shape[key4];
+            const fieldSchema = this.shape[key5];
             let newField = fieldSchema;
             while (newField instanceof ZodOptional) {
               newField = newField._def.innerType;
             }
-            newShape[key4] = newField;
+            newShape[key5] = newField;
           }
         }
         return new _ZodObject({
@@ -2704,27 +2704,27 @@ var require_types = __commonJS({
       }
     };
     exports2.ZodObject = ZodObject;
-    ZodObject.create = (shape7, params) => {
+    ZodObject.create = (shape8, params) => {
       return new ZodObject({
-        shape: () => shape7,
+        shape: () => shape8,
         unknownKeys: "strip",
         catchall: ZodNever.create(),
         typeName: ZodFirstPartyTypeKind.ZodObject,
         ...processCreateParams(params)
       });
     };
-    ZodObject.strictCreate = (shape7, params) => {
+    ZodObject.strictCreate = (shape8, params) => {
       return new ZodObject({
-        shape: () => shape7,
+        shape: () => shape8,
         unknownKeys: "strict",
         catchall: ZodNever.create(),
         typeName: ZodFirstPartyTypeKind.ZodObject,
         ...processCreateParams(params)
       });
     };
-    ZodObject.lazycreate = (shape7, params) => {
+    ZodObject.lazycreate = (shape8, params) => {
       return new ZodObject({
-        shape: shape7,
+        shape: shape8,
         unknownKeys: "strip",
         catchall: ZodNever.create(),
         typeName: ZodFirstPartyTypeKind.ZodObject,
@@ -2938,14 +2938,14 @@ var require_types = __commonJS({
         return { valid: true, data: a };
       } else if (aType === util_js_1.ZodParsedType.object && bType === util_js_1.ZodParsedType.object) {
         const bKeys = util_js_1.util.objectKeys(b);
-        const sharedKeys = util_js_1.util.objectKeys(a).filter((key4) => bKeys.indexOf(key4) !== -1);
+        const sharedKeys = util_js_1.util.objectKeys(a).filter((key5) => bKeys.indexOf(key5) !== -1);
         const newObj = { ...a, ...b };
-        for (const key4 of sharedKeys) {
-          const sharedValue = mergeValues(a[key4], b[key4]);
+        for (const key5 of sharedKeys) {
+          const sharedValue = mergeValues(a[key5], b[key5]);
           if (!sharedValue.valid) {
             return { valid: false };
           }
-          newObj[key4] = sharedValue.data;
+          newObj[key5] = sharedValue.data;
         }
         return { valid: true, data: newObj };
       } else if (aType === util_js_1.ZodParsedType.array && bType === util_js_1.ZodParsedType.array) {
@@ -3111,11 +3111,11 @@ var require_types = __commonJS({
         const pairs = [];
         const keyType = this._def.keyType;
         const valueType = this._def.valueType;
-        for (const key4 in ctx.data) {
+        for (const key5 in ctx.data) {
           pairs.push({
-            key: keyType._parse(new ParseInputLazyPath(ctx, key4, ctx.path, key4)),
-            value: valueType._parse(new ParseInputLazyPath(ctx, ctx.data[key4], ctx.path, key4)),
-            alwaysSet: key4 in ctx.data
+            key: keyType._parse(new ParseInputLazyPath(ctx, key5, ctx.path, key5)),
+            value: valueType._parse(new ParseInputLazyPath(ctx, ctx.data[key5], ctx.path, key5)),
+            alwaysSet: key5 in ctx.data
           });
         }
         if (ctx.common.async) {
@@ -3164,9 +3164,9 @@ var require_types = __commonJS({
         }
         const keyType = this._def.keyType;
         const valueType = this._def.valueType;
-        const pairs = [...ctx.data.entries()].map(([key4, value], index) => {
+        const pairs = [...ctx.data.entries()].map(([key5, value], index) => {
           return {
-            key: keyType._parse(new ParseInputLazyPath(ctx, key4, ctx.path, [index, "key"])),
+            key: keyType._parse(new ParseInputLazyPath(ctx, key5, ctx.path, [index, "key"])),
             value: valueType._parse(new ParseInputLazyPath(ctx, value, ctx.path, [index, "value"]))
           };
         });
@@ -3174,30 +3174,30 @@ var require_types = __commonJS({
           const finalMap = /* @__PURE__ */ new Map();
           return Promise.resolve().then(async () => {
             for (const pair of pairs) {
-              const key4 = await pair.key;
+              const key5 = await pair.key;
               const value = await pair.value;
-              if (key4.status === "aborted" || value.status === "aborted") {
+              if (key5.status === "aborted" || value.status === "aborted") {
                 return parseUtil_js_1.INVALID;
               }
-              if (key4.status === "dirty" || value.status === "dirty") {
+              if (key5.status === "dirty" || value.status === "dirty") {
                 status2.dirty();
               }
-              finalMap.set(key4.value, value.value);
+              finalMap.set(key5.value, value.value);
             }
             return { status: status2.value, value: finalMap };
           });
         } else {
           const finalMap = /* @__PURE__ */ new Map();
           for (const pair of pairs) {
-            const key4 = pair.key;
+            const key5 = pair.key;
             const value = pair.value;
-            if (key4.status === "aborted" || value.status === "aborted") {
+            if (key5.status === "aborted" || value.status === "aborted") {
               return parseUtil_js_1.INVALID;
             }
-            if (key4.status === "dirty" || value.status === "dirty") {
+            if (key5.status === "dirty" || value.status === "dirty") {
               status2.dirty();
             }
-            finalMap.set(key4.value, value.value);
+            finalMap.set(key5.value, value.value);
           }
           return { status: status2.value, value: finalMap };
         }
@@ -4411,9 +4411,9 @@ var require_util2 = __commonJS({
       return valInt % stepInt / 10 ** decCount;
     }
     var EVALUATING = /* @__PURE__ */ Symbol("evaluating");
-    function defineLazy(object7, key4, getter) {
+    function defineLazy(object8, key5, getter) {
       let value = void 0;
-      Object.defineProperty(object7, key4, {
+      Object.defineProperty(object8, key5, {
         get() {
           if (value === EVALUATING) {
             return void 0;
@@ -4425,7 +4425,7 @@ var require_util2 = __commonJS({
           return value;
         },
         set(v) {
-          Object.defineProperty(object7, key4, {
+          Object.defineProperty(object8, key5, {
             value: v
             // configurable: true,
           });
@@ -4433,8 +4433,8 @@ var require_util2 = __commonJS({
         configurable: true
       });
     }
-    function objectClone(obj4) {
-      return Object.create(Object.getPrototypeOf(obj4), Object.getOwnPropertyDescriptors(obj4));
+    function objectClone(obj5) {
+      return Object.create(Object.getPrototypeOf(obj5), Object.getOwnPropertyDescriptors(obj5));
     }
     function assignProp(target, prop, value) {
       Object.defineProperty(target, prop, {
@@ -4455,14 +4455,14 @@ var require_util2 = __commonJS({
     function cloneDef(schema) {
       return mergeDefs(schema._zod.def);
     }
-    function getElementAtPath(obj4, path) {
+    function getElementAtPath(obj5, path) {
       if (!path)
-        return obj4;
-      return path.reduce((acc, key4) => acc?.[key4], obj4);
+        return obj5;
+      return path.reduce((acc, key5) => acc?.[key5], obj5);
     }
     function promiseAllObject(promisesObj) {
       const keys2 = Object.keys(promisesObj);
-      const promises = keys2.map((key4) => promisesObj[key4]);
+      const promises = keys2.map((key5) => promisesObj[key5]);
       return Promise.all(promises).then((results) => {
         const resolvedObj = {};
         for (let i = 0; i < keys2.length; i++) {
@@ -4527,8 +4527,8 @@ var require_util2 = __commonJS({
     }
     function numKeys(data) {
       let keyCount = 0;
-      for (const key4 in data) {
-        if (Object.prototype.hasOwnProperty.call(data, key4)) {
+      for (const key5 in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key5)) {
           keyCount++;
         }
       }
@@ -4646,9 +4646,9 @@ var require_util2 = __commonJS({
         return `"${value}"`;
       return `${value}`;
     }
-    function optionalKeys(shape7) {
-      return Object.keys(shape7).filter((k) => {
-        return shape7[k]._zod.optin === "optional" && shape7[k]._zod.optout === "optional";
+    function optionalKeys(shape8) {
+      return Object.keys(shape8).filter((k) => {
+        return shape8[k]._zod.optin === "optional" && shape8[k]._zod.optout === "optional";
       });
     }
     exports2.NUMBER_FORMAT_RANGES = {
@@ -4672,13 +4672,13 @@ var require_util2 = __commonJS({
       const def = mergeDefs(schema._zod.def, {
         get shape() {
           const newShape = {};
-          for (const key4 in mask) {
-            if (!(key4 in currDef.shape)) {
-              throw new Error(`Unrecognized key: "${key4}"`);
+          for (const key5 in mask) {
+            if (!(key5 in currDef.shape)) {
+              throw new Error(`Unrecognized key: "${key5}"`);
             }
-            if (!mask[key4])
+            if (!mask[key5])
               continue;
-            newShape[key4] = currDef.shape[key4];
+            newShape[key5] = currDef.shape[key5];
           }
           assignProp(this, "shape", newShape);
           return newShape;
@@ -4697,13 +4697,13 @@ var require_util2 = __commonJS({
       const def = mergeDefs(schema._zod.def, {
         get shape() {
           const newShape = { ...schema._zod.def.shape };
-          for (const key4 in mask) {
-            if (!(key4 in currDef.shape)) {
-              throw new Error(`Unrecognized key: "${key4}"`);
+          for (const key5 in mask) {
+            if (!(key5 in currDef.shape)) {
+              throw new Error(`Unrecognized key: "${key5}"`);
             }
-            if (!mask[key4])
+            if (!mask[key5])
               continue;
-            delete newShape[key4];
+            delete newShape[key5];
           }
           assignProp(this, "shape", newShape);
           return newShape;
@@ -4712,36 +4712,36 @@ var require_util2 = __commonJS({
       });
       return clone(schema, def);
     }
-    function extend(schema, shape7) {
-      if (!isPlainObject(shape7)) {
+    function extend(schema, shape8) {
+      if (!isPlainObject(shape8)) {
         throw new Error("Invalid input to extend: expected a plain object");
       }
       const checks2 = schema._zod.def.checks;
       const hasChecks = checks2 && checks2.length > 0;
       if (hasChecks) {
         const existingShape = schema._zod.def.shape;
-        for (const key4 in shape7) {
-          if (Object.getOwnPropertyDescriptor(existingShape, key4) !== void 0) {
+        for (const key5 in shape8) {
+          if (Object.getOwnPropertyDescriptor(existingShape, key5) !== void 0) {
             throw new Error("Cannot overwrite keys on object schemas containing refinements. Use `.safeExtend()` instead.");
           }
         }
       }
       const def = mergeDefs(schema._zod.def, {
         get shape() {
-          const _shape = { ...schema._zod.def.shape, ...shape7 };
+          const _shape = { ...schema._zod.def.shape, ...shape8 };
           assignProp(this, "shape", _shape);
           return _shape;
         }
       });
       return clone(schema, def);
     }
-    function safeExtend(schema, shape7) {
-      if (!isPlainObject(shape7)) {
+    function safeExtend(schema, shape8) {
+      if (!isPlainObject(shape8)) {
         throw new Error("Invalid input to safeExtend: expected a plain object");
       }
       const def = mergeDefs(schema._zod.def, {
         get shape() {
-          const _shape = { ...schema._zod.def.shape, ...shape7 };
+          const _shape = { ...schema._zod.def.shape, ...shape8 };
           assignProp(this, "shape", _shape);
           return _shape;
         }
@@ -4773,29 +4773,29 @@ var require_util2 = __commonJS({
       const def = mergeDefs(schema._zod.def, {
         get shape() {
           const oldShape = schema._zod.def.shape;
-          const shape7 = { ...oldShape };
+          const shape8 = { ...oldShape };
           if (mask) {
-            for (const key4 in mask) {
-              if (!(key4 in oldShape)) {
-                throw new Error(`Unrecognized key: "${key4}"`);
+            for (const key5 in mask) {
+              if (!(key5 in oldShape)) {
+                throw new Error(`Unrecognized key: "${key5}"`);
               }
-              if (!mask[key4])
+              if (!mask[key5])
                 continue;
-              shape7[key4] = Class2 ? new Class2({
+              shape8[key5] = Class2 ? new Class2({
                 type: "optional",
-                innerType: oldShape[key4]
-              }) : oldShape[key4];
+                innerType: oldShape[key5]
+              }) : oldShape[key5];
             }
           } else {
-            for (const key4 in oldShape) {
-              shape7[key4] = Class2 ? new Class2({
+            for (const key5 in oldShape) {
+              shape8[key5] = Class2 ? new Class2({
                 type: "optional",
-                innerType: oldShape[key4]
-              }) : oldShape[key4];
+                innerType: oldShape[key5]
+              }) : oldShape[key5];
             }
           }
-          assignProp(this, "shape", shape7);
-          return shape7;
+          assignProp(this, "shape", shape8);
+          return shape8;
         },
         checks: []
       });
@@ -4805,29 +4805,29 @@ var require_util2 = __commonJS({
       const def = mergeDefs(schema._zod.def, {
         get shape() {
           const oldShape = schema._zod.def.shape;
-          const shape7 = { ...oldShape };
+          const shape8 = { ...oldShape };
           if (mask) {
-            for (const key4 in mask) {
-              if (!(key4 in shape7)) {
-                throw new Error(`Unrecognized key: "${key4}"`);
+            for (const key5 in mask) {
+              if (!(key5 in shape8)) {
+                throw new Error(`Unrecognized key: "${key5}"`);
               }
-              if (!mask[key4])
+              if (!mask[key5])
                 continue;
-              shape7[key4] = new Class2({
+              shape8[key5] = new Class2({
                 type: "nonoptional",
-                innerType: oldShape[key4]
+                innerType: oldShape[key5]
               });
             }
           } else {
-            for (const key4 in oldShape) {
-              shape7[key4] = new Class2({
+            for (const key5 in oldShape) {
+              shape8[key5] = new Class2({
                 type: "nonoptional",
-                innerType: oldShape[key4]
+                innerType: oldShape[key5]
               });
             }
           }
-          assignProp(this, "shape", shape7);
-          return shape7;
+          assignProp(this, "shape", shape8);
+          return shape8;
         }
       });
       return clone(schema, def);
@@ -4895,9 +4895,9 @@ var require_util2 = __commonJS({
           if (Array.isArray(data)) {
             return "array";
           }
-          const obj4 = data;
-          if (obj4 && Object.getPrototypeOf(obj4) !== Object.prototype && "constructor" in obj4 && obj4.constructor) {
-            return obj4.constructor.name;
+          const obj5 = data;
+          if (obj5 && Object.getPrototypeOf(obj5) !== Object.prototype && "constructor" in obj5 && obj5.constructor) {
+            return obj5.constructor.name;
           }
         }
       }
@@ -4915,8 +4915,8 @@ var require_util2 = __commonJS({
       }
       return { ...iss };
     }
-    function cleanEnum(obj4) {
-      return Object.entries(obj4).filter(([k, _]) => {
+    function cleanEnum(obj5) {
+      return Object.entries(obj5).filter(([k, _]) => {
         return Number.isNaN(Number.parseInt(k, 10));
       }).map((el) => el[1]);
     }
@@ -4943,8 +4943,8 @@ var require_util2 = __commonJS({
     function uint8ArrayToBase64url(bytes) {
       return uint8ArrayToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
     }
-    function hexToUint8Array(hex5) {
-      const cleanHex = hex5.replace(/^0x/, "");
+    function hexToUint8Array(hex6) {
+      const cleanHex = hex6.replace(/^0x/, "");
       if (cleanHex.length % 2 !== 0) {
         throw new Error("Invalid hex string length");
       }
@@ -5314,7 +5314,7 @@ var require_regexes = __commonJS({
     exports2.sha384_hex = exports2.sha256_base64url = exports2.sha256_base64 = exports2.sha256_hex = exports2.sha1_base64url = exports2.sha1_base64 = exports2.sha1_hex = exports2.md5_base64url = exports2.md5_base64 = exports2.md5_hex = exports2.hex = exports2.uppercase = exports2.lowercase = exports2.undefined = exports2.null = exports2.boolean = exports2.number = exports2.integer = exports2.bigint = exports2.string = exports2.date = exports2.e164 = exports2.domain = exports2.hostname = exports2.base64url = exports2.base64 = exports2.cidrv6 = exports2.cidrv4 = exports2.mac = exports2.ipv6 = exports2.ipv4 = exports2.browserEmail = exports2.idnEmail = exports2.unicodeEmail = exports2.rfc5322Email = exports2.html5Email = exports2.email = exports2.uuid7 = exports2.uuid6 = exports2.uuid4 = exports2.uuid = exports2.guid = exports2.extendedDuration = exports2.duration = exports2.nanoid = exports2.ksuid = exports2.xid = exports2.ulid = exports2.cuid2 = exports2.cuid = void 0;
     exports2.sha512_base64url = exports2.sha512_base64 = exports2.sha512_hex = exports2.sha384_base64url = exports2.sha384_base64 = void 0;
     exports2.emoji = emoji;
-    exports2.time = time6;
+    exports2.time = time7;
     exports2.datetime = datetime;
     var util = __importStar(require_util2());
     exports2.cuid = /^[cC][^\s-]{8,}$/;
@@ -5366,17 +5366,17 @@ var require_regexes = __commonJS({
       const regex = typeof args.precision === "number" ? args.precision === -1 ? `${hhmm}` : args.precision === 0 ? `${hhmm}:[0-5]\\d` : `${hhmm}:[0-5]\\d\\.\\d{${args.precision}}` : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
       return regex;
     }
-    function time6(args) {
+    function time7(args) {
       return new RegExp(`^${timeSource(args)}$`);
     }
     function datetime(args) {
-      const time7 = timeSource({ precision: args.precision });
+      const time8 = timeSource({ precision: args.precision });
       const opts = ["Z"];
       if (args.local)
         opts.push("");
       if (args.offset)
         opts.push(`([+-](?:[01]\\d|2[0-3]):[0-5]\\d)`);
-      const timeRegex = `${time7}(?:${opts.join("|")})`;
+      const timeRegex = `${time8}(?:${opts.join("|")})`;
       return new RegExp(`^${dateSource}T(?:${timeRegex})$`);
     }
     var string = (params) => {
@@ -6751,19 +6751,19 @@ var require_schemas = __commonJS({
         return payload;
       };
     });
-    function handlePropertyResult(result, final, key4, input, isOptionalOut) {
+    function handlePropertyResult(result, final, key5, input, isOptionalOut) {
       if (result.issues.length) {
-        if (isOptionalOut && !(key4 in input)) {
+        if (isOptionalOut && !(key5 in input)) {
           return;
         }
-        final.issues.push(...util.prefixIssues(key4, result.issues));
+        final.issues.push(...util.prefixIssues(key5, result.issues));
       }
       if (result.value === void 0) {
-        if (key4 in input) {
-          final.value[key4] = void 0;
+        if (key5 in input) {
+          final.value[key5] = void 0;
         }
       } else {
-        final.value[key4] = result.value;
+        final.value[key5] = result.value;
       }
     }
     function normalizeDef(def) {
@@ -6788,18 +6788,18 @@ var require_schemas = __commonJS({
       const _catchall = def.catchall._zod;
       const t = _catchall.def.type;
       const isOptionalOut = _catchall.optout === "optional";
-      for (const key4 in input) {
-        if (keySet.has(key4))
+      for (const key5 in input) {
+        if (keySet.has(key5))
           continue;
         if (t === "never") {
-          unrecognized.push(key4);
+          unrecognized.push(key5);
           continue;
         }
-        const r = _catchall.run({ value: input[key4], issues: [] }, ctx);
+        const r = _catchall.run({ value: input[key5], issues: [] }, ctx);
         if (r instanceof Promise) {
-          proms.push(r.then((r2) => handlePropertyResult(r2, payload, key4, input, isOptionalOut)));
+          proms.push(r.then((r2) => handlePropertyResult(r2, payload, key5, input, isOptionalOut)));
         } else {
-          handlePropertyResult(r, payload, key4, input, isOptionalOut);
+          handlePropertyResult(r, payload, key5, input, isOptionalOut);
         }
       }
       if (unrecognized.length) {
@@ -6833,14 +6833,14 @@ var require_schemas = __commonJS({
       }
       const _normalized = util.cached(() => normalizeDef(def));
       util.defineLazy(inst._zod, "propValues", () => {
-        const shape7 = def.shape;
+        const shape8 = def.shape;
         const propValues = {};
-        for (const key4 in shape7) {
-          const field = shape7[key4]._zod;
+        for (const key5 in shape8) {
+          const field = shape8[key5]._zod;
           if (field.values) {
-            propValues[key4] ?? (propValues[key4] = /* @__PURE__ */ new Set());
+            propValues[key5] ?? (propValues[key5] = /* @__PURE__ */ new Set());
             for (const v of field.values)
-              propValues[key4].add(v);
+              propValues[key5].add(v);
           }
         }
         return propValues;
@@ -6862,15 +6862,15 @@ var require_schemas = __commonJS({
         }
         payload.value = {};
         const proms = [];
-        const shape7 = value.shape;
-        for (const key4 of value.keys) {
-          const el = shape7[key4];
+        const shape8 = value.shape;
+        for (const key5 of value.keys) {
+          const el = shape8[key5];
           const isOptionalOut = el._zod.optout === "optional";
-          const r = el._zod.run({ value: input[key4], issues: [] }, ctx);
+          const r = el._zod.run({ value: input[key5], issues: [] }, ctx);
           if (r instanceof Promise) {
-            proms.push(r.then((r2) => handlePropertyResult(r2, payload, key4, input, isOptionalOut)));
+            proms.push(r.then((r2) => handlePropertyResult(r2, payload, key5, input, isOptionalOut)));
           } else {
-            handlePropertyResult(r, payload, key4, input, isOptionalOut);
+            handlePropertyResult(r, payload, key5, input, isOptionalOut);
           }
         }
         if (!catchall) {
@@ -6883,61 +6883,61 @@ var require_schemas = __commonJS({
       exports2.$ZodObject.init(inst, def);
       const superParse = inst._zod.parse;
       const _normalized = util.cached(() => normalizeDef(def));
-      const generateFastpass = (shape7) => {
+      const generateFastpass = (shape8) => {
         const doc = new doc_js_1.Doc(["shape", "payload", "ctx"]);
         const normalized = _normalized.value;
-        const parseStr = (key4) => {
-          const k = util.esc(key4);
+        const parseStr = (key5) => {
+          const k = util.esc(key5);
           return `shape[${k}]._zod.run({ value: input[${k}], issues: [] }, ctx)`;
         };
         doc.write(`const input = payload.value;`);
         const ids = /* @__PURE__ */ Object.create(null);
         let counter = 0;
-        for (const key4 of normalized.keys) {
-          ids[key4] = `key_${counter++}`;
+        for (const key5 of normalized.keys) {
+          ids[key5] = `key_${counter++}`;
         }
         doc.write(`const newResult = {};`);
-        for (const key4 of normalized.keys) {
-          const id9 = ids[key4];
-          const k = util.esc(key4);
-          const schema = shape7[key4];
+        for (const key5 of normalized.keys) {
+          const id11 = ids[key5];
+          const k = util.esc(key5);
+          const schema = shape8[key5];
           const isOptionalOut = schema?._zod?.optout === "optional";
-          doc.write(`const ${id9} = ${parseStr(key4)};`);
+          doc.write(`const ${id11} = ${parseStr(key5)};`);
           if (isOptionalOut) {
             doc.write(`
-        if (${id9}.issues.length) {
+        if (${id11}.issues.length) {
           if (${k} in input) {
-            payload.issues = payload.issues.concat(${id9}.issues.map(iss => ({
+            payload.issues = payload.issues.concat(${id11}.issues.map(iss => ({
               ...iss,
               path: iss.path ? [${k}, ...iss.path] : [${k}]
             })));
           }
         }
         
-        if (${id9}.value === undefined) {
+        if (${id11}.value === undefined) {
           if (${k} in input) {
             newResult[${k}] = undefined;
           }
         } else {
-          newResult[${k}] = ${id9}.value;
+          newResult[${k}] = ${id11}.value;
         }
         
       `);
           } else {
             doc.write(`
-        if (${id9}.issues.length) {
-          payload.issues = payload.issues.concat(${id9}.issues.map(iss => ({
+        if (${id11}.issues.length) {
+          payload.issues = payload.issues.concat(${id11}.issues.map(iss => ({
             ...iss,
             path: iss.path ? [${k}, ...iss.path] : [${k}]
           })));
         }
         
-        if (${id9}.value === undefined) {
+        if (${id11}.value === undefined) {
           if (${k} in input) {
             newResult[${k}] = undefined;
           }
         } else {
-          newResult[${k}] = ${id9}.value;
+          newResult[${k}] = ${id11}.value;
         }
         
       `);
@@ -6946,7 +6946,7 @@ var require_schemas = __commonJS({
         doc.write(`payload.value = newResult;`);
         doc.write(`return payload;`);
         const fn = doc.compile();
-        return (payload, ctx) => fn(shape7, payload, ctx);
+        return (payload, ctx) => fn(shape8, payload, ctx);
       };
       let fastpass;
       const isObject = util.isObject;
@@ -7188,17 +7188,17 @@ var require_schemas = __commonJS({
       }
       if (util.isPlainObject(a) && util.isPlainObject(b)) {
         const bKeys = Object.keys(b);
-        const sharedKeys = Object.keys(a).filter((key4) => bKeys.indexOf(key4) !== -1);
+        const sharedKeys = Object.keys(a).filter((key5) => bKeys.indexOf(key5) !== -1);
         const newObj = { ...a, ...b };
-        for (const key4 of sharedKeys) {
-          const sharedValue = mergeValues(a[key4], b[key4]);
+        for (const key5 of sharedKeys) {
+          const sharedValue = mergeValues(a[key5], b[key5]);
           if (!sharedValue.valid) {
             return {
               valid: false,
-              mergeErrorPath: [key4, ...sharedValue.mergeErrorPath]
+              mergeErrorPath: [key5, ...sharedValue.mergeErrorPath]
             };
           }
-          newObj[key4] = sharedValue.data;
+          newObj[key5] = sharedValue.data;
         }
         return { valid: true, data: newObj };
       }
@@ -7354,30 +7354,30 @@ var require_schemas = __commonJS({
         if (values) {
           payload.value = {};
           const recordKeys = /* @__PURE__ */ new Set();
-          for (const key4 of values) {
-            if (typeof key4 === "string" || typeof key4 === "number" || typeof key4 === "symbol") {
-              recordKeys.add(typeof key4 === "number" ? key4.toString() : key4);
-              const result = def.valueType._zod.run({ value: input[key4], issues: [] }, ctx);
+          for (const key5 of values) {
+            if (typeof key5 === "string" || typeof key5 === "number" || typeof key5 === "symbol") {
+              recordKeys.add(typeof key5 === "number" ? key5.toString() : key5);
+              const result = def.valueType._zod.run({ value: input[key5], issues: [] }, ctx);
               if (result instanceof Promise) {
                 proms.push(result.then((result2) => {
                   if (result2.issues.length) {
-                    payload.issues.push(...util.prefixIssues(key4, result2.issues));
+                    payload.issues.push(...util.prefixIssues(key5, result2.issues));
                   }
-                  payload.value[key4] = result2.value;
+                  payload.value[key5] = result2.value;
                 }));
               } else {
                 if (result.issues.length) {
-                  payload.issues.push(...util.prefixIssues(key4, result.issues));
+                  payload.issues.push(...util.prefixIssues(key5, result.issues));
                 }
-                payload.value[key4] = result.value;
+                payload.value[key5] = result.value;
               }
             }
           }
           let unrecognized;
-          for (const key4 in input) {
-            if (!recordKeys.has(key4)) {
+          for (const key5 in input) {
+            if (!recordKeys.has(key5)) {
               unrecognized = unrecognized ?? [];
-              unrecognized.push(key4);
+              unrecognized.push(key5);
             }
           }
           if (unrecognized && unrecognized.length > 0) {
@@ -7390,16 +7390,16 @@ var require_schemas = __commonJS({
           }
         } else {
           payload.value = {};
-          for (const key4 of Reflect.ownKeys(input)) {
-            if (key4 === "__proto__")
+          for (const key5 of Reflect.ownKeys(input)) {
+            if (key5 === "__proto__")
               continue;
-            let keyResult = def.keyType._zod.run({ value: key4, issues: [] }, ctx);
+            let keyResult = def.keyType._zod.run({ value: key5, issues: [] }, ctx);
             if (keyResult instanceof Promise) {
               throw new Error("Async schemas not supported in object keys currently");
             }
-            const checkNumericKey = typeof key4 === "string" && regexes.number.test(key4) && keyResult.issues.length;
+            const checkNumericKey = typeof key5 === "string" && regexes.number.test(key5) && keyResult.issues.length;
             if (checkNumericKey) {
-              const retryResult = def.keyType._zod.run({ value: Number(key4), issues: [] }, ctx);
+              const retryResult = def.keyType._zod.run({ value: Number(key5), issues: [] }, ctx);
               if (retryResult instanceof Promise) {
                 throw new Error("Async schemas not supported in object keys currently");
               }
@@ -7409,30 +7409,30 @@ var require_schemas = __commonJS({
             }
             if (keyResult.issues.length) {
               if (def.mode === "loose") {
-                payload.value[key4] = input[key4];
+                payload.value[key5] = input[key5];
               } else {
                 payload.issues.push({
                   code: "invalid_key",
                   origin: "record",
                   issues: keyResult.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())),
-                  input: key4,
-                  path: [key4],
+                  input: key5,
+                  path: [key5],
                   inst
                 });
               }
               continue;
             }
-            const result = def.valueType._zod.run({ value: input[key4], issues: [] }, ctx);
+            const result = def.valueType._zod.run({ value: input[key5], issues: [] }, ctx);
             if (result instanceof Promise) {
               proms.push(result.then((result2) => {
                 if (result2.issues.length) {
-                  payload.issues.push(...util.prefixIssues(key4, result2.issues));
+                  payload.issues.push(...util.prefixIssues(key5, result2.issues));
                 }
                 payload.value[keyResult.value] = result2.value;
               }));
             } else {
               if (result.issues.length) {
-                payload.issues.push(...util.prefixIssues(key4, result.issues));
+                payload.issues.push(...util.prefixIssues(key5, result.issues));
               }
               payload.value[keyResult.value] = result.value;
             }
@@ -7459,15 +7459,15 @@ var require_schemas = __commonJS({
         }
         const proms = [];
         payload.value = /* @__PURE__ */ new Map();
-        for (const [key4, value] of input) {
-          const keyResult = def.keyType._zod.run({ value: key4, issues: [] }, ctx);
+        for (const [key5, value] of input) {
+          const keyResult = def.keyType._zod.run({ value: key5, issues: [] }, ctx);
           const valueResult = def.valueType._zod.run({ value, issues: [] }, ctx);
           if (keyResult instanceof Promise || valueResult instanceof Promise) {
             proms.push(Promise.all([keyResult, valueResult]).then(([keyResult2, valueResult2]) => {
-              handleMapResult(keyResult2, valueResult2, payload, key4, input, inst, ctx);
+              handleMapResult(keyResult2, valueResult2, payload, key5, input, inst, ctx);
             }));
           } else {
-            handleMapResult(keyResult, valueResult, payload, key4, input, inst, ctx);
+            handleMapResult(keyResult, valueResult, payload, key5, input, inst, ctx);
           }
         }
         if (proms.length)
@@ -7475,10 +7475,10 @@ var require_schemas = __commonJS({
         return payload;
       };
     });
-    function handleMapResult(keyResult, valueResult, final, key4, input, inst, ctx) {
+    function handleMapResult(keyResult, valueResult, final, key5, input, inst, ctx) {
       if (keyResult.issues.length) {
-        if (util.propertyKeyTypes.has(typeof key4)) {
-          final.issues.push(...util.prefixIssues(key4, keyResult.issues));
+        if (util.propertyKeyTypes.has(typeof key5)) {
+          final.issues.push(...util.prefixIssues(key5, keyResult.issues));
         } else {
           final.issues.push({
             code: "invalid_key",
@@ -7490,15 +7490,15 @@ var require_schemas = __commonJS({
         }
       }
       if (valueResult.issues.length) {
-        if (util.propertyKeyTypes.has(typeof key4)) {
-          final.issues.push(...util.prefixIssues(key4, valueResult.issues));
+        if (util.propertyKeyTypes.has(typeof key5)) {
+          final.issues.push(...util.prefixIssues(key5, valueResult.issues));
         } else {
           final.issues.push({
             origin: "map",
             code: "invalid_element",
             input,
             inst,
-            key: key4,
+            key: key5,
             issues: valueResult.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config()))
           });
         }
@@ -11989,8 +11989,8 @@ var require_lt = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = default_1;
     var util = __importStar(require_util2());
-    var capitalizeFirstCharacter = (text7) => {
-      return text7.charAt(0).toUpperCase() + text7.slice(1);
+    var capitalizeFirstCharacter = (text8) => {
+      return text8.charAt(0).toUpperCase() + text8.slice(1);
     };
     function getUnitTypeFromNumber(number2) {
       const abs = Math.abs(number2);
@@ -16877,26 +16877,26 @@ var require_to_json_schema = __commonJS({
         throw new Error("Unprocessed schema. This is a bug in Zod.");
       const idToSchema = /* @__PURE__ */ new Map();
       for (const entry of ctx.seen.entries()) {
-        const id9 = ctx.metadataRegistry.get(entry[0])?.id;
-        if (id9) {
-          const existing = idToSchema.get(id9);
+        const id11 = ctx.metadataRegistry.get(entry[0])?.id;
+        if (id11) {
+          const existing = idToSchema.get(id11);
           if (existing && existing !== entry[0]) {
-            throw new Error(`Duplicate schema id "${id9}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`);
+            throw new Error(`Duplicate schema id "${id11}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`);
           }
-          idToSchema.set(id9, entry[0]);
+          idToSchema.set(id11, entry[0]);
         }
       }
       const makeURI = (entry) => {
         const defsSegment = ctx.target === "draft-2020-12" ? "$defs" : "definitions";
         if (ctx.external) {
           const externalId = ctx.external.registry.get(entry[0])?.id;
-          const uriGenerator = ctx.external.uri ?? ((id10) => id10);
+          const uriGenerator = ctx.external.uri ?? ((id12) => id12);
           if (externalId) {
             return { ref: uriGenerator(externalId) };
           }
-          const id9 = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
-          entry[1].defId = id9;
-          return { defId: id9, ref: `${uriGenerator("__shared")}#/${defsSegment}/${id9}` };
+          const id11 = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
+          entry[1].defId = id11;
+          return { defId: id11, ref: `${uriGenerator("__shared")}#/${defsSegment}/${id11}` };
         }
         if (entry[1] === root) {
           return { ref: "#" };
@@ -16916,8 +16916,8 @@ var require_to_json_schema = __commonJS({
         if (defId)
           seen.defId = defId;
         const schema2 = seen.schema;
-        for (const key4 in schema2) {
-          delete schema2[key4];
+        for (const key5 in schema2) {
+          delete schema2[key5];
         }
         schema2.$ref = ref;
       };
@@ -16944,8 +16944,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
             continue;
           }
         }
-        const id9 = ctx.metadataRegistry.get(entry[0])?.id;
-        if (id9) {
+        const id11 = ctx.metadataRegistry.get(entry[0])?.id;
+        if (id11) {
           extractToDef(entry);
           continue;
         }
@@ -16986,20 +16986,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
           Object.assign(schema2, _cached);
           const isParentRef = zodSchema._zod.parent === ref;
           if (isParentRef) {
-            for (const key4 in schema2) {
-              if (key4 === "$ref" || key4 === "allOf")
+            for (const key5 in schema2) {
+              if (key5 === "$ref" || key5 === "allOf")
                 continue;
-              if (!(key4 in _cached)) {
-                delete schema2[key4];
+              if (!(key5 in _cached)) {
+                delete schema2[key5];
               }
             }
           }
           if (refSchema.$ref && refSeen.def) {
-            for (const key4 in schema2) {
-              if (key4 === "$ref" || key4 === "allOf")
+            for (const key5 in schema2) {
+              if (key5 === "$ref" || key5 === "allOf")
                 continue;
-              if (key4 in refSeen.def && JSON.stringify(schema2[key4]) === JSON.stringify(refSeen.def[key4])) {
-                delete schema2[key4];
+              if (key5 in refSeen.def && JSON.stringify(schema2[key5]) === JSON.stringify(refSeen.def[key5])) {
+                delete schema2[key5];
               }
             }
           }
@@ -17011,11 +17011,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
           if (parentSeen?.schema.$ref) {
             schema2.$ref = parentSeen.schema.$ref;
             if (parentSeen.def) {
-              for (const key4 in schema2) {
-                if (key4 === "$ref" || key4 === "allOf")
+              for (const key5 in schema2) {
+                if (key5 === "$ref" || key5 === "allOf")
                   continue;
-                if (key4 in parentSeen.def && JSON.stringify(schema2[key4]) === JSON.stringify(parentSeen.def[key4])) {
-                  delete schema2[key4];
+                if (key5 in parentSeen.def && JSON.stringify(schema2[key5]) === JSON.stringify(parentSeen.def[key5])) {
+                  delete schema2[key5];
                 }
               }
             }
@@ -17041,10 +17041,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
       } else {
       }
       if (ctx.external?.uri) {
-        const id9 = ctx.external.registry.get(schema)?.id;
-        if (!id9)
+        const id11 = ctx.external.registry.get(schema)?.id;
+        if (!id11)
           throw new Error("Schema is missing an `id` property");
-        result.$id = ctx.external.uri(id9);
+        result.$id = ctx.external.uri(id11);
       }
       Object.assign(result, root.def ?? root.schema);
       const defs = ctx.external?.defs ?? {};
@@ -17109,8 +17109,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
         return isTransforming(def.in, ctx) || isTransforming(def.out, ctx);
       }
       if (def.type === "object") {
-        for (const key4 in def.shape) {
-          if (isTransforming(def.shape[key4], ctx))
+        for (const key5 in def.shape) {
+          if (isTransforming(def.shape[key5], ctx))
             return true;
         }
         return false;
@@ -17169,29 +17169,29 @@ var require_json_schema_processors = __commonJS({
       // do not set
     };
     var stringProcessor = (schema, ctx, _json, _params) => {
-      const json = _json;
-      json.type = "string";
+      const json3 = _json;
+      json3.type = "string";
       const { minimum, maximum, format, patterns, contentEncoding } = schema._zod.bag;
       if (typeof minimum === "number")
-        json.minLength = minimum;
+        json3.minLength = minimum;
       if (typeof maximum === "number")
-        json.maxLength = maximum;
+        json3.maxLength = maximum;
       if (format) {
-        json.format = formatMap[format] ?? format;
-        if (json.format === "")
-          delete json.format;
+        json3.format = formatMap[format] ?? format;
+        if (json3.format === "")
+          delete json3.format;
         if (format === "time") {
-          delete json.format;
+          delete json3.format;
         }
       }
       if (contentEncoding)
-        json.contentEncoding = contentEncoding;
+        json3.contentEncoding = contentEncoding;
       if (patterns && patterns.size > 0) {
         const regexes = [...patterns];
         if (regexes.length === 1)
-          json.pattern = regexes[0].source;
+          json3.pattern = regexes[0].source;
         else if (regexes.length > 1) {
-          json.allOf = [
+          json3.allOf = [
             ...regexes.map((regex) => ({
               ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
               pattern: regex.source
@@ -17202,52 +17202,52 @@ var require_json_schema_processors = __commonJS({
     };
     exports2.stringProcessor = stringProcessor;
     var numberProcessor = (schema, ctx, _json, _params) => {
-      const json = _json;
+      const json3 = _json;
       const { minimum, maximum, format, multipleOf, exclusiveMaximum, exclusiveMinimum } = schema._zod.bag;
       if (typeof format === "string" && format.includes("int"))
-        json.type = "integer";
+        json3.type = "integer";
       else
-        json.type = "number";
+        json3.type = "number";
       if (typeof exclusiveMinimum === "number") {
         if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-          json.minimum = exclusiveMinimum;
-          json.exclusiveMinimum = true;
+          json3.minimum = exclusiveMinimum;
+          json3.exclusiveMinimum = true;
         } else {
-          json.exclusiveMinimum = exclusiveMinimum;
+          json3.exclusiveMinimum = exclusiveMinimum;
         }
       }
       if (typeof minimum === "number") {
-        json.minimum = minimum;
+        json3.minimum = minimum;
         if (typeof exclusiveMinimum === "number" && ctx.target !== "draft-04") {
           if (exclusiveMinimum >= minimum)
-            delete json.minimum;
+            delete json3.minimum;
           else
-            delete json.exclusiveMinimum;
+            delete json3.exclusiveMinimum;
         }
       }
       if (typeof exclusiveMaximum === "number") {
         if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-          json.maximum = exclusiveMaximum;
-          json.exclusiveMaximum = true;
+          json3.maximum = exclusiveMaximum;
+          json3.exclusiveMaximum = true;
         } else {
-          json.exclusiveMaximum = exclusiveMaximum;
+          json3.exclusiveMaximum = exclusiveMaximum;
         }
       }
       if (typeof maximum === "number") {
-        json.maximum = maximum;
+        json3.maximum = maximum;
         if (typeof exclusiveMaximum === "number" && ctx.target !== "draft-04") {
           if (exclusiveMaximum <= maximum)
-            delete json.maximum;
+            delete json3.maximum;
           else
-            delete json.exclusiveMaximum;
+            delete json3.exclusiveMaximum;
         }
       }
       if (typeof multipleOf === "number")
-        json.multipleOf = multipleOf;
+        json3.multipleOf = multipleOf;
     };
     exports2.numberProcessor = numberProcessor;
-    var booleanProcessor = (_schema, _ctx, json, _params) => {
-      json.type = "boolean";
+    var booleanProcessor = (_schema, _ctx, json3, _params) => {
+      json3.type = "boolean";
     };
     exports2.booleanProcessor = booleanProcessor;
     var bigintProcessor = (_schema, ctx, _json, _params) => {
@@ -17262,13 +17262,13 @@ var require_json_schema_processors = __commonJS({
       }
     };
     exports2.symbolProcessor = symbolProcessor;
-    var nullProcessor = (_schema, ctx, json, _params) => {
+    var nullProcessor = (_schema, ctx, json3, _params) => {
       if (ctx.target === "openapi-3.0") {
-        json.type = "string";
-        json.nullable = true;
-        json.enum = [null];
+        json3.type = "string";
+        json3.nullable = true;
+        json3.enum = [null];
       } else {
-        json.type = "null";
+        json3.type = "null";
       }
     };
     exports2.nullProcessor = nullProcessor;
@@ -17284,8 +17284,8 @@ var require_json_schema_processors = __commonJS({
       }
     };
     exports2.voidProcessor = voidProcessor;
-    var neverProcessor = (_schema, _ctx, json, _params) => {
-      json.not = {};
+    var neverProcessor = (_schema, _ctx, json3, _params) => {
+      json3.not = {};
     };
     exports2.neverProcessor = neverProcessor;
     var anyProcessor = (_schema, _ctx, _json, _params) => {
@@ -17300,17 +17300,17 @@ var require_json_schema_processors = __commonJS({
       }
     };
     exports2.dateProcessor = dateProcessor;
-    var enumProcessor = (schema, _ctx, json, _params) => {
+    var enumProcessor = (schema, _ctx, json3, _params) => {
       const def = schema._zod.def;
       const values = (0, util_js_1.getEnumValues)(def.entries);
       if (values.every((v) => typeof v === "number"))
-        json.type = "number";
+        json3.type = "number";
       if (values.every((v) => typeof v === "string"))
-        json.type = "string";
-      json.enum = values;
+        json3.type = "string";
+      json3.enum = values;
     };
     exports2.enumProcessor = enumProcessor;
-    var literalProcessor = (schema, ctx, json, _params) => {
+    var literalProcessor = (schema, ctx, json3, _params) => {
       const def = schema._zod.def;
       const vals = [];
       for (const val of def.values) {
@@ -17332,22 +17332,22 @@ var require_json_schema_processors = __commonJS({
       if (vals.length === 0) {
       } else if (vals.length === 1) {
         const val = vals[0];
-        json.type = val === null ? "null" : typeof val;
+        json3.type = val === null ? "null" : typeof val;
         if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-          json.enum = [val];
+          json3.enum = [val];
         } else {
-          json.const = val;
+          json3.const = val;
         }
       } else {
         if (vals.every((v) => typeof v === "number"))
-          json.type = "number";
+          json3.type = "number";
         if (vals.every((v) => typeof v === "string"))
-          json.type = "string";
+          json3.type = "string";
         if (vals.every((v) => typeof v === "boolean"))
-          json.type = "boolean";
+          json3.type = "boolean";
         if (vals.every((v) => v === null))
-          json.type = "null";
-        json.enum = vals;
+          json3.type = "null";
+        json3.enum = vals;
       }
     };
     exports2.literalProcessor = literalProcessor;
@@ -17357,8 +17357,8 @@ var require_json_schema_processors = __commonJS({
       }
     };
     exports2.nanProcessor = nanProcessor;
-    var templateLiteralProcessor = (schema, _ctx, json, _params) => {
-      const _json = json;
+    var templateLiteralProcessor = (schema, _ctx, json3, _params) => {
+      const _json = json3;
       const pattern = schema._zod.pattern;
       if (!pattern)
         throw new Error("Pattern not found in template literal");
@@ -17366,8 +17366,8 @@ var require_json_schema_processors = __commonJS({
       _json.pattern = pattern.source;
     };
     exports2.templateLiteralProcessor = templateLiteralProcessor;
-    var fileProcessor = (schema, _ctx, json, _params) => {
-      const _json = json;
+    var fileProcessor = (schema, _ctx, json3, _params) => {
+      const _json = json3;
       const file = {
         type: "string",
         format: "binary",
@@ -17391,8 +17391,8 @@ var require_json_schema_processors = __commonJS({
       }
     };
     exports2.fileProcessor = fileProcessor;
-    var successProcessor = (_schema, _ctx, json, _params) => {
-      json.type = "boolean";
+    var successProcessor = (_schema, _ctx, json3, _params) => {
+      json3.type = "boolean";
     };
     exports2.successProcessor = successProcessor;
     var customProcessor = (_schema, ctx, _json, _params) => {
@@ -17426,32 +17426,32 @@ var require_json_schema_processors = __commonJS({
     };
     exports2.setProcessor = setProcessor;
     var arrayProcessor = (schema, ctx, _json, params) => {
-      const json = _json;
+      const json3 = _json;
       const def = schema._zod.def;
       const { minimum, maximum } = schema._zod.bag;
       if (typeof minimum === "number")
-        json.minItems = minimum;
+        json3.minItems = minimum;
       if (typeof maximum === "number")
-        json.maxItems = maximum;
-      json.type = "array";
-      json.items = (0, to_json_schema_js_1.process)(def.element, ctx, { ...params, path: [...params.path, "items"] });
+        json3.maxItems = maximum;
+      json3.type = "array";
+      json3.items = (0, to_json_schema_js_1.process)(def.element, ctx, { ...params, path: [...params.path, "items"] });
     };
     exports2.arrayProcessor = arrayProcessor;
     var objectProcessor = (schema, ctx, _json, params) => {
-      const json = _json;
+      const json3 = _json;
       const def = schema._zod.def;
-      json.type = "object";
-      json.properties = {};
-      const shape7 = def.shape;
-      for (const key4 in shape7) {
-        json.properties[key4] = (0, to_json_schema_js_1.process)(shape7[key4], ctx, {
+      json3.type = "object";
+      json3.properties = {};
+      const shape8 = def.shape;
+      for (const key5 in shape8) {
+        json3.properties[key5] = (0, to_json_schema_js_1.process)(shape8[key5], ctx, {
           ...params,
-          path: [...params.path, "properties", key4]
+          path: [...params.path, "properties", key5]
         });
       }
-      const allKeys = new Set(Object.keys(shape7));
-      const requiredKeys = new Set([...allKeys].filter((key4) => {
-        const v = def.shape[key4]._zod;
+      const allKeys = new Set(Object.keys(shape8));
+      const requiredKeys = new Set([...allKeys].filter((key5) => {
+        const v = def.shape[key5]._zod;
         if (ctx.io === "input") {
           return v.optin === void 0;
         } else {
@@ -17459,22 +17459,22 @@ var require_json_schema_processors = __commonJS({
         }
       }));
       if (requiredKeys.size > 0) {
-        json.required = Array.from(requiredKeys);
+        json3.required = Array.from(requiredKeys);
       }
       if (def.catchall?._zod.def.type === "never") {
-        json.additionalProperties = false;
+        json3.additionalProperties = false;
       } else if (!def.catchall) {
         if (ctx.io === "output")
-          json.additionalProperties = false;
+          json3.additionalProperties = false;
       } else if (def.catchall) {
-        json.additionalProperties = (0, to_json_schema_js_1.process)(def.catchall, ctx, {
+        json3.additionalProperties = (0, to_json_schema_js_1.process)(def.catchall, ctx, {
           ...params,
           path: [...params.path, "additionalProperties"]
         });
       }
     };
     exports2.objectProcessor = objectProcessor;
-    var unionProcessor = (schema, ctx, json, params) => {
+    var unionProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       const isExclusive = def.inclusive === false;
       const options = def.options.map((x, i) => (0, to_json_schema_js_1.process)(x, ctx, {
@@ -17482,13 +17482,13 @@ var require_json_schema_processors = __commonJS({
         path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
       }));
       if (isExclusive) {
-        json.oneOf = options;
+        json3.oneOf = options;
       } else {
-        json.anyOf = options;
+        json3.anyOf = options;
       }
     };
     exports2.unionProcessor = unionProcessor;
-    var intersectionProcessor = (schema, ctx, json, params) => {
+    var intersectionProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       const a = (0, to_json_schema_js_1.process)(def.left, ctx, {
         ...params,
@@ -17503,13 +17503,13 @@ var require_json_schema_processors = __commonJS({
         ...isSimpleIntersection(a) ? a.allOf : [a],
         ...isSimpleIntersection(b) ? b.allOf : [b]
       ];
-      json.allOf = allOf;
+      json3.allOf = allOf;
     };
     exports2.intersectionProcessor = intersectionProcessor;
     var tupleProcessor = (schema, ctx, _json, params) => {
-      const json = _json;
+      const json3 = _json;
       const def = schema._zod.def;
-      json.type = "array";
+      json3.type = "array";
       const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
       const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
       const prefixItems = def.items.map((x, i) => (0, to_json_schema_js_1.process)(x, ctx, {
@@ -17521,38 +17521,38 @@ var require_json_schema_processors = __commonJS({
         path: [...params.path, restPath, ...ctx.target === "openapi-3.0" ? [def.items.length] : []]
       }) : null;
       if (ctx.target === "draft-2020-12") {
-        json.prefixItems = prefixItems;
+        json3.prefixItems = prefixItems;
         if (rest) {
-          json.items = rest;
+          json3.items = rest;
         }
       } else if (ctx.target === "openapi-3.0") {
-        json.items = {
+        json3.items = {
           anyOf: prefixItems
         };
         if (rest) {
-          json.items.anyOf.push(rest);
+          json3.items.anyOf.push(rest);
         }
-        json.minItems = prefixItems.length;
+        json3.minItems = prefixItems.length;
         if (!rest) {
-          json.maxItems = prefixItems.length;
+          json3.maxItems = prefixItems.length;
         }
       } else {
-        json.items = prefixItems;
+        json3.items = prefixItems;
         if (rest) {
-          json.additionalItems = rest;
+          json3.additionalItems = rest;
         }
       }
       const { minimum, maximum } = schema._zod.bag;
       if (typeof minimum === "number")
-        json.minItems = minimum;
+        json3.minItems = minimum;
       if (typeof maximum === "number")
-        json.maxItems = maximum;
+        json3.maxItems = maximum;
     };
     exports2.tupleProcessor = tupleProcessor;
     var recordProcessor = (schema, ctx, _json, params) => {
-      const json = _json;
+      const json3 = _json;
       const def = schema._zod.def;
-      json.type = "object";
+      json3.type = "object";
       const keyType = def.keyType;
       const keyBag = keyType._zod.bag;
       const patterns = keyBag?.patterns;
@@ -17561,18 +17561,18 @@ var require_json_schema_processors = __commonJS({
           ...params,
           path: [...params.path, "patternProperties", "*"]
         });
-        json.patternProperties = {};
+        json3.patternProperties = {};
         for (const pattern of patterns) {
-          json.patternProperties[pattern.source] = valueSchema;
+          json3.patternProperties[pattern.source] = valueSchema;
         }
       } else {
         if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
-          json.propertyNames = (0, to_json_schema_js_1.process)(def.keyType, ctx, {
+          json3.propertyNames = (0, to_json_schema_js_1.process)(def.keyType, ctx, {
             ...params,
             path: [...params.path, "propertyNames"]
           });
         }
-        json.additionalProperties = (0, to_json_schema_js_1.process)(def.valueType, ctx, {
+        json3.additionalProperties = (0, to_json_schema_js_1.process)(def.valueType, ctx, {
           ...params,
           path: [...params.path, "additionalProperties"]
         });
@@ -17581,20 +17581,20 @@ var require_json_schema_processors = __commonJS({
       if (keyValues) {
         const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
         if (validKeyValues.length > 0) {
-          json.required = validKeyValues;
+          json3.required = validKeyValues;
         }
       }
     };
     exports2.recordProcessor = recordProcessor;
-    var nullableProcessor = (schema, ctx, json, params) => {
+    var nullableProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       const inner = (0, to_json_schema_js_1.process)(def.innerType, ctx, params);
       const seen = ctx.seen.get(schema);
       if (ctx.target === "openapi-3.0") {
         seen.ref = def.innerType;
-        json.nullable = true;
+        json3.nullable = true;
       } else {
-        json.anyOf = [inner, { type: "null" }];
+        json3.anyOf = [inner, { type: "null" }];
       }
     };
     exports2.nullableProcessor = nullableProcessor;
@@ -17605,24 +17605,24 @@ var require_json_schema_processors = __commonJS({
       seen.ref = def.innerType;
     };
     exports2.nonoptionalProcessor = nonoptionalProcessor;
-    var defaultProcessor = (schema, ctx, json, params) => {
+    var defaultProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       (0, to_json_schema_js_1.process)(def.innerType, ctx, params);
       const seen = ctx.seen.get(schema);
       seen.ref = def.innerType;
-      json.default = JSON.parse(JSON.stringify(def.defaultValue));
+      json3.default = JSON.parse(JSON.stringify(def.defaultValue));
     };
     exports2.defaultProcessor = defaultProcessor;
-    var prefaultProcessor = (schema, ctx, json, params) => {
+    var prefaultProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       (0, to_json_schema_js_1.process)(def.innerType, ctx, params);
       const seen = ctx.seen.get(schema);
       seen.ref = def.innerType;
       if (ctx.io === "input")
-        json._prefault = JSON.parse(JSON.stringify(def.defaultValue));
+        json3._prefault = JSON.parse(JSON.stringify(def.defaultValue));
     };
     exports2.prefaultProcessor = prefaultProcessor;
-    var catchProcessor = (schema, ctx, json, params) => {
+    var catchProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       (0, to_json_schema_js_1.process)(def.innerType, ctx, params);
       const seen = ctx.seen.get(schema);
@@ -17633,7 +17633,7 @@ var require_json_schema_processors = __commonJS({
       } catch {
         throw new Error("Dynamic catch values are not supported in JSON Schema");
       }
-      json.default = catchValue;
+      json3.default = catchValue;
     };
     exports2.catchProcessor = catchProcessor;
     var pipeProcessor = (schema, ctx, _json, params) => {
@@ -17644,12 +17644,12 @@ var require_json_schema_processors = __commonJS({
       seen.ref = innerType;
     };
     exports2.pipeProcessor = pipeProcessor;
-    var readonlyProcessor = (schema, ctx, json, params) => {
+    var readonlyProcessor = (schema, ctx, json3, params) => {
       const def = schema._zod.def;
       (0, to_json_schema_js_1.process)(def.innerType, ctx, params);
       const seen = ctx.seen.get(schema);
       seen.ref = def.innerType;
-      json.readOnly = true;
+      json3.readOnly = true;
     };
     exports2.readonlyProcessor = readonlyProcessor;
     var promiseProcessor = (schema, ctx, _json, params) => {
@@ -17731,9 +17731,9 @@ var require_json_schema_processors = __commonJS({
         };
         ctx2.external = external;
         for (const entry of registry._idmap.entries()) {
-          const [key4, schema] = entry;
+          const [key5, schema] = entry;
           (0, to_json_schema_js_1.extractDefs)(ctx2, schema);
-          schemas[key4] = (0, to_json_schema_js_1.finalize)(ctx2, schema);
+          schemas[key5] = (0, to_json_schema_js_1.finalize)(ctx2, schema);
         }
         if (Object.keys(defs).length > 0) {
           const defsSegment = ctx2.target === "draft-2020-12" ? "$defs" : "definitions";
@@ -18012,7 +18012,7 @@ var require_schemas2 = __commonJS({
     exports2.jwt = jwt;
     exports2.stringFormat = stringFormat;
     exports2.hostname = hostname;
-    exports2.hex = hex5;
+    exports2.hex = hex6;
     exports2.hash = hash2;
     exports2.number = number2;
     exports2.int = int;
@@ -18034,7 +18034,7 @@ var require_schemas2 = __commonJS({
     exports2.date = date;
     exports2.array = array;
     exports2.keyof = keyof;
-    exports2.object = object7;
+    exports2.object = object8;
     exports2.strictObject = strictObject;
     exports2.looseObject = looseObject;
     exports2.extend = extend;
@@ -18081,7 +18081,7 @@ var require_schemas2 = __commonJS({
     exports2.refine = refine;
     exports2.superRefine = superRefine;
     exports2.instanceof = _instanceof;
-    exports2.json = json;
+    exports2.json = json3;
     exports2._function = _function;
     exports2.function = _function;
     exports2._function = _function;
@@ -18322,7 +18322,7 @@ var require_schemas2 = __commonJS({
       return core._stringFormat(exports2.ZodMiniCustomStringFormat, "hostname", core.regexes.hostname, _params);
     }
     // @__NO_SIDE_EFFECTS__
-    function hex5(_params) {
+    function hex6(_params) {
       return core._stringFormat(exports2.ZodMiniCustomStringFormat, "hex", core.regexes.hex, _params);
     }
     // @__NO_SIDE_EFFECTS__
@@ -18472,8 +18472,8 @@ var require_schemas2 = __commonJS({
     }
     // @__NO_SIDE_EFFECTS__
     function keyof(schema) {
-      const shape7 = schema._zod.def.shape;
-      return /* @__PURE__ */ _enum(Object.keys(shape7));
+      const shape8 = schema._zod.def.shape;
+      return /* @__PURE__ */ _enum(Object.keys(shape8));
     }
     exports2.ZodMiniObject = core.$constructor("ZodMiniObject", (inst, def) => {
       core.$ZodObject.init(inst, def);
@@ -18481,43 +18481,43 @@ var require_schemas2 = __commonJS({
       util.defineLazy(inst, "shape", () => def.shape);
     });
     // @__NO_SIDE_EFFECTS__
-    function object7(shape7, params) {
+    function object8(shape8, params) {
       const def = {
         type: "object",
-        shape: shape7 ?? {},
+        shape: shape8 ?? {},
         ...util.normalizeParams(params)
       };
       return new exports2.ZodMiniObject(def);
     }
     // @__NO_SIDE_EFFECTS__
-    function strictObject(shape7, params) {
+    function strictObject(shape8, params) {
       return new exports2.ZodMiniObject({
         type: "object",
-        shape: shape7,
+        shape: shape8,
         catchall: /* @__PURE__ */ never(),
         ...util.normalizeParams(params)
       });
     }
     // @__NO_SIDE_EFFECTS__
-    function looseObject(shape7, params) {
+    function looseObject(shape8, params) {
       return new exports2.ZodMiniObject({
         type: "object",
-        shape: shape7,
+        shape: shape8,
         catchall: /* @__PURE__ */ unknown(),
         ...util.normalizeParams(params)
       });
     }
     // @__NO_SIDE_EFFECTS__
-    function extend(schema, shape7) {
-      return util.extend(schema, shape7);
+    function extend(schema, shape8) {
+      return util.extend(schema, shape8);
     }
     // @__NO_SIDE_EFFECTS__
-    function safeExtend(schema, shape7) {
-      return util.safeExtend(schema, shape7);
+    function safeExtend(schema, shape8) {
+      return util.safeExtend(schema, shape8);
     }
     // @__NO_SIDE_EFFECTS__
-    function merge(schema, shape7) {
-      return util.extend(schema, shape7);
+    function merge(schema, shape8) {
+      return util.extend(schema, shape8);
     }
     // @__NO_SIDE_EFFECTS__
     function pick(schema, mask) {
@@ -18945,7 +18945,7 @@ var require_schemas2 = __commonJS({
     }, ...args);
     exports2.stringbool = stringbool;
     // @__NO_SIDE_EFFECTS__
-    function json() {
+    function json3() {
       const jsonSchema = /* @__PURE__ */ _lazy(() => {
         return /* @__PURE__ */ union([/* @__PURE__ */ string(), /* @__PURE__ */ number2(), /* @__PURE__ */ boolean(), /* @__PURE__ */ _null(), /* @__PURE__ */ array(jsonSchema), /* @__PURE__ */ record(/* @__PURE__ */ string(), jsonSchema)]);
       });
@@ -19101,7 +19101,7 @@ var require_iso = __commonJS({
     exports2.ZodMiniISODuration = exports2.ZodMiniISOTime = exports2.ZodMiniISODate = exports2.ZodMiniISODateTime = void 0;
     exports2.datetime = datetime;
     exports2.date = date;
-    exports2.time = time6;
+    exports2.time = time7;
     exports2.duration = duration;
     var core = __importStar(require_core2());
     var schemas = __importStar(require_schemas2());
@@ -19126,7 +19126,7 @@ var require_iso = __commonJS({
       schemas.ZodMiniStringFormat.init(inst, def);
     });
     // @__NO_SIDE_EFFECTS__
-    function time6(params) {
+    function time7(params) {
       return core._isoTime(exports2.ZodMiniISOTime, params);
     }
     exports2.ZodMiniISODuration = core.$constructor("ZodMiniISODuration", (inst, def) => {
@@ -19401,16 +19401,16 @@ var require_zod_compat = __commonJS({
       const schema = s;
       return !!schema._zod;
     }
-    function objectFromShape(shape7) {
-      const values = Object.values(shape7);
+    function objectFromShape(shape8) {
+      const values = Object.values(shape8);
       if (values.length === 0)
         return z4mini.object({});
       const allV4 = values.every(isZ4Schema);
       const allV3 = values.every((s) => !isZ4Schema(s));
       if (allV4)
-        return z4mini.object(shape7);
+        return z4mini.object(shape8);
       if (allV3)
-        return z3rt.object(shape7);
+        return z3rt.object(shape8);
       throw new Error("Mixed Zod versions detected in object shape.");
     }
     function safeParse(schema, data) {
@@ -19674,7 +19674,7 @@ var require_iso2 = __commonJS({
     exports2.ZodISODuration = exports2.ZodISOTime = exports2.ZodISODate = exports2.ZodISODateTime = void 0;
     exports2.datetime = datetime;
     exports2.date = date;
-    exports2.time = time6;
+    exports2.time = time7;
     exports2.duration = duration;
     var core = __importStar(require_core2());
     var schemas = __importStar(require_schemas3());
@@ -19696,7 +19696,7 @@ var require_iso2 = __commonJS({
       core.$ZodISOTime.init(inst, def);
       schemas.ZodStringFormat.init(inst, def);
     });
-    function time6(params) {
+    function time7(params) {
       return core._isoTime(exports2.ZodISOTime, params);
     }
     exports2.ZodISODuration = core.$constructor("ZodISODuration", (inst, def) => {
@@ -19897,7 +19897,7 @@ var require_schemas3 = __commonJS({
     exports2.jwt = jwt;
     exports2.stringFormat = stringFormat;
     exports2.hostname = hostname;
-    exports2.hex = hex5;
+    exports2.hex = hex6;
     exports2.hash = hash2;
     exports2.number = number2;
     exports2.int = int;
@@ -19919,7 +19919,7 @@ var require_schemas3 = __commonJS({
     exports2.date = date;
     exports2.array = array;
     exports2.keyof = keyof;
-    exports2.object = object7;
+    exports2.object = object8;
     exports2.strictObject = strictObject;
     exports2.looseObject = looseObject;
     exports2.union = union;
@@ -19962,7 +19962,7 @@ var require_schemas3 = __commonJS({
     exports2.refine = refine;
     exports2.superRefine = superRefine;
     exports2.instanceof = _instanceof;
-    exports2.json = json;
+    exports2.json = json3;
     exports2.preprocess = preprocess;
     var core = __importStar(require_core2());
     var index_js_1 = require_core2();
@@ -20057,7 +20057,7 @@ var require_schemas3 = __commonJS({
     exports2._ZodString = core.$constructor("_ZodString", (inst, def) => {
       core.$ZodString.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.stringProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.stringProcessor(inst, ctx, json4, params);
       const bag = inst._zod.bag;
       inst.format = bag.format ?? null;
       inst.minLength = bag.minimum ?? null;
@@ -20282,7 +20282,7 @@ var require_schemas3 = __commonJS({
     function hostname(_params) {
       return core._stringFormat(exports2.ZodCustomStringFormat, "hostname", core.regexes.hostname, _params);
     }
-    function hex5(_params) {
+    function hex6(_params) {
       return core._stringFormat(exports2.ZodCustomStringFormat, "hex", core.regexes.hex, _params);
     }
     function hash2(alg, params) {
@@ -20296,7 +20296,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodNumber = core.$constructor("ZodNumber", (inst, def) => {
       core.$ZodNumber.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.numberProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.numberProcessor(inst, ctx, json4, params);
       inst.gt = (value, params) => inst.check(checks2.gt(value, params));
       inst.gte = (value, params) => inst.check(checks2.gte(value, params));
       inst.min = (value, params) => inst.check(checks2.gte(value, params));
@@ -20344,7 +20344,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodBoolean = core.$constructor("ZodBoolean", (inst, def) => {
       core.$ZodBoolean.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.booleanProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.booleanProcessor(inst, ctx, json4, params);
     });
     function boolean(params) {
       return core._boolean(exports2.ZodBoolean, params);
@@ -20352,7 +20352,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodBigInt = core.$constructor("ZodBigInt", (inst, def) => {
       core.$ZodBigInt.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.bigintProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.bigintProcessor(inst, ctx, json4, params);
       inst.gte = (value, params) => inst.check(checks2.gte(value, params));
       inst.min = (value, params) => inst.check(checks2.gte(value, params));
       inst.gt = (value, params) => inst.check(checks2.gt(value, params));
@@ -20387,7 +20387,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodSymbol = core.$constructor("ZodSymbol", (inst, def) => {
       core.$ZodSymbol.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.symbolProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.symbolProcessor(inst, ctx, json4, params);
     });
     function symbol(params) {
       return core._symbol(exports2.ZodSymbol, params);
@@ -20395,7 +20395,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodUndefined = core.$constructor("ZodUndefined", (inst, def) => {
       core.$ZodUndefined.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.undefinedProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.undefinedProcessor(inst, ctx, json4, params);
     });
     function _undefined(params) {
       return core._undefined(exports2.ZodUndefined, params);
@@ -20403,7 +20403,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodNull = core.$constructor("ZodNull", (inst, def) => {
       core.$ZodNull.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.nullProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.nullProcessor(inst, ctx, json4, params);
     });
     function _null(params) {
       return core._null(exports2.ZodNull, params);
@@ -20411,7 +20411,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodAny = core.$constructor("ZodAny", (inst, def) => {
       core.$ZodAny.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.anyProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.anyProcessor(inst, ctx, json4, params);
     });
     function any() {
       return core._any(exports2.ZodAny);
@@ -20419,7 +20419,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodUnknown = core.$constructor("ZodUnknown", (inst, def) => {
       core.$ZodUnknown.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.unknownProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.unknownProcessor(inst, ctx, json4, params);
     });
     function unknown() {
       return core._unknown(exports2.ZodUnknown);
@@ -20427,7 +20427,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodNever = core.$constructor("ZodNever", (inst, def) => {
       core.$ZodNever.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.neverProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.neverProcessor(inst, ctx, json4, params);
     });
     function never(params) {
       return core._never(exports2.ZodNever, params);
@@ -20435,7 +20435,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodVoid = core.$constructor("ZodVoid", (inst, def) => {
       core.$ZodVoid.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.voidProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.voidProcessor(inst, ctx, json4, params);
     });
     function _void(params) {
       return core._void(exports2.ZodVoid, params);
@@ -20443,7 +20443,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodDate = core.$constructor("ZodDate", (inst, def) => {
       core.$ZodDate.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.dateProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.dateProcessor(inst, ctx, json4, params);
       inst.min = (value, params) => inst.check(checks2.gte(value, params));
       inst.max = (value, params) => inst.check(checks2.lte(value, params));
       const c = inst._zod.bag;
@@ -20456,7 +20456,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodArray = core.$constructor("ZodArray", (inst, def) => {
       core.$ZodArray.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.arrayProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.arrayProcessor(inst, ctx, json4, params);
       inst.element = def.element;
       inst.min = (minLength, params) => inst.check(checks2.minLength(minLength, params));
       inst.nonempty = (params) => inst.check(checks2.minLength(1, params));
@@ -20468,13 +20468,13 @@ var require_schemas3 = __commonJS({
       return core._array(exports2.ZodArray, element, params);
     }
     function keyof(schema) {
-      const shape7 = schema._zod.def.shape;
-      return _enum(Object.keys(shape7));
+      const shape8 = schema._zod.def.shape;
+      return _enum(Object.keys(shape8));
     }
     exports2.ZodObject = core.$constructor("ZodObject", (inst, def) => {
       core.$ZodObjectJIT.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.objectProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.objectProcessor(inst, ctx, json4, params);
       index_js_1.util.defineLazy(inst, "shape", () => {
         return def.shape;
       });
@@ -20496,26 +20496,26 @@ var require_schemas3 = __commonJS({
       inst.partial = (...args) => index_js_1.util.partial(exports2.ZodOptional, inst, args[0]);
       inst.required = (...args) => index_js_1.util.required(exports2.ZodNonOptional, inst, args[0]);
     });
-    function object7(shape7, params) {
+    function object8(shape8, params) {
       const def = {
         type: "object",
-        shape: shape7 ?? {},
+        shape: shape8 ?? {},
         ...index_js_1.util.normalizeParams(params)
       };
       return new exports2.ZodObject(def);
     }
-    function strictObject(shape7, params) {
+    function strictObject(shape8, params) {
       return new exports2.ZodObject({
         type: "object",
-        shape: shape7,
+        shape: shape8,
         catchall: never(),
         ...index_js_1.util.normalizeParams(params)
       });
     }
-    function looseObject(shape7, params) {
+    function looseObject(shape8, params) {
       return new exports2.ZodObject({
         type: "object",
-        shape: shape7,
+        shape: shape8,
         catchall: unknown(),
         ...index_js_1.util.normalizeParams(params)
       });
@@ -20523,7 +20523,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodUnion = core.$constructor("ZodUnion", (inst, def) => {
       core.$ZodUnion.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.unionProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.unionProcessor(inst, ctx, json4, params);
       inst.options = def.options;
     });
     function union(options, params) {
@@ -20536,7 +20536,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodXor = core.$constructor("ZodXor", (inst, def) => {
       exports2.ZodUnion.init(inst, def);
       core.$ZodXor.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.unionProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.unionProcessor(inst, ctx, json4, params);
       inst.options = def.options;
     });
     function xor(options, params) {
@@ -20562,7 +20562,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodIntersection = core.$constructor("ZodIntersection", (inst, def) => {
       core.$ZodIntersection.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.intersectionProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.intersectionProcessor(inst, ctx, json4, params);
     });
     function intersection(left, right) {
       return new exports2.ZodIntersection({
@@ -20574,7 +20574,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodTuple = core.$constructor("ZodTuple", (inst, def) => {
       core.$ZodTuple.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.tupleProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.tupleProcessor(inst, ctx, json4, params);
       inst.rest = (rest) => inst.clone({
         ...inst._zod.def,
         rest
@@ -20594,7 +20594,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodRecord = core.$constructor("ZodRecord", (inst, def) => {
       core.$ZodRecord.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.recordProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.recordProcessor(inst, ctx, json4, params);
       inst.keyType = def.keyType;
       inst.valueType = def.valueType;
     });
@@ -20628,7 +20628,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodMap = core.$constructor("ZodMap", (inst, def) => {
       core.$ZodMap.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.mapProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.mapProcessor(inst, ctx, json4, params);
       inst.keyType = def.keyType;
       inst.valueType = def.valueType;
       inst.min = (...args) => inst.check(core._minSize(...args));
@@ -20647,7 +20647,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodSet = core.$constructor("ZodSet", (inst, def) => {
       core.$ZodSet.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.setProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.setProcessor(inst, ctx, json4, params);
       inst.min = (...args) => inst.check(core._minSize(...args));
       inst.nonempty = (params) => inst.check(core._minSize(1, params));
       inst.max = (...args) => inst.check(core._maxSize(...args));
@@ -20663,7 +20663,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodEnum = core.$constructor("ZodEnum", (inst, def) => {
       core.$ZodEnum.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.enumProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.enumProcessor(inst, ctx, json4, params);
       inst.enum = def.entries;
       inst.options = Object.values(def.entries);
       const keys2 = new Set(Object.keys(def.entries));
@@ -20716,7 +20716,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodLiteral = core.$constructor("ZodLiteral", (inst, def) => {
       core.$ZodLiteral.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.literalProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.literalProcessor(inst, ctx, json4, params);
       inst.values = new Set(def.values);
       Object.defineProperty(inst, "value", {
         get() {
@@ -20737,7 +20737,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodFile = core.$constructor("ZodFile", (inst, def) => {
       core.$ZodFile.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.fileProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.fileProcessor(inst, ctx, json4, params);
       inst.min = (size, params) => inst.check(core._minSize(size, params));
       inst.max = (size, params) => inst.check(core._maxSize(size, params));
       inst.mime = (types, params) => inst.check(core._mime(Array.isArray(types) ? types : [types], params));
@@ -20748,7 +20748,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodTransform = core.$constructor("ZodTransform", (inst, def) => {
       core.$ZodTransform.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.transformProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.transformProcessor(inst, ctx, json4, params);
       inst._zod.parse = (payload, _ctx) => {
         if (_ctx.direction === "backward") {
           throw new core.$ZodEncodeError(inst.constructor.name);
@@ -20786,7 +20786,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodOptional = core.$constructor("ZodOptional", (inst, def) => {
       core.$ZodOptional.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.optionalProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.optionalProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     function optional(innerType) {
@@ -20798,7 +20798,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodExactOptional = core.$constructor("ZodExactOptional", (inst, def) => {
       core.$ZodExactOptional.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.optionalProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.optionalProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     function exactOptional(innerType) {
@@ -20810,7 +20810,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodNullable = core.$constructor("ZodNullable", (inst, def) => {
       core.$ZodNullable.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.nullableProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.nullableProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     function nullable(innerType) {
@@ -20825,7 +20825,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodDefault = core.$constructor("ZodDefault", (inst, def) => {
       core.$ZodDefault.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.defaultProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.defaultProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.innerType;
       inst.removeDefault = inst.unwrap;
     });
@@ -20841,7 +20841,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodPrefault = core.$constructor("ZodPrefault", (inst, def) => {
       core.$ZodPrefault.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.prefaultProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.prefaultProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     function prefault(innerType, defaultValue) {
@@ -20856,7 +20856,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodNonOptional = core.$constructor("ZodNonOptional", (inst, def) => {
       core.$ZodNonOptional.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.nonoptionalProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.nonoptionalProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     function nonoptional(innerType, params) {
@@ -20869,7 +20869,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodSuccess = core.$constructor("ZodSuccess", (inst, def) => {
       core.$ZodSuccess.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.successProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.successProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     function success(innerType) {
@@ -20881,7 +20881,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodCatch = core.$constructor("ZodCatch", (inst, def) => {
       core.$ZodCatch.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.catchProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.catchProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.innerType;
       inst.removeCatch = inst.unwrap;
     });
@@ -20895,7 +20895,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodNaN = core.$constructor("ZodNaN", (inst, def) => {
       core.$ZodNaN.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.nanProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.nanProcessor(inst, ctx, json4, params);
     });
     function nan(params) {
       return core._nan(exports2.ZodNaN, params);
@@ -20903,7 +20903,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodPipe = core.$constructor("ZodPipe", (inst, def) => {
       core.$ZodPipe.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.pipeProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.pipeProcessor(inst, ctx, json4, params);
       inst.in = def.in;
       inst.out = def.out;
     });
@@ -20931,7 +20931,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodReadonly = core.$constructor("ZodReadonly", (inst, def) => {
       core.$ZodReadonly.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.readonlyProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.readonlyProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     function readonly(innerType) {
@@ -20943,7 +20943,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodTemplateLiteral = core.$constructor("ZodTemplateLiteral", (inst, def) => {
       core.$ZodTemplateLiteral.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.templateLiteralProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.templateLiteralProcessor(inst, ctx, json4, params);
     });
     function templateLiteral(parts, params) {
       return new exports2.ZodTemplateLiteral({
@@ -20955,7 +20955,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodLazy = core.$constructor("ZodLazy", (inst, def) => {
       core.$ZodLazy.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.lazyProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.lazyProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.getter();
     });
     function lazy(getter) {
@@ -20967,7 +20967,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodPromise = core.$constructor("ZodPromise", (inst, def) => {
       core.$ZodPromise.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.promiseProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.promiseProcessor(inst, ctx, json4, params);
       inst.unwrap = () => inst._zod.def.innerType;
     });
     function promise(innerType) {
@@ -20979,7 +20979,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodFunction = core.$constructor("ZodFunction", (inst, def) => {
       core.$ZodFunction.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.functionProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.functionProcessor(inst, ctx, json4, params);
     });
     function _function(params) {
       return new exports2.ZodFunction({
@@ -20991,7 +20991,7 @@ var require_schemas3 = __commonJS({
     exports2.ZodCustom = core.$constructor("ZodCustom", (inst, def) => {
       core.$ZodCustom.init(inst, def);
       exports2.ZodType.init(inst, def);
-      inst._zod.processJSONSchema = (ctx, json2, params) => processors.customProcessor(inst, ctx, json2, params);
+      inst._zod.processJSONSchema = (ctx, json4, params) => processors.customProcessor(inst, ctx, json4, params);
     });
     function check(fn) {
       const ch = new core.$ZodCheck({
@@ -21040,7 +21040,7 @@ var require_schemas3 = __commonJS({
       String: exports2.ZodString
     }, ...args);
     exports2.stringbool = stringbool;
-    function json(params) {
+    function json3(params) {
       const jsonSchema = lazy(() => {
         return union([string(params), number2(), boolean(), _null(), array(jsonSchema), record(string(), jsonSchema)]);
       });
@@ -21258,11 +21258,11 @@ var require_from_json_schema = __commonJS({
       }
       const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
       if (path[0] === defsKey) {
-        const key4 = path[1];
-        if (!key4 || !ctx.defs[key4]) {
+        const key5 = path[1];
+        if (!key5 || !ctx.defs[key5]) {
           throw new Error(`Reference not found: ${ref}`);
         }
-        return ctx.defs[key4];
+        return ctx.defs[key5];
       }
       throw new Error(`Reference not found: ${ref}`);
     }
@@ -21445,21 +21445,21 @@ var require_from_json_schema = __commonJS({
           break;
         }
         case "object": {
-          const shape7 = {};
+          const shape8 = {};
           const properties = schema.properties || {};
           const requiredSet = new Set(schema.required || []);
-          for (const [key4, propSchema] of Object.entries(properties)) {
+          for (const [key5, propSchema] of Object.entries(properties)) {
             const propZodSchema = convertSchema(propSchema, ctx);
-            shape7[key4] = requiredSet.has(key4) ? propZodSchema : propZodSchema.optional();
+            shape8[key5] = requiredSet.has(key5) ? propZodSchema : propZodSchema.optional();
           }
           if (schema.propertyNames) {
             const keySchema = convertSchema(schema.propertyNames, ctx);
             const valueSchema = schema.additionalProperties && typeof schema.additionalProperties === "object" ? convertSchema(schema.additionalProperties, ctx) : z.any();
-            if (Object.keys(shape7).length === 0) {
+            if (Object.keys(shape8).length === 0) {
               zodSchema = z.record(keySchema, valueSchema);
               break;
             }
-            const objectSchema2 = z.object(shape7).passthrough();
+            const objectSchema2 = z.object(shape8).passthrough();
             const recordSchema = z.looseRecord(keySchema, valueSchema);
             zodSchema = z.intersection(objectSchema2, recordSchema);
             break;
@@ -21474,8 +21474,8 @@ var require_from_json_schema = __commonJS({
               looseRecords.push(z.looseRecord(keySchema, patternValue));
             }
             const schemasToIntersect = [];
-            if (Object.keys(shape7).length > 0) {
-              schemasToIntersect.push(z.object(shape7).passthrough());
+            if (Object.keys(shape8).length > 0) {
+              schemasToIntersect.push(z.object(shape8).passthrough());
             }
             schemasToIntersect.push(...looseRecords);
             if (schemasToIntersect.length === 0) {
@@ -21491,7 +21491,7 @@ var require_from_json_schema = __commonJS({
             }
             break;
           }
-          const objectSchema = z.object(shape7);
+          const objectSchema = z.object(shape8);
           if (schema.additionalProperties === false) {
             zodSchema = objectSchema.strict();
           } else if (typeof schema.additionalProperties === "object") {
@@ -21594,20 +21594,20 @@ var require_from_json_schema = __commonJS({
       }
       const extraMeta = {};
       const coreMetadataKeys = ["$id", "id", "$comment", "$anchor", "$vocabulary", "$dynamicRef", "$dynamicAnchor"];
-      for (const key4 of coreMetadataKeys) {
-        if (key4 in schema) {
-          extraMeta[key4] = schema[key4];
+      for (const key5 of coreMetadataKeys) {
+        if (key5 in schema) {
+          extraMeta[key5] = schema[key5];
         }
       }
       const contentMetadataKeys = ["contentEncoding", "contentMediaType", "contentSchema"];
-      for (const key4 of contentMetadataKeys) {
-        if (key4 in schema) {
-          extraMeta[key4] = schema[key4];
+      for (const key5 of contentMetadataKeys) {
+        if (key5 in schema) {
+          extraMeta[key5] = schema[key5];
         }
       }
-      for (const key4 of Object.keys(schema)) {
-        if (!RECOGNIZED_KEYS.has(key4)) {
-          extraMeta[key4] = schema[key4];
+      for (const key5 of Object.keys(schema)) {
+        if (!RECOGNIZED_KEYS.has(key5)) {
+          extraMeta[key5] = schema[key5];
         }
       }
       if (Object.keys(extraMeta).length > 0) {
@@ -23575,20 +23575,20 @@ var require_errorMessages = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.setResponseValueAndErrors = exports2.addErrorMessage = void 0;
-    function addErrorMessage(res, key4, errorMessage, refs) {
+    function addErrorMessage(res, key5, errorMessage, refs) {
       if (!refs?.errorMessages)
         return;
       if (errorMessage) {
         res.errorMessage = {
           ...res.errorMessage,
-          [key4]: errorMessage
+          [key5]: errorMessage
         };
       }
     }
     exports2.addErrorMessage = addErrorMessage;
-    function setResponseValueAndErrors(res, key4, value, errorMessage, refs) {
-      res[key4] = value;
-      addErrorMessage(res, key4, errorMessage, refs);
+    function setResponseValueAndErrors(res, key5, value, errorMessage, refs) {
+      res[key5] = value;
+      addErrorMessage(res, key5, errorMessage, refs);
     }
     exports2.setResponseValueAndErrors = setResponseValueAndErrors;
   }
@@ -24318,11 +24318,11 @@ var require_record = __commonJS({
         return {
           type: "object",
           required: def.keyType._def.values,
-          properties: def.keyType._def.values.reduce((acc, key4) => ({
+          properties: def.keyType._def.values.reduce((acc, key5) => ({
             ...acc,
-            [key4]: (0, parseDef_js_1.parseDef)(def.valueType._def, {
+            [key5]: (0, parseDef_js_1.parseDef)(def.valueType._def, {
               ...refs,
-              currentPath: [...refs.currentPath, "properties", key4]
+              currentPath: [...refs.currentPath, "properties", key5]
             }) ?? (0, any_js_1.parseAnyDef)(refs)
           }), {}),
           additionalProperties: refs.rejectedAdditionalProperties
@@ -24407,11 +24407,11 @@ var require_nativeEnum = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.parseNativeEnumDef = void 0;
     function parseNativeEnumDef(def) {
-      const object7 = def.values;
-      const actualKeys = Object.keys(def.values).filter((key4) => {
-        return typeof object7[object7[key4]] !== "number";
+      const object8 = def.values;
+      const actualKeys = Object.keys(def.values).filter((key5) => {
+        return typeof object8[object8[key5]] !== "number";
       });
-      const actualValues = actualKeys.map((key4) => object7[key4]);
+      const actualValues = actualKeys.map((key5) => object8[key5]);
       const parsedTypes = Array.from(new Set(actualValues.map((values) => typeof values)));
       return {
         type: parsedTypes.length === 1 ? parsedTypes[0] === "string" ? "string" : "number" : ["string", "number"],
@@ -24650,9 +24650,9 @@ var require_object = __commonJS({
         properties: {}
       };
       const required = [];
-      const shape7 = def.shape();
-      for (const propName in shape7) {
-        let propDef = shape7[propName];
+      const shape8 = def.shape();
+      for (const propName in shape8) {
+        let propDef = shape8[propName];
         if (propDef === void 0 || propDef._def === void 0) {
           continue;
         }
@@ -25286,8 +25286,8 @@ var require_zod_json_schema_compat = __commonJS({
       });
     }
     function getMethodLiteral(schema) {
-      const shape7 = (0, zod_compat_js_1.getObjectShape)(schema);
-      const methodSchema = shape7?.method;
+      const shape8 = (0, zod_compat_js_1.getObjectShape)(schema);
+      const methodSchema = shape8?.method;
       if (!methodSchema) {
         throw new Error("Schema is missing a method literal");
       }
@@ -26257,8 +26257,8 @@ var require_protocol = __commonJS({
     }
     function mergeCapabilities(base, additional) {
       const result = { ...base };
-      for (const key4 in additional) {
-        const k = key4;
+      for (const key5 in additional) {
+        const k = key5;
         const addValue = additional[k];
         if (addValue === void 0)
           continue;
@@ -26410,15 +26410,15 @@ var require_code = __commonJS({
       return JSON.stringify(x).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
     }
     exports2.safeStringify = safeStringify;
-    function getProperty(key4) {
-      return typeof key4 == "string" && exports2.IDENTIFIER.test(key4) ? new _Code(`.${key4}`) : _`[${key4}]`;
+    function getProperty(key5) {
+      return typeof key5 == "string" && exports2.IDENTIFIER.test(key5) ? new _Code(`.${key5}`) : _`[${key5}]`;
     }
     exports2.getProperty = getProperty;
-    function getEsmExportName(key4) {
-      if (typeof key4 == "string" && exports2.IDENTIFIER.test(key4)) {
-        return new _Code(`${key4}`);
+    function getEsmExportName(key5) {
+      if (typeof key5 == "string" && exports2.IDENTIFIER.test(key5)) {
+        return new _Code(`${key5}`);
       }
-      throw new Error(`CodeGen: invalid export name: ${key4}, use explicit $id name mapping`);
+      throw new Error(`CodeGen: invalid export name: ${key5}, use explicit $id name mapping`);
     }
     exports2.getEsmExportName = getEsmExportName;
     function regexpCode(rx) {
@@ -27045,11 +27045,11 @@ var require_codegen = __commonJS({
       // returns code for object literal for the passed argument list of key-value pairs
       object(...keyValues) {
         const code2 = ["{"];
-        for (const [key4, value] of keyValues) {
+        for (const [key5, value] of keyValues) {
           if (code2.length > 1)
             code2.push(",");
-          code2.push(key4);
-          if (key4 !== value || this.opts.es5) {
+          code2.push(key5);
+          if (key5 !== value || this.opts.es5) {
             code2.push(":");
             (0, code_1.addCodeArg)(code2, value);
           }
@@ -27110,12 +27110,12 @@ var require_codegen = __commonJS({
       }
       // `for-in` statement.
       // With option `ownProperties` replaced with a `for-of` loop for object keys
-      forIn(nameOrPrefix, obj4, forBody, varKind = this.opts.es5 ? scope_1.varKinds.var : scope_1.varKinds.const) {
+      forIn(nameOrPrefix, obj5, forBody, varKind = this.opts.es5 ? scope_1.varKinds.var : scope_1.varKinds.const) {
         if (this.opts.ownProperties) {
-          return this.forOf(nameOrPrefix, (0, code_1._)`Object.keys(${obj4})`, forBody);
+          return this.forOf(nameOrPrefix, (0, code_1._)`Object.keys(${obj5})`, forBody);
         }
         const name2 = this._scope.toName(nameOrPrefix);
-        return this._for(new ForIter("in", varKind, name2, obj4), () => forBody(name2));
+        return this._for(new ForIter("in", varKind, name2, obj5), () => forBody(name2));
       }
       // end `for` loop
       endFor() {
@@ -27324,17 +27324,17 @@ var require_util3 = __commonJS({
       if (typeof schema === "boolean")
         return;
       const rules = self.RULES.keywords;
-      for (const key4 in schema) {
-        if (!rules[key4])
-          checkStrictMode(it, `unknown keyword: "${key4}"`);
+      for (const key5 in schema) {
+        if (!rules[key5])
+          checkStrictMode(it, `unknown keyword: "${key5}"`);
       }
     }
     exports2.checkUnknownRules = checkUnknownRules;
     function schemaHasRules(schema, rules) {
       if (typeof schema == "boolean")
         return !schema;
-      for (const key4 in schema)
-        if (rules[key4])
+      for (const key5 in schema)
+        if (rules[key5])
           return true;
       return false;
     }
@@ -27342,8 +27342,8 @@ var require_util3 = __commonJS({
     function schemaHasRulesButRef(schema, RULES2) {
       if (typeof schema == "boolean")
         return !schema;
-      for (const key4 in schema)
-        if (key4 !== "$ref" && RULES2.all[key4])
+      for (const key5 in schema)
+        if (key5 !== "$ref" && RULES2.all[key5])
           return true;
       return false;
     }
@@ -27921,8 +27921,8 @@ var require_defaults = __commonJS({
     function assignDefaults(it, ty) {
       const { properties, items } = it.schema;
       if (ty === "object" && properties) {
-        for (const key4 in properties) {
-          assignDefault(it, key4, properties[key4].default);
+        for (const key5 in properties) {
+          assignDefault(it, key5, properties[key5].default);
         }
       } else if (ty === "array" && Array.isArray(items)) {
         items.forEach((sch, i) => assignDefault(it, i, sch.default));
@@ -28306,8 +28306,8 @@ var require_fast_deep_equal = __commonJS({
         for (i = length; i-- !== 0; )
           if (!Object.prototype.hasOwnProperty.call(b, keys2[i])) return false;
         for (i = length; i-- !== 0; ) {
-          var key4 = keys2[i];
-          if (!equal(a[key4], b[key4])) return false;
+          var key5 = keys2[i];
+          if (!equal(a[key5], b[key5])) return false;
         }
         return true;
       }
@@ -28379,20 +28379,20 @@ var require_json_schema_traverse = __commonJS({
     function _traverse(opts, pre, post, schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex) {
       if (schema && typeof schema == "object" && !Array.isArray(schema)) {
         pre(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
-        for (var key4 in schema) {
-          var sch = schema[key4];
+        for (var key5 in schema) {
+          var sch = schema[key5];
           if (Array.isArray(sch)) {
-            if (key4 in traverse.arrayKeywords) {
+            if (key5 in traverse.arrayKeywords) {
               for (var i = 0; i < sch.length; i++)
-                _traverse(opts, pre, post, sch[i], jsonPtr + "/" + key4 + "/" + i, rootSchema, jsonPtr, key4, schema, i);
+                _traverse(opts, pre, post, sch[i], jsonPtr + "/" + key5 + "/" + i, rootSchema, jsonPtr, key5, schema, i);
             }
-          } else if (key4 in traverse.propsKeywords) {
+          } else if (key5 in traverse.propsKeywords) {
             if (sch && typeof sch == "object") {
               for (var prop in sch)
-                _traverse(opts, pre, post, sch[prop], jsonPtr + "/" + key4 + "/" + escapeJsonPtr(prop), rootSchema, jsonPtr, key4, schema, prop);
+                _traverse(opts, pre, post, sch[prop], jsonPtr + "/" + key5 + "/" + escapeJsonPtr(prop), rootSchema, jsonPtr, key5, schema, prop);
             }
-          } else if (key4 in traverse.keywords || opts.allKeys && !(key4 in traverse.skipKeywords)) {
-            _traverse(opts, pre, post, sch, jsonPtr + "/" + key4, rootSchema, jsonPtr, key4, schema);
+          } else if (key5 in traverse.keywords || opts.allKeys && !(key5 in traverse.skipKeywords)) {
+            _traverse(opts, pre, post, sch, jsonPtr + "/" + key5, rootSchema, jsonPtr, key5, schema);
           }
         }
         post(schema, jsonPtr, rootSchema, parentJsonPtr, parentKeyword, parentSchema, keyIndex);
@@ -28449,10 +28449,10 @@ var require_resolve = __commonJS({
       "$dynamicAnchor"
     ]);
     function hasRef(schema) {
-      for (const key4 in schema) {
-        if (REF_KEYWORDS.has(key4))
+      for (const key5 in schema) {
+        if (REF_KEYWORDS.has(key5))
           return true;
-        const sch = schema[key4];
+        const sch = schema[key5];
         if (Array.isArray(sch) && sch.some(hasRef))
           return true;
         if (typeof sch == "object" && hasRef(sch))
@@ -28462,24 +28462,24 @@ var require_resolve = __commonJS({
     }
     function countKeys(schema) {
       let count = 0;
-      for (const key4 in schema) {
-        if (key4 === "$ref")
+      for (const key5 in schema) {
+        if (key5 === "$ref")
           return Infinity;
         count++;
-        if (SIMPLE_INLINED.has(key4))
+        if (SIMPLE_INLINED.has(key5))
           continue;
-        if (typeof schema[key4] == "object") {
-          (0, util_1.eachItem)(schema[key4], (sch) => count += countKeys(sch));
+        if (typeof schema[key5] == "object") {
+          (0, util_1.eachItem)(schema[key5], (sch) => count += countKeys(sch));
         }
         if (count === Infinity)
           return Infinity;
       }
       return count;
     }
-    function getFullPath(resolver, id9 = "", normalize2) {
+    function getFullPath(resolver, id11 = "", normalize2) {
       if (normalize2 !== false)
-        id9 = normalizeId(id9);
-      const p = resolver.parse(id9);
+        id11 = normalizeId(id11);
+      const p = resolver.parse(id11);
       return _getFullPath(resolver, p);
     }
     exports2.getFullPath = getFullPath;
@@ -28489,13 +28489,13 @@ var require_resolve = __commonJS({
     }
     exports2._getFullPath = _getFullPath;
     var TRAILING_SLASH_HASH = /#\/?$/;
-    function normalizeId(id9) {
-      return id9 ? id9.replace(TRAILING_SLASH_HASH, "") : "";
+    function normalizeId(id11) {
+      return id11 ? id11.replace(TRAILING_SLASH_HASH, "") : "";
     }
     exports2.normalizeId = normalizeId;
-    function resolveUrl(resolver, baseId, id9) {
-      id9 = normalizeId(id9);
-      return resolver.resolve(baseId, id9);
+    function resolveUrl(resolver, baseId, id11) {
+      id11 = normalizeId(id11);
+      return resolver.resolve(baseId, id11);
     }
     exports2.resolveUrl = resolveUrl;
     var ANCHOR = /^[a-z_][-a-z0-9._]*$/i;
@@ -28658,8 +28658,8 @@ var require_validate = __commonJS({
     function schemaCxtHasRules({ schema, self }) {
       if (typeof schema == "boolean")
         return !schema;
-      for (const key4 in schema)
-        if (self.RULES.all[key4])
+      for (const key5 in schema)
+        if (self.RULES.all[key5])
           return true;
       return false;
     }
@@ -28935,11 +28935,11 @@ var require_validate = __commonJS({
         if (!this.allErrors)
           this.gen.if(cond);
       }
-      setParams(obj4, assign) {
+      setParams(obj5, assign) {
         if (assign)
-          Object.assign(this.params, obj4);
+          Object.assign(this.params, obj5);
         else
-          this.params = obj4;
+          this.params = obj5;
       }
       block$data(valid, codeBlock, $dataValid = codegen_1.nil) {
         this.gen.block(() => {
@@ -29265,8 +29265,8 @@ var require_compile = __commonJS({
       if (Object.keys(root.schema).length > 0 && refPath === baseId) {
         return getJsonPointer.call(this, p, root);
       }
-      const id9 = (0, resolve_1.normalizeId)(refPath);
-      const schOrRef = this.refs[id9] || this.schemas[id9];
+      const id11 = (0, resolve_1.normalizeId)(refPath);
+      const schOrRef = this.refs[id11] || this.schemas[id11];
       if (typeof schOrRef == "string") {
         const sch = resolveSchema.call(this, root, schOrRef);
         if (typeof (sch === null || sch === void 0 ? void 0 : sch.schema) !== "object")
@@ -29277,7 +29277,7 @@ var require_compile = __commonJS({
         return;
       if (!schOrRef.validate)
         compileSchema.call(this, schOrRef);
-      if (id9 === (0, resolve_1.normalizeId)(ref)) {
+      if (id11 === (0, resolve_1.normalizeId)(ref)) {
         const { schema } = schOrRef;
         const { schemaId } = this.opts;
         const schId = schema[schemaId];
@@ -29593,9 +29593,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex5 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex5)) {
-            const normalizedHex = hex5.toUpperCase();
+          const hex6 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex6)) {
+            const normalizedHex = hex6.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (decodeUnreserved && isUnreserved(decoded)) {
               output += decoded;
@@ -29615,9 +29615,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex5 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex5)) {
-            const normalizedHex = hex5.toUpperCase();
+          const hex6 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex6)) {
+            const normalizedHex = hex6.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (decoded !== "." && isUnreserved(decoded)) {
               output += decoded;
@@ -29657,9 +29657,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex5 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex5)) {
-            output += "%" + hex5.toUpperCase();
+          const hex6 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex6)) {
+            output += "%" + hex6.toUpperCase();
             i += 2;
             continue;
           }
@@ -29695,9 +29695,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex5 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex5)) {
-            output += "%" + hex5.toUpperCase();
+          const hex6 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex6)) {
+            output += "%" + hex6.toUpperCase();
             i += 2;
             continue;
           }
@@ -29742,9 +29742,9 @@ var require_utils = __commonJS({
       for (let i = 0; i < input.length; i++) {
         const ch = input[i];
         if (ch === "%" && i + 2 < input.length) {
-          const hex5 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex5)) {
-            const normalizedHex = hex5.toUpperCase();
+          const hex6 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex6)) {
+            const normalizedHex = hex6.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (isUnreserved(decoded)) {
               output += decoded;
@@ -29782,9 +29782,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex5 = input.slice(i + 1, i + 3);
-          if (isHexPair(hex5)) {
-            output += "%" + hex5.toUpperCase();
+          const hex6 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex6)) {
+            output += "%" + hex6.toUpperCase();
             i += 2;
             continue;
           }
@@ -30697,29 +30697,29 @@ var require_core3 = __commonJS({
         }
       }
       // Adds schema to the instance
-      addSchema(schema, key4, _meta, _validateSchema = this.opts.validateSchema) {
+      addSchema(schema, key5, _meta, _validateSchema = this.opts.validateSchema) {
         if (Array.isArray(schema)) {
           for (const sch of schema)
             this.addSchema(sch, void 0, _meta, _validateSchema);
           return this;
         }
-        let id9;
+        let id11;
         if (typeof schema === "object") {
           const { schemaId } = this.opts;
-          id9 = schema[schemaId];
-          if (id9 !== void 0 && typeof id9 != "string") {
+          id11 = schema[schemaId];
+          if (id11 !== void 0 && typeof id11 != "string") {
             throw new Error(`schema ${schemaId} must be string`);
           }
         }
-        key4 = (0, resolve_1.normalizeId)(key4 || id9);
-        this._checkUnique(key4);
-        this.schemas[key4] = this._addSchema(schema, _meta, key4, _validateSchema, true);
+        key5 = (0, resolve_1.normalizeId)(key5 || id11);
+        this._checkUnique(key5);
+        this.schemas[key5] = this._addSchema(schema, _meta, key5, _validateSchema, true);
         return this;
       }
       // Add schema that will be used to validate other schemas
       // options in META_IGNORE_OPTIONS are alway set to false
-      addMetaSchema(schema, key4, _validateSchema = this.opts.validateSchema) {
-        this.addSchema(schema, key4, true, _validateSchema);
+      addMetaSchema(schema, key5, _validateSchema = this.opts.validateSchema) {
+        this.addSchema(schema, key5, true, _validateSchema);
         return this;
       }
       //  Validate schema against its meta-schema
@@ -30790,11 +30790,11 @@ var require_core3 = __commonJS({
           case "object": {
             const cacheKey = schemaKeyRef;
             this._cache.delete(cacheKey);
-            let id9 = schemaKeyRef[this.opts.schemaId];
-            if (id9) {
-              id9 = (0, resolve_1.normalizeId)(id9);
-              delete this.schemas[id9];
-              delete this.refs[id9];
+            let id11 = schemaKeyRef[this.opts.schemaId];
+            if (id11) {
+              id11 = (0, resolve_1.normalizeId)(id11);
+              delete this.schemas[id11];
+              delete this.refs[id11];
             }
             return this;
           }
@@ -30865,7 +30865,7 @@ var require_core3 = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text7, msg) => text7 + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text8, msg) => text8 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -30875,14 +30875,14 @@ var require_core3 = __commonJS({
           let keywords = metaSchema;
           for (const seg of segments)
             keywords = keywords[seg];
-          for (const key4 in rules) {
-            const rule = rules[key4];
+          for (const key5 in rules) {
+            const rule = rules[key5];
             if (typeof rule != "object")
               continue;
             const { $data } = rule.definition;
-            const schema = keywords[key4];
+            const schema = keywords[key5];
             if ($data && schema)
-              keywords[key4] = schemaOrData(schema);
+              keywords[key5] = schemaOrData(schema);
           }
         }
         return metaSchema;
@@ -30901,10 +30901,10 @@ var require_core3 = __commonJS({
         }
       }
       _addSchema(schema, meta, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
-        let id9;
+        let id11;
         const { schemaId } = this.opts;
         if (typeof schema == "object") {
-          id9 = schema[schemaId];
+          id11 = schema[schemaId];
         } else {
           if (this.opts.jtd)
             throw new Error("schema must be object");
@@ -30914,7 +30914,7 @@ var require_core3 = __commonJS({
         let sch = this._cache.get(schema);
         if (sch !== void 0)
           return sch;
-        baseId = (0, resolve_1.normalizeId)(id9 || baseId);
+        baseId = (0, resolve_1.normalizeId)(id11 || baseId);
         const localRefs = resolve_1.getSchemaRefs.call(this, schema, baseId);
         sch = new compile_1.SchemaEnv({ schema, schemaId, meta, baseId, localRefs });
         this._cache.set(sch.schema, sch);
@@ -30927,9 +30927,9 @@ var require_core3 = __commonJS({
           this.validateSchema(schema, true);
         return sch;
       }
-      _checkUnique(id9) {
-        if (this.schemas[id9] || this.refs[id9]) {
-          throw new Error(`schema with key or id "${id9}" already exists`);
+      _checkUnique(id11) {
+        if (this.schemas[id11] || this.refs[id11]) {
+          throw new Error(`schema with key or id "${id11}" already exists`);
         }
       }
       _compileSchemaEnv(sch) {
@@ -30955,10 +30955,10 @@ var require_core3 = __commonJS({
     Ajv.MissingRefError = ref_error_1.default;
     exports2.default = Ajv;
     function checkOptions(checkOpts, options, msg, log = "error") {
-      for (const key4 in checkOpts) {
-        const opt = key4;
+      for (const key5 in checkOpts) {
+        const opt = key5;
         if (opt in options)
-          this.logger[log](`${msg}: option ${key4}. ${checkOpts[opt]}`);
+          this.logger[log](`${msg}: option ${key5}. ${checkOpts[opt]}`);
       }
     }
     function getSchEnv(keyRef) {
@@ -30972,8 +30972,8 @@ var require_core3 = __commonJS({
       if (Array.isArray(optsSchemas))
         this.addSchema(optsSchemas);
       else
-        for (const key4 in optsSchemas)
-          this.addSchema(optsSchemas[key4], key4);
+        for (const key5 in optsSchemas)
+          this.addSchema(optsSchemas[key5], key5);
     }
     function addInitialFormats() {
       for (const name2 in this.opts.formats) {
@@ -32021,11 +32021,11 @@ var require_dependencies = __commonJS({
     function splitDependencies({ schema }) {
       const propertyDeps = {};
       const schemaDeps = {};
-      for (const key4 in schema) {
-        if (key4 === "__proto__")
+      for (const key5 in schema) {
+        if (key5 === "__proto__")
           continue;
-        const deps = Array.isArray(schema[key4]) ? propertyDeps : schemaDeps;
-        deps[key4] = schema[key4];
+        const deps = Array.isArray(schema[key5]) ? propertyDeps : schemaDeps;
+        deps[key5] = schema[key5];
       }
       return [propertyDeps, schemaDeps];
     }
@@ -32102,13 +32102,13 @@ var require_propertyNames = __commonJS({
         if ((0, util_1.alwaysValidSchema)(it, schema))
           return;
         const valid = gen.name("valid");
-        gen.forIn("key", data, (key4) => {
-          cxt.setParams({ propertyName: key4 });
+        gen.forIn("key", data, (key5) => {
+          cxt.setParams({ propertyName: key5 });
           cxt.subschema({
             keyword: "propertyNames",
-            data: key4,
+            data: key5,
             dataTypes: ["string"],
-            propertyName: key4,
+            propertyName: key5,
             compositeRule: true
           }, valid);
           gen.if((0, codegen_1.not)(valid), () => {
@@ -32157,38 +32157,38 @@ var require_additionalProperties = __commonJS({
         checkAdditionalProperties();
         cxt.ok((0, codegen_1._)`${errsCount} === ${names_1.default.errors}`);
         function checkAdditionalProperties() {
-          gen.forIn("key", data, (key4) => {
+          gen.forIn("key", data, (key5) => {
             if (!props.length && !patProps.length)
-              additionalPropertyCode(key4);
+              additionalPropertyCode(key5);
             else
-              gen.if(isAdditional(key4), () => additionalPropertyCode(key4));
+              gen.if(isAdditional(key5), () => additionalPropertyCode(key5));
           });
         }
-        function isAdditional(key4) {
+        function isAdditional(key5) {
           let definedProp;
           if (props.length > 8) {
             const propsSchema = (0, util_1.schemaRefOrVal)(it, parentSchema.properties, "properties");
-            definedProp = (0, code_1.isOwnProperty)(gen, propsSchema, key4);
+            definedProp = (0, code_1.isOwnProperty)(gen, propsSchema, key5);
           } else if (props.length) {
-            definedProp = (0, codegen_1.or)(...props.map((p) => (0, codegen_1._)`${key4} === ${p}`));
+            definedProp = (0, codegen_1.or)(...props.map((p) => (0, codegen_1._)`${key5} === ${p}`));
           } else {
             definedProp = codegen_1.nil;
           }
           if (patProps.length) {
-            definedProp = (0, codegen_1.or)(definedProp, ...patProps.map((p) => (0, codegen_1._)`${(0, code_1.usePattern)(cxt, p)}.test(${key4})`));
+            definedProp = (0, codegen_1.or)(definedProp, ...patProps.map((p) => (0, codegen_1._)`${(0, code_1.usePattern)(cxt, p)}.test(${key5})`));
           }
           return (0, codegen_1.not)(definedProp);
         }
-        function deleteAdditional(key4) {
-          gen.code((0, codegen_1._)`delete ${data}[${key4}]`);
+        function deleteAdditional(key5) {
+          gen.code((0, codegen_1._)`delete ${data}[${key5}]`);
         }
-        function additionalPropertyCode(key4) {
+        function additionalPropertyCode(key5) {
           if (opts.removeAdditional === "all" || opts.removeAdditional && schema === false) {
-            deleteAdditional(key4);
+            deleteAdditional(key5);
             return;
           }
           if (schema === false) {
-            cxt.setParams({ additionalProperty: key4 });
+            cxt.setParams({ additionalProperty: key5 });
             cxt.error();
             if (!allErrors)
               gen.break();
@@ -32197,22 +32197,22 @@ var require_additionalProperties = __commonJS({
           if (typeof schema == "object" && !(0, util_1.alwaysValidSchema)(it, schema)) {
             const valid = gen.name("valid");
             if (opts.removeAdditional === "failing") {
-              applyAdditionalSchema(key4, valid, false);
+              applyAdditionalSchema(key5, valid, false);
               gen.if((0, codegen_1.not)(valid), () => {
                 cxt.reset();
-                deleteAdditional(key4);
+                deleteAdditional(key5);
               });
             } else {
-              applyAdditionalSchema(key4, valid);
+              applyAdditionalSchema(key5, valid);
               if (!allErrors)
                 gen.if((0, codegen_1.not)(valid), () => gen.break());
             }
           }
         }
-        function applyAdditionalSchema(key4, valid, errors) {
+        function applyAdditionalSchema(key5, valid, errors) {
           const subschema = {
             keyword: "additionalProperties",
-            dataProp: key4,
+            dataProp: key5,
             dataPropType: util_1.Type.Str
           };
           if (errors === false) {
@@ -32337,19 +32337,19 @@ var require_patternProperties = __commonJS({
           }
         }
         function validateProperties(pat) {
-          gen.forIn("key", data, (key4) => {
-            gen.if((0, codegen_1._)`${(0, code_1.usePattern)(cxt, pat)}.test(${key4})`, () => {
+          gen.forIn("key", data, (key5) => {
+            gen.if((0, codegen_1._)`${(0, code_1.usePattern)(cxt, pat)}.test(${key5})`, () => {
               const alwaysValid = alwaysValidPatterns.includes(pat);
               if (!alwaysValid) {
                 cxt.subschema({
                   keyword: "patternProperties",
                   schemaProp: pat,
-                  dataProp: key4,
+                  dataProp: key5,
                   dataPropType: util_2.Type.Str
                 }, valid);
               }
               if (it.opts.unevaluated && props !== true) {
-                gen.assign((0, codegen_1._)`${props}[${key4}]`, true);
+                gen.assign((0, codegen_1._)`${props}[${key5}]`, true);
               } else if (!alwaysValid && !it.allErrors) {
                 gen.if((0, codegen_1.not)(valid), () => gen.break());
               }
@@ -33219,7 +33219,7 @@ var require_formats = __commonJS({
     }
     var TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
     function getTime(strictTimeZone) {
-      return function time6(str2) {
+      return function time7(str2) {
         const matches = TIME.exec(str2);
         if (!matches)
           return false;
@@ -33265,10 +33265,10 @@ var require_formats = __commonJS({
     }
     var DATE_TIME_SEPARATOR = /t|\s/i;
     function getDateTime(strictTimeZone) {
-      const time6 = getTime(strictTimeZone);
+      const time7 = getTime(strictTimeZone);
       return function date_time(str2) {
         const dateTime = str2.split(DATE_TIME_SEPARATOR);
-        return dateTime.length === 2 && date(dateTime[0]) && time6(dateTime[1]);
+        return dateTime.length === 2 && date(dateTime[0]) && time7(dateTime[1]);
       };
     }
     function compareDateTime(dt1, dt2) {
@@ -33612,7 +33612,7 @@ var require_server = __commonJS({
           if (hasPreviousToolUse) {
             const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
             const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
-            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id9) => toolResultIds.has(id9))) {
+            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id11) => toolResultIds.has(id11))) {
               throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
             }
           }
@@ -33855,8 +33855,8 @@ var require_server2 = __commonJS({
        * Override request handler registration to enforce server-side validation for tools/call.
        */
       setRequestHandler(requestSchema, handler) {
-        const shape7 = (0, zod_compat_js_1.getObjectShape)(requestSchema);
-        const methodSchema = shape7?.method;
+        const shape8 = (0, zod_compat_js_1.getObjectShape)(requestSchema);
+        const methodSchema = shape8?.method;
         if (!methodSchema) {
           throw new Error("Schema is missing a method literal");
         }
@@ -34068,7 +34068,7 @@ var require_server2 = __commonJS({
           if (hasPreviousToolUse) {
             const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
             const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
-            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id9) => toolResultIds.has(id9))) {
+            if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id11) => toolResultIds.has(id11))) {
               throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
             }
           }
@@ -34651,8 +34651,8 @@ var require_mcp = __commonJS({
               title: tool.title,
               description: tool.description,
               inputSchema: (() => {
-                const obj4 = (0, zod_compat_js_1.normalizeObjectSchema)(tool.inputSchema);
-                return obj4 ? (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj4, {
+                const obj5 = (0, zod_compat_js_1.normalizeObjectSchema)(tool.inputSchema);
+                return obj5 ? (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj5, {
                   strictUnions: true,
                   pipeStrategy: "input"
                 }) : EMPTY_OBJECT_JSON_SCHEMA;
@@ -34662,9 +34662,9 @@ var require_mcp = __commonJS({
               _meta: tool._meta
             };
             if (tool.outputSchema) {
-              const obj4 = (0, zod_compat_js_1.normalizeObjectSchema)(tool.outputSchema);
-              if (obj4) {
-                toolDefinition.outputSchema = (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj4, {
+              const obj5 = (0, zod_compat_js_1.normalizeObjectSchema)(tool.outputSchema);
+              if (obj5) {
+                toolDefinition.outputSchema = (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj5, {
                   strictUnions: true,
                   pipeStrategy: "output"
                 });
@@ -35340,20 +35340,20 @@ var require_mcp = __commonJS({
     function isZodTypeLike(value) {
       return value !== null && typeof value === "object" && "parse" in value && typeof value.parse === "function" && "safeParse" in value && typeof value.safeParse === "function";
     }
-    function isZodSchemaInstance(obj4) {
-      return "_def" in obj4 || "_zod" in obj4 || isZodTypeLike(obj4);
+    function isZodSchemaInstance(obj5) {
+      return "_def" in obj5 || "_zod" in obj5 || isZodTypeLike(obj5);
     }
-    function isZodRawShapeCompat(obj4) {
-      if (typeof obj4 !== "object" || obj4 === null) {
+    function isZodRawShapeCompat(obj5) {
+      if (typeof obj5 !== "object" || obj5 === null) {
         return false;
       }
-      if (isZodSchemaInstance(obj4)) {
+      if (isZodSchemaInstance(obj5)) {
         return false;
       }
-      if (Object.keys(obj4).length === 0) {
+      if (Object.keys(obj5).length === 0) {
         return true;
       }
-      return Object.values(obj4).some(isZodTypeLike);
+      return Object.values(obj5).some(isZodTypeLike);
     }
     function getZodSchemaObject(schema) {
       if (!schema) {
@@ -35368,10 +35368,10 @@ var require_mcp = __commonJS({
       return schema;
     }
     function promptArgumentsFromSchema(schema) {
-      const shape7 = (0, zod_compat_js_1.getObjectShape)(schema);
-      if (!shape7)
+      const shape8 = (0, zod_compat_js_1.getObjectShape)(schema);
+      if (!shape8)
         return [];
-      return Object.entries(shape7).map(([name2, field]) => {
+      return Object.entries(shape8).map(([name2, field]) => {
         const description = (0, zod_compat_js_1.getSchemaDescription)(field);
         const isOptional = (0, zod_compat_js_1.isSchemaOptional)(field);
         return {
@@ -35382,8 +35382,8 @@ var require_mcp = __commonJS({
       });
     }
     function getMethodValue(schema) {
-      const shape7 = (0, zod_compat_js_1.getObjectShape)(schema);
-      const methodSchema = shape7?.method;
+      const shape8 = (0, zod_compat_js_1.getObjectShape)(schema);
+      const methodSchema = shape8?.method;
       if (!methodSchema) {
         throw new Error("Schema is missing a method literal");
       }
@@ -35435,11 +35435,21 @@ __export(index_exports, {
   REPOSITORY_GUIDED_WORKFLOW: () => REPOSITORY_GUIDED_WORKFLOW,
   REPOSITORY_PREVIEW_MAX_BYTES: () => REPOSITORY_PREVIEW_MAX_BYTES,
   REPOSITORY_PREVIEW_MAX_FILES: () => REPOSITORY_PREVIEW_MAX_FILES,
+  REPOSITORY_RECOVERY_CODES: () => REPOSITORY_RECOVERY_CODES,
   REPOSITORY_SETUP_ACTIONS: () => REPOSITORY_SETUP_ACTIONS,
   REPOSITORY_SETUP_TTL: () => REPOSITORY_SETUP_TTL,
+  REPOSITORY_TRIAL_ACTIONS: () => REPOSITORY_TRIAL_ACTIONS,
   ReceiptPropagator: () => ReceiptPropagator,
   RepositoryCodingRunner: () => RepositoryCodingRunner,
+  RepositoryTrialRunner: () => RepositoryTrialRunner,
   ScopeBlindBridge: () => ScopeBlindBridge,
+  TRIAL_CODING_CHECK: () => TRIAL_CODING_CHECK,
+  TRIAL_DOCKER_IMAGE: () => TRIAL_DOCKER_IMAGE,
+  TRIAL_LIMITS: () => TRIAL_LIMITS,
+  TRIAL_REPOSITORY: () => TRIAL_REPOSITORY,
+  TRIAL_SOURCE_CHECK: () => TRIAL_SOURCE_CHECK,
+  TRIAL_TEMPLATE: () => TRIAL_TEMPLATE,
+  TRIAL_WORKFLOW: () => TRIAL_WORKFLOW,
   anchorToRekor: () => anchorToRekor,
   approvePolicyProposalWithDirectSignature: () => approvePolicyProposalWithDirectSignature,
   approvePolicyProposalWithWebAuthn: () => approvePolicyProposalWithWebAuthn,
@@ -35557,6 +35567,9 @@ __export(index_exports, {
   toEgressSummary: () => toEgressSummary,
   toManifoldFormat: () => toManifoldFormat,
   toMetaculusFormat: () => toMetaculusFormat,
+  trialBase: () => trialBase,
+  trialCodingConfig: () => trialCodingConfig,
+  trialSource: () => trialSource,
   validRepositoryCodingConnectionConfig: () => validRepositoryCodingConnectionConfig,
   validRepositoryCodingMandate: () => validRepositoryCodingMandate,
   validRepositoryCodingPlan: () => validRepositoryCodingPlan,
@@ -35569,10 +35582,14 @@ __export(index_exports, {
   validRepositoryDeviceConfirmation: () => validRepositoryDeviceConfirmation,
   validRepositoryDeviceLink: () => validRepositoryDeviceLink,
   validRepositoryHumanEnvelope: () => validRepositoryHumanEnvelope,
+  validRepositoryRecoveryObservation: () => validRepositoryRecoveryObservation,
   validRepositorySetupAuthorization: () => validRepositorySetupAuthorization,
   validRepositorySetupInspection: () => validRepositorySetupInspection,
   validRepositorySetupRenewal: () => validRepositorySetupRenewal,
   validRepositorySetupRequest: () => validRepositorySetupRequest,
+  validRepositoryTrialProvision: () => validRepositoryTrialProvision,
+  validRepositoryTrialRequest: () => validRepositoryTrialRequest,
+  validTrialReadiness: () => validTrialReadiness,
   validateCoordinationConfig: () => validateCoordinationConfig,
   validateCoordinationPayment: () => validateCoordinationPayment,
   validateCredentials: () => validateCredentials,
@@ -35599,10 +35616,13 @@ __export(index_exports, {
   verifyRepositoryDeviceAuthorization: () => verifyRepositoryDeviceAuthorization,
   verifyRepositoryEvidence: () => verifyRepositoryEvidence,
   verifyRepositoryHuman: () => verifyRepositoryHuman,
+  verifyRepositoryRecoveryObservation: () => verifyRepositoryRecoveryObservation,
   verifyRepositoryReviewEvidence: () => verifyRepositoryReviewEvidence,
   verifyRepositorySetupEnrollment: () => verifyRepositorySetupEnrollment,
   verifyRepositorySetupReplacement: () => verifyRepositorySetupReplacement,
   verifyRepositorySetupState: () => verifyRepositorySetupState,
+  verifyRepositoryTrialConnection: () => verifyRepositoryTrialConnection,
+  verifyRepositoryTrialState: () => verifyRepositoryTrialState,
   verifyRepositoryWorkspaceAgentState: () => verifyRepositoryWorkspaceAgentState,
   verifyRepositoryWorkspaceState: () => verifyRepositoryWorkspaceState,
   verifySelectiveDisclosurePackage: () => verifySelectiveDisclosurePackage,
@@ -35630,9 +35650,9 @@ function invoiceMatchesPurchaseOrder(invoice, fixtures) {
 function bytesToHex(bytes) {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
-function hexToBytes(hex5) {
-  if (!/^(?:[0-9a-f]{2})+$/i.test(hex5)) throw new Error("Invalid hexadecimal data");
-  return Uint8Array.from(hex5.match(/../g).map((x) => parseInt(x, 16)));
+function hexToBytes(hex6) {
+  if (!/^(?:[0-9a-f]{2})+$/i.test(hex6)) throw new Error("Invalid hexadecimal data");
+  return Uint8Array.from(hex6.match(/../g).map((x) => parseInt(x, 16)));
 }
 function validUnicode(value) {
   for (let i = 0; i < value.length; i++) {
@@ -35661,8 +35681,8 @@ function canonical(value) {
   }
   if (typeof value === "object") {
     if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new Error("Expected a plain JSON object");
-    const object7 = value;
-    return "{" + Object.keys(object7).sort().map((k) => canonical(k) + ":" + canonical(object7[k])).join(",") + "}";
+    const object8 = value;
+    return "{" + Object.keys(object8).sort().map((k) => canonical(k) + ":" + canonical(object8[k])).join(",") + "}";
   }
   throw new Error("Not a JSON value");
 }
@@ -35695,8 +35715,8 @@ async function verify(envelope2, expectedSigner) {
     if (expectedSigner && expectedSigner !== envelope2.signer) return false;
     const preimage = COORDINATION_DOMAIN + canonical(envelope2.payload);
     if (await sha256(preimage) !== envelope2.digest) return false;
-    const key4 = await crypto.subtle.importKey("raw", hexToBytes(envelope2.signer), { name: "Ed25519" }, false, ["verify"]);
-    return await crypto.subtle.verify("Ed25519", key4, hexToBytes(envelope2.signature), new TextEncoder().encode(preimage));
+    const key5 = await crypto.subtle.importKey("raw", hexToBytes(envelope2.signer), { name: "Ed25519" }, false, ["verify"]);
+    return await crypto.subtle.verify("Ed25519", key5, hexToBytes(envelope2.signature), new TextEncoder().encode(preimage));
   } catch {
     return false;
   }
@@ -35706,20 +35726,20 @@ function makeRequest(action, room_id, body) {
 }
 
 // src/acta-envelope.ts
-function canonicalize(obj4) {
-  if (Array.isArray(obj4)) return "[" + Array.from(obj4, canonicalize).join(",") + "]";
-  if (obj4 !== null && typeof obj4 === "object") {
-    if (Object.getPrototypeOf(obj4) !== Object.prototype && Object.getPrototypeOf(obj4) !== null) throw new Error("Expected a plain JSON object");
-    const record = obj4;
-    return "{" + Object.keys(record).sort().map((key4) => {
-      if (!/^[\x20-\x7E]*$/.test(key4)) throw new Error(`Non-ASCII key "${key4}" in receipt payload. Only ASCII keys are permitted.`);
-      return JSON.stringify(key4) + ":" + canonicalize(record[key4]);
+function canonicalize(obj5) {
+  if (Array.isArray(obj5)) return "[" + Array.from(obj5, canonicalize).join(",") + "]";
+  if (obj5 !== null && typeof obj5 === "object") {
+    if (Object.getPrototypeOf(obj5) !== Object.prototype && Object.getPrototypeOf(obj5) !== null) throw new Error("Expected a plain JSON object");
+    const record = obj5;
+    return "{" + Object.keys(record).sort().map((key5) => {
+      if (!/^[\x20-\x7E]*$/.test(key5)) throw new Error(`Non-ASCII key "${key5}" in receipt payload. Only ASCII keys are permitted.`);
+      return JSON.stringify(key5) + ":" + canonicalize(record[key5]);
     }).join(",") + "}";
   }
-  return canonical(obj4);
+  return canonical(obj5);
 }
-function legacyCanonicalize(obj4) {
-  return JSON.stringify(obj4, (_key, value) => {
+function legacyCanonicalize(obj5) {
+  return JSON.stringify(obj5, (_key, value) => {
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const sorted = {};
       for (const k of Object.keys(value).sort()) {
@@ -35738,10 +35758,10 @@ function hasLegacyUnsafeKey(value) {
   if (Object.prototype.hasOwnProperty.call(value, "__proto__")) return true;
   return Object.values(value).some(hasLegacyUnsafeKey);
 }
-function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape7, allowLegacy) {
+function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape8, allowLegacy) {
   const jcs2 = canonicalize(payload);
   if (import_ed25519.ed25519.verify((0, import_utils.hexToBytes)(signature), (0, import_utils.utf8ToBytes)(jcs2), (0, import_utils.hexToBytes)(publicKeyHex))) {
-    return { valid: true, shape: shape7, hash: receiptHash(envelope2), canonicalization: "jcs" };
+    return { valid: true, shape: shape8, hash: receiptHash(envelope2), canonicalization: "jcs" };
   }
   if (!hasLegacyUnsafeKey(envelope2)) {
     const legacy = legacyCanonicalize(payload);
@@ -35749,7 +35769,7 @@ function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape7, all
       const legacyHash = (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(legacyCanonicalize(envelope2))));
       return {
         valid: allowLegacy,
-        shape: shape7,
+        shape: shape8,
         canonicalization: "legacy-numeric-key-order",
         legacy_signature_valid: true,
         legacy_hash: legacyHash,
@@ -35758,10 +35778,10 @@ function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape7, all
       };
     }
   }
-  return { valid: false, shape: shape7, error: "invalid_signature" };
+  return { valid: false, shape: shape8, error: "invalid_signature" };
 }
-function receiptHash(obj4) {
-  return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj4))));
+function receiptHash(obj5) {
+  return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj5))));
 }
 function chainLink(receipt) {
   return "sha256:" + receiptHash(receipt);
@@ -35815,8 +35835,8 @@ function verifyReceipt(envelope2, publicKeyHex, options = {}) {
     if (typeof signature === "string") {
       const rest = /* @__PURE__ */ Object.create(null);
       for (const k of Object.keys(env)) if (k !== "signature") rest[k] = env[k];
-      const shape7 = env.v === 2 ? "legacy-v2" : "legacy-v1";
-      return verifyEncoding(rest, env, signature, publicKeyHex, shape7, options.allowLegacyNumericKeys === true);
+      const shape8 = env.v === 2 ? "legacy-v2" : "legacy-v1";
+      return verifyEncoding(rest, env, signature, publicKeyHex, shape8, options.allowLegacyNumericKeys === true);
     }
     return { valid: false, shape: null, error: "missing_signature" };
   } catch (err) {
@@ -35933,16 +35953,16 @@ function parseRateLimit(spec) {
   };
   return { count, windowMs: windowMs[unit] };
 }
-function checkRateLimit(key4, limit, store) {
+function checkRateLimit(key5, limit, store) {
   const now = Date.now();
   const windowStart = now - limit.windowMs;
-  const timestamps = (store.get(key4) || []).filter((t) => t > windowStart);
+  const timestamps = (store.get(key5) || []).filter((t) => t > windowStart);
   if (timestamps.length >= limit.count) {
-    store.set(key4, timestamps);
+    store.set(key5, timestamps);
     return { allowed: false, remaining: 0 };
   }
   timestamps.push(now);
-  store.set(key4, timestamps);
+  store.set(key5, timestamps);
   return { allowed: true, remaining: limit.count - timestamps.length };
 }
 
@@ -35965,8 +35985,8 @@ var EvidenceStore = class {
   /**
    * Record a receipt observation for an agent.
    */
-  record(agentId, issuer, timestamp2) {
-    const ts = timestamp2 || (/* @__PURE__ */ new Date()).toISOString();
+  record(agentId, issuer, timestamp3) {
+    const ts = timestamp3 || (/* @__PURE__ */ new Date()).toISOString();
     const epochHour = Math.floor(new Date(ts).getTime() / (3600 * 1e3));
     const existing = this.agents.get(agentId);
     const observation = {
@@ -36019,8 +36039,8 @@ var EvidenceStore = class {
   save() {
     if (!this.dirty) return;
     const data = {};
-    for (const [id9, record] of this.agents) {
-      data[id9] = record;
+    for (const [id11, record] of this.agents) {
+      data[id11] = record;
     }
     try {
       (0, import_node_fs3.writeFileSync)(this.filePath, JSON.stringify({ v: 1, agents: data }, null, 2) + "\n");
@@ -36037,8 +36057,8 @@ var EvidenceStore = class {
       const raw = (0, import_node_fs3.readFileSync)(this.filePath, "utf-8");
       const parsed = JSON.parse(raw);
       if (parsed.agents && typeof parsed.agents === "object") {
-        for (const [id9, record] of Object.entries(parsed.agents)) {
-          this.agents.set(id9, record);
+        for (const [id11, record] of Object.entries(parsed.agents)) {
+          this.agents.set(id11, record);
         }
       }
     } catch {
@@ -36055,8 +36075,8 @@ var EvidenceStore = class {
    */
   allSummaries() {
     const result = [];
-    for (const [id9] of this.agents) {
-      result.push({ agent_id: id9, summary: this.getSummary(id9) });
+    for (const [id11] of this.agents) {
+      result.push({ agent_id: id11, summary: this.getSummary(id11) });
     }
     return result;
   }
@@ -36976,8 +36996,8 @@ function startStatusServer(config, receiptBuffer, approvalStore, approvalNonce) 
       } else if (path === "/receipts/latest") {
         handleReceiptLatest(res, receiptBuffer);
       } else if (path.startsWith("/receipts/")) {
-        const id9 = path.slice("/receipts/".length);
-        handleReceiptById(res, receiptBuffer, id9);
+        const id11 = path.slice("/receipts/".length);
+        handleReceiptById(res, receiptBuffer, id11);
       } else if (path === "/approve" && req.method === "POST") {
         handleApprove(req, res, approvalStore, approvalNonce);
       } else if (path === "/approvals" && req.method === "GET") {
@@ -37071,11 +37091,11 @@ function handleReceiptLatest(res, buffer) {
   res.writeHead(200);
   res.end(JSON.stringify(latest));
 }
-function handleReceiptById(res, buffer, id9) {
-  const receipt = buffer.getById(id9);
+function handleReceiptById(res, buffer, id11) {
+  const receipt = buffer.getById(id11);
   if (!receipt) {
     res.writeHead(404);
-    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id9 }));
+    res.end(JSON.stringify({ error: "receipt_not_found", request_id: id11 }));
     return;
   }
   res.writeHead(200);
@@ -37136,9 +37156,9 @@ function handleListApprovals(res, approvalStore) {
   }
   const now = Date.now();
   const grants = [];
-  for (const [key4, grant] of approvalStore) {
+  for (const [key5, grant] of approvalStore) {
     if (now < grant.expires_at) {
-      grants.push({ key: key4, tool: grant.tool, mode: grant.mode, expires_in_seconds: Math.round((grant.expires_at - now) / 1e3) });
+      grants.push({ key: key5, tool: grant.tool, mode: grant.mode, expires_in_seconds: Math.round((grant.expires_at - now) / 1e3) });
     }
   }
   res.writeHead(200);
@@ -37173,8 +37193,8 @@ var DESTINATION_KEYS = [
 function stableStringify(value) {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
-  const obj4 = value;
-  return `{${Object.keys(obj4).sort().map((key4) => `${JSON.stringify(key4)}:${stableStringify(obj4[key4])}`).join(",")}}`;
+  const obj5 = value;
+  return `{${Object.keys(obj5).sort().map((key5) => `${JSON.stringify(key5)}:${stableStringify(obj5[key5])}`).join(",")}}`;
 }
 function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   if (depth > 4) return "[truncated-depth]";
@@ -37188,20 +37208,20 @@ function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
     return value.slice(0, 20).map((item, idx) => redact(item, [...path, String(idx)], redacted, disclosed, depth + 1));
   }
   const out = {};
-  for (const [key4, child] of Object.entries(value)) {
-    const childPath = [...path, key4];
-    if (SECRET_KEY_RE.test(key4)) {
+  for (const [key5, child] of Object.entries(value)) {
+    const childPath = [...path, key5];
+    if (SECRET_KEY_RE.test(key5)) {
       redacted.push(childPath.join("."));
-      out[key4] = "[redacted]";
+      out[key5] = "[redacted]";
       continue;
     }
-    out[key4] = redact(child, childPath, redacted, disclosed, depth + 1);
+    out[key5] = redact(child, childPath, redacted, disclosed, depth + 1);
   }
   return out;
 }
 function firstStringValue(input, keys2) {
-  for (const key4 of keys2) {
-    const value = input[key4];
+  for (const key5 of keys2) {
+    const value = input[key5];
     if (typeof value === "string" && value.trim()) return value.trim();
     if (typeof value === "number" || typeof value === "boolean") return String(value);
   }
@@ -37771,8 +37791,8 @@ var ProtectGateway = class {
     if (rateSpec) {
       try {
         const limit = parseRateLimit(rateSpec);
-        const key4 = `tool:${toolName}:${this.currentTier}`;
-        const { allowed, remaining } = checkRateLimit(key4, limit, this.rateLimitStore);
+        const key5 = `tool:${toolName}:${this.currentTier}`;
+        const { allowed, remaining } = checkRateLimit(key5, limit, this.rateLimitStore);
         if (!allowed) {
           this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "rate_limit_exceeded", request_id: requestId, rate_limit_remaining: 0, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) {
@@ -37878,8 +37898,8 @@ var ProtectGateway = class {
       this.reporter.record(void 0, callLine);
     }
   }
-  makeErrorResponse(id9, code2, message) {
-    return { jsonrpc: "2.0", id: id9, error: { code: code2, message } };
+  makeErrorResponse(id11, code2, message) {
+    return { jsonrpc: "2.0", id: id11, error: { code: code2, message } };
   }
   sendToChild(message) {
     if (this.child?.stdin?.writable) this.child.stdin.write(message + "\n");
@@ -37976,22 +37996,22 @@ var ProtectGateway = class {
       }
     }
     return new Promise((resolve2, reject) => {
-      const id9 = jsonRpc.id;
-      if (id9 === void 0 || id9 === null) {
+      const id11 = jsonRpc.id;
+      if (id11 === void 0 || id11 === null) {
         const modified2 = this.injectParamsCredentials(jsonRpc);
         this.sendToChild(JSON.stringify(modified2));
         resolve2(JSON.stringify({ jsonrpc: "2.0", result: {}, id: null }));
         return;
       }
       const timeout = setTimeout(() => {
-        this.pendingResponses.delete(id9);
+        this.pendingResponses.delete(id11);
         resolve2(JSON.stringify({
           jsonrpc: "2.0",
           error: { code: -32e3, message: "Request timeout (30s)" },
-          id: id9
+          id: id11
         }));
       }, REQUEST_TIMEOUT_MS);
-      this.pendingResponses.set(id9, { resolve: resolve2, timeout });
+      this.pendingResponses.set(id11, { resolve: resolve2, timeout });
       const modified = this.injectParamsCredentials(jsonRpc);
       this.sendToChild(JSON.stringify(modified));
     });
@@ -38070,13 +38090,13 @@ async function humanPermission(value, context = {}) {
 }
 async function verifyHuman(value, expectedPrincipal, context = {}) {
   try {
-    if (!value || !object(value) || Object.keys(value).some((key5) => !["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"].includes(key5))) return false;
+    if (!value || !object(value) || Object.keys(value).some((key6) => !["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"].includes(key6))) return false;
     if (!value.authorization) return !value.authorization_signature && !value.authorization_use && await verify(value, expectedPrincipal);
     const authorization = value.authorization, g = authorization.payload;
     if (context.authorityKey !== void 0 && g.authority_key !== context.authorityKey) return false;
     if (!await verify(value) || !await verifyDeviceAuthorization(authorization) || g.principal_key !== expectedPrincipal || g.device_key !== value.signer || typeof value.authorization_signature !== "string" || !/^[0-9a-f]{128}$/.test(value.authorization_signature)) return false;
-    const key4 = await crypto.subtle.importKey("raw", hexToBytes(value.signer), { name: "Ed25519" }, false, ["verify"]);
-    if (!await crypto.subtle.verify("Ed25519", key4, hexToBytes(value.authorization_signature), new TextEncoder().encode(deviceAuthorizationPreimage(value.digest, authorization.digest)))) return false;
+    const key5 = await crypto.subtle.importKey("raw", hexToBytes(value.signer), { name: "Ed25519" }, false, ["verify"]);
+    if (!await crypto.subtle.verify("Ed25519", key5, hexToBytes(value.authorization_signature), new TextEncoder().encode(deviceAuthorizationPreimage(value.digest, authorization.digest)))) return false;
     const permission = await humanPermission(value, context);
     if (!permission || !g.actions.includes(permission.action) || time(permission.at) < time(g.issued_at) - 3e5 || time(permission.at) >= time(g.expires_at)) return false;
     const p = value.payload;
@@ -38118,7 +38138,7 @@ function parseRepairProposal(value, budget) {
 }
 function defaultRehearsalCases(fixtures) {
   const invoice = fixtures.invoices.find((i) => !i.duplicate_of);
-  const make = (id9, title, kind, requirement) => ({ id: `required-${id9}`, title, kind, invoice_id: invoice.invoice_id, expected: "invariant", requirement, required: true });
+  const make = (id11, title, kind, requirement) => ({ id: `required-${id11}`, title, kind, invoice_id: invoice.invoice_id, expected: "invariant", requirement, required: true });
   return [
     make("valid", "A legitimate payment can complete", "approved_invoice", "An exact, authorized invoice can be paid once. Required review must not prevent approved work from completing."),
     make("duplicate", "Submit the same invoice twice", "duplicate_invoice", "A second operation for an already-paid invoice must not create another payment."),
@@ -38229,8 +38249,8 @@ var exact2 = (v, required, optional = []) => !!v && typeof v === "object" && !Ar
 var same = (a, b) => canonical(a) === canonical(b);
 var keys = (s) => s.split(" ");
 var text = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max;
-async function signed(v, key4) {
-  return exact2(v, keys("payload signer digest signature")) && HEX.test(key4) && await verify(v, key4);
+async function signed(v, key5) {
+  return exact2(v, keys("payload signer digest signature")) && HEX.test(key5) && await verify(v, key5);
 }
 function boundedAgreement(a) {
   return exact2(a, keys("type id version title owner_key registrar_key currency budget_minor approval_above_minor approval_ttl_seconds allowed_destinations issued_at"), keys("mode brief preferences assumptions require_po_match")) && a.type === "scopeblind.coordination.agreement.v1" && id2(a.id) && a.version === 1 && text(a.title, 200) && HEX.test(a.owner_key) && HEX.test(a.registrar_key) && a.currency === "USD" && integer(a.budget_minor, 1, 1e7) && integer(a.approval_above_minor, 0, a.budget_minor) && integer(a.approval_ttl_seconds, 30, 900) && Number.isFinite(time2(a.issued_at)) && Array.isArray(a.allowed_destinations) && a.allowed_destinations.length > 0 && a.allowed_destinations.length <= 100 && new Set(a.allowed_destinations).size === a.allowed_destinations.length && a.allowed_destinations.every((d) => text(d, 500)) && (a.mode === void 0 || ["guided", "live"].includes(a.mode)) && (a.require_po_match === void 0 || typeof a.require_po_match === "boolean") && (a.brief === void 0 || typeof a.brief === "string" && a.brief.length <= 1e4) && [a.preferences, a.assumptions].every((v) => v === void 0 || Array.isArray(v) && v.length <= 100 && v.every((t) => typeof t === "string" && t.length <= 2e3));
@@ -38296,7 +38316,7 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
     const authority = authorityKey ?? a.registrar_key;
     add("Owner signed the bounded source agreement and exact fixture snapshot", boundedAgreement(a) && boundedFixtures(e.fixtures) && await verifyOwnerAgreement(e.agreement, e.source_negotiation, depth + 1) && a.registrar_key === authority);
     add("Named authority signed a bounded session tied to this source", await signed(e.session, authority) && exact2(s, keys("type id room_id agreement_digest fixture_digest owner_key registrar_key invitation_digest created_at expires_at max_proposals"), ["parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]) && s.type === "scopeblind.coordination.negotiation-session.v1" && id2(s.id) && s.room_id === a.id && s.agreement_digest === e.agreement.digest && s.fixture_digest === await negotiationDigest(e.fixtures) && (s.parent_session_id === void 0 || id2(s.parent_session_id) && s.parent_session_id !== s.id) && s.parent_session_id === i.parent_session_id && s.source_operation_id === i.source_operation_id && (s.source_operation_id === void 0 ? s.source_invoice_id === void 0 && s.source_operation_digest === void 0 : id2(s.source_operation_id) && text(s.source_invoice_id, 60) && HEX.test(s.source_operation_digest ?? "") && e.fixtures.invoices.some((v) => !v.duplicate_of && v.invoice_id === s.source_invoice_id)) && s.owner_key === a.owner_key && s.registrar_key === authority && s.invitation_digest === e.invitation.digest && s.max_proposals === 3 && time2(s.created_at) >= time2(a.issued_at) - 3e5 && time2(s.expires_at) > time2(s.created_at) && time2(s.expires_at) <= time2(s.created_at) + 864e5);
-    const during = (at8) => time2(at8) >= time2(s.created_at) - 3e5 && time2(at8) < time2(s.expires_at);
+    const during = (at9) => time2(at9) >= time2(s.created_at) - 3e5 && time2(at9) < time2(s.expires_at);
     add("Owner invited one counterparty for this exact session", await signed(e.invitation, a.owner_key) && exact2(i, keys("type session_id room_id agreement_digest fixture_digest issuer registrar_key role token_hash max_claims expires_at"), ["parent_session_id", "source_operation_id"]) && i.type === "scopeblind.coordination.negotiation-invitation.v1" && i.session_id === s.id && i.room_id === a.id && i.agreement_digest === e.agreement.digest && i.fixture_digest === s.fixture_digest && i.issuer === a.owner_key && i.registrar_key === authority && i.role === "counterparty" && i.max_claims === 1 && HEX.test(i.token_hash) && i.expires_at === s.expires_at);
     const claim = b.claim.payload, partner = b.guest_key, principals = [a.owner_key, partner];
     add("Distinct counterparty signed its claim and the authority bound that claim", await signed(e.binding, authority) && await signed(b.claim, partner) && exact2(b, keys("type session_id room_id invitation_digest guest_key name issued_at expires_at claim")) && b.type === "scopeblind.coordination.negotiation-binding.v1" && b.session_id === s.id && b.room_id === a.id && b.invitation_digest === e.invitation.digest && HEX.test(partner) && partner !== a.owner_key && during(b.issued_at) && b.expires_at === s.expires_at && exact2(claim, keys("type session_id room_id guest_key name issued_at nonce")) && claim.type === "scopeblind.coordination.negotiation-claim.v1" && claim.session_id === s.id && claim.room_id === a.id && claim.guest_key === partner && text(claim.name, 60) && claim.name === b.name && id2(claim.nonce) && Math.abs(time2(claim.issued_at) - time2(b.issued_at)) <= 3e5);
@@ -38306,9 +38326,9 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
       const m = e.mandates[n].payload;
       add(`Principal ${n + 1} signed bounded negotiation-only authority`, await verifyHuman(e.mandates[n], principals[n], { requireRecordedUse: true, authorityKey: authority }) && exact2(m, keys("type session_id room_id principal_key version agreement_digest fixture_digest min_threshold_minor max_threshold_minor required_invoices private_brief_commitment agent_mode actions issued_at expires_at"), ["min_budget_minor", "max_budget_minor"]) && m.type === "scopeblind.coordination.negotiation-mandate.v1" && m.session_id === s.id && m.room_id === a.id && m.principal_key === principals[n] && m.agreement_digest === e.agreement.digest && m.fixture_digest === s.fixture_digest && integer(m.version, 1, 1e6) && (m.min_budget_minor === void 0 && m.max_budget_minor === void 0 || integer(m.min_budget_minor, 1, 1e7) && integer(m.max_budget_minor, m.min_budget_minor, 1e7)) && integer(m.min_threshold_minor, 0, mandateBudget(m, a.budget_minor).max) && integer(m.max_threshold_minor, m.min_threshold_minor, mandateBudget(m, a.budget_minor).max) && Array.isArray(m.required_invoices) && m.required_invoices.length <= 2 && new Set(m.required_invoices.map((r2) => r2.invoice_id)).size === m.required_invoices.length && m.required_invoices.every((r2) => exact2(r2, keys("invoice_id expected")) && ["allow", "ask"].includes(r2.expected) && e.fixtures.invoices.some((v) => v.invoice_id === r2.invoice_id && !v.duplicate_of)) && (s.source_invoice_id === void 0 || m.required_invoices.some((r2) => r2.invoice_id === s.source_invoice_id)) && HEX.test(m.private_brief_commitment) && ["hosted", "own", "manual"].includes(m.agent_mode) && same(m.actions, NEGOTIATION_AGENT_ACTIONS) && during(m.issued_at) && time2(m.expires_at) > time2(m.issued_at) && time2(m.expires_at) <= time2(s.expires_at));
     }
-    const validAt = (principal, at8) => {
+    const validAt = (principal, at9) => {
       const m = e.mandates.find((m2) => m2.payload.principal_key === principal)?.payload;
-      return !!m && during(at8) && time2(at8) >= time2(m.issued_at) - 3e5 && time2(at8) < time2(m.expires_at);
+      return !!m && during(at9) && time2(at9) >= time2(m.issued_at) - 3e5 && time2(at9) < time2(m.expires_at);
     };
     const agentBindings = e.agent_bindings ?? [];
     add("Installed agent bindings are bounded and independently scoped per principal", Array.isArray(agentBindings) && agentBindings.length <= 12 && new Set(agentBindings.map((v) => v.payload.pair_id)).size === agentBindings.length);
@@ -38336,7 +38356,7 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
       add("Authority recorded an exactly scoped principal recommendation", await signed(response, authority) && exact2(r2, keys("type session_id principal_key proposal_digest mandate_digest decision agent_mode issued_at"), ["agent_key"]) && r2.type === "scopeblind.coordination.negotiation-response.v1" && r2.session_id === s.id && !!p2 && !!mine && r2.mandate_digest === mine.digest && ["support", "no_agreement"].includes(r2.decision) && actorBound(r2) && time2(r2.issued_at) >= time2(p2.payload.issued_at) && (r2.decision !== "support" || negotiationPlanWithinMandate(mine.payload, p2.payload.approval_above_minor, p2.payload.budget_minor ?? a.budget_minor, a.budget_minor)));
     }
     const r = e.report.payload, selected = e.proposals.find((p2) => p2.digest === r.proposal_digest), p = selected.payload;
-    add("Named authority signed the exact comparison and full union of required cases", await signed(e.report, authority) && exact2(r, keys("type session_id room_id proposal_digest agreement_digest fixture_digest mandate_digests cases_digest runtime_revision adapter isolation issued_at before_approval_above_minor after_approval_above_minor results required_passed expectations_met mandates_met"), ["before_budget_minor", "after_budget_minor"]) && r.type === "scopeblind.coordination.negotiation-report.v1" && r.session_id === s.id && r.room_id === a.id && !!selected && r.agreement_digest === e.agreement.digest && r.fixture_digest === s.fixture_digest && same(r.mandate_digests, mandateDigests) && r.adapter === "coordination-d1-sandbox" && r.isolation === "separate-fixture-ledgers" && typeof r.runtime_revision === "string" && (r.runtime_revision === "development-unbound" || /^scopeblind\.invoice-rehearsal\.v1:[0-9a-f]{64}$/.test(r.runtime_revision)) && time2(r.issued_at) >= time2(p.issued_at) && principals.every((key4) => validAt(key4, r.issued_at)) && (p.budget_minor === void 0 ? r.before_budget_minor === void 0 && r.after_budget_minor === void 0 : r.before_budget_minor === a.budget_minor && r.after_budget_minor === p.budget_minor) && r.before_approval_above_minor === a.approval_above_minor && r.after_approval_above_minor === p.approval_above_minor && Array.isArray(r.results) && r.results.length <= 110 && r.results.every((x) => exact2(x, keys("case before after"))) && same(r.results.map((x) => x.case), mandateCases(e.mandates, e.fixtures)) && r.cases_digest === await negotiationDigest(mandateCases(e.mandates, e.fixtures)));
+    add("Named authority signed the exact comparison and full union of required cases", await signed(e.report, authority) && exact2(r, keys("type session_id room_id proposal_digest agreement_digest fixture_digest mandate_digests cases_digest runtime_revision adapter isolation issued_at before_approval_above_minor after_approval_above_minor results required_passed expectations_met mandates_met"), ["before_budget_minor", "after_budget_minor"]) && r.type === "scopeblind.coordination.negotiation-report.v1" && r.session_id === s.id && r.room_id === a.id && !!selected && r.agreement_digest === e.agreement.digest && r.fixture_digest === s.fixture_digest && same(r.mandate_digests, mandateDigests) && r.adapter === "coordination-d1-sandbox" && r.isolation === "separate-fixture-ledgers" && typeof r.runtime_revision === "string" && (r.runtime_revision === "development-unbound" || /^scopeblind\.invoice-rehearsal\.v1:[0-9a-f]{64}$/.test(r.runtime_revision)) && time2(r.issued_at) >= time2(p.issued_at) && principals.every((key5) => validAt(key5, r.issued_at)) && (p.budget_minor === void 0 ? r.before_budget_minor === void 0 && r.after_budget_minor === void 0 : r.before_budget_minor === a.budget_minor && r.after_budget_minor === p.budget_minor) && r.before_approval_above_minor === a.approval_above_minor && r.after_approval_above_minor === p.approval_above_minor && Array.isArray(r.results) && r.results.length <= 110 && r.results.every((x) => exact2(x, keys("case before after"))) && same(r.results.map((x) => x.case), mandateCases(e.mandates, e.fixtures)) && r.cases_digest === await negotiationDigest(mandateCases(e.mandates, e.fixtures)));
     add("Both gate traces and payment totals support every observation summary", r.results.every((x) => observationConsistent(x.case, x.before, a, e.fixtures) && observationConsistent(x.case, x.after, p.next_agreement, e.fixtures)));
     const rangeMet = e.mandates.every((m) => negotiationPlanWithinMandate(m.payload, p.approval_above_minor, p.budget_minor ?? a.budget_minor, a.budget_minor));
     add("Required cases, expectations and both mandates match the reported calculations", r.required_passed === r.results.every((x) => !x.case.required || x.after.matched) && r.expectations_met === r.results.every((x) => x.case.id.startsWith("sample-invoice-") || x.after.matched) && r.mandates_met === (rangeMet && r.results.filter((x) => x.case.id.startsWith("principal-")).every((x) => x.after.matched)));
@@ -38348,8 +38368,8 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
     if (e.reviewer_grant) add("Organizer signed the exact proposed reviewer grant", await verifyHuman(e.reviewer_grant, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(e.reviewer_grant.payload, p.reviewer_grant) && e.reviewer_grant.digest === p.reviewer_grant_digest);
     if (e.adoption) {
       const d = e.adoption.payload, next = e.adopted_agreement, g = e.reviewer_grant, binding = e.reviewer_binding, rb = binding.payload, claim2 = rb.claim.payload;
-      add("Both unexpired human approvals authorize adoption of this exact tested candidate", e.approvals.length === 2 && e.approvals.every((v) => v.payload.decision === "approve" && time2(d.issued_at) >= time2(v.payload.issued_at) - 3e5 && time2(d.issued_at) < time2(v.payload.expires_at)) && selected.digest === e.proposals.at(-1).digest && principals.every((key4) => validAt(key4, d.issued_at)) && r.required_passed && r.expectations_met && r.mandates_met && (e.approvals.every((v) => v.payload.selection_basis === "human-selected-tested-plan") || principals.every((key4) => e.responses.some((v) => v.payload.principal_key === key4 && v.payload.proposal_digest === selected.digest && v.payload.decision === "support"))));
-      add("Authority recorded exact lineage into a new separately authorized sample task", await signed(e.adoption, authority) && exact2(d, keys("type session_id source_room_id room_id source_agreement_digest agreement_digest proposal_digest report_digest approval_digests issued_at scope")) && d.type === "scopeblind.coordination.negotiation-adoption.v1" && d.session_id === s.id && d.source_room_id === a.id && d.room_id === p.next_agreement.id && d.room_id !== a.id && d.source_agreement_digest === e.agreement.digest && d.agreement_digest === p.next_agreement_digest && d.proposal_digest === selected.digest && d.report_digest === e.report.digest && same(d.approval_digests, principals.map((key4) => e.approvals.find((v) => v.payload.principal_key === key4).digest)) && d.scope === "new-separate-sample-task" && await verifyHuman(next, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(next.payload, p.next_agreement) && next.digest === d.agreement_digest);
+      add("Both unexpired human approvals authorize adoption of this exact tested candidate", e.approvals.length === 2 && e.approvals.every((v) => v.payload.decision === "approve" && time2(d.issued_at) >= time2(v.payload.issued_at) - 3e5 && time2(d.issued_at) < time2(v.payload.expires_at)) && selected.digest === e.proposals.at(-1).digest && principals.every((key5) => validAt(key5, d.issued_at)) && r.required_passed && r.expectations_met && r.mandates_met && (e.approvals.every((v) => v.payload.selection_basis === "human-selected-tested-plan") || principals.every((key5) => e.responses.some((v) => v.payload.principal_key === key5 && v.payload.proposal_digest === selected.digest && v.payload.decision === "support"))));
+      add("Authority recorded exact lineage into a new separately authorized sample task", await signed(e.adoption, authority) && exact2(d, keys("type session_id source_room_id room_id source_agreement_digest agreement_digest proposal_digest report_digest approval_digests issued_at scope")) && d.type === "scopeblind.coordination.negotiation-adoption.v1" && d.session_id === s.id && d.source_room_id === a.id && d.room_id === p.next_agreement.id && d.room_id !== a.id && d.source_agreement_digest === e.agreement.digest && d.agreement_digest === p.next_agreement_digest && d.proposal_digest === selected.digest && d.report_digest === e.report.digest && same(d.approval_digests, principals.map((key5) => e.approvals.find((v) => v.payload.principal_key === key5).digest)) && d.scope === "new-separate-sample-task" && await verifyHuman(next, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(next.payload, p.next_agreement) && next.digest === d.agreement_digest);
       add("Partner independently claimed the fixed reviewer role in the new task", await signed(binding, authority) && await verifyHuman(rb.claim, partner, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === partner), requireRecordedUse: true, authorityKey: authority }) && exact2(rb, keys("type grant_id grant_digest room_id guest_key name issued_at expires_at claim")) && rb.type === "scopeblind.coordination.binding.v1" && rb.grant_id === g.payload.grant_id && rb.grant_digest === g.digest && rb.room_id === d.room_id && rb.guest_key === partner && rb.expires_at === g.payload.expires_at && time2(rb.issued_at) >= time2(d.issued_at) && time2(rb.issued_at) < time2(rb.expires_at) && exact2(claim2, keys("type grant_id room_id guest_key name issued_at nonce")) && claim2.type === "scopeblind.coordination.claim.v1" && claim2.grant_id === rb.grant_id && claim2.room_id === d.room_id && claim2.guest_key === partner && text(claim2.name, 60) && claim2.name === rb.name && id2(claim2.nonce) && time2(claim2.issued_at) >= time2(r.issued_at) - 3e5 && time2(claim2.issued_at) <= time2(rb.issued_at) + 3e5);
     } else add("No unbound adopted agreement or reviewer binding is present", !e.adopted_agreement && !e.reviewer_binding);
   } catch {
@@ -38665,7 +38685,7 @@ function validateCoordinationPayment(payment) {
     throw new CoordinationError("invalid_input", "Payment requires invoice_id, a positive integer amount_minor, currency USD, and a sample destination.");
   }
   if (input.fixture_revision !== void 0 && (!Number.isSafeInteger(input.fixture_revision) || input.fixture_revision < 1)) throw new CoordinationError("invalid_input", "fixture_revision must be a positive integer from coordination.inspect.");
-  if (Object.keys(input).filter((key4) => key4 !== "fixture_revision").sort().join(",") !== "amount_minor,currency,destination,invoice_id") {
+  if (Object.keys(input).filter((key5) => key5 !== "fixture_revision").sort().join(",") !== "amount_minor,currency,destination,invoice_id") {
     throw new CoordinationError("invalid_input", "Payment input contains unsupported fields.");
   }
 }
@@ -38683,11 +38703,11 @@ var CoordinationClient = class {
   }
   /** Acknowledge only a context that this adapter has already verified. Pairing and MCP initialization do not call this. */
   async acknowledgeInspection(response, action, contextDigest, signal) {
-    const key4 = `${action}:${contextDigest}`;
-    if (response.agent_inspection_supported !== true || this.#acknowledgedContexts.has(key4)) return;
+    const key5 = `${action}:${contextDigest}`;
+    if (response.agent_inspection_supported !== true || this.#acknowledgedContexts.has(key5)) return;
     const acknowledgment = await this.#transport.post(action, { ...action === "negotiation_get" ? { session_id: this.#config.sessionId } : {}, observed_context_digest: contextDigest }, signal);
     if (typeof acknowledgment.agent_inspection_acknowledged !== "boolean") throw new CoordinationError("agent_inspection_unconfirmed", "The room could not confirm this inspection. Inspect again before continuing.");
-    this.#acknowledgedContexts.add(key4);
+    this.#acknowledgedContexts.add(key5);
   }
   negotiationConfig() {
     if (this.purpose !== "negotiation" || !this.#config.sessionId || !this.#config.principalKey) throw new CoordinationError("tool_outside_grant", "Use a separate principal-authorized negotiation pairing for these tools.");
@@ -38701,7 +38721,7 @@ var CoordinationClient = class {
       throw new CoordinationError("invalid_negotiation", "The negotiation identity, source records, mandate, or signed candidate could not be verified. No approval or authority was granted.");
     };
     const keys2 = (value, allowed) => {
-      if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key4) => !allowed.includes(key4))) invalid();
+      if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key5) => !allowed.includes(key5))) invalid();
     };
     const envelope2 = (value) => keys2(value, ["payload", "signer", "digest", "signature"]);
     const humanEnvelope = (value) => keys2(value, ["payload", "signer", "digest", "signature", "authorization", "authorization_signature", "authorization_use"]);
@@ -38853,7 +38873,7 @@ var CoordinationClient = class {
   }
   async proposeCandidate(value) {
     const { sessionId, principalKey } = this.negotiationConfig();
-    if (!value || Object.keys(value).some((key4) => !["id", "approval_above_minor", "budget_minor", "parent_digest"].includes(key4)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.id) || !Number.isSafeInteger(value.approval_above_minor) || value.approval_above_minor < 0 || value.approval_above_minor > 1e7 || value.budget_minor !== void 0 && (!Number.isSafeInteger(value.budget_minor) || value.budget_minor < 1 || value.budget_minor > 1e7) || value.parent_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.parent_digest)) throw new CoordinationError("invalid_input", "Provide a stable candidate id, a threshold and optional total budget in USD cents, and the current parent_digest for a counterproposal. Private notes and additional powers are not accepted.");
+    if (!value || Object.keys(value).some((key5) => !["id", "approval_above_minor", "budget_minor", "parent_digest"].includes(key5)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{1,80}$/.test(value.id) || !Number.isSafeInteger(value.approval_above_minor) || value.approval_above_minor < 0 || value.approval_above_minor > 1e7 || value.budget_minor !== void 0 && (!Number.isSafeInteger(value.budget_minor) || value.budget_minor < 1 || value.budget_minor > 1e7) || value.parent_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.parent_digest)) throw new CoordinationError("invalid_input", "Provide a stable candidate id, a threshold and optional total budget in USD cents, and the current parent_digest for a counterproposal. Private notes and additional powers are not accepted.");
     const proposal = { ...value };
     const result = await this.inspectNegotiation(), before3 = result.negotiation;
     if (before3.runtime_changed) throw new CoordinationError("negotiation_runtime_changed", "This discussion belongs to an earlier runtime. Ask the people to start a fresh linked discussion; do not reuse its mandate.");
@@ -38939,7 +38959,7 @@ var CoordinationClient = class {
   }
   async waitNegotiation(value, signal) {
     this.negotiationConfig();
-    if (!value || Object.keys(value).some((key4) => !["after_digest", "timeout_ms"].includes(key4)) || value.after_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.after_digest)) throw new CoordinationError("invalid_wait", "Use the state_digest from inspect_negotiation as after_digest, with an optional timeout_ms.");
+    if (!value || Object.keys(value).some((key5) => !["after_digest", "timeout_ms"].includes(key5)) || value.after_digest !== void 0 && !/^[0-9a-f]{64}$/.test(value.after_digest)) throw new CoordinationError("invalid_wait", "Use the state_digest from inspect_negotiation as after_digest, with an optional timeout_ms.");
     const timeoutMs = value.timeout_ms ?? 3e4;
     if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1e3 || timeoutMs > 3e4) throw new CoordinationError("invalid_wait", "timeout_ms must be an integer from 1000 to 30000.");
     const abort = new AbortController(), cancel = () => abort.abort();
@@ -39168,7 +39188,7 @@ var CoordinationClient = class {
   }
   /** Poll inside the tool, without model calls, for at most thirty seconds. */
   async wait(input, signal) {
-    if (!input || Object.keys(input).some((key4) => !["after_cursor", "run_id", "timeout_ms"].includes(key4)) || !Number.isSafeInteger(input.after_cursor) || input.after_cursor < 0 || input.run_id !== void 0 && (typeof input.run_id !== "string" || !/^run-[A-Za-z0-9_-]{8,100}$/.test(input.run_id))) {
+    if (!input || Object.keys(input).some((key5) => !["after_cursor", "run_id", "timeout_ms"].includes(key5)) || !Number.isSafeInteger(input.after_cursor) || input.after_cursor < 0 || input.run_id !== void 0 && (typeof input.run_id !== "string" || !/^run-[A-Za-z0-9_-]{8,100}$/.test(input.run_id))) {
       throw new CoordinationError("invalid_wait", "Pass after_cursor and optionally run_id from coordination.inspect.");
     }
     const timeoutMs = input.timeout_ms === void 0 ? 3e4 : input.timeout_ms;
@@ -39421,9 +39441,9 @@ function jcs(value) {
   if (typeof value === "string") return JSON.stringify(value);
   if (Array.isArray(value))
     return "[" + value.map(jcs).join(",") + "]";
-  const obj4 = value;
-  const keys2 = Object.keys(obj4).sort();
-  return "{" + keys2.map((k) => JSON.stringify(k) + ":" + jcs(obj4[k])).join(",") + "}";
+  const obj5 = value;
+  const keys2 = Object.keys(obj5).sort();
+  return "{" + keys2.map((k) => JSON.stringify(k) + ":" + jcs(obj5[k])).join(",") + "}";
 }
 
 // src/commitments/leaf.ts
@@ -39443,12 +39463,12 @@ function base64urlDecode(s) {
   return out;
 }
 function encodeLeaf(field) {
-  const obj4 = {
+  const obj5 = {
     name: field.name,
     salt: base64urlNoPad(field.salt),
     value: field.value
   };
-  const canonical2 = jcs(obj4);
+  const canonical2 = jcs(obj5);
   return new TextEncoder().encode(canonical2);
 }
 function sortFields(fields) {
@@ -39689,12 +39709,12 @@ function verifyCommittedReceiptSignature(receipt, publicKeyHex) {
   if (!signature || typeof signature !== "object") return null;
   const sig = signature;
   if (sig.alg !== "EdDSA" || typeof sig.sig !== "string") return null;
-  const key4 = publicKeyHex ?? (typeof sig.public_key === "string" ? sig.public_key : void 0);
-  if (!key4) return null;
+  const key5 = publicKeyHex ?? (typeof sig.public_key === "string" ? sig.public_key : void 0);
+  if (!key5) return null;
   const signed2 = committedPayload(receipt);
   const sigBytes = /^[0-9a-f]+$/i.test(sig.sig) && sig.sig.length % 2 === 0 ? (0, import_utils4.hexToBytes)(sig.sig) : base64urlDecode(sig.sig);
   try {
-    return import_ed255192.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed2)), (0, import_utils4.hexToBytes)(key4));
+    return import_ed255192.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed2)), (0, import_utils4.hexToBytes)(key5));
   } catch {
     return false;
   }
@@ -39709,9 +39729,9 @@ function createAuditBundle(opts) {
     throw new Error("Audit bundle requires at least one signed receipt");
   }
   const keyMap = /* @__PURE__ */ new Map();
-  for (const key4 of opts.signingKeys) {
-    if (!keyMap.has(key4.kid)) {
-      keyMap.set(key4.kid, key4);
+  for (const key5 of opts.signingKeys) {
+    if (!keyMap.has(key5.kid)) {
+      keyMap.set(key5.kid, key5);
     }
   }
   let timeRange = opts.timeRange || null;
@@ -39964,8 +39984,8 @@ function generateReport(logPath, receiptPath, periodDays) {
       policyDigests.set(entry.policy_digest, new Date(entry.timestamp).toISOString());
     }
   }
-  const policyChanges = Array.from(policyDigests.entries()).map(([digest, at8]) => ({
-    at: at8,
+  const policyChanges = Array.from(policyDigests.entries()).map(([digest, at9]) => ({
+    at: at9,
     policy_digest: digest
   })).sort((a, b) => a.at.localeCompare(b.at));
   return {
@@ -40093,11 +40113,11 @@ function validateManifest(manifest) {
   if (!m.identity || typeof m.identity !== "object") {
     errors.push("identity is required");
   } else {
-    const id9 = m.identity;
-    if (typeof id9.public_key !== "string" || !id9.public_key.startsWith("ed25519:")) {
+    const id11 = m.identity;
+    if (typeof id11.public_key !== "string" || !id11.public_key.startsWith("ed25519:")) {
       errors.push("identity.public_key must be an ed25519: prefixed key");
     }
-    if (id9.key_algorithm !== "Ed25519") {
+    if (id11.key_algorithm !== "Ed25519") {
       errors.push('identity.key_algorithm must be "Ed25519"');
     }
   }
@@ -40323,21 +40343,21 @@ function toEgressSummary(envelope2, opts) {
   };
   return summary;
 }
-function inspectEgress(obj4, opts = {}) {
+function inspectEgress(obj5, opts = {}) {
   const violations = [];
-  if (!obj4 || typeof obj4 !== "object" || Array.isArray(obj4)) return { safe: false, violations: [{ path: "$", reason: "not an egress summary object" }] };
-  const o = obj4;
+  if (!obj5 || typeof obj5 !== "object" || Array.isArray(obj5)) return { safe: false, violations: [{ path: "$", reason: "not an egress summary object" }] };
+  const o = obj5;
   const allowed = opts.signed ? EGRESS_SIGNED_PAYLOAD_FIELDS : EGRESS_SUMMARY_FIELDS;
-  for (const [key4, value] of Object.entries(o)) {
-    if (!allowed.has(key4)) {
-      violations.push({ path: `$.${key4}`, reason: "field is not allowed in an egress summary" });
+  for (const [key5, value] of Object.entries(o)) {
+    if (!allowed.has(key5)) {
+      violations.push({ path: `$.${key5}`, reason: "field is not allowed in an egress summary" });
       continue;
     }
     if (value === null || value === void 0) {
-      violations.push({ path: `$.${key4}`, reason: "null and undefined are not permitted" });
+      violations.push({ path: `$.${key5}`, reason: "null and undefined are not permitted" });
       continue;
     }
-    if (typeof value === "object") violations.push({ path: `$.${key4}`, reason: "nested objects and arrays are not permitted" });
+    if (typeof value === "object") violations.push({ path: `$.${key5}`, reason: "nested objects and arrays are not permitted" });
   }
   if (o.type !== EGRESS_SUMMARY_TYPE) violations.push({ path: "$.type", reason: "wrong egress summary type" });
   if (o.version !== EGRESS_SUMMARY_VERSION) violations.push({ path: "$.version", reason: "unsupported egress summary version" });
@@ -40552,8 +40572,8 @@ var ScopeBlindBridge = class {
         })
       });
       if (!res.ok) {
-        const text7 = await res.text().catch(() => "");
-        this.stats.last_error = `brass-issue: HTTP ${res.status} ${text7.slice(0, 160)}`;
+        const text8 = await res.text().catch(() => "");
+        this.stats.last_error = `brass-issue: HTTP ${res.status} ${text8.slice(0, 160)}`;
         return null;
       }
       const body = await res.json();
@@ -40587,9 +40607,9 @@ var ScopeBlindBridge = class {
   }
 };
 function parseConfiguredPseudonymKey(value) {
-  const key4 = Buffer.from(value, "base64url");
-  if (key4.length !== 32) throw new Error("SCOPEBLIND_EGRESS_HMAC_KEY must be a base64url-encoded 32-byte key");
-  return key4;
+  const key5 = Buffer.from(value, "base64url");
+  if (key5.length !== 32) throw new Error("SCOPEBLIND_EGRESS_HMAC_KEY must be a base64url-encoded 32-byte key");
+  return key5;
 }
 function loadOrCreatePseudonymKey(env, base, slug) {
   const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path6.join)((0, import_node_os.homedir)(), ".protect-mcp", "egress-keys");
@@ -40674,15 +40694,15 @@ var RULES = [
 ];
 function deriveCapabilities(tool, input) {
   const t = String(tool || "").toLowerCase();
-  let text7 = "";
+  let text8 = "";
   try {
-    text7 = canonicalJson(input).toLowerCase();
+    text8 = canonicalJson(input).toLowerCase();
   } catch {
   }
   const caps = /* @__PURE__ */ new Set();
   for (const r of RULES) {
     if (r.tool && r.tool.test(t)) caps.add(r.cap);
-    if (r.text && r.text.test(text7)) caps.add(r.cap);
+    if (r.text && r.text.test(text8)) caps.add(r.cap);
   }
   return Array.from(caps).sort();
 }
@@ -41088,7 +41108,7 @@ function proposalUnsigned(input) {
 function approvalDigest(approval) {
   return stableDigest(approval);
 }
-function transition(registry, signer, event, headBefore, headAfter, fields = {}, at8 = nowIso()) {
+function transition(registry, signer, event, headBefore, headAfter, fields = {}, at9 = nowIso()) {
   const sequence = registry.history.length + 1;
   const body = {
     event,
@@ -41101,11 +41121,11 @@ function transition(registry, signer, event, headBefore, headAfter, fields = {},
   return {
     sequence,
     event,
-    occurred_at: at8,
+    occurred_at: at9,
     head_before: headBefore,
     head_after: headAfter,
     ...fields,
-    transition_receipt: signLifecycleEvent(signer, body, at8)
+    transition_receipt: signLifecycleEvent(signer, body, at9)
   };
 }
 function initializeMandateRegistry(input) {
@@ -41367,7 +41387,7 @@ function installSnapshotAtomically(cedarDir, snapshot) {
     if ((0, import_node_fs12.existsSync)(backup) && !(0, import_node_fs12.existsSync)(target)) (0, import_node_fs12.renameSync)(backup, target);
   }
 }
-function addTransition(registry, signer, item, at8) {
+function addTransition(registry, signer, item, at9) {
   const previous = registry.history[registry.history.length - 1];
   const previousTransitionHash = previous ? stableDigest(previous.transition_receipt) : void 0;
   const trans = transition(registry, signer, item.event, item.head_before, item.head_after, {
@@ -41376,7 +41396,7 @@ function addTransition(registry, signer, item, at8) {
     ...item.policy_digest ? { policy_digest: item.policy_digest } : {},
     ...item.expiry ? { expiry: item.expiry } : {},
     ...previousTransitionHash ? { previous_transition_hash: previousTransitionHash } : {}
-  }, at8 || item.occurred_at);
+  }, at9 || item.occurred_at);
   registry.history.push(trans);
   return trans;
 }
@@ -41478,11 +41498,11 @@ function createWebAuthnPolicyChallenge(input) {
   persistRegistry(input.cedarDir, registry);
   return challenge;
 }
-function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at8) {
-  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at8)));
+function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at9) {
+  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at9)));
   if (!integrity.valid && integrity.code !== "active_grant_expired") throw new Error(`cannot activate against invalid registry: ${integrity.code}`);
   if (registry.active.policy_digest !== proposal.base_policy_digest) throw new Error("active policy changed after proposal; create a new proposal against the current head");
-  if (Date.parse(proposal.expires_at) <= Date.parse(at8)) throw new Error("proposal expired before approval; it cannot be activated");
+  if (Date.parse(proposal.expires_at) <= Date.parse(at9)) throw new Error("proposal expired before approval; it cannot be activated");
   const controller = registry.controllers.find((item) => item.id === approval.controller_id);
   if (!controller) throw new Error("approval controller is not registered");
   const error = approval.method === "ed25519" ? verifyDirectApproval(registry, proposal, approval) : verifyWebAuthnApproval(registry, proposal, approval);
@@ -41499,35 +41519,35 @@ function activateApprovedProposal(cedarDir, registry, signer, proposal, approval
     snapshot_digest: stableDigest(candidate),
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval)
-  }, at8);
+  }, at9);
   registry.policies[candidate.policy_digest] = candidate;
   registry.approvals[proposal.proposal_id] = approval;
   registry.active = {
     policy_digest: candidate.policy_digest,
     baseline_policy_digest: before3,
-    activated_at: at8,
+    activated_at: at9,
     expires_at: proposal.expires_at,
     proposal_id: proposal.proposal_id,
     compilation_receipt: compilationReceipt
   };
   addTransition(registry, signer, {
     event: "proposal_approved",
-    occurred_at: at8,
+    occurred_at: at9,
     head_before: before3,
     head_after: before3,
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval)
-  }, at8);
+  }, at9);
   addTransition(registry, signer, {
     event: "policy_activated",
-    occurred_at: at8,
+    occurred_at: at9,
     head_before: before3,
     head_after: candidate.policy_digest,
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval),
     policy_digest: candidate.policy_digest,
     expiry: proposal.expires_at
-  }, at8);
+  }, at9);
   delete registry.pending_webauthn[proposal.proposal_id];
   persistRegistry(cedarDir, registry);
   return registry;
@@ -41550,12 +41570,12 @@ function approvePolicyProposalWithWebAuthn(input) {
   if (pending.challenge.challenge !== policyApprovalChallenge(proposal, controller.id)) {
     throw new Error("pending WebAuthn challenge is not bound to this proposal");
   }
-  const at8 = nowIso(input.now);
+  const at9 = nowIso(input.now);
   const result = verifyApprovalAssertion(pending.challenge, input.assertion, controller.credential_public_key, {
     expectedOrigin: input.expectedOrigin,
     requireUserVerification: true,
     prevSignCount: controller.sign_count,
-    now: Date.parse(at8)
+    now: Date.parse(at9)
   });
   if (!result.valid || !result.userVerified) throw new Error(`WebAuthn approval rejected: ${result.reason || "user verification required"}`);
   controller.sign_count = result.signCount;
@@ -41567,9 +41587,9 @@ function approvePolicyProposalWithWebAuthn(input) {
     assertion: input.assertion,
     result,
     expected_origin: input.expectedOrigin,
-    approved_at: at8
+    approved_at: at9
   };
-  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at8);
+  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at9);
 }
 function refreshManagedMandate(input) {
   const registry = loadMandateRegistry(input.cedarDir);
@@ -41586,7 +41606,7 @@ function refreshManagedMandate(input) {
     if (!baseline) return { valid: false, code: "expiry_baseline_missing", message: "Expired policy has no baseline snapshot to restore." };
     try {
       installSnapshotAtomically(input.cedarDir, baseline);
-      const at8 = nowIso(now);
+      const at9 = nowIso(now);
       const before3 = registry.active.policy_digest;
       const compilationReceipt = signLifecycleEvent(input.signer, {
         event: "compiled",
@@ -41594,21 +41614,21 @@ function refreshManagedMandate(input) {
         policy_digest: baseline.policy_digest,
         snapshot_digest: stableDigest(baseline),
         reverted_from: before3
-      }, at8);
+      }, at9);
       registry.active = {
         policy_digest: baseline.policy_digest,
         baseline_policy_digest: baseline.policy_digest,
-        activated_at: at8,
+        activated_at: at9,
         compilation_receipt: compilationReceipt
       };
       addTransition(registry, input.signer, {
         event: "policy_expired_reverted",
-        occurred_at: at8,
+        occurred_at: at9,
         head_before: before3,
         head_after: baseline.policy_digest,
         policy_digest: baseline.policy_digest,
         expiry: savedExpiry
-      }, at8);
+      }, at9);
       persistRegistry(input.cedarDir, registry);
       return { valid: true, registry, expired_reverted: true };
     } catch (error) {
@@ -42007,8 +42027,8 @@ async function handlePreToolUse(input, state) {
     if (toolPolicy.rate_limit) {
       try {
         const limit = parseRateLimit(toolPolicy.rate_limit);
-        const key4 = `tool:${toolName}:hook`;
-        const { allowed, remaining } = checkRateLimit(key4, limit, state.rateLimitStore);
+        const key5 = `tool:${toolName}:hook`;
+        const { allowed, remaining } = checkRateLimit(key5, limit, state.rateLimitStore);
         if (!allowed) {
           const hookLatency2 = Date.now() - hookStart;
           emitDecisionLog(state, {
@@ -43067,8 +43087,8 @@ var SNAKE_TO_CAMEL_MAP = {
 };
 function normalizeHookInput(raw) {
   const result = {};
-  for (const [key4, value] of Object.entries(raw)) {
-    const camelKey = SNAKE_TO_CAMEL_MAP[key4] || key4;
+  for (const [key5, value] of Object.entries(raw)) {
+    const camelKey = SNAKE_TO_CAMEL_MAP[key5] || key5;
     result[camelKey] = value;
   }
   if (raw.source !== void 0 && raw.hook_event_name === "ConfigChange" && !raw.config_source) {
@@ -43419,10 +43439,10 @@ function jsonSchemaToCedarType(schema, namespace, path) {
     // Default to Set<String> for untyped arrays
     case "object":
       if (schema.properties && Object.keys(schema.properties).length > 0) {
-        const fields = Object.entries(schema.properties).map(([key4, prop]) => {
-          const cedarType = jsonSchemaToCedarType(prop, namespace, path + "_" + sanitizeIdentifier(key4));
-          const isRequired = schema.required?.includes(key4) ?? false;
-          return `    "${sanitizeIdentifier(key4)}": ${cedarType}${isRequired ? "" : "?"}`;
+        const fields = Object.entries(schema.properties).map(([key5, prop]) => {
+          const cedarType = jsonSchemaToCedarType(prop, namespace, path + "_" + sanitizeIdentifier(key5));
+          const isRequired = schema.required?.includes(key5) ?? false;
+          return `    "${sanitizeIdentifier(key5)}": ${cedarType}${isRequired ? "" : "?"}`;
         });
         return `{
 ${fields.join(",\n")}
@@ -43460,10 +43480,10 @@ function generateCedarSchema(tools, config = {}) {
     const actionName = cedarActionId(tool.name);
     const inputTypeName = `${sanitizeIdentifier(tool.name)}_Input`;
     if (tool.inputSchema?.properties && Object.keys(tool.inputSchema.properties).length > 0) {
-      const fields = Object.entries(tool.inputSchema.properties).map(([key4, prop]) => {
-        const cedarType = jsonSchemaToCedarType(prop, ns, sanitizeIdentifier(tool.name) + "_" + sanitizeIdentifier(key4));
-        const isRequired = tool.inputSchema?.required?.includes(key4) ?? false;
-        return `    "${sanitizeIdentifier(key4)}": ${cedarType}${isRequired ? "" : "?"}`;
+      const fields = Object.entries(tool.inputSchema.properties).map(([key5, prop]) => {
+        const cedarType = jsonSchemaToCedarType(prop, ns, sanitizeIdentifier(tool.name) + "_" + sanitizeIdentifier(key5));
+        const isRequired = tool.inputSchema?.required?.includes(key5) ?? false;
+        return `    "${sanitizeIdentifier(key5)}": ${cedarType}${isRequired ? "" : "?"}`;
       });
       inputTypeDeclarations.push(
         `  // Input type for tool: ${tool.name}` + (tool.description ? `
@@ -43565,10 +43585,10 @@ function buildSchemaJson(tools, namespace, config) {
     }
     if (tool.inputSchema?.properties) {
       const inputAttrs = {};
-      for (const [key4, prop] of Object.entries(tool.inputSchema.properties)) {
-        inputAttrs[sanitizeIdentifier(key4)] = {
+      for (const [key5, prop] of Object.entries(tool.inputSchema.properties)) {
+        inputAttrs[sanitizeIdentifier(key5)] = {
           type: jsonSchemaToSchemaJsonType(prop),
-          required: tool.inputSchema.required?.includes(key4) ?? false
+          required: tool.inputSchema.required?.includes(key5) ?? false
         };
       }
       contextAttrs["input"] = {
@@ -43662,7 +43682,7 @@ function generateSchemaStub(namespace = "ScopeBlind") {
 }
 
 // src/policy-packs.ts
-var header = (id9, description) => `// ScopeBlind protect-mcp policy pack: ${id9}
+var header = (id11, description) => `// ScopeBlind protect-mcp policy pack: ${id11}
 // ${description}
 // Start in shadow mode, review receipts, then run with --enforce.
 
@@ -43882,8 +43902,8 @@ var POLICY_PACKS = [
     files: [{ path: "finance-mandate-safe.cedar", contents: financeMandateSafe }]
   }
 ];
-function getPolicyPack(id9) {
-  return POLICY_PACKS.find((pack) => pack.id === id9);
+function getPolicyPack(id11) {
+  return POLICY_PACKS.find((pack) => pack.id === id11);
 }
 function policyPackIds() {
   return POLICY_PACKS.map((pack) => pack.id);
@@ -44478,8 +44498,8 @@ when { context.tool == "nautilus.strategy.deploy" && context.strategy_pack_signe
 function connectorPilotIds() {
   return CONNECTOR_PILOTS.map((pilot) => pilot.id);
 }
-function getConnectorPilot(id9) {
-  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id9);
+function getConnectorPilot(id11) {
+  return CONNECTOR_PILOTS.find((pilot) => pilot.id === id11);
 }
 function connectorDirectory(dir) {
   return (0, import_node_path9.join)(dir, ".protect-mcp", "connectors");
@@ -44487,9 +44507,9 @@ function connectorDirectory(dir) {
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
   (0, import_node_fs14.mkdirSync)(directory, { recursive: true });
-  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id9) => {
-    const pilot = getConnectorPilot(id9);
-    if (!pilot) throw new Error(`Unknown connector pilot: ${id9}`);
+  const selected = opts.ids && opts.ids.length > 0 && !opts.ids.includes("all") ? opts.ids.map((id11) => {
+    const pilot = getConnectorPilot(id11);
+    if (!pilot) throw new Error(`Unknown connector pilot: ${id11}`);
     return pilot;
   }) : CONNECTOR_PILOTS;
   const written = [];
@@ -44530,15 +44550,15 @@ function readInstalledConnectorPilots(dir) {
     const configPath = (0, import_node_path9.join)(directory, name2);
     try {
       const parsed = JSON.parse((0, import_node_fs14.readFileSync)(configPath, "utf-8"));
-      const id9 = String(parsed.id || name2.replace(/\.json$/, ""));
-      const pilot = getConnectorPilot(id9);
+      const id11 = String(parsed.id || name2.replace(/\.json$/, ""));
+      const pilot = getConnectorPilot(id11);
       return {
-        id: id9,
-        name: String(parsed.name || pilot?.name || id9),
+        id: id11,
+        name: String(parsed.name || pilot?.name || id11),
         category: String(parsed.category || pilot?.category || "unknown"),
         status: String(parsed.status || parsed.type || "installed"),
         config_path: configPath,
-        policy_path: (0, import_node_path9.join)(directory, `${id9}.cedar`)
+        policy_path: (0, import_node_path9.join)(directory, `${id11}.cedar`)
       };
     } catch {
       return null;
@@ -44690,14 +44710,14 @@ function redactFields(receipt, fieldsToRedact) {
     let parent = null;
     let lastKey = "";
     for (let i = 0; i < parts.length; i++) {
-      const key4 = parts[i];
+      const key5 = parts[i];
       if (i === parts.length - 1) {
-        if (key4 in current) {
-          const originalValue = current[key4];
+        if (key5 in current) {
+          const originalValue = current[key5];
           const salt = (0, import_node_crypto12.randomBytes)(16).toString("hex");
           const commitment = computeCommitment(salt, originalValue);
           salts.push({ field: fieldPath, salt, originalValue });
-          current[key4] = `sha256(salt + ${typeof originalValue === "string" ? "..." : JSON.stringify(originalValue).slice(0, 20) + "..."})`;
+          current[key5] = `sha256(salt + ${typeof originalValue === "string" ? "..." : JSON.stringify(originalValue).slice(0, 20) + "..."})`;
           redactedFields.push(fieldPath);
           if (!redacted._commitments) {
             redacted._commitments = {};
@@ -44705,10 +44725,10 @@ function redactFields(receipt, fieldsToRedact) {
           redacted._commitments[fieldPath] = commitment;
         }
       } else {
-        if (typeof current[key4] === "object" && current[key4] !== null) {
+        if (typeof current[key5] === "object" && current[key5] !== null) {
           parent = current;
-          lastKey = key4;
-          current = current[key4];
+          lastKey = key5;
+          current = current[key5];
         } else {
           break;
         }
@@ -44726,11 +44746,11 @@ function revealField(redactedReceipt, salts, fieldPath) {
   const parts = fieldPath.split(".");
   let current = revealed;
   for (let i = 0; i < parts.length; i++) {
-    const key4 = parts[i];
+    const key5 = parts[i];
     if (i === parts.length - 1) {
-      current[key4] = salt.originalValue;
+      current[key5] = salt.originalValue;
     } else {
-      current = current[key4];
+      current = current[key5];
     }
   }
   return revealed;
@@ -44768,8 +44788,8 @@ function computeCommitment(salt, value) {
   const serialized = typeof value === "string" ? value : JSON.stringify(value);
   return (0, import_node_crypto12.createHash)("sha256").update(salt + serialized).digest("hex");
 }
-function hashObject(obj4) {
-  const canonical2 = JSON.stringify(obj4, Object.keys(obj4).sort());
+function hashObject(obj5) {
+  const canonical2 = JSON.stringify(obj5, Object.keys(obj5).sort());
   return (0, import_node_crypto12.createHash)("sha256").update(canonical2).digest("hex");
 }
 
@@ -44994,13 +45014,13 @@ async function createSandbox(config) {
   return createDockerSandbox(config);
 }
 async function runInSandbox(sandbox, toolCall, policy) {
-  const timestamp2 = (/* @__PURE__ */ new Date()).toISOString();
+  const timestamp3 = (/* @__PURE__ */ new Date()).toISOString();
   const decision = evaluatePolicy(toolCall.tool, policy);
   const receipt = {
     tool: toolCall.tool,
     decision,
     executed: decision === "allow",
-    timestamp: timestamp2
+    timestamp: timestamp3
   };
   if (decision === "allow") {
     try {
@@ -45087,20 +45107,20 @@ async function createE2BSandbox(config) {
 async function createDockerSandbox(config) {
   const { execSync } = await import("child_process");
   const { randomUUID: randomUUID6 } = await import("crypto");
-  const id9 = `scopeblind-sandbox-${randomUUID6().slice(0, 8)}`;
+  const id11 = `scopeblind-sandbox-${randomUUID6().slice(0, 8)}`;
   const image = config.template.includes(":") ? config.template : `node:${config.template.replace("node-", "")}`;
   const memoryFlag = config.memoryMB ? `--memory=${config.memoryMB}m` : "";
   const timeout = config.timeoutSeconds || 300;
   try {
     execSync(
-      `docker run -d --name ${id9} ${memoryFlag} --network=none --stop-timeout=${timeout} ${image} sleep ${timeout}`,
+      `docker run -d --name ${id11} ${memoryFlag} --network=none --stop-timeout=${timeout} ${image} sleep ${timeout}`,
       { stdio: "pipe" }
     );
   } catch (err) {
     throw new Error(`Docker sandbox creation failed: ${err instanceof Error ? err.message : err}`);
   }
   return {
-    id: id9,
+    id: id11,
     runtime: "docker",
     createdAt: (/* @__PURE__ */ new Date()).toISOString(),
     status: "running",
@@ -45568,10 +45588,10 @@ var ReceiptPropagator = class {
   traceChain(receiptId) {
     const chain = [];
     const visited = /* @__PURE__ */ new Set();
-    const walk = (id9) => {
-      if (visited.has(id9)) return;
-      visited.add(id9);
-      const receipt = this.receipts.get(id9);
+    const walk = (id11) => {
+      if (visited.has(id11)) return;
+      visited.add(id11);
+      const receipt = this.receipts.get(id11);
       if (!receipt) return;
       for (const parentId of receipt.parent_receipts) {
         walk(parentId);
@@ -45673,14 +45693,14 @@ var ConfidentialGate = class {
       }
     }
     if (this.config.expected_measurements) {
-      for (const [key4, expected] of Object.entries(this.config.expected_measurements)) {
-        const actual = doc.measurements[key4];
+      for (const [key5, expected] of Object.entries(this.config.expected_measurements)) {
+        const actual = doc.measurements[key5];
         if (actual !== expected) {
           return {
             accepted: false,
             tier: "signed",
             provider: doc.provider,
-            reason: `Measurement mismatch: ${key4} expected ${expected}, got ${actual || "missing"}`
+            reason: `Measurement mismatch: ${key5} expected ${expected}, got ${actual || "missing"}`
           };
         }
       }
@@ -46116,7 +46136,7 @@ function validRepositoryProposal(v, task, taskDigest) {
   return Array.isArray(v.checks) && v.checks.length === task.required_checks.length && v.checks.every((c) => object2(c) && exact5(c, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(c.id) && Number(c.id) > 0 && c.head_sha === v.head_sha && c.conclusion === "success" && task.required_checks.some((r) => r.name === c.name && r.app_id === c.app_id)) && new Set(v.checks.map((c) => `${c.name}:${c.app_id}`)).size === v.checks.length;
 }
 async function repositorySnapshotDigest(p) {
-  const { id: id9, observed_at, ...snapshot } = p;
+  const { id: id11, observed_at, ...snapshot } = p;
   return sha256(canonical(snapshot));
 }
 function validRepositoryRecord(v, kind) {
@@ -46146,8 +46166,8 @@ async function verifyRepositoryEvidence(value, pin) {
     if (s.proposal) check(!!reviewer && validRepositoryEnvelope(s.proposal) && validRepositoryProposal(s.proposal.payload, t, s.task.digest) && await verify(s.proposal, t.receiver_key) && Date.parse(s.proposal.payload.observed_at) >= Date.parse(reviewer.issued_at) && Date.parse(s.proposal.payload.observed_at) < Date.parse(t.expires_at), "Repository snapshot is invalid");
     check(Array.isArray(s.approvals) && s.approvals.length <= 2 && new Set(s.approvals.map((a) => a.payload.role)).size === s.approvals.length, "Approval roles are invalid");
     for (const approval of s.approvals) {
-      const a = approval.payload, key4 = a.role === "owner" ? t.owner_key : reviewer?.reviewer_key;
-      check(!!s.proposal && validRepositoryHumanEnvelope(approval) && validRepositoryRecord(a, "approval") && a.principal_key === key4 && a.task_id === t.id && a.task_digest === s.task.digest && a.proposal_digest === s.proposal.digest && await verifyRepositoryHuman(approval, key4, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && Date.parse(a.issued_at) >= Date.parse(s.proposal.payload.observed_at) && Date.parse(a.expires_at) <= Date.parse(t.expires_at), "Exact proposal approval is invalid");
+      const a = approval.payload, key5 = a.role === "owner" ? t.owner_key : reviewer?.reviewer_key;
+      check(!!s.proposal && validRepositoryHumanEnvelope(approval) && validRepositoryRecord(a, "approval") && a.principal_key === key5 && a.task_id === t.id && a.task_digest === s.task.digest && a.proposal_digest === s.proposal.digest && await verifyRepositoryHuman(approval, key5, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && Date.parse(a.issued_at) >= Date.parse(s.proposal.payload.observed_at) && Date.parse(a.expires_at) <= Date.parse(t.expires_at), "Exact proposal approval is invalid");
     }
     if (s.execution) {
       const x = s.execution.payload, owner = s.approvals.find((a) => a.payload.role === "owner"), review = s.approvals.find((a) => a.payload.role === "reviewer");
@@ -46177,7 +46197,7 @@ var DEMO_REPOSITORY = "ScopeBlind/scopeblind-repository-demo";
 var DEMO_CHECK = { name: "ScopeBlind contact validation", app_id: 4962726 };
 var CONTACT_PATH = "demo/contact.json";
 var object3 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
-var shape = (value, required, optional = []) => object3(value) && required.every((key4) => key4 in value) && Object.keys(value).every((key4) => required.includes(key4) || optional.includes(key4));
+var shape = (value, required, optional = []) => object3(value) && required.every((key5) => key5 in value) && Object.keys(value).every((key5) => required.includes(key5) || optional.includes(key5));
 var text3 = (value, max, empty = false) => typeof value === "string" && (empty || value.trim().length > 0) && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
 var hex2 = (value) => typeof value === "string" && REPOSITORY_HEX.test(value);
 var id4 = (value) => typeof value === "string" && REPOSITORY_ID.test(value);
@@ -46241,7 +46261,7 @@ function repositoryRevisionBasis(state) {
 var shape2 = (v, required, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
 var envelope = (v) => shape2(v, ["payload", "signer", "digest", "signature"]);
 var time5 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
-var within = (at8, start, end) => Date.parse(at8) >= Date.parse(start) && Date.parse(at8) <= Date.parse(end);
+var within = (at9, start, end) => Date.parse(at9) >= Date.parse(start) && Date.parse(at9) <= Date.parse(end);
 function requireValid(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -46281,7 +46301,7 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
     }
     requireValid(Array.isArray(c.agent_grants) && c.agent_grants.length <= 100 && Array.isArray(c.requests) && c.requests.length <= 100 && Array.isArray(c.revisions) && c.revisions.length <= 100, "Collaboration collections exceed their supported bounds.");
     const incomingLinks = c.revisions.filter((link) => link?.payload?.child_task_id === task.id);
-    requireValid(incomingLinks.length <= 1 && (incomingLinks.length === 1 || !["parent", "parent_request", "parent_agent_grant"].some((key4) => Object.hasOwn(bundle, key4))), "Predecessor records must be consumed by exactly one incoming revision link.");
+    requireValid(incomingLinks.length <= 1 && (incomingLinks.length === 1 || !["parent", "parent_request", "parent_agent_grant"].some((key5) => Object.hasOwn(bundle, key5))), "Predecessor records must be consumed by exactly one incoming revision link.");
     const grants = /* @__PURE__ */ new Map(), requestIds = /* @__PURE__ */ new Set(), requests = /* @__PURE__ */ new Map();
     for (const entry of c.agent_grants) {
       const signed2 = entry.grant, g = signed2?.payload;
@@ -46470,11 +46490,11 @@ function validWorkspaceDraftDecision(v) {
   return obj2(v) && exact6(v, ["type", "workspace_id", "draft_digest", "owner_key", "decision", "note", "issued_at"], ["task_id", "task_digest"]) && v.type === "scopeblind.repository.workspace-draft-decision.v1" && id6(v.workspace_id) && [v.draft_digest, v.owner_key].every(key2) && ["adopt", "reject"].includes(String(v.decision)) && typeof v.note === "string" && v.note.length <= 600 && at3(v.issued_at) && (v.decision === "adopt" ? id6(v.task_id) && key2(v.task_digest) : v.task_id === void 0 && v.task_digest === void 0);
 }
 var cleanEnvelope = (v) => obj2(v) && exact6(v, ["payload", "signer", "digest", "signature"]);
-var before = (time6, observation) => Date.parse(time6) <= Date.parse(observation);
-function memberAt(member, time6, workspace) {
+var before = (time7, observation) => Date.parse(time7) <= Date.parse(observation);
+function memberAt(member, time7, workspace) {
   let current = member.claim?.payload.member_key ?? workspace.owner_key, role = member.invitation?.payload.role ?? "owner", status2 = "active", revision2 = 1;
   const events = [...member.rotations.map((p) => ({ at: p.rotation.payload.issued_at, revision: p.rotation.payload.expected_revision, rotation: p.rotation.payload, update: null })), ...member.updates.map((u) => ({ at: u.payload.issued_at, revision: u.payload.expected_revision, rotation: null, update: u.payload }))].sort((a, b) => a.revision - b.revision);
-  for (const e of events) if (before(e.at, time6)) {
+  for (const e of events) if (before(e.at, time7)) {
     if (e.rotation) current = e.rotation.new_key;
     if (e.update) {
       role = e.update.role;
@@ -46484,13 +46504,13 @@ function memberAt(member, time6, workspace) {
   }
   return { key: current, role, status: status2, revision: revision2 };
 }
-function memberRevisionAt(member, wanted, time6, workspace) {
+function memberRevisionAt(member, wanted, time7, workspace) {
   if (!Number.isSafeInteger(wanted) || wanted < 1 || wanted > member.revision) return null;
   let current = member.claim?.payload.member_key ?? workspace.owner_key, role = member.invitation?.payload.role ?? "owner", status2 = "active", start = member.claim?.payload.issued_at ?? workspace.issued_at;
   const events = [...member.rotations.map((p) => ({ at: p.rotation.payload.issued_at, revision: p.rotation.payload.expected_revision, rotation: p.rotation.payload, update: null })), ...member.updates.map((u) => ({ at: u.payload.issued_at, revision: u.payload.expected_revision, rotation: null, update: u.payload }))].sort((a, b) => a.revision - b.revision);
   for (const e of events) {
     if (e.revision >= wanted) {
-      if (Date.parse(time6) > Date.parse(e.at)) return null;
+      if (Date.parse(time7) > Date.parse(e.at)) return null;
       break;
     }
     if (e.rotation) current = e.rotation.new_key;
@@ -46500,7 +46520,7 @@ function memberRevisionAt(member, wanted, time6, workspace) {
     }
     start = e.at;
   }
-  return Date.parse(time6) >= Date.parse(start) ? { key: current, role, status: status2, revision: wanted } : null;
+  return Date.parse(time7) >= Date.parse(start) ? { key: current, role, status: status2, revision: wanted } : null;
 }
 function historicalMemberKeys(member, workspace) {
   return [.../* @__PURE__ */ new Set([member.claim?.payload.member_key ?? workspace.owner_key, member.current_key, ...member.rotations.flatMap((p) => [p.rotation.payload.previous_key, p.rotation.payload.new_key])])];
@@ -46508,10 +46528,10 @@ function historicalMemberKeys(member, workspace) {
 function memberRecoveryKeys(member) {
   return [.../* @__PURE__ */ new Set([...member.recovery ? [member.recovery.payload.recovery_key] : [], ...member.rotations.map((p) => p.recovery.payload.recovery_key)])];
 }
-function ownerKeyAt(owner, key4, time6, workspace) {
+function ownerKeyAt(owner, key5, time7, workspace) {
   for (let r = 1; r <= owner.revision; r++) {
-    const state = memberRevisionAt(owner, r, time6, workspace);
-    if (state?.key === key4 && state.role === "owner" && state.status === "active") return true;
+    const state = memberRevisionAt(owner, r, time7, workspace);
+    if (state?.key === key5 && state.role === "owner" && state.status === "active") return true;
   }
   return false;
 }
@@ -46670,18 +46690,18 @@ async function verifyRepositoryCodingEvidence(value, authorityKey) {
     check(object6(value) && shape4(value, ["type", "job"]) && value.type === "scopeblind.repository.coding-evidence.v1", "Unrecognized coding evidence");
     const e = value, j = e.job?.payload, m = j?.mandate?.payload, r = j?.request?.payload;
     check(validRepositoryEnvelope(e.job) && object6(j) && shape4(j, ["type", "request", "mandate", "adoption", "workspace", "parent", "status", "attempts", "model_calls", "reserved_tokens", "lease_id", "lease_expires_at", "started_at", "plan", "publication", "result", "stop", "error", "observed_at"]) && j.type === "scopeblind.repository.coding-job.v1" && status.includes(j.status) && at5(j.observed_at), "Invalid coding state");
-    const key4 = authorityKey || j.workspace?.signer;
-    check(await verify(e.job, key4), "Coding service signature invalid");
-    check(await verifyRepositoryWorkspaceState(j.workspace, key4), "Coding workspace proof invalid");
+    const key5 = authorityKey || j.workspace?.signer;
+    check(await verify(e.job, key5), "Coding service signature invalid");
+    check(await verifyRepositoryWorkspaceState(j.workspace, key5), "Coding workspace proof invalid");
     const w = j.workspace.payload.workspace.payload;
     check(validRepositoryEnvelope(j.mandate) && validRepositoryCodingMandate(m) && await verify(j.mandate, m.owner_key) && validRepositoryEnvelope(j.adoption) && j.adoption.digest === j.mandate.digest && canonical(j.adoption.payload) === canonical(m) && await verify(j.adoption, m.reviewer_key), "Separate dual-signed code-edit authority required");
-    check(m.workspace_id === w.id && m.workspace_digest === j.workspace.payload.workspace.digest && m.repository === w.repository && m.base_branch === w.base_branch && m.worker_key !== key4 && m.worker_key !== w.receiver_key, "Coding project scope mismatch");
-    for (const [id9, k, revision2, role] of [[m.owner_member_id, m.owner_key, m.owner_member_revision, "owner"], [m.reviewer_member_id, m.reviewer_key, m.reviewer_member_revision, "reviewer"]]) {
-      const member = j.workspace.payload.members.find((x) => x.member_id === id9);
+    check(m.workspace_id === w.id && m.workspace_digest === j.workspace.payload.workspace.digest && m.repository === w.repository && m.base_branch === w.base_branch && m.worker_key !== key5 && m.worker_key !== w.receiver_key, "Coding project scope mismatch");
+    for (const [id11, k, revision2, role] of [[m.owner_member_id, m.owner_key, m.owner_member_revision, "owner"], [m.reviewer_member_id, m.reviewer_key, m.reviewer_member_revision, "reviewer"]]) {
+      const member = j.workspace.payload.members.find((x) => x.member_id === id11);
       check(member && member.current_key === k && member.revision === revision2 && member.status === "active" && member.role === role, "Coding member revision mismatch");
     }
     check(validRepositoryEnvelope(j.request) && validRepositoryCodingRequest(r) && await verify(j.request, m.owner_key) && r.owner_key === m.owner_key && r.workspace_id === m.workspace_id && r.mandate_digest === j.mandate.digest && before2(m.issued_at, r.issued_at) && before2(r.issued_at, m.expires_at) && before2(r.issued_at, j.observed_at) && before2(r.issued_at, j.workspace.payload.observed_at) && before2(j.workspace.payload.observed_at, j.observed_at), "Coding request authority mismatch");
-    check(!j.parent.origin && !j.parent.coding_origin && (await verifyRepositoryReviewEvidence(j.parent, key4)).valid, "Invalid frozen coding source");
+    check(!j.parent.origin && !j.parent.coding_origin && (await verifyRepositoryReviewEvidence(j.parent, key5)).valid, "Invalid frozen coding source");
     const core = j.parent.repository.type === "scopeblind.repository.evidence.v1" ? j.parent.repository.state : j.parent.repository.repository.state, source = r.source, feedback = j.parent.review.payload.feedback.find((f) => f.digest === source.feedback_digest);
     check(core.payload.task.digest === source.task_digest && core.payload.task.payload.id === source.task_id && core.payload.task.payload.repository === m.repository && core.payload.task.payload.base_branch === m.base_branch && feedback && feedback.payload.basis_digest === source.basis_digest && feedback.payload.packet_digest === source.packet_digest && before2(feedback.payload.issued_at, r.issued_at) && core.payload.proposal, "Coding source feedback mismatch");
     check(Number.isSafeInteger(j.attempts) && j.attempts >= 0 && j.attempts <= m.max_attempts && Number.isSafeInteger(j.model_calls) && j.model_calls >= 0 && j.model_calls <= m.max_model_calls && Number.isSafeInteger(j.reserved_tokens) && j.reserved_tokens >= 0 && j.reserved_tokens <= m.max_tokens, "Coding work limits exceeded");
@@ -46695,7 +46715,7 @@ async function verifyRepositoryCodingEvidence(value, authorityKey) {
     }
     if (j.publication) {
       const p = j.publication.payload;
-      check(j.plan && validRepositoryEnvelope(j.publication) && object6(p) && shape4(p, ["type", "job_id", "plan_digest", "mandate_digest", "request_digest", "worker_key", "lease_id", "issued_at", "expires_at"]) && p.type === "scopeblind.repository.coding-publication.v1" && await verify(j.publication, key4) && p.job_id === r.id && p.plan_digest === j.plan.digest && p.mandate_digest === j.mandate.digest && p.request_digest === j.request.digest && p.worker_key === m.worker_key && at5(p.issued_at) && at5(p.expires_at) && before2(j.plan.payload.issued_at, p.issued_at) && Date.parse(p.expires_at) > Date.parse(p.issued_at) && Date.parse(p.expires_at) - Date.parse(p.issued_at) <= 12e4 && before2(p.expires_at, m.expires_at) && before2(p.issued_at, j.observed_at), "Invalid exact publication gate");
+      check(j.plan && validRepositoryEnvelope(j.publication) && object6(p) && shape4(p, ["type", "job_id", "plan_digest", "mandate_digest", "request_digest", "worker_key", "lease_id", "issued_at", "expires_at"]) && p.type === "scopeblind.repository.coding-publication.v1" && await verify(j.publication, key5) && p.job_id === r.id && p.plan_digest === j.plan.digest && p.mandate_digest === j.mandate.digest && p.request_digest === j.request.digest && p.worker_key === m.worker_key && at5(p.issued_at) && at5(p.expires_at) && before2(j.plan.payload.issued_at, p.issued_at) && Date.parse(p.expires_at) > Date.parse(p.issued_at) && Date.parse(p.expires_at) - Date.parse(p.issued_at) <= 12e4 && before2(p.expires_at, m.expires_at) && before2(p.issued_at, j.observed_at), "Invalid exact publication gate");
     }
     if (j.result) {
       const result = j.result.payload;
@@ -46725,11 +46745,11 @@ async function verifyRepositoryReviewEvidence(value, pins) {
   try {
     const e = value;
     check((shape5(e, ["type", "repository", "review"]) || shape5(e, ["type", "repository", "review", "origin"]) || shape5(e, ["type", "repository", "review", "coding_origin"])) && e.type === "scopeblind.repository.review-evidence.v1", "Review evidence shape is invalid");
-    const core = repositoryReviewCore(e), base = e.repository.type === "scopeblind.repository.evidence.v1" ? await verifyRepositoryEvidence(e.repository, pins) : await verifyRepositoryCollaborationEvidence(e.repository, pins), s = core.state.payload, r = e.review.payload, t = s.task.payload, key4 = typeof pins === "string" ? pins : pins?.authority_key ?? t.authority_key;
+    const core = repositoryReviewCore(e), base = e.repository.type === "scopeblind.repository.evidence.v1" ? await verifyRepositoryEvidence(e.repository, pins) : await verifyRepositoryCollaborationEvidence(e.repository, pins), s = core.state.payload, r = e.review.payload, t = s.task.payload, key5 = typeof pins === "string" ? pins : pins?.authority_key ?? t.authority_key;
     check(base.valid, "Underlying repository evidence is invalid");
     accepted = base.accepted;
     authorityPinned = base.authorityPinned;
-    check(validRepositoryEnvelope(e.review) && shape5(r, ["type", "task_id", "task_digest", "brief", "packet", "decisions", "feedback", "recommendations", "history", "agent_uses", "observed_at"], ["origin_digest", "coding_origin_digest"]) && r.type === "scopeblind.repository.review-state.v1" && r.task_id === t.id && r.task_digest === s.task.digest && at6(r.observed_at) && Date.parse(r.observed_at) >= Date.parse(s.observed_at) && await verify(e.review, key4), "Review service state is invalid");
+    check(validRepositoryEnvelope(e.review) && shape5(r, ["type", "task_id", "task_digest", "brief", "packet", "decisions", "feedback", "recommendations", "history", "agent_uses", "observed_at"], ["origin_digest", "coding_origin_digest"]) && r.type === "scopeblind.repository.review-state.v1" && r.task_id === t.id && r.task_digest === s.task.digest && at6(r.observed_at) && Date.parse(r.observed_at) >= Date.parse(s.observed_at) && await verify(e.review, key5), "Review service state is invalid");
     check(validRepositoryEnvelope(r.brief) && validRepositoryReviewBrief(r.brief.payload, t, s.task.digest) && Date.parse(r.brief.payload.issued_at) <= Date.parse(r.observed_at) && await verify(r.brief, t.owner_key), "Owner review brief is invalid");
     check(Array.isArray(r.decisions) && r.decisions.length <= 2 && new Set(r.decisions.map((d) => d.payload.role)).size === r.decisions.length && Array.isArray(r.feedback) && r.feedback.length <= 20 && new Set(r.feedback.map((f) => f.payload.id)).size === r.feedback.length && Array.isArray(r.recommendations) && r.recommendations.length <= 20 && new Set(r.recommendations.map((f) => f.payload.id)).size === r.recommendations.length && Array.isArray(r.history) && r.history.length <= 40 && new Set(r.history.map((h) => h.state.digest + ":" + h.packet.digest)).size === r.history.length, "Review record bounds are invalid");
     check(Array.isArray(r.agent_uses) && r.agent_uses.length <= 40 && new Set(r.agent_uses.map((u) => u.payload.record_digest)).size === r.agent_uses.length, "Agent-use record bounds are invalid");
@@ -46740,19 +46760,19 @@ async function verifyRepositoryReviewEvidence(value, pins) {
     } else check(!r.decisions.length && !s.execution, "Exact packet decisions require a current packet");
     for (const decision of r.decisions) {
       const a = s.approvals.find((a2) => a2.payload.role === decision.payload.role), principal = decision.payload.role === "owner" ? t.owner_key : s.reviewer?.payload.reviewer_key;
-      check(a && r.packet && validRepositoryHumanEnvelope(decision) && validRepositoryReviewDecision(decision.payload, r.brief, r.packet, a) && decision.payload.principal_key === principal && await verifyRepositoryHuman(decision, principal, { authorityKey: key4, task: s.task, requireRecordedUse: true }) && Date.parse(decision.payload.issued_at) <= Date.parse(r.observed_at), "Exact packet decision is invalid");
+      check(a && r.packet && validRepositoryHumanEnvelope(decision) && validRepositoryReviewDecision(decision.payload, r.brief, r.packet, a) && decision.payload.principal_key === principal && await verifyRepositoryHuman(decision, principal, { authorityKey: key5, task: s.task, requireRecordedUse: true }) && Date.parse(decision.payload.issued_at) <= Date.parse(r.observed_at), "Exact packet decision is invalid");
     }
     check(r.decisions.length === s.approvals.length && s.approvals.every((a) => r.decisions.some((d) => d.payload.role === a.payload.role && d.payload.approval_digest === a.digest)), "Each ordinary approval requires its exact packet decision");
     decisionsVerified = packetVerified && r.decisions.length === 2 && s.approvals.length === 2 && s.approvals.every((a) => a.payload.decision === "approve");
     if (s.execution) check(decisionsVerified && r.packet && Date.parse(s.execution.payload.expires_at) <= Date.parse(r.packet.payload.expires_at), "Execution lacks both exact current packet decisions");
     const contexts = r.packet ? [{ state: core.state, packet: r.packet }] : [];
     for (const h of r.history) {
-      check(shape5(h, ["state", "packet", "decisions"]) && (await verifyRepositoryEvidence({ type: "scopeblind.repository.evidence.v1", state: h.state }, pins ?? key4)).valid && h.state.payload.task.digest === s.task.digest && h.state.payload.reviewer?.digest === s.reviewer?.digest && Date.parse(h.state.payload.observed_at) <= Date.parse(r.observed_at) && h.state.payload.proposal && validRepositoryEnvelope(h.packet) && validRepositoryReviewPacket(h.packet.payload, r.brief, h.state.payload.proposal) && await verify(h.packet, t.receiver_key), "Historical review basis is invalid");
+      check(shape5(h, ["state", "packet", "decisions"]) && (await verifyRepositoryEvidence({ type: "scopeblind.repository.evidence.v1", state: h.state }, pins ?? key5)).valid && h.state.payload.task.digest === s.task.digest && h.state.payload.reviewer?.digest === s.reviewer?.digest && Date.parse(h.state.payload.observed_at) <= Date.parse(r.observed_at) && h.state.payload.proposal && validRepositoryEnvelope(h.packet) && validRepositoryReviewPacket(h.packet.payload, r.brief, h.state.payload.proposal) && await verify(h.packet, t.receiver_key), "Historical review basis is invalid");
       contexts.push(h);
       check(Array.isArray(h.decisions) && h.decisions.length <= 2 && new Set(h.decisions.map((d) => d.payload.role)).size === h.decisions.length, "Historical packet decisions are invalid");
       for (const decision of h.decisions) {
         const approval = h.state.payload.approvals.find((a) => a.payload.role === decision.payload.role), principal = decision.payload.role === "owner" ? t.owner_key : s.reviewer?.payload.reviewer_key;
-        check(approval && validRepositoryHumanEnvelope(decision) && validRepositoryReviewDecision(decision.payload, r.brief, h.packet, approval) && decision.payload.principal_key === principal && await verifyRepositoryHuman(decision, principal, { authorityKey: key4, task: s.task, requireRecordedUse: true }), "Historical exact packet decision is invalid");
+        check(approval && validRepositoryHumanEnvelope(decision) && validRepositoryReviewDecision(decision.payload, r.brief, h.packet, approval) && decision.payload.principal_key === principal && await verifyRepositoryHuman(decision, principal, { authorityKey: key5, task: s.task, requireRecordedUse: true }), "Historical exact packet decision is invalid");
       }
       check(h.decisions.length === h.state.payload.approvals.length && h.state.payload.approvals.every((a) => h.decisions.some((d) => d.payload.role === a.payload.role && d.payload.approval_digest === a.digest)), "Each historical approval requires its exact packet decision");
       if (h.state.payload.execution) check(h.decisions.length === 2 && Date.parse(h.state.payload.execution.payload.expires_at) <= Date.parse(h.packet.payload.expires_at), "Historical execution lacks both exact packet decisions");
@@ -46761,14 +46781,14 @@ async function verifyRepositoryReviewEvidence(value, pins) {
     const uses = /* @__PURE__ */ new Map();
     for (const use of r.agent_uses) {
       const u = use.payload, m = u.mandate?.payload, a = u.assignment?.payload, record = [...r.feedback, ...r.recommendations].find((x) => x.digest === u.record_digest), recordTime = record ? record.payload.issued_at ?? record.payload.observed_at : "";
-      check(validRepositoryEnvelope(use) && shape5(u, ["type", "task_id", "task_digest", "record_digest", "permission", "mandate", "adoption", "assignment", "checked_at"]) && u.type === "scopeblind.repository.review-agent-use.v1" && u.task_id === t.id && u.task_digest === s.task.digest && await verify(use, key4) && record && at6(u.checked_at) && Date.parse(u.checked_at) <= Date.parse(r.observed_at) && Date.parse(u.checked_at) >= Date.parse(recordTime), "Agent-use service attestation is invalid");
+      check(validRepositoryEnvelope(use) && shape5(u, ["type", "task_id", "task_digest", "record_digest", "permission", "mandate", "adoption", "assignment", "checked_at"]) && u.type === "scopeblind.repository.review-agent-use.v1" && u.task_id === t.id && u.task_digest === s.task.digest && await verify(use, key5) && record && at6(u.checked_at) && Date.parse(u.checked_at) <= Date.parse(r.observed_at) && Date.parse(u.checked_at) >= Date.parse(recordTime), "Agent-use service attestation is invalid");
       check(validRepositoryEnvelope(u.mandate) && validRepositoryEnvelope(u.adoption) && validWorkspacePreparationMandate(m) && m.owner_key === t.owner_key && m.reviewer_key === s.reviewer?.payload.reviewer_key && !["", t.owner_key, t.receiver_key, t.authority_key, s.reviewer?.payload.reviewer_key].includes(m.agent_key) && m.repository === t.repository && m.base_branch === t.base_branch && u.adoption.digest === u.mandate.digest && canonical(u.adoption.payload) === canonical(m) && await verify(u.mandate, t.owner_key) && await verify(u.adoption, m.reviewer_key) && m.permissions.includes(u.permission) && ["report_criteria", "request_revision"].includes(u.permission) && Date.parse(m.issued_at) <= Date.parse(recordTime) && Date.parse(m.expires_at) >= Date.parse(u.checked_at) && t.allowed_paths.every((p) => m.allowed_paths.includes(p) || m.allowed_paths.some((scope) => scope.endsWith("/**") && p.startsWith(scope.slice(0, -2)))) && m.required_checks.every((c) => t.required_checks.some((tc) => tc.name === c.name && tc.app_id === c.app_id)), "Dual-signed preparation mandate is invalid");
       check(validRepositoryEnvelope(u.assignment) && validWorkspaceTaskAssignment(a) && a.task_id === t.id && a.task_digest === s.task.digest && a.review_brief_digest === r.brief.digest && a.workspace_id === m.workspace_id && a.workspace_digest === m.workspace_digest && a.owner_key === t.owner_key && a.reviewer_key === s.reviewer?.payload.reviewer_key && a.owner_member_id === m.owner_member_id && a.reviewer_member_id === m.reviewer_member_id && a.owner_member_revision === m.owner_member_revision && a.reviewer_member_revision === m.reviewer_member_revision && Date.parse(a.issued_at) <= Date.parse(recordTime) && Date.parse(a.expires_at) >= Date.parse(u.checked_at) && await verify(u.assignment, t.owner_key), "Task assignment for the agent use is invalid");
       uses.set(u.record_digest, use);
     }
     for (const feedback of r.feedback) {
       const f = feedback.payload, c = contexts.find((c2) => c2.packet.digest === f.packet_digest && [c2.state.payload.proposal?.digest, c2.state.payload.outcome?.digest, c2.state.payload.acceptance?.digest].includes(f.basis_digest));
-      check(c && validRepositoryHumanEnvelope(feedback) && validRepositoryReviewFeedback(f, r.brief, c.packet) && await verifyRepositoryHuman(feedback, f.requester_key, { authorityKey: key4, task: s.task, requireRecordedUse: true }) && Date.parse(f.issued_at) <= Date.parse(r.observed_at), "Review feedback is invalid");
+      check(c && validRepositoryHumanEnvelope(feedback) && validRepositoryReviewFeedback(f, r.brief, c.packet) && await verifyRepositoryHuman(feedback, f.requester_key, { authorityKey: key5, task: s.task, requireRecordedUse: true }) && Date.parse(f.issued_at) <= Date.parse(r.observed_at), "Review feedback is invalid");
       const use = uses.get(feedback.digest)?.payload;
       check(f.mandate_digest ? use && use.permission === "request_revision" && use.mandate.digest === f.mandate_digest && use.mandate.payload.agent_key === f.requester_key : !use && [t.owner_key, s.reviewer?.payload.reviewer_key].includes(f.requester_key), "Review feedback lacks independently verifiable human or scoped-agent authority");
     }
@@ -46782,7 +46802,7 @@ async function verifyRepositoryReviewEvidence(value, pins) {
     check(e.coding_origin ? r.coding_origin_digest === await sha256(canonical(e.coding_origin)) : r.coding_origin_digest === void 0, "Registered coding origin commitment is missing or mismatched");
     if (e.coding_origin) {
       const o = e.coding_origin, j = o.job?.job?.payload, a = o.assignment?.payload;
-      check(!e.origin && shape5(o, ["job", "assignment"]) && (await verifyRepositoryCodingEvidence(o.job, key4)).published, "Coding origin is not a verified completed code job");
+      check(!e.origin && shape5(o, ["job", "assignment"]) && (await verifyRepositoryCodingEvidence(o.job, key5)).published, "Coding origin is not a verified completed code job");
       check(j?.result && j.request.payload.source.task_id !== t.id && j.result.payload.repository === t.repository && j.result.payload.pull_number === t.pull_number && j.mandate.payload.base_branch === t.base_branch, "Coding result does not match the fresh review");
       check(validRepositoryEnvelope(o.assignment) && validWorkspaceTaskAssignment(a) && a.task_id === t.id && a.task_digest === s.task.digest && a.review_brief_digest === r.brief.digest && !a.source_draft_digest && a.workspace_id === j.mandate.payload.workspace_id && a.workspace_digest === j.mandate.payload.workspace_digest && a.owner_key === t.owner_key && (!s.reviewer || a.reviewer_key === s.reviewer.payload.reviewer_key) && Date.parse(a.issued_at) >= Date.parse(j.result.payload.observed_at) && Date.parse(a.issued_at) <= Date.parse(r.observed_at) && await verify(o.assignment, t.owner_key), "Coding result assignment is invalid");
       if (s.proposal) check(s.proposal.payload.head_sha === j.result.payload.head_sha, "Fresh review changed beyond the registered coding result");
@@ -46792,7 +46812,7 @@ async function verifyRepositoryReviewEvidence(value, pins) {
       const o = e.origin;
       check(shape5(o, ["draft", "assignment", "parent_assignment", "parent", "preparation"]) && !Object.prototype.hasOwnProperty.call(o.parent, "origin") && shape5(o.preparation, ["mandate", "adoption"]), "Review origin shape or depth is invalid");
       if (!shape5(o.parent, ["type", "repository", "review"])) throw Error("Nested origin is forbidden");
-      const parent = await verifyRepositoryReviewEvidence(o.parent, key4), ps = repositoryReviewCore(o.parent).state.payload, d = o.draft.payload, a = o.assignment.payload, m = o.preparation.mandate.payload, source = d.source;
+      const parent = await verifyRepositoryReviewEvidence(o.parent, key5), ps = repositoryReviewCore(o.parent).state.payload, d = o.draft.payload, a = o.assignment.payload, m = o.preparation.mandate.payload, source = d.source;
       check(parent.valid && validRepositoryEnvelope(o.draft) && validWorkspaceReviewDraft(d) && source && d.repository === t.repository && d.pull_number === t.pull_number && d.workspace_id === a.workspace_id && d.mandate_digest === o.preparation.mandate.digest && d.agent_key === m.agent_key && await verify(o.draft, d.agent_key), "Incoming review draft is invalid");
       const pa = o.parent_assignment?.payload;
       check(validRepositoryEnvelope(o.parent_assignment) && validWorkspaceTaskAssignment(pa) && pa.task_id === ps.task.payload.id && pa.task_digest === ps.task.digest && pa.review_brief_digest === o.parent.review.payload.brief.digest && pa.workspace_id === a.workspace_id && pa.workspace_digest === a.workspace_digest && pa.owner_key === ps.task.payload.owner_key && pa.reviewer_key === ps.reviewer?.payload.reviewer_key && await verify(o.parent_assignment, ps.task.payload.owner_key), "Source task project assignment is invalid");
@@ -46809,7 +46829,7 @@ async function verifyRepositoryReviewEvidence(value, pins) {
 }
 
 // src/coordination-repository-connection.ts
-var REPOSITORY_SETUP_ACTIONS = ["repository_setup_info", "repository_setup_create", "repository_setup_get", "repository_setup_oauth", "repository_setup_enroll", "repository_setup_confirm", "repository_setup_ready", "repository_setup_coding_ready", "repository_setup_refresh", "repository_setup_renew", "repository_setup_revoke", "repository_setup_dispatch", "repository_setup_job_get", "repository_setup_job_complete"];
+var REPOSITORY_SETUP_ACTIONS = ["repository_setup_info", "repository_setup_create", "repository_setup_get", "repository_setup_diagnose", "repository_setup_job_status", "repository_setup_oauth", "repository_setup_enroll", "repository_setup_confirm", "repository_setup_ready", "repository_setup_coding_ready", "repository_setup_refresh", "repository_setup_renew", "repository_setup_revoke", "repository_setup_dispatch", "repository_setup_job_get", "repository_setup_job_complete"];
 var REPOSITORY_GUIDED_WORKFLOW = ".github/workflows/scopeblind-connection.yml";
 var REPOSITORY_SETUP_TTL = 30 * 6e4;
 var REPOSITORY_CODING_IMAGE = "node@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752";
@@ -47129,9 +47149,9 @@ function codingTree(entries, changes) {
     }
     for (const d of dirs) rows.push({ path: d, mode: "040000", type: "tree", sha: tree(prefix + d + "/") });
     rows.sort((a, b) => Buffer.compare(Buffer.from(a.path + (a.type === "tree" ? "/" : "")), Buffer.from(b.path + (b.type === "tree" ? "/" : ""))));
-    const data = Buffer.concat(rows.map((r) => Buffer.concat([Buffer.from(`${r.type === "tree" ? "40000" : r.mode} ${r.path}\0`), Buffer.from(r.sha, "hex")]))), sha4 = hash(Buffer.concat([Buffer.from(`tree ${data.length}\0`), data]));
-    objects.push({ path: prefix, sha: sha4, entries: rows });
-    return sha4;
+    const data = Buffer.concat(rows.map((r) => Buffer.concat([Buffer.from(`${r.type === "tree" ? "40000" : r.mode} ${r.path}\0`), Buffer.from(r.sha, "hex")]))), sha6 = hash(Buffer.concat([Buffer.from(`tree ${data.length}\0`), data]));
+    objects.push({ path: prefix, sha: sha6, entries: rows });
+    return sha6;
   };
   return { sha: tree(""), objects };
 }
@@ -47147,8 +47167,8 @@ var RepositoryCodingRunner = class {
   }
   publicationUntil = 0;
   stopped = false;
-  async rpc(action, id9, body = {}) {
-    const request = await sign(makeRequest(action, id9, body), this.identity), r = await this.fetcher(this.config.endpoint, { method: "POST", headers: { "content-type": "application/json", "x-scopeblind-action": action }, body: JSON.stringify({ request }), redirect: "error", signal: AbortSignal.timeout(55e3) }), v = await bounded(r);
+  async rpc(action, id11, body = {}) {
+    const request = await sign(makeRequest(action, id11, body), this.identity), r = await this.fetcher(this.config.endpoint, { method: "POST", headers: { "content-type": "application/json", "x-scopeblind-action": action }, body: JSON.stringify({ request }), redirect: "error", signal: AbortSignal.timeout(55e3) }), v = await bounded(r);
     need2(r.ok && v.ok === true, typeof v.error === "string" ? v.error : "coding_service_refused");
     return v;
   }
@@ -47296,9 +47316,9 @@ ${message}
         const blob = await this.github("/git/blobs", { method: "POST", body: JSON.stringify({ encoding: "base64", content: Buffer.from(bytes).toString("base64") }) });
         need2(blob.sha === change.after_sha, "coding_blob_mismatch");
       }
-      for (const object7 of next.objects) {
-        const made = await this.github("/git/trees", { method: "POST", body: JSON.stringify({ tree: object7.entries }) });
-        need2(made.sha === object7.sha, "coding_tree_mismatch");
+      for (const object8 of next.objects) {
+        const made = await this.github("/git/trees", { method: "POST", body: JSON.stringify({ tree: object8.entries }) });
+        need2(made.sha === object8.sha, "coding_tree_mismatch");
       }
       const commit = await this.github("/git/commits", { method: "POST", body: JSON.stringify({ message: message + "\n", tree: next.sha, parents: [proposal.payload.head_sha], author: person, committer: person }) });
       need2(commit.sha === commitSha, "coding_commit_mismatch");
@@ -47326,6 +47346,683 @@ ${message}
     }
   }
 };
+
+// src/coordination-repository-recovery.ts
+var REPOSITORY_RECOVERY_CODES = [
+  "github_connection_required",
+  "local_dispatch",
+  "connection_expired",
+  "connection_revoked",
+  "connection_replaced",
+  "installation_pending",
+  "installation_expired",
+  "receiver_readiness_expired",
+  "coding_readiness_pending",
+  "coding_readiness_expired",
+  "workflow_response_pending",
+  "workflow_approval_required",
+  "workflow_waiting",
+  "workflow_running",
+  "workflow_failed",
+  "workflow_completed_without_response",
+  "provider_unavailable",
+  "provider_observation_incomplete",
+  "pull_draft",
+  "pull_closed",
+  "pull_conflict",
+  "pull_mergeability_pending",
+  "pull_metadata_stale",
+  "base_changed",
+  "head_changed",
+  "required_check_missing",
+  "required_check_pending",
+  "required_check_failed",
+  "inspection_needed",
+  "job_expired"
+];
+var obj4 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var shape7 = (v, keys2, optional = []) => obj4(v) && keys2.every((k) => k in v) && Object.keys(v).every((k) => keys2.includes(k) || optional.includes(k));
+var id9 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
+var hex5 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
+var sha4 = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
+var integer4 = (v) => Number.isSafeInteger(v) && Number(v) > 0;
+var text7 = (v, max = 100) => typeof v === "string" && v.length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
+var time6 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+function validRepositoryRecoveryObservation(v) {
+  if (!shape7(v, ["type", "setup_id", "setup_digest", "owner_key", "task_id", "task_digest", "job_id", "repository", "pull_number", "observed_at", "expires_at", "issues", "pull", "expected", "workflow", "checks"])) return false;
+  const p = v;
+  if (p.type !== "scopeblind.repository.recovery-observation.v1" || !id9(p.setup_id) || !hex5(p.setup_digest) || !hex5(p.owner_key) || p.task_id !== null && !id9(p.task_id) || p.task_digest !== null && !hex5(p.task_digest) || p.task_id === null !== (p.task_digest === null) || p.job_id !== null && !id9(p.job_id) || typeof p.repository !== "string" || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(p.repository) || p.repository.split("/").some((x) => x === "." || x === "..") || !integer4(p.pull_number) || !time6(p.observed_at) || !time6(p.expires_at) || Date.parse(p.expires_at) - Date.parse(p.observed_at) !== 12e4) return false;
+  if (!shape7(p.expected, ["base_sha", "head_sha"]) || [p.expected.base_sha, p.expected.head_sha].some((s) => s !== null && !sha4(s))) return false;
+  if (p.pull && (!shape7(p.pull, ["state", "draft", "base_sha", "head_sha", "mergeable"]) || !["open", "closed"].includes(p.pull.state) || typeof p.pull.draft !== "boolean" || !sha4(p.pull.base_sha) || !sha4(p.pull.head_sha) || p.pull.mergeable !== null && typeof p.pull.mergeable !== "boolean")) return false;
+  if (p.workflow && (!shape7(p.workflow, ["run_id", "status", "conclusion", "url"]) || !integer4(p.workflow.run_id) || !text7(p.workflow.status, 40) || p.workflow.conclusion !== null && !text7(p.workflow.conclusion, 40) || p.workflow.url !== `https://github.com/${p.repository}/actions/runs/${p.workflow.run_id}`)) return false;
+  if (!Array.isArray(p.issues) || p.issues.length > 70 || !p.issues.every((i) => shape7(i, ["code", "actor"], ["check_name", "app_id"]) && REPOSITORY_RECOVERY_CODES.includes(i.code) && ["owner", "github_reviewer", "worker"].includes(i.actor) && (i.check_name === void 0 || text7(i.check_name)) && (i.app_id === void 0 || integer4(i.app_id)))) return false;
+  return Array.isArray(p.checks) && p.checks.length <= 50 && p.checks.every((c) => shape7(c, ["name", "app_id", "state", "run_id"]) && text7(c.name) && (c.app_id === null || integer4(c.app_id)) && ["missing", "pending", "failed", "passed"].includes(c.state) && (c.run_id === null || integer4(c.run_id)));
+}
+async function verifyRepositoryRecoveryObservation(value, authorityKey, scope, now = Date.now()) {
+  try {
+    if (!validRepositoryEnvelope(value)) return false;
+    const s = value;
+    if (!validRepositoryRecoveryObservation(s.payload)) return false;
+    const p = s.payload;
+    return p.setup_id === scope.setupId && p.owner_key === scope.ownerKey && p.task_id === (scope.taskId ?? null) && (scope.jobId === void 0 || p.job_id === scope.jobId) && Date.parse(p.observed_at) <= now + 1e3 && Date.parse(p.expires_at) > now && await verify(s, authorityKey);
+  } catch {
+    return false;
+  }
+}
+
+// src/repository-trial-template.ts
+var TRIAL_BEFORE_HTML = '<!doctype html>\n<html lang="en">\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <meta name="description" content="Fieldwork is a small independent design studio making useful things for thoughtful people.">\n  <title>Fieldwork \u2014 Useful things, thoughtfully made</title>\n  <style>\n    :root { color-scheme: light; --paper:#f6f4ed; --ink:#263c31; --muted:#58685b; --line:#d7dccf; --accent:#d9e7b6; }\n    * { box-sizing:border-box; }\n    html { scroll-behavior:smooth; }\n    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }\n    a { color:inherit; text-underline-offset:4px; }\n    a:focus-visible { outline:3px solid var(--ink); outline-offset:5px; }\n    .wrap { width:min(1120px,calc(100% - 80px)); margin:auto; }\n    .nav { display:flex; justify-content:space-between; align-items:center; gap:24px; padding:30px 0; border-bottom:1px solid var(--line); }\n    .wordmark { font-family:Georgia,serif; font-size:30px; font-weight:700; letter-spacing:-1.5px; }\n    .nav-note,.eyebrow { font-size:11px; font-weight:650; letter-spacing:.15em; text-transform:uppercase; }\n    .nav-note { color:var(--muted); }\n    .hero { display:grid; grid-template-columns:1.35fr .8fr; gap:72px; align-items:center; padding:90px 0 84px; }\n    .eyebrow { margin:0 0 22px; color:var(--muted); }\n    h1,h2,h3,p { margin-top:0; }\n    h1,h2 { font-family:Georgia,"Times New Roman",serif; font-weight:400; letter-spacing:-.05em; }\n    h1 { max-width:720px; font-size:clamp(48px,6.2vw,82px); line-height:1.06; margin-bottom:27px; }\n    h1 em { font-weight:400; }\n    .intro { max-width:460px; font-size:17px; color:var(--muted); margin-bottom:28px; }\n    .contact-button { display:inline-flex; align-items:center; justify-content:space-between; gap:35px; min-height:52px; padding:12px 22px; border-radius:4px; background:var(--ink); color:#fff; text-decoration:none; font-size:14px; font-weight:600; }\n    .contact-button:hover { background:#38503f; }\n    .studio-card { position:relative; min-height:345px; display:flex; flex-direction:column; justify-content:space-between; background:var(--accent); border-radius:48% 48% 5px 5px; padding:48px 34px 28px; overflow:hidden; }\n    .studio-card::before { content:""; width:155px; height:155px; border:1px solid #8b9f70; border-radius:50%; position:absolute; top:69px; right:-36px; }\n    .card-mark { font:italic 100px/.95 Georgia,serif; letter-spacing:-9px; }\n    .card-caption { max-width:200px; margin:50px 0 0; font-size:14px; line-height:1.55; }\n    .work { padding:35px 0 70px; border-top:1px solid var(--line); }\n    .section-heading { display:flex; justify-content:space-between; align-items:baseline; gap:24px; margin-bottom:26px; }\n    h2 { font-size:37px; line-height:1.15; margin-bottom:0; }\n    .section-heading p { color:var(--muted); font-size:13px; margin-bottom:0; }\n    .projects { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }\n    .project { margin:0; }\n    .project-art { min-height:180px; display:flex; align-items:center; justify-content:center; border-radius:4px; margin-bottom:16px; }\n    .project-art span { font:35px/1.1 Georgia,serif; text-align:center; }\n    .project-art.one { background:#e3ddd0; }\n    .project-art.two { background:#dfe6dc; }\n    .project-art.three { background:#e8d8cd; }\n    h3 { margin:0 0 3px; font-size:14px; font-weight:650; }\n    .project p { color:var(--muted); font-size:12px; margin-bottom:0; }\n    .about { display:grid; grid-template-columns:1fr 1.2fr; gap:55px; border-top:1px solid var(--line); padding:40px 0 58px; }\n    .about p { max-width:500px; margin:0; color:var(--muted); }\n    footer { border-top:1px solid var(--line); padding:24px 0 36px; display:flex; justify-content:space-between; gap:18px; font-size:11px; color:var(--muted); }\n    @media(max-width:700px) { .wrap{width:calc(100% - 40px)} .nav{padding:22px 0} .nav-note{max-width:130px;text-align:right;font-size:9px} .hero{grid-template-columns:1fr;gap:36px;padding:52px 0} .intro{font-size:16px} .studio-card{min-height:245px;max-width:390px;width:100%;border-radius:100px 100px 4px 4px;padding:35px 28px 24px} .card-mark{font-size:72px} .card-caption{margin:24px 0 0;max-width:250px} .section-heading{display:block} .section-heading p{margin-top:10px} .projects{grid-template-columns:1fr;gap:28px} .project-art{min-height:210px} .about{grid-template-columns:1fr;gap:20px} h2{font-size:32px} footer{flex-direction:column;gap:5px} }\n    @media(prefers-reduced-motion:reduce) { html{scroll-behavior:auto} }\n  </style>\n</head>\n<body>\n  <div class="wrap">\n    <header class="nav"><span class="wordmark">fieldwork.</span><span class="nav-note">Small studio.<br>Thoughtful work.</span></header>\n    <main>\n      <section class="hero" aria-labelledby="intro-heading">\n        <div>\n          <p class="eyebrow">Independent design, with purpose</p>\n          <h1 id="intro-heading">Good ideas.<br><em>Made useful.</em></h1>\n          <p class="intro">We help small teams turn thoughtful ideas into identities, websites, and everyday things people love to use.</p>\n        </div>\n        <aside class="studio-card" aria-label="Our approach"><span class="card-mark" aria-hidden="true">f.</span><p class="card-caption">A little clarity.<br>A considered detail.<br>Something worth putting into the world.</p></aside>\n      </section>\n      <section class="work" aria-labelledby="work-heading">\n        <div class="section-heading"><h2 id="work-heading">A few good beginnings.</h2><p>Identity \xB7 Digital \xB7 Everyday</p></div>\n        <div class="projects">\n          <article class="project"><div class="project-art one" aria-hidden="true"><span>Oat<br>&amp; Ember</span></div><h3>Oat &amp; Ember</h3><p>A warm welcome for a neighborhood bakery.</p></article>\n          <article class="project"><div class="project-art two" aria-hidden="true"><span>slow<br>season</span></div><h3>Slow Season</h3><p>A quieter kind of online home.</p></article>\n          <article class="project"><div class="project-art three" aria-hidden="true"><span>common<br>ground.</span></div><h3>Common Ground</h3><p>Making a shared space feel like yours.</p></article>\n        </div>\n      </section>\n      <section class="about" aria-labelledby="about-heading"><h2 id="about-heading">Small on purpose.</h2><p>You work with the people making the work. We listen closely, ask useful questions, and leave room for the details that make your project yours.</p></section>\n    </main>\n    <footer><span>Fieldwork Studio \xB7 A fictional studio for this shared trial.</span><span>Made with care. Ready for a fresh pair of eyes.</span></footer>\n  </div>\n</body>\n</html>\n';
+var TRIAL_SOURCE_HTML = '<!doctype html>\n<html lang="en">\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <meta name="description" content="Fieldwork is a small independent design studio making useful things for thoughtful people.">\n  <title>Fieldwork \u2014 Useful things, thoughtfully made</title>\n  <style>\n    :root { color-scheme: light; --paper:#f6f4ed; --ink:#263c31; --muted:#58685b; --line:#d7dccf; --accent:#d9e7b6; }\n    * { box-sizing:border-box; }\n    html { scroll-behavior:smooth; }\n    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }\n    a { color:inherit; text-underline-offset:4px; }\n    a:focus-visible { outline:3px solid var(--ink); outline-offset:5px; }\n    .wrap { width:min(1120px,calc(100% - 80px)); margin:auto; }\n    .nav { display:flex; justify-content:space-between; align-items:center; gap:24px; padding:30px 0; border-bottom:1px solid var(--line); }\n    .wordmark { font-family:Georgia,serif; font-size:30px; font-weight:700; letter-spacing:-1.5px; }\n    .nav-note,.eyebrow { font-size:11px; font-weight:650; letter-spacing:.15em; text-transform:uppercase; }\n    .nav-note { color:var(--muted); }\n    .hero { display:grid; grid-template-columns:1.35fr .8fr; gap:72px; align-items:center; padding:90px 0 84px; }\n    .eyebrow { margin:0 0 22px; color:var(--muted); }\n    h1,h2,h3,p { margin-top:0; }\n    h1,h2 { font-family:Georgia,"Times New Roman",serif; font-weight:400; letter-spacing:-.05em; }\n    h1 { max-width:720px; font-size:clamp(48px,6.2vw,82px); line-height:1.06; margin-bottom:27px; }\n    h1 em { font-weight:400; }\n    .intro { max-width:460px; font-size:17px; color:var(--muted); margin-bottom:28px; }\n    .contact-button { display:inline-flex; align-items:center; justify-content:space-between; gap:35px; min-height:52px; padding:12px 22px; border-radius:4px; background:var(--ink); color:#fff; text-decoration:none; font-size:14px; font-weight:600; }\n    .contact-button:hover { background:#38503f; }\n    .studio-card { position:relative; min-height:345px; display:flex; flex-direction:column; justify-content:space-between; background:var(--accent); border-radius:48% 48% 5px 5px; padding:48px 34px 28px; overflow:hidden; }\n    .studio-card::before { content:""; width:155px; height:155px; border:1px solid #8b9f70; border-radius:50%; position:absolute; top:69px; right:-36px; }\n    .card-mark { font:italic 100px/.95 Georgia,serif; letter-spacing:-9px; }\n    .card-caption { max-width:200px; margin:50px 0 0; font-size:14px; line-height:1.55; }\n    .work { padding:35px 0 70px; border-top:1px solid var(--line); }\n    .section-heading { display:flex; justify-content:space-between; align-items:baseline; gap:24px; margin-bottom:26px; }\n    h2 { font-size:37px; line-height:1.15; margin-bottom:0; }\n    .section-heading p { color:var(--muted); font-size:13px; margin-bottom:0; }\n    .projects { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }\n    .project { margin:0; }\n    .project-art { min-height:180px; display:flex; align-items:center; justify-content:center; border-radius:4px; margin-bottom:16px; }\n    .project-art span { font:35px/1.1 Georgia,serif; text-align:center; }\n    .project-art.one { background:#e3ddd0; }\n    .project-art.two { background:#dfe6dc; }\n    .project-art.three { background:#e8d8cd; }\n    h3 { margin:0 0 3px; font-size:14px; font-weight:650; }\n    .project p { color:var(--muted); font-size:12px; margin-bottom:0; }\n    .about { display:grid; grid-template-columns:1fr 1.2fr; gap:55px; border-top:1px solid var(--line); padding:40px 0 58px; }\n    .about p { max-width:500px; margin:0; color:var(--muted); }\n    footer { border-top:1px solid var(--line); padding:24px 0 36px; display:flex; justify-content:space-between; gap:18px; font-size:11px; color:var(--muted); }\n    @media(max-width:700px) { .wrap{width:calc(100% - 40px)} .nav{padding:22px 0} .nav-note{max-width:130px;text-align:right;font-size:9px} .hero{grid-template-columns:1fr;gap:36px;padding:52px 0} .intro{font-size:16px} .studio-card{min-height:245px;max-width:390px;width:100%;border-radius:100px 100px 4px 4px;padding:35px 28px 24px} .card-mark{font-size:72px} .card-caption{margin:24px 0 0;max-width:250px} .section-heading{display:block} .section-heading p{margin-top:10px} .projects{grid-template-columns:1fr;gap:28px} .project-art{min-height:210px} .about{grid-template-columns:1fr;gap:20px} h2{font-size:32px} footer{flex-direction:column;gap:5px} }\n    @media(prefers-reduced-motion:reduce) { html{scroll-behavior:auto} }\n  </style>\n</head>\n<body>\n  <div class="wrap">\n    <header class="nav"><span class="wordmark">fieldwork.</span><span class="nav-note">Small studio.<br>Thoughtful work.</span></header>\n    <main>\n      <section class="hero" aria-labelledby="intro-heading">\n        <div>\n          <p class="eyebrow">Independent design, with purpose</p>\n          <h1 id="intro-heading">Good ideas.<br><em>Made useful.</em></h1>\n          <p class="intro">We help small teams turn thoughtful ideas into identities, websites, and everyday things people love to use.</p>\n          <a class="contact-button" href="#contact">Get in touch <span aria-hidden="true">\u2197</span></a>\n        </div>\n        <aside class="studio-card" aria-label="Our approach"><span class="card-mark" aria-hidden="true">f.</span><p class="card-caption">A little clarity.<br>A considered detail.<br>Something worth putting into the world.</p></aside>\n      </section>\n      <section class="work" aria-labelledby="work-heading">\n        <div class="section-heading"><h2 id="work-heading">A few good beginnings.</h2><p>Identity \xB7 Digital \xB7 Everyday</p></div>\n        <div class="projects">\n          <article class="project"><div class="project-art one" aria-hidden="true"><span>Oat<br>&amp; Ember</span></div><h3>Oat &amp; Ember</h3><p>A warm welcome for a neighborhood bakery.</p></article>\n          <article class="project"><div class="project-art two" aria-hidden="true"><span>slow<br>season</span></div><h3>Slow Season</h3><p>A quieter kind of online home.</p></article>\n          <article class="project"><div class="project-art three" aria-hidden="true"><span>common<br>ground.</span></div><h3>Common Ground</h3><p>Making a shared space feel like yours.</p></article>\n        </div>\n      </section>\n      <section class="about" aria-labelledby="about-heading"><h2 id="about-heading">Small on purpose.</h2><p>You work with the people making the work. We listen closely, ask useful questions, and leave room for the details that make your project yours.</p></section>\n    </main>\n    <footer><span>Fieldwork Studio \xB7 A fictional studio for this shared trial.</span><span>Made with care. Ready for a fresh pair of eyes.</span></footer>\n  </div>\n</body>\n</html>\n';
+var TRIAL_TEST_SOURCE = `'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const file = path.resolve(__dirname, '../site/index.html');
+const html = fs.readFileSync(file, 'utf8');
+
+test('the studio remains a self-contained static page', () => {
+  assert.ok(fs.lstatSync(file).isFile() && !fs.lstatSync(file).isSymbolicLink(), 'Use a regular HTML file.');
+  assert.ok(Buffer.byteLength(html) <= 65536, 'Keep this small page within 64 KiB.');
+  assert.match(html, /<!doctype html>/i);
+  assert.match(html, /<html\\b[^>]*\\blang=["']en["']/i);
+  assert.match(html, /<meta\\b[^>]*\\bname=["']viewport["']/i);
+  assert.match(html, /<title>[^<]+<\\/title>/i);
+  assert.match(html, /<h1\\b[^>]*>[\\s\\S]+?<\\/h1>/i);
+  assert.doesNotMatch(html, /<\\s*(?:script|form|iframe|object|embed|base|link|img|video|audio|source|svg)\\b/i, 'No scripts, forms, embedded content, or external assets in this trial.');
+  assert.doesNotMatch(html, /\\bon[a-z]+\\s*=|javascript\\s*:|@import\\b|url\\s*\\(/i, 'Keep behavior to native document links and local styles.');
+  assert.doesNotMatch(html, /<meta\\b[^>]*http-equiv\\s*=/i, 'No document redirects.');
+  for (const match of html.matchAll(/\\bhref\\s*=\\s*(["'])(.*?)\\1/gi)) {
+    assert.match(match[2], /^#[A-Za-z][A-Za-z0-9_-]*$/, 'Links in this trial stay within the document.');
+  }
+});
+
+test('the contact button reaches a useful contact section', () => {
+  assert.match(html, /<a\\b[^>]*\\bhref=["']#contact["'][^>]*>[\\s\\S]*?<\\/a>/i, 'Keep the contact button as a native link to #contact.');
+  const section = html.match(/<section\\b[^>]*\\bid=["']contact["'][^>]*>([\\s\\S]*?)<\\/section>/i);
+  assert.ok(section, 'The contact link needs a matching contact section.');
+  assert.match(section[1], /<h[2-3]\\b[^>]*>[^<]+<\\/h[2-3]>/i, 'Give the contact section a visible heading.');
+  const text = section[1].replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim();
+  assert.ok(text.length >= 40, 'Include useful contact information or a clear next step.');
+  assert.match(text, /contact|touch|hello|write|email|conversation/i, 'Make the next step understandable.');
+  assert.equal([...html.matchAll(/\\bid\\s*=\\s*["']contact["']/gi)].length, 1, 'Use one unambiguous contact destination.');
+  assert.doesNotMatch(section[0], /\\bhidden(?:\\s|=|>)|aria-hidden\\s*=\\s*["']true["']/i, 'The destination must be visible.');
+});
+`;
+var TRIAL_BUILD_SOURCE = "'use strict';\nconst fs = require('node:fs');\nconst path = require('node:path');\nconst root = path.resolve(__dirname, '..');\nconst source = path.join(root, 'site', 'index.html');\nconst stat = fs.lstatSync(source);\nif (!stat.isFile() || stat.isSymbolicLink() || stat.size > 65536) throw new Error('Expected one regular HTML file no larger than 64 KiB.');\nconst output = path.join(root, 'dist');\nif (fs.existsSync(output)) {\n  const outStat = fs.lstatSync(output);\n  if (!outStat.isDirectory() || outStat.isSymbolicLink()) throw new Error('Build output must be a regular directory.');\n  fs.rmSync(output, { recursive: true });\n}\nfs.mkdirSync(output);\nfs.copyFileSync(source, path.join(output, 'index.html'));\nprocess.stdout.write('Built dist/index.html from site/index.html.\\n');\n";
+
+// src/coordination-repository-trial.ts
+var REPOSITORY_TRIAL_ACTIONS = ["repository_trial_info", "repository_trial_create", "repository_trial_get", "repository_trial_bind", "repository_trial_dispatch", "repository_trial_poll", "repository_trial_complete"];
+var TRIAL_REPOSITORY = "ScopeBlind/scopeblind-repository-demo";
+var TRIAL_WORKFLOW = ".github/workflows/scopeblind-trial.yml";
+var TRIAL_TEMPLATE = "styled-contact-v1";
+var TRIAL_SOURCE_CHECK = { name: "ScopeBlind trial source safety", app_id: 15368 };
+var TRIAL_CODING_CHECK = { name: "ScopeBlind isolated coding checks", app_id: 15368 };
+var TRIAL_LIMITS = { max_jobs: 1, max_attempts: 2, max_model_calls: 8, max_tokens: 98304, max_seconds: 600, max_changed_files: 2, max_changed_bytes: 32768 };
+var TRIAL_DOCKER_IMAGE = "node@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752";
+var trialBase = (id11) => `scopeblind/trial/${id11}/base`;
+var trialSource = (id11) => `scopeblind/trial/${id11}/source`;
+var object7 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var exact9 = (v, keys2) => Object.keys(v).length === keys2.length && keys2.every((k) => Object.hasOwn(v, k));
+var key4 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
+var id10 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
+var sha5 = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
+var at8 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+function validRepositoryTrialRequest(v) {
+  return object7(v) && exact9(v, ["type", "id", "owner_key", "authority_key", "title", "template", "reviewer_secret_hash", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.trial-request.v1" && id10(v.id) && key4(v.owner_key) && key4(v.authority_key) && v.owner_key !== v.authority_key && key4(v.reviewer_secret_hash) && v.template === TRIAL_TEMPLATE && typeof v.title === "string" && v.title.trim().length > 0 && v.title.length <= 100 && !/[\u0000-\u001f\u007f]/.test(v.title) && at8(v.issued_at) && at8(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 864e5;
+}
+function validRepositoryTrialProvision(v) {
+  return object7(v) && exact9(v, ["type", "trial_id", "request_digest", "receiver_key", "repository", "template_sha", "base_branch", "source_branch", "base_sha", "source_sha", "pull_number", "before", "source", "source_check", "observed_at"]) && v.type === "scopeblind.repository.trial-provision.v1" && id10(v.trial_id) && [v.request_digest, v.receiver_key].every(key4) && v.repository === TRIAL_REPOSITORY && [v.template_sha, v.base_sha, v.source_sha].every(sha5) && v.base_branch === trialBase(String(v.trial_id)) && v.source_branch === trialSource(String(v.trial_id)) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && [v.before, v.source].every((h) => object7(h) && exact9(h, ["html", "sha256", "blob_sha"]) && typeof h.html === "string" && new TextEncoder().encode(h.html).length <= 32768 && key4(h.sha256) && sha5(h.blob_sha)) && object7(v.source_check) && exact9(v.source_check, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(v.source_check.id) && Number(v.source_check.id) > 0 && v.source_check.name === TRIAL_SOURCE_CHECK.name && v.source_check.app_id === 15368 && v.source_check.head_sha === v.source_sha && v.source_check.conclusion === "success" && at8(v.observed_at);
+}
+async function verifyRepositoryTrialState(value, authority) {
+  try {
+    if (!validRepositoryEnvelope(value)) return false;
+    const signed2 = value, s = signed2.payload, r = s?.request;
+    if (!object7(s) || !exact9(s, ["type", "request", "provision", "workspace", "invitation", "config", "receiver_key", "readiness", "status", "dispatch_status", "jobs", "observed_at"]) || s.type !== "scopeblind.repository.trial-state.v1" || !validRepositoryTrialRequest(r?.payload) || r.payload.authority_key !== authority || !await verify(r, r.payload.owner_key) || !await verify(signed2, authority) || !at8(s.observed_at) || !key4(s.config.worker_key) || !key4(s.receiver_key) || (/* @__PURE__ */ new Set([authority, r.payload.owner_key, s.receiver_key, s.config.worker_key])).size !== 4 || canonical(s.config) !== canonical(trialCodingConfig(r.payload.id, s.config.endpoint, authority, s.config.worker_key))) return false;
+    const endpoint = new URL(s.config.endpoint);
+    if (endpoint.protocol !== "https:" || endpoint.pathname !== "/api/coordination" || endpoint.username || endpoint.password || endpoint.hash || endpoint.search) return false;
+    if (s.provision) {
+      const p = s.provision.payload;
+      if (!validRepositoryEnvelope(s.provision) || !validRepositoryTrialProvision(p) || p.trial_id !== r.payload.id || p.request_digest !== r.digest || p.receiver_key !== s.receiver_key || p.base_sha !== p.template_sha || p.source_sha === p.base_sha || p.before.html !== TRIAL_BEFORE_HTML || p.source.html !== TRIAL_SOURCE_HTML || Date.parse(p.observed_at) > Date.parse(s.observed_at) || !await verify(s.provision, p.receiver_key)) return false;
+      for (const h of [p.before, p.source]) {
+        if (await sha256(h.html) !== h.sha256) return false;
+        const bytes = new TextEncoder().encode(h.html), prefix = new TextEncoder().encode(`blob ${bytes.length}\0`), raw = new Uint8Array(prefix.length + bytes.length);
+        raw.set(prefix);
+        raw.set(bytes, prefix.length);
+        const hash2 = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-1", raw))).map((n) => n.toString(16).padStart(2, "0")).join("");
+        if (hash2 !== h.blob_sha) return false;
+      }
+    }
+    if (s.workspace === null !== (s.invitation === null)) return false;
+    if (s.workspace) {
+      const w = s.workspace.payload;
+      if (!validRepositoryEnvelope(s.workspace) || !validRepositoryWorkspace(w) || !await verify(s.workspace, r.payload.owner_key) || w.repository !== TRIAL_REPOSITORY || w.base_branch !== trialBase(r.payload.id) || w.authority_key !== authority || w.receiver_key !== s.provision?.payload.receiver_key || w.owner_key !== r.payload.owner_key || Date.parse(w.expires_at) > Date.parse(r.payload.expires_at)) return false;
+    }
+    if (s.invitation) {
+      const i = s.invitation.payload;
+      if (!s.workspace || !validWorkspaceInvitation(i) || i.workspace_id !== s.workspace.payload.id || i.workspace_digest !== s.workspace.digest || i.role !== "reviewer" || i.issuer_key !== r.payload.owner_key || i.secret_hash !== r.payload.reviewer_secret_hash || !await verify(s.invitation, r.payload.owner_key)) return false;
+    }
+    if (s.readiness && (!validRepositoryEnvelope(s.readiness) || !validTrialReadiness(s.readiness.payload) || !await verify(s.readiness, authority) || s.readiness.payload.worker_key !== s.config.worker_key || s.readiness.payload.receiver_key !== s.receiver_key || Date.parse(s.readiness.payload.observed_at) > Date.parse(s.observed_at))) return false;
+    return Array.isArray(s.jobs) && s.jobs.length <= 30 && new Set(s.jobs.map((j) => j.id)).size === s.jobs.length && s.jobs.every((j) => object7(j) && exact9(j, ["id", "kind", "target_id", "status", "attempts", "error", "updated_at"]) && id10(j.id) && ["provision", "inspect", "execute", "reconcile", "coding", "coding_reconcile"].includes(j.kind) && (j.kind === "provision" ? j.target_id === null : id10(j.target_id)) && ["queued", "leased", "complete", "failed", "unknown"].includes(j.status) && Number.isInteger(j.attempts) && j.attempts >= 0 && j.attempts <= 3 && (j.error === null || typeof j.error === "string" && /^[a-z0-9_]{3,100}$/.test(j.error)) && at8(j.updated_at) && Date.parse(j.updated_at) <= Date.parse(s.observed_at)) && ["queued", "provisioning", "ready", "active", "expired", "failed", "unknown"].includes(s.status) && ["requested", "unconfigured", "unavailable"].includes(s.dispatch_status);
+  } catch {
+    return false;
+  }
+}
+function trialCodingConfig(id11, endpoint, authority, worker) {
+  return { type: "scopeblind.repository.coding-config.v1", endpoint, authority_key: authority, worker_key: worker, repository: TRIAL_REPOSITORY, base_branch: trialBase(id11), runtime: "node22-static-v1", docker_image: TRIAL_DOCKER_IMAGE, test_command: ["node", "--test", "tests/contact.test.cjs"], build_command: ["node", "tools/build.cjs"], preview_directory: "dist" };
+}
+function validTrialReadiness(value) {
+  if (!object7(value) || !exact9(value, ["type", "receiver_key", "worker_key", "repository", "proof", "observed_at", "expires_at"])) return false;
+  const r = value, p = r.proof;
+  return r.type === "scopeblind.repository.trial-readiness.v1" && r.repository === TRIAL_REPOSITORY && key4(r.receiver_key) && key4(r.worker_key) && r.receiver_key !== r.worker_key && at8(r.observed_at) && at8(r.expires_at) && Date.parse(String(r.expires_at)) > Date.parse(String(r.observed_at)) && Date.parse(String(r.expires_at)) - Date.parse(String(r.observed_at)) <= 864e5 && object7(p) && exact9(p, ["repository_id", "run_id", "run_attempt", "workflow_ref", "workflow_sha", "token_digest", "verified_at"]) && p.workflow_ref === `${TRIAL_REPOSITORY}/${TRIAL_WORKFLOW}@refs/heads/main` && sha5(p.workflow_sha) && key4(p.token_digest) && [p.repository_id, p.run_id, p.run_attempt].every((n) => Number.isSafeInteger(n) && Number(n) > 0) && at8(p.verified_at) && Date.parse(String(p.verified_at)) <= Date.parse(String(r.observed_at));
+}
+async function verifyRepositoryTrialConnection(value, authority) {
+  try {
+    const c = value, r = c?.readiness?.payload;
+    if (!c || c.kind !== "managed_trial" || !id10(c.setup_id) || !r || !validTrialReadiness(r) || r.type !== "scopeblind.repository.trial-readiness.v1" || r.repository !== TRIAL_REPOSITORY || !key4(r.receiver_key) || r.worker_key !== c.config.worker_key || r.receiver_key === r.worker_key || canonical(c.config) !== canonical(trialCodingConfig(c.setup_id, c.config.endpoint, authority, r.worker_key)) || !await verify(c.readiness, authority) || !at8(r.observed_at) || !at8(r.expires_at) || Date.parse(r.expires_at) <= Date.now() || Date.parse(r.expires_at) - Date.parse(r.observed_at) > 864e5 || Date.parse(r.observed_at) > Date.now() + 1e3) return false;
+    const u = new URL(c.config.endpoint), p = r.proof;
+    return u.protocol === "https:" && u.pathname === "/api/coordination" && !u.search && !u.hash && !u.username && !u.password && p.workflow_ref === `${TRIAL_REPOSITORY}/${TRIAL_WORKFLOW}@refs/heads/main` && sha5(p.workflow_sha) && key4(p.token_digest) && Number.isSafeInteger(p.repository_id) && p.repository_id > 0 && Number.isSafeInteger(p.run_id) && p.run_id > 0 && Number.isSafeInteger(p.run_attempt) && p.run_attempt > 0 && at8(p.verified_at);
+  } catch {
+    return false;
+  }
+}
+
+// src/repository-review-preview.ts
+var positive = (v) => typeof v === "number" && Number.isSafeInteger(v) && v > 0;
+var timestamp2 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v));
+var unavailable = () => ({ status: "unavailable", reason: "GitHub did not provide a complete, verifiable preview observation. No preview URL was inferred." });
+async function observeRepositoryReviewPreview(get, repository2, brief, proposal, now = Date.now()) {
+  const policy = brief.payload.preview_policy;
+  if (!policy) return { status: "not_requested", reason: "This brief does not require or identify a deployment preview." };
+  const repo3 = `/repos/${repository2.split("/").map(encodeURIComponent).join("/")}`, head = proposal.payload.head_sha;
+  try {
+    const deployments = (await get(`${repo3}/deployments?sha=${head}&environment=${encodeURIComponent(policy.environment)}&per_page=100`)).body;
+    if (!Array.isArray(deployments) || deployments.length >= 100) return unavailable();
+    if (!deployments.length) return { status: "missing", reason: "GitHub has no deployment for the exact proposed head and selected environment." };
+    if (!deployments.every((d) => positive(d.id) && d.sha === head && d.environment === policy.environment && timestamp2(d.created_at) && positive(d.creator?.id) && Date.parse(d.created_at) <= now)) return unavailable();
+    const sorted = [...deployments].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id), deployment = sorted[0];
+    if (new Set(sorted.map((d) => d.id)).size !== sorted.length) return unavailable();
+    const statuses = (await get(`${repo3}/deployments/${deployment.id}/statuses?per_page=100`)).body;
+    if (!Array.isArray(statuses) || statuses.length >= 100) return unavailable();
+    if (!statuses.length) return { status: "pending", reason: "The newest matching deployment has not reported a status." };
+    if (!statuses.every((s) => positive(s.id) && timestamp2(s.created_at) && timestamp2(s.updated_at) && Date.parse(s.updated_at) >= Date.parse(s.created_at) && Date.parse(s.updated_at) <= now && positive(s.creator?.id))) return unavailable();
+    const status2 = [...statuses].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id)[0];
+    if (["pending", "queued", "in_progress"].includes(status2.state)) return { status: "pending", reason: "The newest matching deployment is still in progress." };
+    if (["failure", "error", "inactive"].includes(status2.state)) return { status: "failed", reason: "The newest matching deployment is not a successful active preview." };
+    if (status2.state !== "success" || status2.environment !== policy.environment || !safeRepositoryPreviewUrl(status2.environment_url) || !policy.allowed_origins.includes(new URL(status2.environment_url).origin)) return unavailable();
+    const body = (await get(`${repo3}/commits/${head}/check-runs?per_page=100&filter=latest`)).body;
+    if (!body || !Number.isSafeInteger(body.total_count) || body.total_count < 0 || body.total_count > 100 || !Array.isArray(body.check_runs) || body.check_runs.length !== body.total_count) return unavailable();
+    const matching = body.check_runs.filter((c) => c.name === policy.check.name && c.app?.id === policy.check.app_id);
+    if (!matching.length) return { status: "unavailable", reason: "The named check from the pinned GitHub App was not observed at this head." };
+    if (!matching.every((c) => positive(c.id) && c.head_sha === head)) return unavailable();
+    const check = matching.sort((a, b) => b.id - a.id)[0];
+    if (check.status !== "completed") return { status: "pending", reason: "The pinned preview check has not completed at the proposed head." };
+    if (check.conclusion !== "success") return { status: "failed", reason: "The pinned preview check did not succeed at the proposed head." };
+    return { status: "available", deployment: { deployment_id: deployment.id, status_id: status2.id, sha: head, environment: policy.environment, state: "success", environment_url: status2.environment_url, deployment_creator_id: deployment.creator.id, status_creator_id: status2.creator.id, created_at: new Date(deployment.created_at).toISOString(), updated_at: new Date(status2.updated_at).toISOString(), check: { id: check.id, name: policy.check.name, app_id: policy.check.app_id, head_sha: head, conclusion: "success" } } };
+  } catch {
+    return unavailable();
+  }
+}
+
+// src/repository-receiver.ts
+var RepositoryReceiverError = class extends Error {
+  constructor(code2, message = code2, uncertain = false) {
+    super(message);
+    this.code = code2;
+    this.uncertain = uncertain;
+  }
+};
+function requireValue(value, code2) {
+  if (!value) throw new RepositoryReceiverError(code2);
+}
+function parseRepositoryReceiverConfig(value) {
+  const c = value;
+  requireValue(c && typeof c === "object" && Object.keys(c).sort().join(",") === "authority_key,base_branch,endpoint,owner_key,receiver_key,repository,reviewer_key,type" && c.type === "scopeblind.repository.receiver-config.v1", "invalid_receiver_config");
+  let url;
+  try {
+    url = new URL(c.endpoint);
+  } catch {
+    throw new RepositoryReceiverError("invalid_receiver_endpoint");
+  }
+  requireValue(url.protocol === "https:" && url.pathname === "/api/coordination" && !url.search && !url.hash && !url.username && !url.password && c.endpoint === url.href, "invalid_receiver_endpoint");
+  requireValue(/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(c.repository) && repositoryBranch(c.base_branch) && [c.authority_key, c.owner_key, c.reviewer_key, c.receiver_key].every((k) => REPOSITORY_HEX.test(k)) && (/* @__PURE__ */ new Set([c.authority_key, c.owner_key, c.reviewer_key, c.receiver_key])).size === 4, "invalid_receiver_pins");
+  return c;
+}
+async function json(response, max = 2e6) {
+  const reader = response.body?.getReader();
+  requireValue(reader, "empty_http_response");
+  let length = 0;
+  const chunks = [];
+  try {
+    for (; ; ) {
+      const part = await reader.read();
+      if (part.done) break;
+      length += part.value.byteLength;
+      if (length > max) {
+        await reader.cancel();
+        throw new RepositoryReceiverError("response_too_large");
+      }
+      chunks.push(part.value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const combined = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.length;
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(combined));
+  } catch {
+    throw new RepositoryReceiverError("invalid_json_response");
+  }
+}
+var RepositoryReceiver = class {
+  constructor(config, identity, githubToken, fetchImpl = fetch) {
+    this.identity = identity;
+    this.githubToken = githubToken;
+    this.fetchImpl = fetchImpl;
+    this.config = parseRepositoryReceiverConfig(config);
+    requireValue(identity.publicKey === config.receiver_key && !identity.deviceAuthorization, "receiver_key_mismatch");
+    requireValue(typeof githubToken === "string" && githubToken.length > 0, "github_token_required");
+  }
+  config;
+  async rpc(action, taskId, body = {}) {
+    const request = await sign(makeRequest(action, taskId, body), this.identity);
+    let response;
+    try {
+      response = await this.fetchImpl(this.config.endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request }), redirect: "error", signal: AbortSignal.timeout(2e4) });
+    } catch {
+      throw new RepositoryReceiverError("repository_service_unavailable", "The signed request may have been recorded. Inspect its current state before continuing.", true);
+    }
+    const data = await json(response, 15e4);
+    requireValue(response.ok && data.ok === true, typeof data.error === "string" ? data.error : "repository_service_error");
+    const state = data.repository_task;
+    await this.validateState(state, taskId);
+    return state;
+  }
+  async review(taskId) {
+    const request = await sign(makeRequest("repository_review_get", taskId, {}), this.identity);
+    let response;
+    try {
+      response = await this.fetchImpl(this.config.endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request }), redirect: "error", signal: AbortSignal.timeout(2e4) });
+    } catch {
+      throw new RepositoryReceiverError("repository_review_unavailable");
+    }
+    const data = await json(response, 4e6);
+    requireValue(response.ok && data.ok === true, "repository_review_unavailable");
+    await this.validateState(data.repository_task, taskId);
+    if (data.review) {
+      const result = await verifyRepositoryReviewEvidence(data.evidence, this.config);
+      requireValue(result.valid, "repository_review_evidence_invalid");
+      requireValue(data.evidence.review.digest === data.review.digest && data.review.payload.task_digest === data.repository_task.payload.task.digest, "repository_review_scope_mismatch");
+    }
+    return data;
+  }
+  async reviewEvidence(taskId) {
+    return (await this.review(taskId)).evidence;
+  }
+  async recordPacket(taskId, packet) {
+    const request = await sign(makeRequest("repository_review_packet", taskId, { packet }), this.identity);
+    let response;
+    try {
+      response = await this.fetchImpl(this.config.endpoint, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ request }), redirect: "error", signal: AbortSignal.timeout(2e4) });
+    } catch {
+      throw new RepositoryReceiverError("repository_review_record_uncertain", "The exact packet may have been recorded. Inspect the existing task before continuing.", true);
+    }
+    const data = await json(response, 4e6);
+    requireValue(response.ok && data.ok === true, typeof data.error === "string" ? data.error : "repository_review_record_failed");
+    await this.validateState(data.repository_task, taskId);
+    requireValue((await verifyRepositoryReviewEvidence(data.evidence, this.config)).valid && data.review?.payload.packet?.digest === packet.digest, "repository_review_evidence_invalid");
+    return data.repository_task;
+  }
+  async validateState(state, taskId) {
+    const checked = await verifyRepositoryEvidence({ type: "scopeblind.repository.evidence.v1", state }, this.config);
+    requireValue(checked.valid, "repository_evidence_invalid");
+    const task = state.payload.task.payload;
+    requireValue(task.id === taskId && task.repository === this.config.repository && task.base_branch === this.config.base_branch && task.owner_key === this.config.owner_key && task.receiver_key === this.config.receiver_key && state.payload.reviewer?.payload.reviewer_key === this.config.reviewer_key, "repository_scope_mismatch");
+    requireValue(Math.abs(Date.now() - Date.parse(state.payload.observed_at)) <= 12e4, "repository_state_stale");
+  }
+  async github(path, init = {}) {
+    let response;
+    try {
+      response = await this.fetchImpl(`https://api.github.com${path}`, { ...init, headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${this.githubToken}`, "X-GitHub-Api-Version": "2026-03-10", "content-type": "application/json" }, redirect: "error", signal: AbortSignal.timeout(2e4) });
+    } catch {
+      throw new RepositoryReceiverError("github_connection_interrupted", "GitHub did not return a definite response.", init.method === "POST");
+    }
+    const body = await json(response);
+    if (!response.ok) throw new RepositoryReceiverError(`github_http_${response.status}`, "GitHub refused the request; no repository rules are bypassed.", false);
+    return { body, requestId: response.headers.get("x-github-request-id") || "" };
+  }
+  get repo() {
+    return `/repos/${this.config.repository.split("/").map(encodeURIComponent).join("/")}`;
+  }
+  async ref(branch) {
+    const r = (await this.github(`${this.repo}/git/ref/heads/${branch.split("/").map(encodeURIComponent).join("/")}`)).body;
+    requireValue(r.ref === `refs/heads/${branch}` && r.object?.type === "commit" && REPOSITORY_SHA.test(r.object.sha), "invalid_github_ref");
+    return r.object.sha;
+  }
+  async pull(number2) {
+    const pr = (await this.github(`${this.repo}/pulls/${number2}`)).body;
+    if (pr.merge_commit_sha === void 0 && pr.state === "open" && pr.mergeable === true) {
+      const ref = (await this.github(`${this.repo}/git/ref/pull/${number2}/merge`)).body;
+      requireValue(ref.ref === `refs/pull/${number2}/merge` && ref.object?.type === "commit" && REPOSITORY_SHA.test(ref.object.sha), "repository_merge_ref_invalid");
+      return { ...pr, merge_commit_sha: ref.object.sha };
+    }
+    return pr;
+  }
+  async tree(sha6) {
+    const body = (await this.github(`${this.repo}/git/trees/${sha6}?recursive=1`)).body;
+    requireValue(body.sha === sha6 && !body.truncated && Array.isArray(body.tree) && body.tree.length <= 1e4, "repository_tree_incomplete");
+    return new Map(body.tree.map((v) => [v.path, { type: v.type, mode: v.mode, sha: v.sha }]));
+  }
+  async snapshot(task, proposalId = crypto.randomUUID()) {
+    const t = task.payload, pr = await this.pull(t.pull_number);
+    requireValue(pr.number === t.pull_number && pr.state === "open" && !pr.draft && !pr.merged && pr.mergeable === true && pr.base?.repo?.full_name === t.repository && pr.head?.repo?.full_name === t.repository && pr.base.ref === t.base_branch && repositoryBranch(pr.head.ref) && pr.head.ref !== pr.base.ref && [pr.base.sha, pr.head.sha, pr.merge_commit_sha].every((s) => REPOSITORY_SHA.test(s)), "repository_pr_not_ready");
+    const [repo3, base, merge, comparison, runs, currentBase, currentHead] = await Promise.all([
+      this.github(this.repo),
+      this.github(`${this.repo}/git/commits/${pr.base.sha}`),
+      this.github(`${this.repo}/git/commits/${pr.merge_commit_sha}`),
+      this.github(`${this.repo}/compare/${pr.base.sha}...${pr.merge_commit_sha}`),
+      this.github(`${this.repo}/commits/${pr.head.sha}/check-runs?per_page=100&filter=latest`),
+      this.ref(t.base_branch),
+      this.ref(pr.head.ref)
+    ]);
+    requireValue(currentBase === pr.base.sha && currentHead === pr.head.sha, "repository_changed_during_inspection");
+    requireValue(repo3.body.full_name === t.repository && typeof repo3.body.node_id === "string" && base.body.sha === pr.base.sha && REPOSITORY_SHA.test(base.body.tree?.sha) && merge.body.sha === pr.merge_commit_sha && Array.isArray(merge.body.parents) && canonical(merge.body.parents.map((p) => p.sha)) === canonical([pr.base.sha, pr.head.sha]) && REPOSITORY_SHA.test(merge.body.tree?.sha), "repository_merge_mismatch");
+    requireValue(comparison.body.base_commit?.sha === pr.base.sha && comparison.body.merge_base_commit?.sha === pr.base.sha && comparison.body.status === "ahead" && Array.isArray(comparison.body.files) && comparison.body.files.length > 0 && comparison.body.files.length <= 50, "repository_diff_incomplete");
+    const [oldTree, newTree] = await Promise.all([this.tree(base.body.tree.sha), this.tree(merge.body.tree.sha)]);
+    const files = comparison.body.files.map((file) => {
+      requireValue(["added", "modified", "removed", "renamed"].includes(file.status) && typeof file.filename === "string" && pathAllowed(file.filename, t.allowed_paths) && (file.status !== "renamed" || typeof file.previous_filename === "string" && pathAllowed(file.previous_filename, t.allowed_paths)), "repository_path_not_allowed");
+      const before3 = oldTree.get(file.previous_filename || file.filename), after = newTree.get(file.filename), entry = file.status === "removed" ? before3 : after;
+      requireValue(entry?.type === "blob" && ["100644", "100755"].includes(entry.mode) && (!before3 || before3.type === "blob" && ["100644", "100755"].includes(before3.mode)) && (!after || after.type === "blob" && ["100644", "100755"].includes(after.mode)), "repository_unsafe_file_type");
+      requireValue(Number.isSafeInteger(file.additions) && file.additions >= 0 && Number.isSafeInteger(file.deletions) && file.deletions >= 0, "invalid_repository_diff");
+      return { path: file.filename, status: file.status, mode: entry.mode, additions: file.additions, deletions: file.deletions, ...file.status === "renamed" ? { previous_path: file.previous_filename } : {}, ...typeof file.patch === "string" ? { patch: file.patch.slice(0, 400), ...file.patch.length > 400 ? { patch_truncated: true } : {} } : {} };
+    }).sort((a, b) => a.path.localeCompare(b.path));
+    const actual = [.../* @__PURE__ */ new Set([...oldTree.keys(), ...newTree.keys()])].filter((path) => oldTree.get(path)?.type !== "tree" && newTree.get(path)?.type !== "tree" && canonical(oldTree.get(path) ?? null) !== canonical(newTree.get(path) ?? null)).sort();
+    const listed = [...new Set(files.flatMap((f) => [f.path, ...f.previous_path ? [f.previous_path] : []]))].sort();
+    requireValue(canonical(actual) === canonical(listed), "repository_diff_incomplete");
+    requireValue(Number.isSafeInteger(runs.body.total_count) && runs.body.total_count <= 100 && Array.isArray(runs.body.check_runs) && runs.body.check_runs.length === runs.body.total_count, "repository_checks_incomplete");
+    const checks2 = t.required_checks.map((required) => {
+      const matching = runs.body.check_runs.filter((c) => c.name === required.name && c.app?.id === required.app_id).sort((a, b) => b.id - a.id), run = matching[0];
+      requireValue(run && run.head_sha === pr.head.sha && run.status === "completed" && run.conclusion === "success" && Number.isSafeInteger(run.id) && run.id > 0, "repository_check_not_passed");
+      return { id: run.id, name: run.name, app_id: run.app.id, head_sha: run.head_sha, conclusion: "success" };
+    }).sort((a, b) => a.name.localeCompare(b.name) || a.app_id - b.app_id);
+    const current = await this.pull(t.pull_number);
+    requireValue(current.state === "open" && !current.merged && !current.draft && current.head?.sha === pr.head.sha && current.base?.sha === pr.base.sha && current.merge_commit_sha === pr.merge_commit_sha && current.head?.repo?.full_name === t.repository && current.base?.repo?.full_name === t.repository, "repository_changed_during_inspection");
+    const proposal = { type: "scopeblind.repository.proposal.v1", id: proposalId, task_id: t.id, task_digest: task.digest, repository_id: repo3.body.node_id, base_ref: `refs/heads/${pr.base.ref}`, head_ref: `refs/heads/${pr.head.ref}`, base_sha: pr.base.sha, head_sha: pr.head.sha, merge_sha: pr.merge_commit_sha, tree_sha: merge.body.tree.sha, files, checks: checks2, observed_at: (/* @__PURE__ */ new Date()).toISOString() };
+    requireValue(validRepositoryProposal(proposal, t, task.digest), "invalid_repository_proposal");
+    return proposal;
+  }
+  async inspect(taskId, proposalId) {
+    if (proposalId !== void 0) requireValue(REPOSITORY_ID.test(proposalId), "invalid_repository_proposal_id");
+    requireValue(REPOSITORY_ID.test(taskId), "invalid_repository_task_id");
+    const current = await this.review(taskId), state = current.repository_task;
+    requireValue(!state.payload.execution && state.payload.status !== "cancelled" && Date.parse(state.payload.task.payload.expires_at) > Date.now(), "repository_task_inactive");
+    const prior = proposalId && state.payload.proposal?.payload.id === proposalId ? state.payload.proposal : null;
+    if (prior && (!current.review || current.review.payload.packet?.payload.proposal_digest === prior.digest)) return state;
+    const observed = await this.snapshot(state.payload.task, proposalId);
+    if (prior) requireValue(await repositorySnapshotDigest(prior.payload) === await repositorySnapshotDigest(observed), "repository_approval_stale");
+    const proposal = prior ?? await sign(observed, this.identity), saved = prior ? state : await this.rpc("repository_propose", taskId, { proposal });
+    if (!current.review) return saved;
+    const brief = current.review.payload.brief;
+    requireValue(validRepositoryReviewBrief(brief.payload, state.payload.task.payload, state.payload.task.digest) && await verify(brief, this.config.owner_key), "repository_review_brief_invalid");
+    const preview = await observeRepositoryReviewPreview((path) => this.github(path), this.config.repository, brief, proposal), observedAt = (/* @__PURE__ */ new Date()).toISOString(), expiresAt = new Date(Math.min(Date.parse(observedAt) + 9e5, Date.parse(brief.payload.expires_at))).toISOString();
+    const packet = await sign({ type: "scopeblind.repository.review-packet.v1", task_id: taskId, task_digest: state.payload.task.digest, brief_digest: brief.digest, proposal_digest: proposal.digest, base_sha: proposal.payload.base_sha, head_sha: proposal.payload.head_sha, merge_sha: proposal.payload.merge_sha, preview, observed_at: observedAt, expires_at: expiresAt }, this.identity);
+    requireValue(validRepositoryReviewPacket(packet.payload, brief, proposal), "repository_review_packet_invalid");
+    return this.recordPacket(taskId, packet);
+  }
+  async execute(taskId) {
+    requireValue(REPOSITORY_ID.test(taskId), "invalid_repository_task_id");
+    let state = await this.rpc("repository_get", taskId);
+    if (state.payload.execution) return this.reconcileState(state);
+    requireValue(state.payload.status === "approved" && state.payload.proposal && Date.parse(state.payload.task.payload.expires_at) > Date.now(), "repository_joint_approval_required");
+    const reviewed = await this.review(taskId);
+    if (reviewed.review) {
+      requireValue(reviewed.repository_task.payload.proposal?.digest === state.payload.proposal.digest && reviewed.review.payload.decisions.length === 2 && reviewed.review.payload.packet && Date.parse(reviewed.review.payload.packet.payload.expires_at) > Date.now(), "repository_review_joint_decision_required");
+    }
+    if (reviewed.review) await this.checkReviewObservation(reviewed.review, state.payload.proposal);
+    const approved = state.payload.proposal, observed = await this.snapshot(state.payload.task);
+    requireValue(await repositorySnapshotDigest(approved.payload) === await repositorySnapshotDigest(observed), "repository_approval_stale");
+    const operationId = `repo-${taskId}`, attemptId = crypto.randomUUID();
+    state = await this.rpc("repository_begin", taskId, { proposal_digest: approved.digest, operation_id: operationId, attempt_id: attemptId });
+    const execution = state.payload.execution;
+    requireValue(execution && execution.payload.receiver_attempt_id === attemptId && execution.payload.operation_id === operationId && execution.payload.proposal_digest === approved.digest, "repository_execution_mismatch");
+    requireValue(Date.parse(execution.payload.expires_at) > Date.now(), "repository_execution_expired");
+    let sent = false, requestId = "", note = "";
+    try {
+      if (reviewed.review) await this.checkReviewObservation(reviewed.review, approved);
+      const final = await this.snapshot(state.payload.task);
+      requireValue(await repositorySnapshotDigest(final) === await repositorySnapshotDigest(approved.payload), "repository_approval_stale");
+      requireValue(Date.parse(execution.payload.expires_at) > Date.now() && state.payload.approvals.every((a) => Date.parse(a.payload.expires_at) > Date.now()), "repository_execution_expired");
+      sent = true;
+      const response = await this.github("/graphql", { method: "POST", body: JSON.stringify({ query: "mutation ScopeBlindApply($input: UpdateRefsInput!) { updateRefs(input: $input) { clientMutationId } }", variables: { input: { repositoryId: approved.payload.repository_id, clientMutationId: execution.payload.operation_id, refUpdates: [{ name: approved.payload.base_ref, beforeOid: approved.payload.base_sha, afterOid: approved.payload.merge_sha, force: false }, { name: approved.payload.head_ref, beforeOid: approved.payload.head_sha, afterOid: approved.payload.head_sha, force: false }] } } }) });
+      requestId = response.requestId;
+      if (response.body.errors?.length) throw new RepositoryReceiverError("github_atomic_update_rejected", "GitHub refused the atomic reference update.");
+      requireValue(response.body.data?.updateRefs?.clientMutationId === execution.payload.operation_id, "github_update_response_unverified");
+      note = "GitHub accepted the exact atomic reference update. The receiver then read back the destination.";
+    } catch (error) {
+      note = error instanceof RepositoryReceiverError ? error.message : "The receiver could not establish the operation outcome.";
+      if (!sent) return this.report(state, { status: "failed", observed_base_sha: null, readback: "not_confirmed", note });
+    }
+    return this.reconcileState(state, note, requestId);
+  }
+  async checkReviewObservation(review, proposal) {
+    requireValue(review.payload.packet && Date.parse(review.payload.packet.payload.expires_at) > Date.now(), "repository_review_packet_expired");
+    const observed = await observeRepositoryReviewPreview((path) => this.github(path), this.config.repository, review.payload.brief, proposal);
+    requireValue(canonical(observed) === canonical(review.payload.packet.payload.preview), "repository_review_preview_changed");
+  }
+  async reconcile(taskId) {
+    return this.reconcileState(await this.rpc("repository_get", taskId));
+  }
+  async reconcileState(state, note = "Reconciled the existing operation by reading GitHub; no new reference update was sent.", requestId = "") {
+    requireValue(state.payload.execution && state.payload.proposal, "repository_execution_missing");
+    if (state.payload.outcome && state.payload.outcome.payload.status !== "unknown") return state;
+    let sha6 = null, readback = "not_confirmed";
+    try {
+      sha6 = await this.ref(state.payload.task.payload.base_branch);
+      if (sha6 === state.payload.proposal.payload.merge_sha) readback = "exact_ref";
+      else if (sha6 !== state.payload.proposal.payload.base_sha) {
+        const compare = (await this.github(`${this.repo}/compare/${state.payload.proposal.payload.merge_sha}...${sha6}`)).body;
+        if (compare.base_commit?.sha === state.payload.proposal.payload.merge_sha && compare.merge_base_commit?.sha === state.payload.proposal.payload.merge_sha && ["ahead", "identical"].includes(compare.status)) readback = "descendant_ref";
+      }
+    } catch {
+      note = "GitHub readback was unavailable. Keep this operation unresolved; do not dispatch a replacement.";
+    }
+    return this.report(state, { status: readback === "not_confirmed" ? "unknown" : "confirmed", observed_base_sha: sha6, readback, note, ...requestId ? { github_request_id: requestId } : {} });
+  }
+  async report(state, result) {
+    const s = state.payload, x = s.execution;
+    const outcome = await sign({ type: "scopeblind.repository.outcome.v1", operation_id: x.payload.operation_id, task_id: s.task.payload.id, task_digest: s.task.digest, proposal_digest: s.proposal.digest, execution_digest: x.digest, ...result, observed_at: (/* @__PURE__ */ new Date()).toISOString() }, this.identity);
+    return this.rpc("repository_outcome", s.task.payload.id, { outcome });
+  }
+};
+
+// src/repository-trial-runner.ts
+function need3(ok, code2) {
+  if (!ok) throw Error(code2);
+}
+async function json2(response, max = 4e6) {
+  const reader = response.body?.getReader();
+  need3(reader, "trial_response_empty");
+  const parts = [];
+  let size = 0;
+  try {
+    for (; ; ) {
+      const p = await reader.read();
+      if (p.done) break;
+      size += p.value.length;
+      need3(size <= max, "trial_response_limit");
+      parts.push(p.value);
+    }
+  } finally {
+    await reader.cancel().catch(() => {
+    });
+  }
+  return JSON.parse(Buffer.concat(parts).toString("utf8"));
+}
+var RepositoryTrialRunner = class {
+  constructor(config, receiver, worker, token, run, fetcher = fetch, sandboxFactory) {
+    this.config = config;
+    this.receiver = receiver;
+    this.worker = worker;
+    this.token = token;
+    this.run = run;
+    this.fetcher = fetcher;
+    this.sandboxFactory = sandboxFactory;
+    const u = new URL(config.endpoint);
+    need3(u.protocol === "https:" && u.pathname === "/api/coordination" && !u.username && !u.password && !u.search && !u.hash, "trial_endpoint_invalid");
+    need3([config.authority_key, config.receiver_key, config.worker_key].every((k) => REPOSITORY_HEX.test(k)) && (/* @__PURE__ */ new Set([config.authority_key, config.receiver_key, config.worker_key])).size === 3 && receiver.publicKey === config.receiver_key && worker.publicKey === config.worker_key && REPOSITORY_SHA.test(config.template_sha) && REPOSITORY_SHA.test(config.workflow_sha) && run.workflow_sha === config.workflow_sha && run.workflow_ref === `${TRIAL_REPOSITORY}/${TRIAL_WORKFLOW}@refs/heads/main` && token, "trial_runner_pins_invalid");
+  }
+  async rpc(action, id11, body, identity = this.receiver) {
+    const request = await sign(makeRequest(action, id11, body), identity), r = await this.fetcher(this.config.endpoint, { method: "POST", headers: { "content-type": "application/json", "x-scopeblind-action": action }, body: JSON.stringify({ request }), redirect: "error", signal: AbortSignal.timeout(55e3) }), value = await json2(r);
+    need3(r.ok && value.ok === true, typeof value.error === "string" ? value.error : "trial_service_refused");
+    return value;
+  }
+  async github(path, init = {}, missing = false) {
+    const r = await this.fetcher("https://api.github.com" + path, { ...init, headers: { authorization: "Bearer " + this.token, accept: "application/vnd.github+json", "content-type": "application/json", "x-github-api-version": "2026-03-10" }, redirect: "error", signal: AbortSignal.timeout(2e4) });
+    if (missing && r.status === 404) {
+      await r.body?.cancel();
+      return null;
+    }
+    const value = await json2(r);
+    need3(r.ok, "trial_github_" + r.status);
+    return value;
+  }
+  get repo() {
+    return "/repos/" + TRIAL_REPOSITORY;
+  }
+  async ref(branch) {
+    return (await this.github(this.repo + "/git/ref/heads/" + encodeURIComponent(branch), {}, true))?.object?.sha ?? null;
+  }
+  async blob(path, sha6) {
+    const file = await this.github(this.repo + "/contents/" + path + "?ref=" + sha6);
+    need3(file.type === "file" && file.encoding === "base64" && file.size <= 65536, "trial_file_invalid");
+    const b = Buffer.from(file.content, "base64");
+    need3(b.length === file.size && gitBlob(b) === file.sha, "trial_blob_mismatch");
+    return { bytes: b, sha: file.sha };
+  }
+  async ensureRef(branch, sha6) {
+    const old = await this.ref(branch);
+    if (old) {
+      need3(old === sha6, "trial_ref_conflict");
+      return;
+    }
+    try {
+      await this.github(this.repo + "/git/refs", { method: "POST", body: JSON.stringify({ ref: "refs/heads/" + branch, sha: sha6 }) });
+    } catch (error) {
+      if (await this.ref(branch) !== sha6) throw error;
+    }
+    need3(await this.ref(branch) === sha6, "trial_ref_readback_mismatch");
+  }
+  async checked(value, lease) {
+    need3(value && await verify(value, this.config.authority_key), "trial_job_signature_invalid");
+    const j = value.payload, r = j.request?.payload;
+    need3(j.type === "scopeblind.repository.trial-job.v1" && validRepositoryTrialRequest(r) && r.authority_key === this.config.authority_key && await verify(j.request, r.owner_key) && j.lease_id === lease && Date.parse(j.lease_expires_at) > Date.now() && j.receiver_key === this.receiver.publicKey && j.template_sha === this.config.template_sha && canonical(j.config) === canonical(trialCodingConfig(r.id, this.config.endpoint, this.config.authority_key, this.worker.publicKey)) && j.proof.workflow_sha === this.config.workflow_sha && j.proof.workflow_ref === this.run.workflow_ref && j.proof.run_id === this.run.run_id && j.proof.run_attempt === this.run.run_attempt, "trial_job_scope_mismatch");
+    need3(j.kind === "reconcile" || j.kind === "coding_reconcile" || Date.parse(r.expires_at) > Date.now(), "trial_expired");
+    if (j.workspace) {
+      need3(await verifyRepositoryWorkspaceState(j.workspace, this.config.authority_key), "trial_workspace_invalid");
+      const w = j.workspace.payload.workspace.payload;
+      need3(w.owner_key === r.owner_key && w.repository === TRIAL_REPOSITORY && w.base_branch === trialBase(r.id) && w.receiver_key === this.receiver.publicKey, "trial_workspace_mismatch");
+    }
+    if (j.provision) need3(validRepositoryTrialProvision(j.provision.payload) && await verify(j.provision, this.receiver.publicKey) && j.provision.payload.request_digest === j.request.digest && j.provision.payload.trial_id === r.id, "trial_provision_invalid");
+    return j;
+  }
+  async provision(j) {
+    const r = j.request.payload;
+    need3(j.kind === "provision" && !j.target_id, "trial_provision_scope_mismatch");
+    const template = await this.github(this.repo + "/git/commits/" + this.config.template_sha);
+    need3(template.sha === this.config.template_sha && REPOSITORY_SHA.test(template.tree?.sha), "trial_template_invalid");
+    for (const [path, expected] of [["site/index.html", TRIAL_BEFORE_HTML], ["tests/contact.test.cjs", TRIAL_TEST_SOURCE], ["tools/build.cjs", TRIAL_BUILD_SOURCE]]) need3((await this.blob(path, this.config.template_sha)).bytes.toString("utf8") === expected, "trial_template_bytes_changed");
+    const baseBranch = trialBase(r.id), sourceBranch = trialSource(r.id);
+    await this.ensureRef(baseBranch, this.config.template_sha);
+    const tree = await this.github(this.repo + "/git/trees", { method: "POST", body: JSON.stringify({ base_tree: template.tree.sha, tree: [{ path: "site/index.html", mode: "100644", type: "blob", content: TRIAL_SOURCE_HTML }] }) });
+    need3(REPOSITORY_SHA.test(tree.sha), "trial_tree_invalid");
+    const person = { name: "ScopeBlind Trial", email: "trial@scopeblind.com", date: new Date(Math.floor(Date.parse(r.issued_at) / 1e3) * 1e3).toISOString() }, commit = await this.github(this.repo + "/git/commits", { method: "POST", body: JSON.stringify({ message: "Unfinished managed trial " + r.id, tree: tree.sha, parents: [this.config.template_sha], author: person, committer: person }) });
+    need3(REPOSITORY_SHA.test(commit.sha) && commit.tree?.sha === tree.sha && commit.parents?.length === 1 && commit.parents[0].sha === this.config.template_sha, "trial_commit_invalid");
+    await this.ensureRef(sourceBranch, commit.sha);
+    need3((await this.blob("site/index.html", commit.sha)).bytes.toString("utf8") === TRIAL_SOURCE_HTML, "trial_source_bytes_changed");
+    let pulls = await this.github(this.repo + "/pulls?state=all&head=" + encodeURIComponent("ScopeBlind:" + sourceBranch) + "&base=" + encodeURIComponent(baseBranch) + "&per_page=100");
+    need3(Array.isArray(pulls) && pulls.length <= 1, "trial_pull_ambiguous");
+    let pull = pulls[0];
+    if (!pull) {
+      try {
+        pull = await this.github(this.repo + "/pulls", { method: "POST", body: JSON.stringify({ title: r.title, head: sourceBranch, base: baseBranch, draft: false, body: "Disposable styled starter for a shared AI coding trial. This initial change is deterministic and intentionally unfinished. A separate signed coding mandate and later exact review are required." }) });
+      } catch (error) {
+        pulls = await this.github(this.repo + "/pulls?state=all&head=" + encodeURIComponent("ScopeBlind:" + sourceBranch) + "&base=" + encodeURIComponent(baseBranch) + "&per_page=100");
+        if (!Array.isArray(pulls) || pulls.length !== 1) throw error;
+        pull = pulls[0];
+      }
+    }
+    need3(pull.state === "open" && !pull.draft && pull.head?.sha === commit.sha && pull.head?.ref === sourceBranch && pull.base?.ref === baseBranch && pull.base?.repo?.full_name === TRIAL_REPOSITORY && pull.head?.repo?.full_name === TRIAL_REPOSITORY, "trial_pull_mismatch");
+    const checkRows = await this.github(this.repo + "/commits/" + commit.sha + "/check-runs?per_page=100&filter=latest");
+    let check = checkRows.check_runs?.find((c) => c.name === TRIAL_SOURCE_CHECK.name && c.app?.id === 15368 && c.head_sha === commit.sha && c.conclusion === "success");
+    if (!check) {
+      need3(TRIAL_SOURCE_HTML.includes('href="#contact"') && !/\bid=["']contact["']/.test(TRIAL_SOURCE_HTML) && !/<script\b|<form\b|@import\b|url\s*\(/i.test(TRIAL_SOURCE_HTML), "trial_source_safety_failed");
+      check = await this.github(this.repo + "/check-runs", { method: "POST", body: JSON.stringify({ name: TRIAL_SOURCE_CHECK.name, head_sha: commit.sha, status: "completed", conclusion: "success", output: { title: "Reviewed starter bytes match", summary: "The exact fixed static starter and immutable test/build definitions were checked. The contact destination is intentionally absent; improvement tests have not passed and no AI repair is claimed." } }) });
+    }
+    need3(check.app?.id === 15368 && check.head_sha === commit.sha && check.conclusion === "success", "trial_source_check_invalid");
+    const html = async (value) => ({ html: value, sha256: await sha256(value), blob_sha: gitBlob(Buffer.from(value)) });
+    return sign({ type: "scopeblind.repository.trial-provision.v1", trial_id: r.id, request_digest: j.request.digest, receiver_key: this.receiver.publicKey, repository: TRIAL_REPOSITORY, template_sha: this.config.template_sha, base_branch: baseBranch, source_branch: sourceBranch, base_sha: this.config.template_sha, source_sha: commit.sha, pull_number: pull.number, before: await html(TRIAL_BEFORE_HTML), source: await html(TRIAL_SOURCE_HTML), source_check: { id: check.id, name: TRIAL_SOURCE_CHECK.name, app_id: 15368, head_sha: commit.sha, conclusion: "success" }, observed_at: (/* @__PURE__ */ new Date()).toISOString() }, this.receiver);
+  }
+  async receive(j) {
+    need3(j.workspace && j.assignment && j.task && j.provision && j.target_id === j.task.payload.task.payload.id, "trial_task_required");
+    need3((await verifyRepositoryEvidence({ type: "scopeblind.repository.evidence.v1", state: j.task }, this.config.authority_key)).valid, "trial_task_invalid");
+    const w = j.workspace.payload, a = j.assignment.payload, t = j.task.payload.task.payload, r = j.request.payload;
+    need3(await verify(j.assignment, r.owner_key) && a.workspace_id === w.workspace.payload.id && a.workspace_digest === w.workspace.digest && a.task_digest === j.task.payload.task.digest && a.owner_key === r.owner_key && a.reviewer_key === j.task.payload.reviewer?.payload.reviewer_key && w.assignments.some((x) => x.digest === j.assignment.digest), "trial_assignment_invalid");
+    if (j.kind !== "reconcile") for (const [memberId, key5, revision2, role] of [[a.owner_member_id, a.owner_key, a.owner_member_revision, "owner"], [a.reviewer_member_id, a.reviewer_key, a.reviewer_member_revision, "reviewer"]]) need3(w.members.some((m) => m.member_id === memberId && m.current_key === key5 && m.revision === revision2 && m.role === role && m.status === "active"), "trial_membership_changed");
+    need3(t.repository === TRIAL_REPOSITORY && t.base_branch === trialBase(r.id) && t.owner_key === r.owner_key && t.receiver_key === this.receiver.publicKey && canonical(t.allowed_paths) === canonical(["site/**"]), "trial_task_scope_mismatch");
+    const source = t.pull_number === j.provision.payload.pull_number;
+    need3(canonical(t.required_checks) === canonical([source ? TRIAL_SOURCE_CHECK : TRIAL_CODING_CHECK]), "trial_checks_mismatch");
+    if (!source) need3(j.coding && (await verifyRepositoryCodingEvidence({ type: "scopeblind.repository.coding-evidence.v1", job: j.coding }, this.config.authority_key)).published && j.coding.payload.request.payload.workspace_id === w.workspace.payload.id && j.coding.payload.result.payload.pull_number === t.pull_number, "trial_child_origin_invalid");
+    need3(j.kind !== "execute" || !source, "trial_source_effect_refused");
+    const receiver = new RepositoryReceiver({ type: "scopeblind.repository.receiver-config.v1", endpoint: this.config.endpoint, authority_key: this.config.authority_key, owner_key: r.owner_key, reviewer_key: a.reviewer_key, receiver_key: this.receiver.publicKey, repository: TRIAL_REPOSITORY, base_branch: trialBase(r.id) }, this.receiver, this.token, this.fetcher);
+    if (j.kind === "inspect") await receiver.inspect(t.id);
+    else if (j.kind === "execute") await receiver.execute(t.id);
+    else await receiver.reconcile(t.id);
+  }
+  async coding(j) {
+    need3(j.coding && j.workspace && j.target_id === j.coding.payload.request.payload.id && (await verifyRepositoryCodingEvidence({ type: "scopeblind.repository.coding-evidence.v1", job: j.coding }, this.config.authority_key)).valid && j.coding.payload.request.payload.workspace_id === j.workspace.payload.workspace.payload.id, "trial_coding_scope_mismatch");
+    const m = j.coding.payload.mandate.payload;
+    need3(m.owner_key === j.request.payload.owner_key && m.repository === TRIAL_REPOSITORY && m.base_branch === trialBase(j.request.payload.id) && m.worker_key === this.worker.publicKey && canonical(m.allowed_paths) === canonical(["site/**"]) && canonical(m.required_checks) === canonical([TRIAL_CODING_CHECK]) && Object.entries(TRIAL_LIMITS).every(([k, v]) => m[k] <= v), "trial_coding_limits_mismatch");
+    need3(j.kind !== "coding_reconcile" || j.coding.payload.publication, "trial_coding_publication_required");
+    const runner = new RepositoryCodingRunner(j.config, this.worker, this.token, this.fetcher, this.sandboxFactory);
+    await runner.runOne(j.target_id);
+    const current = (await this.rpc("repository_coding_get", m.workspace_id, { job_id: j.target_id }, this.worker)).job;
+    need3((await verifyRepositoryCodingEvidence({ type: "scopeblind.repository.coding-evidence.v1", job: current }, this.config.authority_key)).published, "trial_coding_not_published");
+    const result = current.payload.result.payload, pull = await this.github(this.repo + "/pulls/" + result.pull_number);
+    need3(pull.head?.sha === result.head_sha && pull.head?.ref === result.branch && pull.base?.ref === trialBase(j.request.payload.id) && pull.base?.sha === current.payload.plan.payload.source_base_sha && await this.ref(trialBase(j.request.payload.id)) === current.payload.plan.payload.source_base_sha && pull.state === "open" && pull.base?.repo?.full_name === TRIAL_REPOSITORY && pull.head?.repo?.full_name === TRIAL_REPOSITORY, "trial_coding_pull_changed");
+    if (pull.draft) {
+      need3(typeof pull.node_id === "string", "trial_pull_node_missing");
+      const marked = await this.github("/graphql", { method: "POST", body: JSON.stringify({ query: "mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){pullRequest{id isDraft}}}", variables: { id: pull.node_id } }) });
+      need3(!marked.errors?.length && marked.data?.markPullRequestReadyForReview?.pullRequest?.id === pull.node_id && marked.data.markPullRequestReadyForReview.pullRequest.isDraft === false, "trial_ready_readback_required");
+    }
+    const after = await this.github(this.repo + "/pulls/" + result.pull_number);
+    need3(after.draft === false && after.head?.sha === result.head_sha && after.base?.ref === trialBase(j.request.payload.id) && after.base?.sha === current.payload.plan.payload.source_base_sha && await this.ref(trialBase(j.request.payload.id)) === current.payload.plan.payload.source_base_sha, "trial_ready_readback_required");
+  }
+  async runOne() {
+    const lease = crypto.randomUUID(), initial = (await this.rpc("repository_trial_poll", "repository-trial", { lease_id: lease })).poll;
+    need3(initial && await verify(initial, this.config.authority_key) && initial.payload.lease_id === lease && initial.payload.challenge.audience === "https://scopeblind.com/repository-trial/" + lease, "trial_challenge_invalid");
+    const token = await this.run.oidc(initial.payload.challenge.audience), response = (await this.rpc("repository_trial_poll", "repository-trial", { lease_id: lease, run_id: this.run.run_id, run_attempt: this.run.run_attempt, oidc_token: token })).poll;
+    need3(response && await verify(response, this.config.authority_key) && response.payload.lease_id === lease, "trial_poll_invalid");
+    if (!response.payload.job) return false;
+    const j = await this.checked(response.payload.job, lease);
+    let provision = null, error = null;
+    try {
+      if (j.kind === "provision") provision = await this.provision(j);
+      else if (j.kind === "coding" || j.kind === "coding_reconcile") await this.coding(j);
+      else await this.receive(j);
+    } catch (e) {
+      error = e instanceof Error && /^[a-z0-9_]{3,100}$/.test(e.message) ? e.message : "trial_runner_interrupted";
+    }
+    const completion = await sign({ type: "scopeblind.repository.trial-completion.v1", job_id: j.id, trial_id: j.request.payload.id, request_digest: j.request.digest, lease_id: lease, receiver_key: this.receiver.publicKey, kind: j.kind, provision, error, observed_at: (/* @__PURE__ */ new Date()).toISOString() }, this.receiver);
+    await this.rpc("repository_trial_complete", "repository-trial", { completion });
+    if (error) throw Error(error);
+    return true;
+  }
+};
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   BUILTIN_PATTERNS,
@@ -47349,11 +48046,21 @@ ${message}
   REPOSITORY_GUIDED_WORKFLOW,
   REPOSITORY_PREVIEW_MAX_BYTES,
   REPOSITORY_PREVIEW_MAX_FILES,
+  REPOSITORY_RECOVERY_CODES,
   REPOSITORY_SETUP_ACTIONS,
   REPOSITORY_SETUP_TTL,
+  REPOSITORY_TRIAL_ACTIONS,
   ReceiptPropagator,
   RepositoryCodingRunner,
+  RepositoryTrialRunner,
   ScopeBlindBridge,
+  TRIAL_CODING_CHECK,
+  TRIAL_DOCKER_IMAGE,
+  TRIAL_LIMITS,
+  TRIAL_REPOSITORY,
+  TRIAL_SOURCE_CHECK,
+  TRIAL_TEMPLATE,
+  TRIAL_WORKFLOW,
   anchorToRekor,
   approvePolicyProposalWithDirectSignature,
   approvePolicyProposalWithWebAuthn,
@@ -47471,6 +48178,9 @@ ${message}
   toEgressSummary,
   toManifoldFormat,
   toMetaculusFormat,
+  trialBase,
+  trialCodingConfig,
+  trialSource,
   validRepositoryCodingConnectionConfig,
   validRepositoryCodingMandate,
   validRepositoryCodingPlan,
@@ -47483,10 +48193,14 @@ ${message}
   validRepositoryDeviceConfirmation,
   validRepositoryDeviceLink,
   validRepositoryHumanEnvelope,
+  validRepositoryRecoveryObservation,
   validRepositorySetupAuthorization,
   validRepositorySetupInspection,
   validRepositorySetupRenewal,
   validRepositorySetupRequest,
+  validRepositoryTrialProvision,
+  validRepositoryTrialRequest,
+  validTrialReadiness,
   validateCoordinationConfig,
   validateCoordinationPayment,
   validateCredentials,
@@ -47513,10 +48227,13 @@ ${message}
   verifyRepositoryDeviceAuthorization,
   verifyRepositoryEvidence,
   verifyRepositoryHuman,
+  verifyRepositoryRecoveryObservation,
   verifyRepositoryReviewEvidence,
   verifyRepositorySetupEnrollment,
   verifyRepositorySetupReplacement,
   verifyRepositorySetupState,
+  verifyRepositoryTrialConnection,
+  verifyRepositoryTrialState,
   verifyRepositoryWorkspaceAgentState,
   verifyRepositoryWorkspaceState,
   verifySelectiveDisclosurePackage,

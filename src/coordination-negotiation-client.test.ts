@@ -49,9 +49,9 @@ describe('principal-scoped installed negotiation', () => {
     const response: any = await handleCoordinationRequest(execution, rpc('coordination.inspect_negotiation'));
     expect(JSON.parse(response.result.content[0].text).code).toBe('tool_outside_grant'); expect(f.fetcher).not.toHaveBeenCalled();
   });
-  it('reports the negotiation-capable 0.24.1 release on MCP initialization', async () => {
+  it('reports the negotiation-capable 0.25.0 release on MCP initialization', async () => {
     const f = await fixture(); vi.stubEnv('PROTECT_MCP_VERSION', '');
-    try { const response: any = await handleCoordinationRequest(f.client, { jsonrpc: '2.0', id: 1, method: 'initialize' }); expect(response.result.serverInfo.version).toBe('0.24.1'); } finally { vi.unstubAllEnvs(); }
+    try { const response: any = await handleCoordinationRequest(f.client, { jsonrpc: '2.0', id: 1, method: 'initialize' }); expect(response.result.serverInfo.version).toBe('0.25.0'); } finally { vi.unstubAllEnvs(); }
   });
   it('verifies the own brief commitment without reading a general room or opposing private brief', async () => {
     const f = await fixture(), result = await f.client.inspectNegotiation();

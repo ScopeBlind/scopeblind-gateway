@@ -9,7 +9,7 @@ import {
   validRepositoryEnvelope,
   validRepositoryReadiness,
   verifyRepositoryPreviewDiscovery
-} from "./chunk-W4EKTNR3.mjs";
+} from "./chunk-S2VKIQZF.mjs";
 import {
   COORDINATION_DOMAIN,
   canonical,
@@ -18,7 +18,7 @@ import {
 } from "./chunk-O3K3FPBT.mjs";
 
 // src/coordination-repository-connection.ts
-var REPOSITORY_SETUP_ACTIONS = ["repository_setup_info", "repository_setup_create", "repository_setup_get", "repository_setup_oauth", "repository_setup_enroll", "repository_setup_confirm", "repository_setup_ready", "repository_setup_coding_ready", "repository_setup_refresh", "repository_setup_renew", "repository_setup_revoke", "repository_setup_dispatch", "repository_setup_job_get", "repository_setup_job_complete"];
+var REPOSITORY_SETUP_ACTIONS = ["repository_setup_info", "repository_setup_create", "repository_setup_get", "repository_setup_diagnose", "repository_setup_job_status", "repository_setup_oauth", "repository_setup_enroll", "repository_setup_confirm", "repository_setup_ready", "repository_setup_coding_ready", "repository_setup_refresh", "repository_setup_renew", "repository_setup_revoke", "repository_setup_dispatch", "repository_setup_job_get", "repository_setup_job_complete"];
 var REPOSITORY_GUIDED_WORKFLOW = ".github/workflows/scopeblind-connection.yml";
 var REPOSITORY_SETUP_TTL = 30 * 6e4;
 var REPOSITORY_CODING_IMAGE = "node@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752";

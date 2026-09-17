@@ -3,7 +3,7 @@ import {
   NEGOTIATION_TOOLS,
   REHEARSAL_TOOLS,
   handleCoordinationRequest
-} from "./chunk-BZFJ2X5I.mjs";
+} from "./chunk-26MGFOAU.mjs";
 import {
   NEGOTIATION_PAIRING_AUDIENCE,
   NEGOTIATION_PAIRING_SCOPE,
@@ -13,7 +13,7 @@ import {
   claimPairing,
   coordinationConfigFromFile,
   readPrivateConfig
-} from "./chunk-AQPJMWVI.mjs";
+} from "./chunk-2X353W2N.mjs";
 import {
   CoordinationClient,
   CoordinationError
@@ -36,7 +36,7 @@ import {
   verifyRepositoryReviewEvidence,
   verifyRepositoryWorkspaceAgentState,
   workspacePathsWithin
-} from "./chunk-W4EKTNR3.mjs";
+} from "./chunk-S2VKIQZF.mjs";
 import {
   bytesToHex,
   canonical,
@@ -799,7 +799,7 @@ var result = (request, value, error = false) => ({ jsonrpc: "2.0", id: request.i
 async function handleAgentProfileRequest(client, request, signal) {
   if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") return { jsonrpc: "2.0", id: request?.id ?? null, error: { code: -32600, message: "Invalid JSON-RPC request." } };
   if (request.id === void 0) return void 0;
-  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-agent", version: process.env.PROTECT_MCP_VERSION || "0.24.1" }, capabilities: { tools: {} } } };
+  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-agent", version: process.env.PROTECT_MCP_VERSION || "0.25.0" }, capabilities: { tools: {} } } };
   if (request.method === "ping") return { jsonrpc: "2.0", id: request.id, result: {} };
   if (request.method === "tools/list") return { jsonrpc: "2.0", id: request.id, result: { tools: [...AGENT_PROFILE_TOOLS, ...scopedTools] } };
   if (request.method !== "tools/call") return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found." } };

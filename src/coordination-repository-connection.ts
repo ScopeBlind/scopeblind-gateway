@@ -6,7 +6,7 @@ import {verifyRepositoryPreviewDiscovery,type RepositoryPreviewDiscovery} from '
 import {codingCommand,codingSafePath} from './coordination-repository-coding.js';
 import type {WorkspaceTaskAssignment} from './coordination-repository-workspace.js';
 
-export const REPOSITORY_SETUP_ACTIONS=['repository_setup_info','repository_setup_create','repository_setup_get','repository_setup_oauth','repository_setup_enroll','repository_setup_confirm','repository_setup_ready','repository_setup_coding_ready','repository_setup_refresh','repository_setup_renew','repository_setup_revoke','repository_setup_dispatch','repository_setup_job_get','repository_setup_job_complete'] as const;
+export const REPOSITORY_SETUP_ACTIONS=['repository_setup_info','repository_setup_create','repository_setup_get','repository_setup_diagnose','repository_setup_job_status','repository_setup_oauth','repository_setup_enroll','repository_setup_confirm','repository_setup_ready','repository_setup_coding_ready','repository_setup_refresh','repository_setup_renew','repository_setup_revoke','repository_setup_dispatch','repository_setup_job_get','repository_setup_job_complete'] as const;
 export type RepositorySetupAction=typeof REPOSITORY_SETUP_ACTIONS[number];
 export const REPOSITORY_GUIDED_WORKFLOW='.github/workflows/scopeblind-connection.yml';
 export const REPOSITORY_SETUP_TTL=30*60_000;

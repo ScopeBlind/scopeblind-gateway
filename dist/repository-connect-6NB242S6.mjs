@@ -1,7 +1,7 @@
 import {
   createRepositoryReadiness,
   discoverRepository
-} from "./chunk-Q6MPYSGG.mjs";
+} from "./chunk-JDGPXBQR.mjs";
 import {
   REPOSITORY_GUIDED_WORKFLOW,
   repositorySetupArtifactUrl,
@@ -11,19 +11,19 @@ import {
   verifyRepositorySetupEnrollment,
   verifyRepositorySetupReplacement,
   verifyRepositorySetupState
-} from "./chunk-WAOYTUIJ.mjs";
+} from "./chunk-P4PK3PF6.mjs";
 import {
   RepositoryReceiver,
   RepositoryReceiverError,
   discoverRepositoryPreviewChoices
-} from "./chunk-RJYX2HEV.mjs";
+} from "./chunk-JRJSKQFR.mjs";
 import {
   REPOSITORY_HEX,
   REPOSITORY_ID,
   REPOSITORY_SHA,
   validRepositoryEnvelope,
   verifyRepositoryEvidence
-} from "./chunk-W4EKTNR3.mjs";
+} from "./chunk-S2VKIQZF.mjs";
 import {
   bytesToHex,
   canonical,
@@ -449,7 +449,7 @@ async function runRepositoryConnect(args, dependencies = {}) {
     stdout("The earlier enrollment was never recorded and its observations are stale. Refreshing the same receiver and repository inspection before browser review.\n");
   }
   if (!cp.enrollment || refreshEnrollment) {
-    const request = state.payload.request, { discovery, inspection } = await inspectRepositorySetup(request, identity, token, fetchImpl), issued = Date.now(), connection = { type: "scopeblind.repository.connection.v1", id: link.id, endpoint: ENDPOINT, repository: request.payload.repository, base_branch: discovery.base_branch, owner_key: request.payload.owner_key, receiver_key: identity.publicKey, authority_key: pin, issued_at: new Date(issued).toISOString(), expires_at: new Date(issued + 30 * 864e5).toISOString() }, receiverUrl = "https://scopeblind.com/releases/repository-receiver-0.24.1.cjs", receiverHash = await artifact(receiverUrl, fetchImpl), workflow = renderGuidedReceiverWorkflow({ url: receiverUrl, sha256: receiverHash }), readiness = await createRepositoryReadiness(connection, identity, discovery, { workflow_sha256: await sha256(workflow) });
+    const request = state.payload.request, { discovery, inspection } = await inspectRepositorySetup(request, identity, token, fetchImpl), issued = Date.now(), connection = { type: "scopeblind.repository.connection.v1", id: link.id, endpoint: ENDPOINT, repository: request.payload.repository, base_branch: discovery.base_branch, owner_key: request.payload.owner_key, receiver_key: identity.publicKey, authority_key: pin, issued_at: new Date(issued).toISOString(), expires_at: new Date(issued + 30 * 864e5).toISOString() }, receiverUrl = "https://scopeblind.com/releases/repository-receiver-0.25.0.cjs", receiverHash = await artifact(receiverUrl, fetchImpl), workflow = renderGuidedReceiverWorkflow({ url: receiverUrl, sha256: receiverHash }), readiness = await createRepositoryReadiness(connection, identity, discovery, { workflow_sha256: await sha256(workflow) });
     let coding;
     if (codingRequested) {
       let test, build;
@@ -461,7 +461,7 @@ async function runRepositoryConnect(args, dependencies = {}) {
       }
       const config = { type: "scopeblind.repository.coding-config.v1", endpoint: ENDPOINT, authority_key: pin, worker_key: codingKey.public_key, repository: connection.repository, base_branch: connection.base_branch, runtime: "node22-static-v1", test_command: test, build_command: build, preview_directory: opts.get("--coding-preview") ?? preparedCoding.preview_directory, docker_image: opts.get("--docker-image") ?? preparedCoding.docker_image };
       need(validRepositoryCodingConnectionConfig(config), "connect_coding_config_invalid");
-      const artifactUrl = "https://scopeblind.com/releases/repository-coding-0.24.1.cjs", artifactHash = await artifact(artifactUrl, fetchImpl), codingWorkflow = renderGuidedCodingWorkflow({ url: artifactUrl, sha256: artifactHash }, { url: receiverUrl, sha256: receiverHash });
+      const artifactUrl = "https://scopeblind.com/releases/repository-coding-0.25.0.cjs", artifactHash = await artifact(artifactUrl, fetchImpl), codingWorkflow = renderGuidedCodingWorkflow({ url: artifactUrl, sha256: artifactHash }, { url: receiverUrl, sha256: receiverHash });
       coding = { config, workflow: codingWorkflow, workflow_sha256: await sha256(codingWorkflow), artifact_url: artifactUrl, artifact_sha256: artifactHash };
     }
     let replaces;

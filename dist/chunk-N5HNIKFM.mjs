@@ -5,7 +5,7 @@ import {
   codingSafePath,
   pathAllowed,
   verifyRepositoryCodingEvidence
-} from "./chunk-W4EKTNR3.mjs";
+} from "./chunk-S2VKIQZF.mjs";
 import {
   canonical,
   importIdentity,
@@ -381,6 +381,7 @@ async function runRepositoryCoding(args = process.argv.slice(2)) {
 }
 
 export {
+  gitBlob,
   DockerCodingSandbox,
   RepositoryCodingRunner,
   runRepositoryCoding

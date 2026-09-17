@@ -28,8 +28,11 @@ try{
  const coding=join(dir,'node_modules','protect-mcp','dist/repository-coding-cli.js');
  const codingResult=spawnSync(process.execPath,[coding,'--invalid-option'],{cwd:dir,encoding:'utf8',timeout:30000,env:{PATH:process.env.PATH}});
  assert.equal(codingResult.error,undefined);assert.equal(codingResult.status,1);assert.match(codingResult.stderr,/coding worker stopped/);
+ const trial=join(dir,'node_modules','protect-mcp','dist/repository-trial-cli.js');
+ const trialResult=spawnSync(process.execPath,[trial],{cwd:dir,encoding:'utf8',timeout:30000,env:{PATH:process.env.PATH}});
+ assert.equal(trialResult.error,undefined);assert.equal(trialResult.status,1);assert.match(trialResult.stderr,/trial_trusted_workflow_required/);
  const installed=await import(pathToFileURL(join(dir,'node_modules','protect-mcp','dist/index.mjs')).href);
- for(const name of ['RepositoryCodingRunner','DockerCodingSandbox','verifyRepositoryCodingEvidence','verifyRepositorySetupState','validateRepositoryPreviewBundle'])assert.equal(typeof installed[name],'function','Packed public API is missing '+name);
+ for(const name of ['RepositoryCodingRunner','DockerCodingSandbox','verifyRepositoryCodingEvidence','verifyRepositorySetupState','validateRepositoryPreviewBundle','RepositoryTrialRunner','verifyRepositoryRecoveryObservation','verifyRepositoryTrialState'])assert.equal(typeof installed[name],'function','Packed public API is missing '+name);
  const profile=join(dir,'private-agent.json');
  execFileSync(process.execPath,[bin,'coordination','agent','setup','--client','json','--profile',profile,'--endpoint','https://scopeblind.com/api/coordination','--authority-key','a'.repeat(64)],{cwd:dir,stdio:'pipe',timeout:30000});
  const requests=[{jsonrpc:'2.0',id:1,method:'initialize'},{jsonrpc:'2.0',id:2,method:'tools/list'},{jsonrpc:'2.0',id:3,method:'tools/call',params:{name:'coordination.connections',arguments:{}}}];

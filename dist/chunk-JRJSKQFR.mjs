@@ -11,7 +11,7 @@ import {
   validRepositoryReviewPacket,
   verifyRepositoryEvidence,
   verifyRepositoryReviewEvidence
-} from "./chunk-W4EKTNR3.mjs";
+} from "./chunk-S2VKIQZF.mjs";
 import {
   bytesToHex,
   canonical,

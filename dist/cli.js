@@ -7763,7 +7763,7 @@ async function runRepositoryConnect(args, dependencies = {}) {
     stdout("The earlier enrollment was never recorded and its observations are stale. Refreshing the same receiver and repository inspection before browser review.\n");
   }
   if (!cp.enrollment || refreshEnrollment) {
-    const request = state.payload.request, { discovery, inspection } = await inspectRepositorySetup(request, identity, token, fetchImpl), issued = Date.now(), connection = { type: "scopeblind.repository.connection.v1", id: link.id, endpoint: ENDPOINT, repository: request.payload.repository, base_branch: discovery.base_branch, owner_key: request.payload.owner_key, receiver_key: identity.publicKey, authority_key: pin, issued_at: new Date(issued).toISOString(), expires_at: new Date(issued + 30 * 864e5).toISOString() }, receiverUrl = "https://scopeblind.com/releases/repository-receiver-0.24.1.cjs", receiverHash = await artifact(receiverUrl, fetchImpl), workflow = renderGuidedReceiverWorkflow({ url: receiverUrl, sha256: receiverHash }), readiness = await createRepositoryReadiness(connection, identity, discovery, { workflow_sha256: await sha256(workflow) });
+    const request = state.payload.request, { discovery, inspection } = await inspectRepositorySetup(request, identity, token, fetchImpl), issued = Date.now(), connection = { type: "scopeblind.repository.connection.v1", id: link.id, endpoint: ENDPOINT, repository: request.payload.repository, base_branch: discovery.base_branch, owner_key: request.payload.owner_key, receiver_key: identity.publicKey, authority_key: pin, issued_at: new Date(issued).toISOString(), expires_at: new Date(issued + 30 * 864e5).toISOString() }, receiverUrl = "https://scopeblind.com/releases/repository-receiver-0.25.0.cjs", receiverHash = await artifact(receiverUrl, fetchImpl), workflow = renderGuidedReceiverWorkflow({ url: receiverUrl, sha256: receiverHash }), readiness = await createRepositoryReadiness(connection, identity, discovery, { workflow_sha256: await sha256(workflow) });
     let coding;
     if (codingRequested) {
       let test, build;
@@ -7775,7 +7775,7 @@ async function runRepositoryConnect(args, dependencies = {}) {
       }
       const config = { type: "scopeblind.repository.coding-config.v1", endpoint: ENDPOINT, authority_key: pin, worker_key: codingKey.public_key, repository: connection.repository, base_branch: connection.base_branch, runtime: "node22-static-v1", test_command: test, build_command: build, preview_directory: opts.get("--coding-preview") ?? preparedCoding.preview_directory, docker_image: opts.get("--docker-image") ?? preparedCoding.docker_image };
       need(validRepositoryCodingConnectionConfig(config), "connect_coding_config_invalid");
-      const artifactUrl = "https://scopeblind.com/releases/repository-coding-0.24.1.cjs", artifactHash = await artifact(artifactUrl, fetchImpl), codingWorkflow = renderGuidedCodingWorkflow({ url: artifactUrl, sha256: artifactHash }, { url: receiverUrl, sha256: receiverHash });
+      const artifactUrl = "https://scopeblind.com/releases/repository-coding-0.25.0.cjs", artifactHash = await artifact(artifactUrl, fetchImpl), codingWorkflow = renderGuidedCodingWorkflow({ url: artifactUrl, sha256: artifactHash }, { url: receiverUrl, sha256: receiverHash });
       coding = { config, workflow: codingWorkflow, workflow_sha256: await sha256(codingWorkflow), artifact_url: artifactUrl, artifact_sha256: artifactHash };
     }
     let replaces;
@@ -8316,7 +8316,7 @@ var init_repository_setup = __esm({
     init_coordination_repository_collaboration();
     init_repository_review_preview();
     init_repository_receiver();
-    REPOSITORY_SETUP_VERSION = "0.24.1";
+    REPOSITORY_SETUP_VERSION = "0.25.0";
     REPO = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/;
     WORKFLOW_PATH = ".github/workflows/scopeblind-receiver.yml";
     safeText = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
@@ -8918,7 +8918,7 @@ var AGENT_PACKAGE_URL, AGENT_CLIENTS, shellQuote;
 var init_coordination_agent_setup = __esm({
   "src/coordination-agent-setup.ts"() {
     "use strict";
-    AGENT_PACKAGE_URL = "protect-mcp@0.24.1";
+    AGENT_PACKAGE_URL = "protect-mcp@0.25.0";
     AGENT_CLIENTS = [
       { id: "claude-code", label: "Claude Code" },
       { id: "codex", label: "Codex CLI" },
@@ -10638,7 +10638,7 @@ __export(coordination_server_exports, {
 async function handleCoordinationRequest(client, request, signal) {
   if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") return { jsonrpc: "2.0", id: request?.id ?? null, error: { code: -32600, message: "Invalid JSON-RPC request." } };
   if (request.id === void 0) return void 0;
-  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-coordination", version: process.env.PROTECT_MCP_VERSION || "0.24.1" }, capabilities: { tools: {} } } };
+  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-coordination", version: process.env.PROTECT_MCP_VERSION || "0.25.0" }, capabilities: { tools: {} } } };
   if (request.method === "ping") return { jsonrpc: "2.0", id: request.id, result: {} };
   if (request.method === "tools/list") return { jsonrpc: "2.0", id: request.id, result: { tools: toolsForPurpose(client.purpose) } };
   if (request.method !== "tools/call") return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found." } };
@@ -10902,7 +10902,7 @@ __export(coordination_agent_server_exports, {
 async function handleAgentProfileRequest(client, request, signal) {
   if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") return { jsonrpc: "2.0", id: request?.id ?? null, error: { code: -32600, message: "Invalid JSON-RPC request." } };
   if (request.id === void 0) return void 0;
-  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-agent", version: process.env.PROTECT_MCP_VERSION || "0.24.1" }, capabilities: { tools: {} } } };
+  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-agent", version: process.env.PROTECT_MCP_VERSION || "0.25.0" }, capabilities: { tools: {} } } };
   if (request.method === "ping") return { jsonrpc: "2.0", id: request.id, result: {} };
   if (request.method === "tools/list") return { jsonrpc: "2.0", id: request.id, result: { tools: [...AGENT_PROFILE_TOOLS, ...scopedTools] } };
   if (request.method !== "tools/call") return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found." } };

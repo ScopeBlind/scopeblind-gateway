@@ -867,6 +867,7 @@ export {
   verifyRepositoryPreviewDiscovery,
   workspacePathsWithin,
   validRepositoryWorkspace,
+  validWorkspaceInvitation,
   validWorkspacePreparationMandate,
   validWorkspaceReviewDraft,
   verifyRepositoryWorkspaceState,

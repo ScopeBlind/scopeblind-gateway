@@ -95,6 +95,7 @@ export type RpcAction = 'create' | 'invite' | 'claim' | 'revoke' | 'admit' | 'ex
   | import('./coordination-repository-devices').RepositoryDeviceAction
   | import('./coordination-repository-coding').RepositoryCodingAction
   | import('./coordination-repository-connection').RepositorySetupAction
+  | import('./coordination-repository-trial').RepositoryTrialAction
   | import('./coordination-repository').RepositoryAction
   | import('./coordination-repository-collaboration').RepositoryCollaborationAction
   | import('./coordination-repository-workspace').RepositoryWorkspaceAction

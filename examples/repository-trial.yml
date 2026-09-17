@@ -1,0 +1,45 @@
+# Install only on the ScopeBlind-owned disposable repository's trusted main.
+name: ScopeBlind shared AI coding trial
+on:
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: scopeblind-managed-trial
+  cancel-in-progress: false
+jobs:
+  trial:
+    if: github.repository == 'ScopeBlind/scopeblind-repository-demo' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+      deployments: write
+      id-token: write
+    steps:
+      - name: Use the reviewed Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.22.3'
+      - name: Verify the trusted managed controller
+        env:
+          RUNNER_URL: ${{ vars.SCOPEBLIND_TRIAL_RUNNER_URL }}
+          RUNNER_SHA256: ${{ vars.SCOPEBLIND_TRIAL_RUNNER_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'if(!/^https:\/\/scopeblind\.com\/releases\/repository-trial-\d+\.\d+\.\d+\.cjs$/.test(process.env.RUNNER_URL)||!/^[a-f0-9]{64}$/.test(process.env.RUNNER_SHA256))process.exit(1)'
+          curl --fail --silent --show-error --proto '=https' --max-time 30 "$RUNNER_URL" --output trial.cjs
+          printf '%s  trial.cjs\n' "$RUNNER_SHA256" | sha256sum --check --strict
+      - name: Check isolated Docker availability
+        run: docker version --format '{{.Server.Version}}'
+      - name: Process only signed managed work
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SCOPEBLIND_TRIAL_CONFIG: ${{ vars.SCOPEBLIND_TRIAL_CONFIG }}
+          SCOPEBLIND_TRIAL_RECEIVER_KEY: ${{ secrets.SCOPEBLIND_TRIAL_RECEIVER_KEY }}
+          SCOPEBLIND_TRIAL_WORKER_KEY: ${{ secrets.SCOPEBLIND_TRIAL_WORKER_KEY }}
+        run: node trial.cjs
+# No checkout, visitor parameters, model key or provider credentials inside Docker.
+# Source safety and actual isolated coding checks are separate, explicitly named results.

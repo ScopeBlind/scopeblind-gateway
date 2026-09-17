@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Fieldwork is a small independent design studio making useful things for thoughtful people.">
+  <title>Fieldwork — Useful things, thoughtfully made</title>
+  <style>
+    :root { color-scheme: light; --paper:#f6f4ed; --ink:#263c31; --muted:#58685b; --line:#d7dccf; --accent:#d9e7b6; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; background:var(--paper); color:var(--ink); font:16px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:inherit; text-underline-offset:4px; }
+    a:focus-visible { outline:3px solid var(--ink); outline-offset:5px; }
+    .wrap { width:min(1120px,calc(100% - 80px)); margin:auto; }
+    .nav { display:flex; justify-content:space-between; align-items:center; gap:24px; padding:30px 0; border-bottom:1px solid var(--line); }
+    .wordmark { font-family:Georgia,serif; font-size:30px; font-weight:700; letter-spacing:-1.5px; }
+    .nav-note,.eyebrow { font-size:11px; font-weight:650; letter-spacing:.15em; text-transform:uppercase; }
+    .nav-note { color:var(--muted); }
+    .hero { display:grid; grid-template-columns:1.35fr .8fr; gap:72px; align-items:center; padding:90px 0 84px; }
+    .eyebrow { margin:0 0 22px; color:var(--muted); }
+    h1,h2,h3,p { margin-top:0; }
+    h1,h2 { font-family:Georgia,"Times New Roman",serif; font-weight:400; letter-spacing:-.05em; }
+    h1 { max-width:720px; font-size:clamp(48px,6.2vw,82px); line-height:1.06; margin-bottom:27px; }
+    h1 em { font-weight:400; }
+    .intro { max-width:460px; font-size:17px; color:var(--muted); margin-bottom:28px; }
+    .contact-button { display:inline-flex; align-items:center; justify-content:space-between; gap:35px; min-height:52px; padding:12px 22px; border-radius:4px; background:var(--ink); color:#fff; text-decoration:none; font-size:14px; font-weight:600; }
+    .contact-button:hover { background:#38503f; }
+    .studio-card { position:relative; min-height:345px; display:flex; flex-direction:column; justify-content:space-between; background:var(--accent); border-radius:48% 48% 5px 5px; padding:48px 34px 28px; overflow:hidden; }
+    .studio-card::before { content:""; width:155px; height:155px; border:1px solid #8b9f70; border-radius:50%; position:absolute; top:69px; right:-36px; }
+    .card-mark { font:italic 100px/.95 Georgia,serif; letter-spacing:-9px; }
+    .card-caption { max-width:200px; margin:50px 0 0; font-size:14px; line-height:1.55; }
+    .work { padding:35px 0 70px; border-top:1px solid var(--line); }
+    .section-heading { display:flex; justify-content:space-between; align-items:baseline; gap:24px; margin-bottom:26px; }
+    h2 { font-size:37px; line-height:1.15; margin-bottom:0; }
+    .section-heading p { color:var(--muted); font-size:13px; margin-bottom:0; }
+    .projects { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+    .project { margin:0; }
+    .project-art { min-height:180px; display:flex; align-items:center; justify-content:center; border-radius:4px; margin-bottom:16px; }
+    .project-art span { font:35px/1.1 Georgia,serif; text-align:center; }
+    .project-art.one { background:#e3ddd0; }
+    .project-art.two { background:#dfe6dc; }
+    .project-art.three { background:#e8d8cd; }
+    h3 { margin:0 0 3px; font-size:14px; font-weight:650; }
+    .project p { color:var(--muted); font-size:12px; margin-bottom:0; }
+    .about { display:grid; grid-template-columns:1fr 1.2fr; gap:55px; border-top:1px solid var(--line); padding:40px 0 58px; }
+    .about p { max-width:500px; margin:0; color:var(--muted); }
+    footer { border-top:1px solid var(--line); padding:24px 0 36px; display:flex; justify-content:space-between; gap:18px; font-size:11px; color:var(--muted); }
+    @media(max-width:700px) { .wrap{width:calc(100% - 40px)} .nav{padding:22px 0} .nav-note{max-width:130px;text-align:right;font-size:9px} .hero{grid-template-columns:1fr;gap:36px;padding:52px 0} .intro{font-size:16px} .studio-card{min-height:245px;max-width:390px;width:100%;border-radius:100px 100px 4px 4px;padding:35px 28px 24px} .card-mark{font-size:72px} .card-caption{margin:24px 0 0;max-width:250px} .section-heading{display:block} .section-heading p{margin-top:10px} .projects{grid-template-columns:1fr;gap:28px} .project-art{min-height:210px} .about{grid-template-columns:1fr;gap:20px} h2{font-size:32px} footer{flex-direction:column;gap:5px} }
+    @media(prefers-reduced-motion:reduce) { html{scroll-behavior:auto} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="nav"><span class="wordmark">fieldwork.</span><span class="nav-note">Small studio.<br>Thoughtful work.</span></header>
+    <main>
+      <section class="hero" aria-labelledby="intro-heading">
+        <div>
+          <p class="eyebrow">Independent design, with purpose</p>
+          <h1 id="intro-heading">Good ideas.<br><em>Made useful.</em></h1>
+          <p class="intro">We help small teams turn thoughtful ideas into identities, websites, and everyday things people love to use.</p>
+        </div>
+        <aside class="studio-card" aria-label="Our approach"><span class="card-mark" aria-hidden="true">f.</span><p class="card-caption">A little clarity.<br>A considered detail.<br>Something worth putting into the world.</p></aside>
+      </section>
+      <section class="work" aria-labelledby="work-heading">
+        <div class="section-heading"><h2 id="work-heading">A few good beginnings.</h2><p>Identity · Digital · Everyday</p></div>
+        <div class="projects">
+          <article class="project"><div class="project-art one" aria-hidden="true"><span>Oat<br>&amp; Ember</span></div><h3>Oat &amp; Ember</h3><p>A warm welcome for a neighborhood bakery.</p></article>
+          <article class="project"><div class="project-art two" aria-hidden="true"><span>slow<br>season</span></div><h3>Slow Season</h3><p>A quieter kind of online home.</p></article>
+          <article class="project"><div class="project-art three" aria-hidden="true"><span>common<br>ground.</span></div><h3>Common Ground</h3><p>Making a shared space feel like yours.</p></article>
+        </div>
+      </section>
+      <section class="about" aria-labelledby="about-heading"><h2 id="about-heading">Small on purpose.</h2><p>You work with the people making the work. We listen closely, ask useful questions, and leave room for the details that make your project yours.</p></section>
+    </main>
+    <footer><span>Fieldwork Studio · A fictional studio for this shared trial.</span><span>Made with care. Ready for a fresh pair of eyes.</span></footer>
+  </div>
+</body>
+</html>

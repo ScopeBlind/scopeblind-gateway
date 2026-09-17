@@ -4888,23 +4888,23 @@ async function main() {
     return;
   }
   if (args[0] === "repository") {
-    await (await import("./repository-setup-DQG5C5OR.mjs")).runRepositoryCommand(args.slice(1));
+    await (await import("./repository-setup-DWMSTCGK.mjs")).runRepositoryCommand(args.slice(1));
     return;
   }
   if (args[0] === "coordination" && args[1] === "agent") {
-    await (await import("./coordination-agent-server-4LXGZ5SW.mjs")).runCoordinationAgent(args.slice(2));
+    await (await import("./coordination-agent-server-FRWXB7C6.mjs")).runCoordinationAgent(args.slice(2));
     return;
   }
   if (args[0] === "coordination" && args[1] === "pair") {
-    await (await import("./coordination-pair-cli-S56AX22E.mjs")).runCoordinationPair(args.slice(2));
+    await (await import("./coordination-pair-cli-AXT2MNZA.mjs")).runCoordinationPair(args.slice(2));
     return;
   }
   if (args[0] === "coordination" && args[1] === "setup") {
-    (await import("./coordination-pair-cli-S56AX22E.mjs")).runCoordinationSetup(args.slice(2));
+    (await import("./coordination-pair-cli-AXT2MNZA.mjs")).runCoordinationSetup(args.slice(2));
     return;
   }
   if (args[0] === "coordination") {
-    await (await import("./coordination-server-FO35BABS.mjs")).runCoordinationServer(args.slice(1));
+    await (await import("./coordination-server-EZQ56266.mjs")).runCoordinationServer(args.slice(1));
     return;
   }
   if (args[0] === "serve") {

@@ -303,3 +303,7 @@ export * from './repository-preview-bundle.js';
 
 export {RepositoryCodingRunner,DockerCodingSandbox} from './repository-coding-runner.js';
 export type {RepositoryCodingConfig,CodingSandbox} from './repository-coding-runner.js';
+
+export * from './coordination-repository-recovery.js';
+export * from './coordination-repository-trial.js';
+export {RepositoryTrialRunner} from './repository-trial-runner.js';

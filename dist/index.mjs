@@ -1,4 +1,23 @@
 import {
+  formatReportMarkdown,
+  generateReport
+} from "./chunk-GKV2PTW7.mjs";
+import {
+  REPOSITORY_CODING_IMAGE,
+  REPOSITORY_GUIDED_WORKFLOW,
+  REPOSITORY_SETUP_ACTIONS,
+  REPOSITORY_SETUP_TTL,
+  repositorySetupArtifactUrl,
+  validRepositoryCodingConnectionConfig,
+  validRepositorySetupAuthorization,
+  validRepositorySetupInspection,
+  validRepositorySetupRenewal,
+  validRepositorySetupRequest,
+  verifyRepositorySetupEnrollment,
+  verifyRepositorySetupReplacement,
+  verifyRepositorySetupState
+} from "./chunk-P4PK3PF6.mjs";
+import {
   CoordinationClient,
   CoordinationError,
   validateCoordinationPayment
@@ -15,9 +34,24 @@ import {
   verifyRehearsalEvidence
 } from "./chunk-PUKT6ZUQ.mjs";
 import {
-  formatReportMarkdown,
-  generateReport
-} from "./chunk-GKV2PTW7.mjs";
+  REPOSITORY_TRIAL_ACTIONS,
+  RepositoryTrialRunner,
+  TRIAL_CODING_CHECK,
+  TRIAL_DOCKER_IMAGE,
+  TRIAL_LIMITS,
+  TRIAL_REPOSITORY,
+  TRIAL_SOURCE_CHECK,
+  TRIAL_TEMPLATE,
+  TRIAL_WORKFLOW,
+  trialBase,
+  trialCodingConfig,
+  trialSource,
+  validRepositoryTrialProvision,
+  validRepositoryTrialRequest,
+  validTrialReadiness,
+  verifyRepositoryTrialConnection,
+  verifyRepositoryTrialState
+} from "./chunk-M7UV5PUZ.mjs";
 import {
   collectSignedReceipts,
   createAuditBundle
@@ -28,21 +62,6 @@ import {
   signCommittedDecision,
   verifySelectiveDisclosurePackage
 } from "./chunk-NJX7GOKG.mjs";
-import {
-  REPOSITORY_CODING_IMAGE,
-  REPOSITORY_GUIDED_WORKFLOW,
-  REPOSITORY_SETUP_ACTIONS,
-  REPOSITORY_SETUP_TTL,
-  repositorySetupArtifactUrl,
-  validRepositoryCodingConnectionConfig,
-  validRepositorySetupAuthorization,
-  validRepositorySetupInspection,
-  validRepositorySetupRenewal,
-  validRepositorySetupRequest,
-  verifyRepositorySetupEnrollment,
-  verifyRepositorySetupReplacement,
-  verifyRepositorySetupState
-} from "./chunk-WAOYTUIJ.mjs";
 import {
   CONNECTOR_PILOTS,
   connectorDirectory,
@@ -147,7 +166,8 @@ import {
 import {
   DockerCodingSandbox,
   RepositoryCodingRunner
-} from "./chunk-AY2523BQ.mjs";
+} from "./chunk-N5HNIKFM.mjs";
+import "./chunk-JRJSKQFR.mjs";
 import {
   CODING_PERMISSIONS,
   REPOSITORY_CODING_ACTIONS,
@@ -156,6 +176,9 @@ import {
   REPOSITORY_DEVICE_LINK_MS,
   REPOSITORY_DEVICE_MAX_MS,
   REPOSITORY_DEVICE_PERMISSIONS,
+  REPOSITORY_HEX,
+  REPOSITORY_ID,
+  REPOSITORY_SHA,
   codingCommand,
   codingSafePath,
   codingScopeWithin,
@@ -175,6 +198,7 @@ import {
   validRepositoryDeviceAuthorization,
   validRepositoryDeviceConfirmation,
   validRepositoryDeviceLink,
+  validRepositoryEnvelope,
   validRepositoryHumanEnvelope,
   verifyRepositoryCodingEvidence,
   verifyRepositoryCollaborationEvidence,
@@ -184,7 +208,7 @@ import {
   verifyRepositoryReviewEvidence,
   verifyRepositoryWorkspaceAgentState,
   verifyRepositoryWorkspaceState
-} from "./chunk-W4EKTNR3.mjs";
+} from "./chunk-S2VKIQZF.mjs";
 import {
   bytesToHex,
   canonical,
@@ -236,11 +260,11 @@ function validateManifest(manifest) {
   if (!m.identity || typeof m.identity !== "object") {
     errors.push("identity is required");
   } else {
-    const id = m.identity;
-    if (typeof id.public_key !== "string" || !id.public_key.startsWith("ed25519:")) {
+    const id2 = m.identity;
+    if (typeof id2.public_key !== "string" || !id2.public_key.startsWith("ed25519:")) {
       errors.push("identity.public_key must be an ed25519: prefixed key");
     }
-    if (id.key_algorithm !== "Ed25519") {
+    if (id2.key_algorithm !== "Ed25519") {
       errors.push('identity.key_algorithm must be "Ed25519"');
     }
   }
@@ -788,8 +812,8 @@ function computeCommitment(salt, value) {
   const serialized = typeof value === "string" ? value : JSON.stringify(value);
   return createHash2("sha256").update(salt + serialized).digest("hex");
 }
-function hashObject(obj) {
-  const canonical2 = JSON.stringify(obj, Object.keys(obj).sort());
+function hashObject(obj2) {
+  const canonical2 = JSON.stringify(obj2, Object.keys(obj2).sort());
   return createHash2("sha256").update(canonical2).digest("hex");
 }
 
@@ -1107,20 +1131,20 @@ async function createE2BSandbox(config) {
 async function createDockerSandbox(config) {
   const { execSync } = await import("child_process");
   const { randomUUID: randomUUID2 } = await import("crypto");
-  const id = `scopeblind-sandbox-${randomUUID2().slice(0, 8)}`;
+  const id2 = `scopeblind-sandbox-${randomUUID2().slice(0, 8)}`;
   const image = config.template.includes(":") ? config.template : `node:${config.template.replace("node-", "")}`;
   const memoryFlag = config.memoryMB ? `--memory=${config.memoryMB}m` : "";
   const timeout = config.timeoutSeconds || 300;
   try {
     execSync(
-      `docker run -d --name ${id} ${memoryFlag} --network=none --stop-timeout=${timeout} ${image} sleep ${timeout}`,
+      `docker run -d --name ${id2} ${memoryFlag} --network=none --stop-timeout=${timeout} ${image} sleep ${timeout}`,
       { stdio: "pipe" }
     );
   } catch (err) {
     throw new Error(`Docker sandbox creation failed: ${err instanceof Error ? err.message : err}`);
   }
   return {
-    id,
+    id: id2,
     runtime: "docker",
     createdAt: (/* @__PURE__ */ new Date()).toISOString(),
     status: "running",
@@ -1588,10 +1612,10 @@ var ReceiptPropagator = class {
   traceChain(receiptId) {
     const chain = [];
     const visited = /* @__PURE__ */ new Set();
-    const walk = (id) => {
-      if (visited.has(id)) return;
-      visited.add(id);
-      const receipt = this.receipts.get(id);
+    const walk = (id2) => {
+      if (visited.has(id2)) return;
+      visited.add(id2);
+      const receipt = this.receipts.get(id2);
       if (!receipt) return;
       for (const parentId of receipt.parent_receipts) {
         walk(parentId);
@@ -1805,6 +1829,69 @@ async function validateRepositoryPreviewBundle(value) {
   need(digest === value.sha256);
   return { digest, entries, files };
 }
+
+// src/coordination-repository-recovery.ts
+var REPOSITORY_RECOVERY_CODES = [
+  "github_connection_required",
+  "local_dispatch",
+  "connection_expired",
+  "connection_revoked",
+  "connection_replaced",
+  "installation_pending",
+  "installation_expired",
+  "receiver_readiness_expired",
+  "coding_readiness_pending",
+  "coding_readiness_expired",
+  "workflow_response_pending",
+  "workflow_approval_required",
+  "workflow_waiting",
+  "workflow_running",
+  "workflow_failed",
+  "workflow_completed_without_response",
+  "provider_unavailable",
+  "provider_observation_incomplete",
+  "pull_draft",
+  "pull_closed",
+  "pull_conflict",
+  "pull_mergeability_pending",
+  "pull_metadata_stale",
+  "base_changed",
+  "head_changed",
+  "required_check_missing",
+  "required_check_pending",
+  "required_check_failed",
+  "inspection_needed",
+  "job_expired"
+];
+var obj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var shape = (v, keys, optional = []) => obj(v) && keys.every((k) => k in v) && Object.keys(v).every((k) => keys.includes(k) || optional.includes(k));
+var id = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
+var hex = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
+var sha = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
+var integer = (v) => Number.isSafeInteger(v) && Number(v) > 0;
+var text = (v, max = 100) => typeof v === "string" && v.length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
+var time = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+function validRepositoryRecoveryObservation(v) {
+  if (!shape(v, ["type", "setup_id", "setup_digest", "owner_key", "task_id", "task_digest", "job_id", "repository", "pull_number", "observed_at", "expires_at", "issues", "pull", "expected", "workflow", "checks"])) return false;
+  const p = v;
+  if (p.type !== "scopeblind.repository.recovery-observation.v1" || !id(p.setup_id) || !hex(p.setup_digest) || !hex(p.owner_key) || p.task_id !== null && !id(p.task_id) || p.task_digest !== null && !hex(p.task_digest) || p.task_id === null !== (p.task_digest === null) || p.job_id !== null && !id(p.job_id) || typeof p.repository !== "string" || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(p.repository) || p.repository.split("/").some((x) => x === "." || x === "..") || !integer(p.pull_number) || !time(p.observed_at) || !time(p.expires_at) || Date.parse(p.expires_at) - Date.parse(p.observed_at) !== 12e4) return false;
+  if (!shape(p.expected, ["base_sha", "head_sha"]) || [p.expected.base_sha, p.expected.head_sha].some((s) => s !== null && !sha(s))) return false;
+  if (p.pull && (!shape(p.pull, ["state", "draft", "base_sha", "head_sha", "mergeable"]) || !["open", "closed"].includes(p.pull.state) || typeof p.pull.draft !== "boolean" || !sha(p.pull.base_sha) || !sha(p.pull.head_sha) || p.pull.mergeable !== null && typeof p.pull.mergeable !== "boolean")) return false;
+  if (p.workflow && (!shape(p.workflow, ["run_id", "status", "conclusion", "url"]) || !integer(p.workflow.run_id) || !text(p.workflow.status, 40) || p.workflow.conclusion !== null && !text(p.workflow.conclusion, 40) || p.workflow.url !== `https://github.com/${p.repository}/actions/runs/${p.workflow.run_id}`)) return false;
+  if (!Array.isArray(p.issues) || p.issues.length > 70 || !p.issues.every((i) => shape(i, ["code", "actor"], ["check_name", "app_id"]) && REPOSITORY_RECOVERY_CODES.includes(i.code) && ["owner", "github_reviewer", "worker"].includes(i.actor) && (i.check_name === void 0 || text(i.check_name)) && (i.app_id === void 0 || integer(i.app_id)))) return false;
+  return Array.isArray(p.checks) && p.checks.length <= 50 && p.checks.every((c) => shape(c, ["name", "app_id", "state", "run_id"]) && text(c.name) && (c.app_id === null || integer(c.app_id)) && ["missing", "pending", "failed", "passed"].includes(c.state) && (c.run_id === null || integer(c.run_id)));
+}
+async function verifyRepositoryRecoveryObservation(value, authorityKey, scope, now = Date.now()) {
+  try {
+    if (!validRepositoryEnvelope(value)) return false;
+    const s = value;
+    if (!validRepositoryRecoveryObservation(s.payload)) return false;
+    const p = s.payload;
+    return p.setup_id === scope.setupId && p.owner_key === scope.ownerKey && p.task_id === (scope.taskId ?? null) && (scope.jobId === void 0 || p.job_id === scope.jobId) && Date.parse(p.observed_at) <= now + 1e3 && Date.parse(p.expires_at) > now && await verify(s, authorityKey);
+  } catch {
+    return false;
+  }
+}
 export {
   BUILTIN_PATTERNS,
   CODING_PERMISSIONS,
@@ -1827,11 +1914,21 @@ export {
   REPOSITORY_GUIDED_WORKFLOW,
   REPOSITORY_PREVIEW_MAX_BYTES,
   REPOSITORY_PREVIEW_MAX_FILES,
+  REPOSITORY_RECOVERY_CODES,
   REPOSITORY_SETUP_ACTIONS,
   REPOSITORY_SETUP_TTL,
+  REPOSITORY_TRIAL_ACTIONS,
   ReceiptPropagator,
   RepositoryCodingRunner,
+  RepositoryTrialRunner,
   ScopeBlindBridge,
+  TRIAL_CODING_CHECK,
+  TRIAL_DOCKER_IMAGE,
+  TRIAL_LIMITS,
+  TRIAL_REPOSITORY,
+  TRIAL_SOURCE_CHECK,
+  TRIAL_TEMPLATE,
+  TRIAL_WORKFLOW,
   anchorToRekor,
   approvePolicyProposalWithDirectSignature,
   approvePolicyProposalWithWebAuthn,
@@ -1949,6 +2046,9 @@ export {
   toEgressSummary,
   toManifoldFormat,
   toMetaculusFormat,
+  trialBase,
+  trialCodingConfig,
+  trialSource,
   validRepositoryCodingConnectionConfig,
   validRepositoryCodingMandate,
   validRepositoryCodingPlan,
@@ -1961,10 +2061,14 @@ export {
   validRepositoryDeviceConfirmation,
   validRepositoryDeviceLink,
   validRepositoryHumanEnvelope,
+  validRepositoryRecoveryObservation,
   validRepositorySetupAuthorization,
   validRepositorySetupInspection,
   validRepositorySetupRenewal,
   validRepositorySetupRequest,
+  validRepositoryTrialProvision,
+  validRepositoryTrialRequest,
+  validTrialReadiness,
   validateCoordinationConfig,
   validateCoordinationPayment,
   validateCredentials,
@@ -1991,10 +2095,13 @@ export {
   verifyRepositoryDeviceAuthorization,
   verifyRepositoryEvidence,
   verifyRepositoryHuman,
+  verifyRepositoryRecoveryObservation,
   verifyRepositoryReviewEvidence,
   verifyRepositorySetupEnrollment,
   verifyRepositorySetupReplacement,
   verifyRepositorySetupState,
+  verifyRepositoryTrialConnection,
+  verifyRepositoryTrialState,
   verifyRepositoryWorkspaceAgentState,
   verifyRepositoryWorkspaceState,
   verifySelectiveDisclosurePackage,
