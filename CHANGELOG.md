@@ -1,3 +1,8 @@
+## 0.24.1 — Stable guided connection expiry
+
+- Sample each guided inspection and coding-readiness timestamp once, then derive its expiry from that same instant. Crossing a millisecond boundary no longer creates a record just beyond the existing 24-hour validity limit.
+- Advancing-clock regressions cover the actual signed discovery and coding-readiness paths. Permissions, expiry limits, workflow scope, and existing evidence formats are unchanged.
+
 ## 0.24.0 — Guided repositories and bounded coding work
 
 - Guide repository/PR setup through an authenticated GitHub installation, owner-reviewed workflow changes, locally generated keys and a signed readiness callback. The connection app can read selected repositories and wake approved workflows; it has no code-write permission.

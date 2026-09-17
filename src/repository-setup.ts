@@ -6,7 +6,7 @@ import {discoverRepositoryPreviewChoices} from './repository-review-preview.js';
 import type {RepositoryPreviewDiscovery} from './coordination-repository-review.js';
 import {RepositoryReceiverError,runRepositoryReceiver} from './repository-receiver.js';
 
-export const REPOSITORY_SETUP_VERSION='0.24.0';
+export const REPOSITORY_SETUP_VERSION='0.24.1';
 const REPO=/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/;
 const WORKFLOW_PATH='.github/workflows/scopeblind-receiver.yml';
 const safeText=(v:unknown,max:number):v is string=>typeof v==='string'&&v.length>0&&v.length<=max&&!/[\u0000-\u001f\u007f]/.test(v);

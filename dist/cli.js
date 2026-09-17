@@ -7611,7 +7611,7 @@ async function inspectRepositorySetup(request, identity, token, fetchImpl = fetc
     need(object6(c2) && object6(c2.app), "connect_check_invalid");
     return { id: Number(c2.id), name: String(c2.name), app_id: Number(c2.app.id), head_sha: String(c2.head_sha), status: c2.status, conclusion: c2.conclusion === null ? null : String(c2.conclusion) };
   });
-  const choices = await discoverRepositoryPreviewChoices((path) => github(path, token, fetchImpl), p.repository, discovery.observed_head_sha), observed = date(), expires = new Date(Date.now() + 864e5).toISOString(), preview = await sign({ type: "scopeblind.repository.preview-discovery.v1", repository: p.repository, pull_number: p.pull_number, head_sha: discovery.observed_head_sha, owner_key: p.owner_key, receiver_key: identity.publicKey, authority_key: p.authority_key, ...choices, observed_at: observed, expires_at: expires }, identity);
+  const choices = await discoverRepositoryPreviewChoices((path) => github(path, token, fetchImpl), p.repository, discovery.observed_head_sha), observed = date(), expires = new Date(Date.parse(observed) + 864e5).toISOString(), preview = await sign({ type: "scopeblind.repository.preview-discovery.v1", repository: p.repository, pull_number: p.pull_number, head_sha: discovery.observed_head_sha, owner_key: p.owner_key, receiver_key: identity.publicKey, authority_key: p.authority_key, ...choices, observed_at: observed, expires_at: expires }, identity);
   const latest = (await github(`${base}/pulls/${p.pull_number}`, token, fetchImpl)).body;
   need(object6(latest) && object6(latest.head) && object6(latest.base) && latest.head.sha === v.head.sha && latest.base.sha === v.base.sha && latest.state === "open" && !latest.merged, "connect_pull_changed");
   const inspection = await sign({ type: "scopeblind.repository.setup-inspection.v1", setup_digest: request.digest, owner_key: p.owner_key, receiver_key: identity.publicKey, repository: p.repository, repository_id: Number(r.id), pull_number: p.pull_number, title: v.title, url: `https://github.com/${p.repository}/pull/${p.pull_number}`, base_branch: discovery.base_branch, head_branch: v.head.ref, base_sha: discovery.base_sha, head_sha: discovery.observed_head_sha, draft: v.draft, mergeable: v.mergeable, files: changes, checks: checks2, preview, observed_at: observed, expires_at: expires }, identity);
@@ -7763,7 +7763,7 @@ async function runRepositoryConnect(args, dependencies = {}) {
     stdout("The earlier enrollment was never recorded and its observations are stale. Refreshing the same receiver and repository inspection before browser review.\n");
   }
   if (!cp.enrollment || refreshEnrollment) {
-    const request = state.payload.request, { discovery, inspection } = await inspectRepositorySetup(request, identity, token, fetchImpl), issued = Date.now(), connection = { type: "scopeblind.repository.connection.v1", id: link.id, endpoint: ENDPOINT, repository: request.payload.repository, base_branch: discovery.base_branch, owner_key: request.payload.owner_key, receiver_key: identity.publicKey, authority_key: pin, issued_at: new Date(issued).toISOString(), expires_at: new Date(issued + 30 * 864e5).toISOString() }, receiverUrl = "https://scopeblind.com/releases/repository-receiver-0.24.0.cjs", receiverHash = await artifact(receiverUrl, fetchImpl), workflow = renderGuidedReceiverWorkflow({ url: receiverUrl, sha256: receiverHash }), readiness = await createRepositoryReadiness(connection, identity, discovery, { workflow_sha256: await sha256(workflow) });
+    const request = state.payload.request, { discovery, inspection } = await inspectRepositorySetup(request, identity, token, fetchImpl), issued = Date.now(), connection = { type: "scopeblind.repository.connection.v1", id: link.id, endpoint: ENDPOINT, repository: request.payload.repository, base_branch: discovery.base_branch, owner_key: request.payload.owner_key, receiver_key: identity.publicKey, authority_key: pin, issued_at: new Date(issued).toISOString(), expires_at: new Date(issued + 30 * 864e5).toISOString() }, receiverUrl = "https://scopeblind.com/releases/repository-receiver-0.24.1.cjs", receiverHash = await artifact(receiverUrl, fetchImpl), workflow = renderGuidedReceiverWorkflow({ url: receiverUrl, sha256: receiverHash }), readiness = await createRepositoryReadiness(connection, identity, discovery, { workflow_sha256: await sha256(workflow) });
     let coding;
     if (codingRequested) {
       let test, build;
@@ -7775,7 +7775,7 @@ async function runRepositoryConnect(args, dependencies = {}) {
       }
       const config = { type: "scopeblind.repository.coding-config.v1", endpoint: ENDPOINT, authority_key: pin, worker_key: codingKey.public_key, repository: connection.repository, base_branch: connection.base_branch, runtime: "node22-static-v1", test_command: test, build_command: build, preview_directory: opts.get("--coding-preview") ?? preparedCoding.preview_directory, docker_image: opts.get("--docker-image") ?? preparedCoding.docker_image };
       need(validRepositoryCodingConnectionConfig(config), "connect_coding_config_invalid");
-      const artifactUrl = "https://scopeblind.com/releases/repository-coding-0.24.0.cjs", artifactHash = await artifact(artifactUrl, fetchImpl), codingWorkflow = renderGuidedCodingWorkflow({ url: artifactUrl, sha256: artifactHash }, { url: receiverUrl, sha256: receiverHash });
+      const artifactUrl = "https://scopeblind.com/releases/repository-coding-0.24.1.cjs", artifactHash = await artifact(artifactUrl, fetchImpl), codingWorkflow = renderGuidedCodingWorkflow({ url: artifactUrl, sha256: artifactHash }, { url: receiverUrl, sha256: receiverHash });
       coding = { config, workflow: codingWorkflow, workflow_sha256: await sha256(codingWorkflow), artifact_url: artifactUrl, artifact_sha256: artifactHash };
     }
     let replaces;
@@ -7907,7 +7907,7 @@ async function runCodingReady(args, env, fetchImpl, stdout) {
   need(e.coding && canonical(e.coding.config) === canonical(coding) && challenge && Date.parse(challenge.expires_at) > Date.now(), "connect_coding_scope_mismatch");
   const discovery = await discoverRepository({ repository: coding.repository, base_branch: coding.base_branch, workflow_path: ".github/workflows/scopeblind-coding.yml" }, await githubToken(env), fetchImpl), workflowRef = `${coding.repository}/.github/workflows/scopeblind-coding.yml@refs/heads/${coding.base_branch}`;
   need(env.GITHUB_ACTIONS === "true" && env.GITHUB_REPOSITORY === coding.repository && env.GITHUB_EVENT_NAME === "workflow_dispatch" && env.GITHUB_REF === `refs/heads/${coding.base_branch}` && env.GITHUB_WORKFLOW_REF === workflowRef && discovery.workflow_sha256 === e.coding.workflow_sha256 && env.GITHUB_WORKFLOW_SHA && REPOSITORY_SHA.test(env.GITHUB_WORKFLOW_SHA), "connect_trusted_coding_workflow_required");
-  const ready = await sign({ type: "scopeblind.repository.setup-coding-ready.v1", setup_id: s.request.payload.id, setup_digest: s.request.digest, connection_digest: config.connection.digest, coding_digest: await sha256(canonical(coding)), worker_key: coding.worker_key, challenge_id: challenge.id, run_id: Number(env.GITHUB_RUN_ID), run_attempt: Number(env.GITHUB_RUN_ATTEMPT), workflow_ref: workflowRef, workflow_sha: env.GITHUB_WORKFLOW_SHA, observed_at: date(), expires_at: new Date(Math.min(Date.now() + 864e5, Date.parse(config.connection.payload.expires_at))).toISOString() }, identity);
+  const observed = date(), ready = await sign({ type: "scopeblind.repository.setup-coding-ready.v1", setup_id: s.request.payload.id, setup_digest: s.request.digest, connection_digest: config.connection.digest, coding_digest: await sha256(canonical(coding)), worker_key: coding.worker_key, challenge_id: challenge.id, run_id: Number(env.GITHUB_RUN_ID), run_attempt: Number(env.GITHUB_RUN_ATTEMPT), workflow_ref: workflowRef, workflow_sha: env.GITHUB_WORKFLOW_SHA, observed_at: observed, expires_at: new Date(Math.min(Date.parse(observed) + 864e5, Date.parse(config.connection.payload.expires_at))).toISOString() }, identity);
   await checkedState((await rpc(identity, "repository_setup_coding_ready", s.request.payload.id, { ready, oidc_token: await oidc(challenge.audience, env, fetchImpl) }, fetchImpl)).setup, config.authority_key, config.connection.payload.owner_key);
   stdout("The exact coding controller responded from its installed workflow. No code-edit mandate or task approval was granted.\n");
 }
@@ -8316,7 +8316,7 @@ var init_repository_setup = __esm({
     init_coordination_repository_collaboration();
     init_repository_review_preview();
     init_repository_receiver();
-    REPOSITORY_SETUP_VERSION = "0.24.0";
+    REPOSITORY_SETUP_VERSION = "0.24.1";
     REPO = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/;
     WORKFLOW_PATH = ".github/workflows/scopeblind-receiver.yml";
     safeText = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
@@ -8918,7 +8918,7 @@ var AGENT_PACKAGE_URL, AGENT_CLIENTS, shellQuote;
 var init_coordination_agent_setup = __esm({
   "src/coordination-agent-setup.ts"() {
     "use strict";
-    AGENT_PACKAGE_URL = "protect-mcp@0.24.0";
+    AGENT_PACKAGE_URL = "protect-mcp@0.24.1";
     AGENT_CLIENTS = [
       { id: "claude-code", label: "Claude Code" },
       { id: "codex", label: "Codex CLI" },
@@ -10638,7 +10638,7 @@ __export(coordination_server_exports, {
 async function handleCoordinationRequest(client, request, signal) {
   if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") return { jsonrpc: "2.0", id: request?.id ?? null, error: { code: -32600, message: "Invalid JSON-RPC request." } };
   if (request.id === void 0) return void 0;
-  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-coordination", version: process.env.PROTECT_MCP_VERSION || "0.24.0" }, capabilities: { tools: {} } } };
+  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-coordination", version: process.env.PROTECT_MCP_VERSION || "0.24.1" }, capabilities: { tools: {} } } };
   if (request.method === "ping") return { jsonrpc: "2.0", id: request.id, result: {} };
   if (request.method === "tools/list") return { jsonrpc: "2.0", id: request.id, result: { tools: toolsForPurpose(client.purpose) } };
   if (request.method !== "tools/call") return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found." } };
@@ -10902,7 +10902,7 @@ __export(coordination_agent_server_exports, {
 async function handleAgentProfileRequest(client, request, signal) {
   if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") return { jsonrpc: "2.0", id: request?.id ?? null, error: { code: -32600, message: "Invalid JSON-RPC request." } };
   if (request.id === void 0) return void 0;
-  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-agent", version: process.env.PROTECT_MCP_VERSION || "0.24.0" }, capabilities: { tools: {} } } };
+  if (request.method === "initialize") return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", serverInfo: { name: "protect-mcp-agent", version: process.env.PROTECT_MCP_VERSION || "0.24.1" }, capabilities: { tools: {} } } };
   if (request.method === "ping") return { jsonrpc: "2.0", id: request.id, result: {} };
   if (request.method === "tools/list") return { jsonrpc: "2.0", id: request.id, result: { tools: [...AGENT_PROFILE_TOOLS, ...scopedTools] } };
   if (request.method !== "tools/call") return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found." } };

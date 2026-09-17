@@ -1,6 +1,6 @@
 {
   "name": "protect-mcp",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "mcpName": "com.scopeblind/protect-mcp",
   "description": "Cedar policy enforcement and signed receipts for AI agent tool calls, guided repository review, bounded coding work and exact human approvals. Built by ScopeBlind.",
   "main": "dist/index.js",

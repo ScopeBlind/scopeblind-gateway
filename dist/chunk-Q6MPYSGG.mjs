@@ -20,7 +20,7 @@ import {
 } from "./chunk-O3K3FPBT.mjs";
 
 // src/repository-setup.ts
-var REPOSITORY_SETUP_VERSION = "0.24.0";
+var REPOSITORY_SETUP_VERSION = "0.24.1";
 var REPO = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/;
 var WORKFLOW_PATH = ".github/workflows/scopeblind-receiver.yml";
 var safeText = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
@@ -296,7 +296,7 @@ async function artifactPin(url, pin, fetchImpl) {
   return value.slice(0, 64);
 }
 async function runRepositoryCommand(args, dependencies = {}) {
-  if (["connect", "connection-job", "coding-ready"].includes(args[0])) return (await import("./repository-connect-Q74ZKLOU.mjs")).runRepositoryConnect(args, dependencies);
+  if (["connect", "connection-job", "coding-ready"].includes(args[0])) return (await import("./repository-connect-GYG7BTNM.mjs")).runRepositoryConnect(args, dependencies);
   if (!["setup", "ready"].includes(args[0])) return runRepositoryReceiver(args);
   const { readFile, writeFile, mkdir, stat } = await import("fs/promises"), { resolve, join } = await import("path");
   const options = /* @__PURE__ */ new Map();
