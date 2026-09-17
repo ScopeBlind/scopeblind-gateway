@@ -118,7 +118,7 @@ async function verifyRepositoryTrialState(value, authority) {
       if (!s.workspace || !validWorkspaceInvitation(i) || i.workspace_id !== s.workspace.payload.id || i.workspace_digest !== s.workspace.digest || i.role !== "reviewer" || i.issuer_key !== r.payload.owner_key || i.secret_hash !== r.payload.reviewer_secret_hash || !await verify(s.invitation, r.payload.owner_key)) return false;
     }
     if (s.readiness && (!validRepositoryEnvelope(s.readiness) || !validTrialReadiness(s.readiness.payload) || !await verify(s.readiness, authority) || s.readiness.payload.worker_key !== s.config.worker_key || s.readiness.payload.receiver_key !== s.receiver_key || Date.parse(s.readiness.payload.observed_at) > Date.parse(s.observed_at))) return false;
-    return Array.isArray(s.jobs) && s.jobs.length <= 30 && new Set(s.jobs.map((j) => j.id)).size === s.jobs.length && s.jobs.every((j) => object(j) && exact(j, ["id", "kind", "target_id", "status", "attempts", "error", "updated_at"]) && id(j.id) && ["provision", "inspect", "execute", "reconcile", "coding", "coding_reconcile"].includes(j.kind) && (j.kind === "provision" ? j.target_id === null : id(j.target_id)) && ["queued", "leased", "complete", "failed", "unknown"].includes(j.status) && Number.isInteger(j.attempts) && j.attempts >= 0 && j.attempts <= 3 && (j.error === null || typeof j.error === "string" && /^[a-z0-9_]{3,100}$/.test(j.error)) && at(j.updated_at) && Date.parse(j.updated_at) <= Date.parse(s.observed_at)) && ["queued", "provisioning", "ready", "active", "expired", "failed", "unknown"].includes(s.status) && ["requested", "unconfigured", "unavailable"].includes(s.dispatch_status);
+    return Array.isArray(s.jobs) && s.jobs.length <= 30 && new Set(s.jobs.map((j) => j.id)).size === s.jobs.length && s.jobs.every((j) => object(j) && exact(j, ["id", "kind", "target_id", "status", "attempts", "error", "updated_at"]) && id(j.id) && ["provision", "inspect", "execute", "reconcile", "coding", "coding_reconcile", "coding_ready"].includes(j.kind) && (j.kind === "provision" ? j.target_id === null : id(j.target_id)) && ["queued", "leased", "complete", "failed", "unknown"].includes(j.status) && Number.isInteger(j.attempts) && j.attempts >= 0 && j.attempts <= 3 && (j.error === null || typeof j.error === "string" && /^[a-z0-9_]{3,100}$/.test(j.error)) && at(j.updated_at) && Date.parse(j.updated_at) <= Date.parse(s.observed_at)) && ["queued", "provisioning", "ready", "active", "expired", "failed", "unknown"].includes(s.status) && ["requested", "unconfigured", "unavailable"].includes(s.dispatch_status);
   } catch {
     return false;
   }
@@ -285,19 +285,31 @@ var RepositoryTrialRunner = class {
     else if (j.kind === "execute") await receiver.execute(t.id);
     else await receiver.reconcile(t.id);
   }
+  async refreshReady(j, resultDigest) {
+    const audience = "https://scopeblind.com/repository-trial/" + j.lease_id, oidc_token = await this.run.oidc(audience), response = (await this.rpc("repository_trial_poll", "repository-trial", { lease_id: j.lease_id, run_id: this.run.run_id, run_attempt: this.run.run_attempt, oidc_token, refresh_only: true })).poll;
+    need(response && await verify(response, this.config.authority_key) && response.payload.lease_id === j.lease_id && response.payload.job, "trial_ready_lease_required");
+    const current = await this.checked(response.payload.job, j.lease_id), c = current.coding, w = current.workspace?.payload, m = c?.payload.mandate.payload;
+    need(current.id === j.id && current.kind === j.kind && current.target_id === j.target_id && c?.payload.result?.digest === resultDigest && c.payload.stop === null && w && m && Date.parse(m.expires_at) > Date.now() && Date.parse(current.request.payload.expires_at) > Date.now() && Math.abs(Date.now() - Date.parse(current.observed_at)) <= 3e4, "trial_coding_ready_authority_inactive");
+    for (const [memberId, key2, revision, role] of [[m.owner_member_id, m.owner_key, m.owner_member_revision, "owner"], [m.reviewer_member_id, m.reviewer_key, m.reviewer_member_revision, "reviewer"]]) need(w.members.some((x) => x.member_id === memberId && x.current_key === key2 && x.revision === revision && x.role === role && x.status === "active"), "trial_coding_ready_authority_inactive");
+  }
   async coding(j) {
     need(j.coding && j.workspace && j.target_id === j.coding.payload.request.payload.id && (await verifyRepositoryCodingEvidence({ type: "scopeblind.repository.coding-evidence.v1", job: j.coding }, this.config.authority_key)).valid && j.coding.payload.request.payload.workspace_id === j.workspace.payload.workspace.payload.id, "trial_coding_scope_mismatch");
     const m = j.coding.payload.mandate.payload;
     need(m.owner_key === j.request.payload.owner_key && m.repository === TRIAL_REPOSITORY && m.base_branch === trialBase(j.request.payload.id) && m.worker_key === this.worker.publicKey && canonical(m.allowed_paths) === canonical(["site/**"]) && canonical(m.required_checks) === canonical([TRIAL_CODING_CHECK]) && Object.entries(TRIAL_LIMITS).every(([k, v]) => m[k] <= v), "trial_coding_limits_mismatch");
-    need(j.kind !== "coding_reconcile" || j.coding.payload.publication, "trial_coding_publication_required");
-    const runner = new RepositoryCodingRunner(j.config, this.worker, this.token, this.fetcher, this.sandboxFactory);
-    await runner.runOne(j.target_id);
+    need(!["coding_reconcile", "coding_ready"].includes(j.kind) || j.coding.payload.publication, "trial_coding_publication_required");
+    if (j.kind === "coding_ready") need(j.coding.payload.result, "trial_coding_result_required");
+    else if (!j.coding.payload.result) {
+      const runner = new RepositoryCodingRunner(j.config, this.worker, this.token, this.fetcher, this.sandboxFactory);
+      await runner.runOne(j.target_id);
+    }
     const current = (await this.rpc("repository_coding_get", m.workspace_id, { job_id: j.target_id }, this.worker)).job;
     need((await verifyRepositoryCodingEvidence({ type: "scopeblind.repository.coding-evidence.v1", job: current }, this.config.authority_key)).published, "trial_coding_not_published");
     const result = current.payload.result.payload, pull = await this.github(this.repo + "/pulls/" + result.pull_number);
     need(pull.head?.sha === result.head_sha && pull.head?.ref === result.branch && pull.base?.ref === trialBase(j.request.payload.id) && pull.base?.sha === current.payload.plan.payload.source_base_sha && await this.ref(trialBase(j.request.payload.id)) === current.payload.plan.payload.source_base_sha && pull.state === "open" && pull.base?.repo?.full_name === TRIAL_REPOSITORY && pull.head?.repo?.full_name === TRIAL_REPOSITORY, "trial_coding_pull_changed");
     if (pull.draft) {
+      need(j.kind !== "coding_reconcile", "trial_coding_ready_required");
       need(typeof pull.node_id === "string", "trial_pull_node_missing");
+      await this.refreshReady(j, current.payload.result.digest);
       const marked = await this.github("/graphql", { method: "POST", body: JSON.stringify({ query: "mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){pullRequest{id isDraft}}}", variables: { id: pull.node_id } }) });
       need(!marked.errors?.length && marked.data?.markPullRequestReadyForReview?.pullRequest?.id === pull.node_id && marked.data.markPullRequestReadyForReview.pullRequest.isDraft === false, "trial_ready_readback_required");
     }
@@ -314,7 +326,7 @@ var RepositoryTrialRunner = class {
     let provision = null, error = null;
     try {
       if (j.kind === "provision") provision = await this.provision(j);
-      else if (j.kind === "coding" || j.kind === "coding_reconcile") await this.coding(j);
+      else if (j.kind === "coding" || j.kind === "coding_reconcile" || j.kind === "coding_ready") await this.coding(j);
       else await this.receive(j);
     } catch (e) {
       error = e instanceof Error && /^[a-z0-9_]{3,100}$/.test(e.message) ? e.message : "trial_runner_interrupted";

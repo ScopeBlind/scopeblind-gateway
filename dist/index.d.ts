@@ -2308,7 +2308,7 @@ interface RepositoryTrialInfo {
     preview_directory: 'dist';
     observed_at: string;
 }
-type RepositoryTrialJobKind = 'provision' | 'inspect' | 'execute' | 'reconcile' | 'coding' | 'coding_reconcile';
+type RepositoryTrialJobKind = 'provision' | 'inspect' | 'execute' | 'reconcile' | 'coding' | 'coding_reconcile' | 'coding_ready';
 interface RepositoryTrialJobView {
     id: string;
     kind: RepositoryTrialJobKind;
@@ -6245,6 +6245,7 @@ declare class RepositoryTrialRunner {
     private checked;
     provision(j: RepositoryTrialJob): Promise<Signed<RepositoryTrialProvision>>;
     private receive;
+    private refreshReady;
     private coding;
     runOne(): Promise<boolean>;
 }

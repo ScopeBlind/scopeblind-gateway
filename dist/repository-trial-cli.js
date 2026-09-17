@@ -1705,19 +1705,31 @@ var RepositoryTrialRunner = class {
     else if (j.kind === "execute") await receiver.execute(t.id);
     else await receiver.reconcile(t.id);
   }
+  async refreshReady(j, resultDigest) {
+    const audience = "https://scopeblind.com/repository-trial/" + j.lease_id, oidc_token = await this.run.oidc(audience), response = (await this.rpc("repository_trial_poll", "repository-trial", { lease_id: j.lease_id, run_id: this.run.run_id, run_attempt: this.run.run_attempt, oidc_token, refresh_only: true })).poll;
+    need2(response && await verify(response, this.config.authority_key) && response.payload.lease_id === j.lease_id && response.payload.job, "trial_ready_lease_required");
+    const current = await this.checked(response.payload.job, j.lease_id), c = current.coding, w = current.workspace?.payload, m = c?.payload.mandate.payload;
+    need2(current.id === j.id && current.kind === j.kind && current.target_id === j.target_id && c?.payload.result?.digest === resultDigest && c.payload.stop === null && w && m && Date.parse(m.expires_at) > Date.now() && Date.parse(current.request.payload.expires_at) > Date.now() && Math.abs(Date.now() - Date.parse(current.observed_at)) <= 3e4, "trial_coding_ready_authority_inactive");
+    for (const [memberId, key5, revision2, role] of [[m.owner_member_id, m.owner_key, m.owner_member_revision, "owner"], [m.reviewer_member_id, m.reviewer_key, m.reviewer_member_revision, "reviewer"]]) need2(w.members.some((x) => x.member_id === memberId && x.current_key === key5 && x.revision === revision2 && x.role === role && x.status === "active"), "trial_coding_ready_authority_inactive");
+  }
   async coding(j) {
     need2(j.coding && j.workspace && j.target_id === j.coding.payload.request.payload.id && (await verifyRepositoryCodingEvidence({ type: "scopeblind.repository.coding-evidence.v1", job: j.coding }, this.config.authority_key)).valid && j.coding.payload.request.payload.workspace_id === j.workspace.payload.workspace.payload.id, "trial_coding_scope_mismatch");
     const m = j.coding.payload.mandate.payload;
     need2(m.owner_key === j.request.payload.owner_key && m.repository === TRIAL_REPOSITORY && m.base_branch === trialBase(j.request.payload.id) && m.worker_key === this.worker.publicKey && canonical(m.allowed_paths) === canonical(["site/**"]) && canonical(m.required_checks) === canonical([TRIAL_CODING_CHECK]) && Object.entries(TRIAL_LIMITS).every(([k, v]) => m[k] <= v), "trial_coding_limits_mismatch");
-    need2(j.kind !== "coding_reconcile" || j.coding.payload.publication, "trial_coding_publication_required");
-    const runner = new RepositoryCodingRunner(j.config, this.worker, this.token, this.fetcher, this.sandboxFactory);
-    await runner.runOne(j.target_id);
+    need2(!["coding_reconcile", "coding_ready"].includes(j.kind) || j.coding.payload.publication, "trial_coding_publication_required");
+    if (j.kind === "coding_ready") need2(j.coding.payload.result, "trial_coding_result_required");
+    else if (!j.coding.payload.result) {
+      const runner = new RepositoryCodingRunner(j.config, this.worker, this.token, this.fetcher, this.sandboxFactory);
+      await runner.runOne(j.target_id);
+    }
     const current = (await this.rpc("repository_coding_get", m.workspace_id, { job_id: j.target_id }, this.worker)).job;
     need2((await verifyRepositoryCodingEvidence({ type: "scopeblind.repository.coding-evidence.v1", job: current }, this.config.authority_key)).published, "trial_coding_not_published");
     const result = current.payload.result.payload, pull = await this.github(this.repo + "/pulls/" + result.pull_number);
     need2(pull.head?.sha === result.head_sha && pull.head?.ref === result.branch && pull.base?.ref === trialBase(j.request.payload.id) && pull.base?.sha === current.payload.plan.payload.source_base_sha && await this.ref(trialBase(j.request.payload.id)) === current.payload.plan.payload.source_base_sha && pull.state === "open" && pull.base?.repo?.full_name === TRIAL_REPOSITORY && pull.head?.repo?.full_name === TRIAL_REPOSITORY, "trial_coding_pull_changed");
     if (pull.draft) {
+      need2(j.kind !== "coding_reconcile", "trial_coding_ready_required");
       need2(typeof pull.node_id === "string", "trial_pull_node_missing");
+      await this.refreshReady(j, current.payload.result.digest);
       const marked = await this.github("/graphql", { method: "POST", body: JSON.stringify({ query: "mutation($id:ID!){markPullRequestReadyForReview(input:{pullRequestId:$id}){pullRequest{id isDraft}}}", variables: { id: pull.node_id } }) });
       need2(!marked.errors?.length && marked.data?.markPullRequestReadyForReview?.pullRequest?.id === pull.node_id && marked.data.markPullRequestReadyForReview.pullRequest.isDraft === false, "trial_ready_readback_required");
     }
@@ -1734,7 +1746,7 @@ var RepositoryTrialRunner = class {
     let provision = null, error = null;
     try {
       if (j.kind === "provision") provision = await this.provision(j);
-      else if (j.kind === "coding" || j.kind === "coding_reconcile") await this.coding(j);
+      else if (j.kind === "coding" || j.kind === "coding_reconcile" || j.kind === "coding_ready") await this.coding(j);
       else await this.receive(j);
     } catch (e) {
       error = e instanceof Error && /^[a-z0-9_]{3,100}$/.test(e.message) ? e.message : "trial_runner_interrupted";

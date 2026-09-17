@@ -1,12 +1,11 @@
-## 0.24.1 — Stable guided connection expiry
-
 ## 0.25.0 — Shared managed coding trials
 
 - Adds a fixed-repository managed trial controller with independently signed human coding permission, bounded model work, immutable previews, fresh exact review and destination acceptance. The controller runs only in the pinned ScopeBlind-owned workflow; trial visitors supply no repository credentials.
-- Enforces per-trial scope, job and token limits in the service database and retains uncertain operations for explicit reconciliation.
+- Enforces per-trial scope, job and token limits in the service database and retains uncertain operations for explicit reconciliation. Read-only publication reconciliation stays separate from explicitly finishing an existing PR’s readiness under current dual authority.
 - Adds dated read-only repository recovery observations and an owner-scoped status read for saved workflow jobs. Provider status never substitutes for human authority or signed receiver evidence.
 - Exposes the managed trial and recovery verification protocols and ships the standalone managed controller as `dist/repository-trial-cli.js`.
 
+## 0.24.1 — Stable guided connection expiry
 
 - Sample each guided inspection and coding-readiness timestamp once, then derive its expiry from that same instant. Crossing a millisecond boundary no longer creates a record just beyond the existing 24-hour validity limit.
 - Advancing-clock regressions cover the actual signed discovery and coding-readiness paths. Permissions, expiry limits, workflow scope, and existing evidence formats are unchanged.
