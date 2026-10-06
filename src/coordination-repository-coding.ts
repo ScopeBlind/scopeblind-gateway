@@ -27,8 +27,12 @@ export interface RepositoryCodingPlan {
  tests:RepositoryCodingTest;build:RepositoryCodingTest;preview_digest:string;model_calls:number;reserved_tokens:number;issued_at:string;
 }
 export interface RepositoryCodingPublication {type:'scopeblind.repository.coding-publication.v1';job_id:string;plan_digest:string;mandate_digest:string;request_digest:string;worker_key:string;lease_id:string;issued_at:string;expires_at:string}
+/** The Actions workflow run that produced a result, as the worker saw it from inside that run. Bound into the signed result so the evidence names its producer. */
+export interface RepositoryCodingWorkflowRun {id:number;attempt:number;workflow_ref:string;workflow_sha:string;repository:string}
 export interface RepositoryCodingResult {
  type:'scopeblind.repository.coding-result.v1';job_id:string;plan_digest:string;publication_digest:string;repository:string;branch:string;head_sha:string;pull_number:number;pull_url:string;preview_url:string;preview_digest:string;deployment_id:number;deployment_status_id:number;deployment_environment:'ScopeBlind coding preview';check:{id:number;name:'ScopeBlind isolated coding checks';app_id:15368;head_sha:string;conclusion:'success'};observed_at:string;
+ /** Present from protect-mcp 0.29.0: the workflow run and attempt this result was produced in. Older results carry none. */
+ workflow_run?:RepositoryCodingWorkflowRun;
 }
 export interface RepositoryCodingJob {
  type:'scopeblind.repository.coding-job.v1';request:Signed<RepositoryCodingRequest>;mandate:Signed<RepositoryCodingMandate>;adoption:Signed<RepositoryCodingMandate>;workspace:Signed<RepositoryWorkspaceState>;parent:RepositoryReviewEvidence;
@@ -61,4 +65,16 @@ export function validRepositoryCodingPlan(v:unknown,m:RepositoryCodingMandate):v
 }
 export function codingScopeWithin(paths:string[],m:RepositoryCodingMandate){return workspacePathsWithin(paths,m.allowed_paths);}
 
-export function validRepositoryCodingResult(v:unknown):v is RepositoryCodingResult{return object(v)&&exact(v,['type','job_id','plan_digest','publication_digest','repository','branch','head_sha','pull_number','pull_url','preview_url','preview_digest','deployment_id','deployment_status_id','deployment_environment','check','observed_at'])&&v.type==='scopeblind.repository.coding-result.v1'&&id(v.job_id)&&[v.plan_digest,v.publication_digest,v.preview_digest].every(key)&&hex40(v.head_sha)&&typeof v.repository==='string'&&typeof v.branch==='string'&&number(v.pull_number,1,Number.MAX_SAFE_INTEGER)&&v.pull_url===`https://github.com/${v.repository}/pull/${v.pull_number}`&&typeof v.preview_url==='string'&&v.preview_url.startsWith('https://')&&number(v.deployment_id,1,Number.MAX_SAFE_INTEGER)&&number(v.deployment_status_id,1,Number.MAX_SAFE_INTEGER)&&v.deployment_environment==='ScopeBlind coding preview'&&object(v.check)&&exact(v.check,['id','name','app_id','head_sha','conclusion'])&&number(v.check.id,1,Number.MAX_SAFE_INTEGER)&&v.check.name==='ScopeBlind isolated coding checks'&&v.check.app_id===15368&&v.check.head_sha===v.head_sha&&v.check.conclusion==='success'&&at(v.observed_at);}
+const WORKFLOW_FILE=/^[A-Za-z0-9_.-]+\.ya?ml$/;
+/** A workflow run is named exactly as GitHub names it: numeric run and attempt, the workflow file under .github/workflows of the same repository at a ref, and the commit the workflow file was read from. */
+export function validRepositoryCodingWorkflowRun(v:unknown,repository:string):v is RepositoryCodingWorkflowRun{
+ if(!object(v)||!exact(v,['id','attempt','workflow_ref','workflow_sha','repository'])||!number(v.id,1,Number.MAX_SAFE_INTEGER)||!number(v.attempt,1,10000)||!hex40(v.workflow_sha)||v.repository!==repository||typeof v.workflow_ref!=='string'||v.workflow_ref.length>300)return false;
+ const at=v.workflow_ref.indexOf('@');if(at<0)return false;const path=v.workflow_ref.slice(0,at),ref=v.workflow_ref.slice(at+1);
+ return path.startsWith(`${repository}/.github/workflows/`)&&WORKFLOW_FILE.test(path.slice(`${repository}/.github/workflows/`.length))&&/^refs\/(heads|tags)\/[^\s]{1,200}$/.test(ref);
+}
+/** The run the worker is inside, read from the environment GitHub Actions provides; undefined outside Actions or when any part is missing or malformed. */
+export function workflowRunFromEnvironment(env:Record<string,string|undefined>,repository:string):RepositoryCodingWorkflowRun|undefined{
+ const id=Number(env.GITHUB_RUN_ID),attempt=Number(env.GITHUB_RUN_ATTEMPT),run={id,attempt,workflow_ref:env.GITHUB_WORKFLOW_REF??'',workflow_sha:env.GITHUB_WORKFLOW_SHA??'',repository:env.GITHUB_REPOSITORY??''};
+ return validRepositoryCodingWorkflowRun(run,repository)?run:undefined;
+}
+export function validRepositoryCodingResult(v:unknown):v is RepositoryCodingResult{return object(v)&&exact(v,['type','job_id','plan_digest','publication_digest','repository','branch','head_sha','pull_number','pull_url','preview_url','preview_digest','deployment_id','deployment_status_id','deployment_environment','check','observed_at'],['workflow_run'])&&(v.workflow_run===undefined||typeof v.repository==='string'&&validRepositoryCodingWorkflowRun(v.workflow_run,v.repository))&&v.type==='scopeblind.repository.coding-result.v1'&&id(v.job_id)&&[v.plan_digest,v.publication_digest,v.preview_digest].every(key)&&hex40(v.head_sha)&&typeof v.repository==='string'&&typeof v.branch==='string'&&number(v.pull_number,1,Number.MAX_SAFE_INTEGER)&&v.pull_url===`https://github.com/${v.repository}/pull/${v.pull_number}`&&typeof v.preview_url==='string'&&v.preview_url.startsWith('https://')&&number(v.deployment_id,1,Number.MAX_SAFE_INTEGER)&&number(v.deployment_status_id,1,Number.MAX_SAFE_INTEGER)&&v.deployment_environment==='ScopeBlind coding preview'&&object(v.check)&&exact(v.check,['id','name','app_id','head_sha','conclusion'])&&number(v.check.id,1,Number.MAX_SAFE_INTEGER)&&v.check.name==='ScopeBlind isolated coding checks'&&v.check.app_id===15368&&v.check.head_sha===v.head_sha&&v.check.conclusion==='success'&&at(v.observed_at);}

@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID, randomBytes } from 'node:crypto';
+import { readConnectorContext, type ConnectorRecord } from './connector-action.js';
 import { createInterface, type Interface } from 'node:readline';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { chainLink } from './acta-envelope.js';
@@ -22,7 +23,7 @@ import { EvidenceStore } from './evidence-store.js';
 import { sendApprovalNotification, parseNotificationConfigFromEnv, type NotificationConfig } from './notifications.js';
 import { ReceiptBuffer, startStatusServer } from './http-server.js';
 import { buildActionReadback } from './action-readback.js';
-import { checkAmount, personRequired, readAmount, heldIdFor, type StandardGate, type RecordReporter } from './standard-gate.js';
+import { standardDecision, readAmount, heldIdFor, type StandardGate, type RecordReporter } from './standard-gate.js';
 
 /** JSONL log file name written to cwd */
 const LOG_FILE = '.protect-mcp-log.jsonl';
@@ -73,6 +74,8 @@ export class ProtectGateway {
   private reporter: RecordReporter | null = null;
   /** A person's decision on the page, attached to the receipt of the call it decided (keyed by request_id) */
   private approvalsToRecord = new Map<string, { hid: string; approver_key_id: string; digest: string; page: string }>();
+  /** The connector-action record for the request in flight, attached to the receipt of its decision. */
+  private connectorToRecord = new Map<string, ConnectorRecord>();
 
   constructor(config: ProtectConfig) {
     this.config = config;
@@ -254,6 +257,14 @@ export class ProtectGateway {
       : request.params || {};
     const actionReadback = buildActionReadback(toolName, toolInput);
 
+    // A platform that presents its grant with the call gets it recorded on the
+    // receipt, together with what this gate could check about it. A malformed
+    // presentation is never recorded, so no receipt carries a context the
+    // profile would reject.
+    const connector = readConnectorContext(request.params, toolName, toolInput, this.config.policy?.connector_platform_keys);
+    if (connector.record) this.connectorToRecord.set(requestId, connector.record);
+    else if (connector.problem && this.config.verbose) this.log(`Connector context ignored for tool=${toolName}: ${connector.problem}`);
+
     // ── Multi-agent resolution ──
     // When multi-agent mode is enabled, resolve the calling agent's kid
     // and apply agent-specific policy overrides.
@@ -314,18 +325,13 @@ export class ProtectGateway {
     // decision there and proceeds, or is refused.
     if (this.standard) {
       const std = this.standard;
-      if (std.tools && !std.tools.includes(toolName)) {
-        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'standard_tool_not_allowed', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-        if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" is not among the tools the standard permits`);
+      const verdict = standardDecision(std, toolName, toolInput);
+      if (verdict.decision === 'deny') {
+        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: verdict.reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" refused by the standard: ${verdict.detail}`);
         return null;
       }
-      const amount = checkAmount(std, toolInput);
-      if (!amount.ok) {
-        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: amount.reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-        if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" refused by the standard: ${amount.detail}`);
-        return null;
-      }
-      const person = personRequired(std, toolInput);
+      const person = verdict.decision === 'hold' ? { required: true as const, detail: verdict.detail } : { required: false as const };
       if (person.required) {
         const hid = heldIdFor(this.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
         const page = this.reporter ? `${new URL(this.reporter.url).origin}/standard?s=${this.reporter.sid}#held-${hid}` : '';
@@ -381,7 +387,10 @@ export class ProtectGateway {
           const reason = cedarDecision.reason || 'cedar_deny';
           this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) {
-            return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied by Cedar policy`);
+            // Name the forbid rule that matched, by its @id and @reason, so the agent learns why.
+            const deniedBy = Array.isArray(cedarDecision.metadata?.denied_by) ? cedarDecision.metadata.denied_by as Array<{ id: string; reason?: string }> : [];
+            const why = deniedBy.length ? `: ${deniedBy.map((p) => (p.reason ? `${p.id}: ${p.reason}` : p.id)).join('; ')}` : '';
+            return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied by Cedar policy${why}`);
           }
           return null;
         }
@@ -555,6 +564,8 @@ export class ProtectGateway {
     if (this.standard) log.standard = { request_id: this.standard.request_id, digest: this.standard.digest };
     const approval = this.approvalsToRecord.get(log.request_id);
     if (approval) { log.approval = approval; this.approvalsToRecord.delete(log.request_id); }
+    const connector = this.connectorToRecord.get(log.request_id);
+    if (connector) { log.connector = connector; this.connectorToRecord.delete(log.request_id); }
     // The call line the page shows beside the receipt: the disclosed readback, never the raw payload.
     const callLine = this.reporter ? JSON.stringify({ tool: log.tool, input: log.action_readback?.payload_preview ?? {}, decision: log.decision, request_id: log.request_id, at: new Date(log.timestamp).toISOString() }) : undefined;
 

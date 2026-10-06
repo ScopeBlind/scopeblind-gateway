@@ -508,15 +508,131 @@ post-signing edit get caught. `sample` refuses to touch an existing record, so
 run it in an empty folder. When you are ready for the real thing, wire the gate
 below and the same commands run against your agent's own record.
 
+## Start with the starter policy
+
+Most coding-agent setups want the same few things blocked and everything else
+left alone. `init --starter` writes that policy to `./protect.cedar` and creates
+the signing key the Claude Code plugin's receipts use:
+
+```bash
+npx protect-mcp@0.31.0 init --starter
+```
+
+It writes `protect.cedar` (never over an existing one without `--force`),
+creates `protect-mcp.key` (an Ed25519 key, mode 0600, never replaced, even with
+`--force`), lists the key in `.gitignore`, and prints the rules in plain words.
+The starter is seven forbid rules over a default allow, each with an `@id` and
+an `@reason`:
+
+| Rule | Blocks |
+|---|---|
+| `starter.delete-root-or-home` | `rm -rf` or `rm -fr` of `/`, `/*`, `~`, `~/*`, `$HOME` or `..`, with the target straight after the flags |
+| `starter.force-push-main` | a force-push to `main` or `master` (after `origin`, as `+main` or as `HEAD:main`), or one that names no branch |
+| `starter.read-secret-file` | Read of `.env*`, `~/.ssh`, `~/.aws`, `.netrc`, `.npmrc`, docker, kube and gh credentials, `~/.gnupg` or the signing key; not `*.pub` or `*.example` |
+| `starter.grep-secret-path` | Grep inside `.env*`, `~/.ssh` or `~/.aws` |
+| `starter.shell-reads-secret` | `cat`, `grep`, `head`, `tail` or six other readers, in a line that names `.env`, an SSH key or a credential file |
+| `starter.pipe-network-to-shell` | `curl` or `wget` into `sh`, `bash` or `zsh`, or `bash <(curl`, `sh -c "$(curl`, `eval "$(curl` |
+| `starter.write-sensitive-location` | writes to system folders, shell profiles, LaunchAgents, `~/.ssh`, `~/.aws`, credential files, Claude and Codex settings, `protect.cedar`, the signing key, or through `/../` |
+
+The text ships as [`policies/starter.cedar`](./policies/starter.cedar) and is
+yours to edit. Shell rules match the raw command text with Cedar `like`, so they
+are a guardrail for an agent working in good faith, not a sandbox. They can fire
+on text that only mentions a command (a heredoc body, a commit message), and a
+reworded command gets past them: `rm -r -f`, a variable or glob target,
+`find -delete`, another remote name, a secret read by another program. Keychain
+and token lookups are not covered, and nothing is held for a person: a rule
+denies.
+
+To use it without a file, name it as a built-in:
+
+```bash
+npx protect-mcp@0.31.0 evaluate --policy builtin:starter --tool Bash \
+  --input '{"command":"git push --force origin main"}'
+echo $?   # 2
+```
+
+`builtin:starter` evaluates the bundled text, and its `policy_digest` is the one
+`--policy ./protect.cedar` reports for a file with the same bytes, so receipts
+read the same either way. `evaluate --cedar builtin:starter` and `sign --cedar
+builtin:starter` take it too; `serve` and the MCP gateway read a policy
+directory, so give them the file `init --starter` writes or the
+`coding-starter` pack. Versions before 0.31.0 read the name as a missing file
+and deny every call, so pin `protect-mcp@0.31.0` or later wherever you use it. The same text is the `coding-starter` policy pack, the policy `init-hooks`
+writes, and an `onboard` scenario.
+
+### Keep writes inside this folder (`--contain`)
+
+```bash
+npx protect-mcp@0.31.0 init --starter --contain
+```
+
+adds two opt-in rules with this folder's absolute path filled in and escaped
+for Cedar. `starter.write-outside-project` blocks Write, Edit and MultiEdit
+outside the folder, `/tmp`, `/var/folders` and Claude's memory and plans.
+`starter.delete-outside-project` blocks an `rm -rf` whose first target is an
+absolute path, `~/` or `$HOME/` outside them. They are opt-in because a folder
+is not a project for anyone who works across worktrees. The delete rule checks
+only the first target after `rm -rf`. `--contain` refuses `/` and the home
+folder as a project; add `--force` to rewrite an existing `protect.cedar`.
+
+### Deny reasons name the rule
+
+A deny names each forbid rule that matched, by its `@id`, with its `@reason`:
+
+```
+protect-mcp denied: cedar_deny: starter.force-push-main: Force-push to main or master, or a force-push that names no branch. Push a named feature branch instead.
+```
+
+On a deny, `evaluate` writes that one line to stderr in every mode, flag mode
+(`--policy ... --tool ... --input ...`) included, and exits 2 (with `--format
+hermes` the verdict is on stdout and the exit is 0, as Hermes expects). The same
+`reason` is in the JSON on stdout, and in the receipt when `sign --cedar`
+records the decision. Claude Code shows the agent a hook's stderr, so the agent
+learns which rule stopped it and can change its plan. A
+rule without an `@id` is named by Cedar's position for it (`policy2`), and a
+call no rule permitted reads `cedar_deny: no permit matched (default deny)`.
+Give your own rules an `@id` and an `@reason`:
+
+```cedar
+@id("team.no-prod-deploy")
+@reason("Production deploys go through the release pipeline. Open a pull request instead.")
+forbid (principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash")
+when { context has input && context.input has command && context.input.command like "*deploy --prod*" };
+```
+
+### How a policy sees numbers
+
+Cedar has no null, no fractions and no integers beyond 64 bits, and before
+0.31.0 a call whose input carried one (`{"coordinate":[100.5,200]}`,
+`"zoom":1.5`, a `null`) was denied under every policy, permit-all included.
+The gate now makes the input Cedar-safe before Cedar sees it:
+
+- A whole number inside Cedar's 64-bit range stays a number, so
+  `context.input.amount > 1000` decides as before.
+- Any other number becomes the text JavaScript writes for it: `1.5` is `"1.5"`,
+  `0.5` is `"0.5"`, `1e20` is `"100000000000000000000"`.
+- A `null` is dropped, in a record or a list, so `context.input has offset` is
+  false for `"offset": null`.
+- `__entity`, `__extn` and `__expr` keys are dropped, so tool input is never
+  read as a Cedar entity reference or extension value.
+
+Match a fraction as text (`context.input.zoom == "1.5"`), or compare it with
+`decimal(context.input.zoom).greaterThan(decimal("1.25"))` when it has at most
+four decimal places. A numeric comparison on it (`context.input.zoom > 1`) is a
+policy error, and the gate denies on any policy error. A whole number written
+with a decimal point (`100.0`) is a whole number to JavaScript and stays a
+number. A receipt's input digest is still computed over the input as the agent
+sent it, not over the Cedar-safe copy.
+
 ## Claude Code hook quickstart
 
 ```bash
-# Generate hook config and a sample Cedar policy.
+# Generate hook config and the starter policy (policies/agent.cedar).
 npx protect-mcp init-hooks
 
 # Serve the Claude Code hook gate in enforce mode. It runs a restraint self-test
 # first and refuses to start if it cannot prove it denies a forbidden vector.
-npx protect-mcp serve --enforce --cedar ./cedar
+npx protect-mcp serve --enforce --cedar ./policies
 ```
 
 One-shot evaluation, the way a PreToolUse hook calls it. Exit code 2 means deny
@@ -736,6 +852,7 @@ npx protect-mcp serve --cedar ./cedar
 
 Built-in packs:
 
+- `coding-starter`: the starter policy above, seven named forbids over a default allow.
 - `filesystem-safe`: destructive file actions and secret-like path reads.
 - `git-safe`: force pushes, hard resets, destructive cleanup, repo deletion.
 - `email-safe`: allow drafting, block unattended sends.
@@ -756,6 +873,16 @@ The gateway can hold a secret and inject it at dispatch, so the agent works with
   }
 }
 ```
+
+### The grant travels with the call
+
+A personal-agent platform (Meta Muse, Claude Code, Codex, any MCP client) can present the grant its agent is acting under with each call, in `params._meta["veritasacta.com/connector"]`, as a bare or platform-signed context: platform, agent, grant type (`one_time`, `session`, `task`, `time_bounded`, `perpetual`), an optional purpose and mandate digest. The gateway records it on the decision receipt as `connector`, together with what it could check about the platform's signature and the digest of the call it actually received. List the platform keys you trust in the policy file:
+
+```json
+{ "connector_platform_keys": { "sb:platform:meta-muse": "<64 hex Ed25519 public key>" } }
+```
+
+Without a key for the signing kid the context is recorded as `unverifiable`, never as `valid`; a verifier with the key can still check the signature itself (`npx @veritasacta/verify receipt.json --platform-key <kid>=<hex>`). The profile is draft-farley-acta-connector-action-00; the vectors are in `vectors/connector-action.v1.json`.
 
 `inject: "env"` puts the value in the wrapped server's environment; `inject: "header"` and `"query"` attach it to the outbound call. A tool whose name matches a label is resolved on every call; if the secret is missing the call is refused with `credential_error` rather than sent without it. Each receipt for such a call carries `credential_ref` with the label, never the value, so a reader can see that the credential the standard names was used through the gateway. What the receipts cannot show is that the agent had no other copy of the secret; that is a property of the deployment.
 
@@ -794,7 +921,7 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 | Command | Description |
 |---------|-------------|
 | `serve` | Start the HTTP hook server for Claude Code (port 9377). `--enforce` runs the restraint self-test first; `--cedar <dir>` and `--policy <path>` select the policy. |
-| `init` | Generate an Ed25519 keypair (`keys/gateway.json`), a config template, and a sample policy. |
+| `init` | Generate an Ed25519 keypair (`keys/gateway.json`), a config template, and a sample policy. `init --starter` instead writes `./protect.cedar` from the starter policy and creates `./protect-mcp.key`; `--contain` adds the only-inside-this-folder rules. |
 | `sample` | Seed a clearly-labeled sample record (8 decisions: one blocked call, two payments; kid `sample-demo`) plus a tampered copy, so `record`, `claim`, `verify-claim`, and `anchor-record` are replayable from scratch before wiring an agent. Refuses to touch an existing record; `--force` overrides. |
 | `policy` | See and change the Cedar policy from the terminal: `policy list` (permit / forbid / default-deny per tool, with how often the gate allowed or denied it), `policy show`, `policy allow <tool>`, `policy deny <tool>`, `policy path`. A running `serve` hot-reloads on the change. |
 | `wrap` | Print a protected MCP command or patch Claude Desktop MCP servers. Dry-run by default; use `--write` to update Claude Desktop config. |
@@ -808,7 +935,7 @@ To report a vulnerability, see [SECURITY.md](./SECURITY.md).
 | `killer-demo` | Generate a complete shadow-mode to policy to approval to signed-receipt demo pack. |
 | `verify-disclosure` | Verify a `scopeblind.selective_disclosure.v0` package and explain disclosed versus hidden fields. |
 | `policy-packs` | List, inspect, and install starter Cedar policy packs. |
-| `evaluate` | Evaluate one tool call against a Cedar policy (PreToolUse gate). Exit 2 = deny (fail-closed), exit 0 = allow. |
+| `evaluate` | Evaluate one tool call against a Cedar policy (PreToolUse gate). Exit 2 = deny (fail-closed), exit 0 = allow. On a deny the rule's `@id` and `@reason` go to stderr. `--policy builtin:starter` uses the bundled starter policy. |
 | `sign` | Sign one tool call into a receipt (PostToolUse). Best-effort: records an honest unsigned line if no key. |
 | `simulate` | Dry-run a policy against a recorded decision log to see what it would have blocked. |
 | `demo` | Start a built-in demo server wrapped with the gate, to see receipts instantly. |

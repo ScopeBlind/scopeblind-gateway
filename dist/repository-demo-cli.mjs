@@ -1,7 +1,7 @@
 import {
   RepositoryReceiver,
   RepositoryReceiverError
-} from "./chunk-JRJSKQFR.mjs";
+} from "./chunk-KS5QKUVX.mjs";
 import {
   DEMO_CHECK,
   DEMO_REPOSITORY,
@@ -14,7 +14,7 @@ import {
   validRepositoryParticipants,
   validRepositoryTask,
   verifyRepositoryEvidence
-} from "./chunk-S2VKIQZF.mjs";
+} from "./chunk-3ZDDS2TV.mjs";
 import {
   canonical,
   importIdentity,

@@ -46,6 +46,10 @@ interface StandardGate {
     required_above: Money | null;
     /** The gate policy digest the standard was signed with, when it carries one. */
     policy_digest: string | null;
+    /** The one tool the per-instruction limit applies to (a payment standard names it in its enforcement block); null for a run standard. */
+    payment_tool: string | null;
+    /** Whether the standard states anything the gate can enforce (a tool list or a limit). Without one the gate admits nothing under it. */
+    gate_policy: boolean;
     /** Plain words for the log line at startup. */
     summary: string;
 }
@@ -112,6 +116,63 @@ declare class RecordReporter {
     decision(hid: string): Promise<HeldDecision | null | 'unreachable'>;
 }
 
+declare const CONNECTOR_CONTEXT_TYPE = "acta:connector-context";
+declare const CONNECTOR_RECORD_VERSION = 1;
+declare const GRANT_TYPES: readonly ["one_time", "session", "task", "time_bounded", "perpetual"];
+declare const CONTEXT_CHECKS: readonly ["valid", "invalid", "unsigned", "unverifiable"];
+declare const EFFECT_STATUSES: readonly ["confirmed", "refused", "not_observed"];
+type GrantType = (typeof GRANT_TYPES)[number];
+type ContextCheck = (typeof CONTEXT_CHECKS)[number];
+type EffectStatus = (typeof EFFECT_STATUSES)[number];
+interface ConnectorGrant {
+    /** How long the person's grant lasts, in the platform's own terms. */
+    type: GrantType;
+    /** The platform's identifier for the grant, if it has one. */
+    id?: string;
+    /** What the person granted the agent for, in their words or the platform's. */
+    purpose?: string;
+    issued_at?: string;
+    expires_at?: string;
+}
+/** What the platform presents. Signed by the platform when it can be. */
+interface ConnectorContext {
+    type: typeof CONNECTOR_CONTEXT_TYPE;
+    /** The platform, as a stable lowercase name such as "meta.muse" or "anthropic.claude-code". */
+    platform: string;
+    /** The platform's identifier or public key for the acting agent. */
+    agent: string;
+    grant: ConnectorGrant;
+    /** The digest of the signed standard or mandate the grant sits under, as "sha256:<hex>". */
+    mandate_digest?: string;
+    issued_at?: string;
+    /** Present when signed: the platform key identifier, equal to the signature's kid. */
+    issuer_id?: string;
+}
+interface ConnectorSignature {
+    alg: 'EdDSA';
+    kid: string;
+    sig: string;
+}
+interface ConnectorEffect {
+    status: EffectStatus;
+    /** Required when confirmed: sha256 hex of the service's readback, canonicalized by the service. */
+    readback_digest?: string;
+    observed_at?: string;
+}
+/** What the recorder writes into the receipt. */
+interface ConnectorRecord {
+    v: typeof CONNECTOR_RECORD_VERSION;
+    context: ConnectorContext;
+    context_signature?: ConnectorSignature;
+    /** What the recorder established about the signature, never what the platform claimed. */
+    context_check: ContextCheck;
+    /** The trusted key identifier the recorder verified under, present only when context_check is valid. */
+    platform_kid?: string;
+    /** sha256 hex of JCS({tool, input}) as the recorder received the call. */
+    request_digest: string;
+    effect?: ConnectorEffect;
+}
+
 interface ProtectPolicy {
     tools: Record<string, ToolPolicy>;
     /** Default trust tier for unidentified agents (default: "unknown") */
@@ -122,6 +183,8 @@ interface ProtectPolicy {
     external?: ExternalPDPConfig;
     /** Directory containing .cedar policy files (when policy_engine is "cedar") */
     cedar_dir?: string;
+    /** Platform keys the gate trusts for signed connector contexts: key identifier to hex Ed25519 public key (connector-action profile) */
+    connector_platform_keys?: Record<string, string>;
 }
 interface ToolPolicy {
     /**
@@ -269,6 +332,8 @@ interface DecisionLog {
         digest: string;
         page: string;
     };
+    /** The grant an agent platform presented with this call, what the gate checked about it, and the digest of the call as received (connector-action profile) */
+    connector?: ConnectorRecord;
     /** SHA-256 digest of the canonicalized policy file */
     policy_digest: string;
     /** Which policy engine made the decision */
@@ -751,6 +816,21 @@ interface CedarSchema {
  * Throws if the directory doesn't exist or contains no .cedar files.
  */
 declare function loadCedarPolicies(dirPath: string): CedarPolicySet;
+/**
+ * A value as Cedar can hold it. Cedar has no null, no fractions and no integers
+ * beyond 64 bits, and the engine refuses the whole request when the context
+ * carries one, so before 0.31.0 a single `"zoom": 1.5` denied the call under
+ * every policy, permit-all included. Here a null (or undefined) is dropped, in a
+ * list as in a record; a whole number inside Cedar's Long range stays a number;
+ * any other number becomes the string JavaScript writes for it (1.5 becomes
+ * "1.5", 1e20 becomes "100000000000000000000"); and the `__entity`, `__extn` and
+ * `__expr` keys are dropped, so tool input is never read as a Cedar entity
+ * reference or extension value. Strings and booleans pass unchanged. Returns
+ * undefined for a value that is dropped.
+ */
+declare function cedarSafeValue(value: unknown): unknown;
+/** A request context as Cedar can hold it (see cedarSafeValue). */
+declare function cedarSafeContext(context: Record<string, unknown>): Record<string, unknown>;
 interface CedarEvalOptions {
     /**
      * Default true (0.7.0+). When true, ANY evaluation error, engine
@@ -775,6 +855,16 @@ declare function evaluateCedar(policySet: CedarPolicySet, req: CedarEvalRequest,
  * Useful for CLI startup diagnostics.
  */
 declare function isCedarAvailable(): Promise<boolean>;
+/**
+ * Check that a policy text parses, before a command writes it. `checked` is
+ * false when the engine is not installed here, so the caller can say the text
+ * went unchecked rather than claim it parses.
+ */
+declare function checkCedarPolicyText(source: string): Promise<{
+    checked: boolean;
+    ok: boolean;
+    error?: string;
+}>;
 /** Build a CedarPolicySet from inline source (for the self-test). */
 declare function policySetFromSource(source: string, name?: string): CedarPolicySet;
 interface SelfTestCase {
@@ -833,6 +923,8 @@ declare class ProtectGateway {
     private reporter;
     /** A person's decision on the page, attached to the receipt of the call it decided (keyed by request_id) */
     private approvalsToRecord;
+    /** The connector-action record for the request in flight, attached to the receipt of its decision. */
+    private connectorToRecord;
     constructor(config: ProtectConfig);
     /**
      * Set the Cedar policy set for local evaluation.
@@ -1148,7 +1240,7 @@ declare function verifyRepositoryWorkspaceAgentState(value: unknown, authorityKe
 
 /** Real repository tasks. Browser/Worker/Node contract; no credentials or I/O. */
 
-declare const REPOSITORY_ACTIONS: readonly ["repository_create", "repository_get", "repository_claim", "repository_propose", "repository_approve", "repository_cancel", "repository_begin", "repository_outcome", "repository_accept", "repository_export"];
+declare const REPOSITORY_ACTIONS: readonly ["repository_create", "repository_get", "repository_claim", "repository_propose", "repository_approve", "repository_revoke", "repository_cancel", "repository_begin", "repository_outcome", "repository_accept", "repository_export"];
 type RepositoryAction = typeof REPOSITORY_ACTIONS[number];
 interface RepositoryTask {
     type: 'scopeblind.repository.task.v1';
@@ -1222,6 +1314,18 @@ interface RepositoryApproval {
     expires_at: string;
     note: string;
 }
+/** A person withdraws their own approval of one exact version. Accepted only until delivery begins; the withdrawn approval stays in the record. */
+interface RepositoryRevocation {
+    type: 'scopeblind.repository.revocation.v1';
+    task_id: string;
+    task_digest: string;
+    proposal_digest: string;
+    approval_digest: string;
+    role: 'owner' | 'reviewer';
+    principal_key: string;
+    issued_at: string;
+    note: string;
+}
 interface RepositoryExecution {
     type: 'scopeblind.repository.execution.v1';
     operation_id: string;
@@ -1272,6 +1376,8 @@ interface RepositoryState {
     status: 'awaiting_reviewer' | 'awaiting_snapshot' | 'review' | 'approved' | 'executing' | 'confirmed' | 'unknown' | 'failed' | 'rejected' | 'cancelled' | 'accepted' | 'changes_requested';
     revision: number;
     observed_at: string;
+    /** Withdrawn approvals, oldest first. Present only when at least one approval was withdrawn. */
+    revocations?: Signed<RepositoryRevocation>[];
 }
 interface RepositoryEvidence {
     type: 'scopeblind.repository.evidence.v1';
@@ -1295,11 +1401,23 @@ declare function verifyRepositoryEvidence(value: unknown, pin?: string | {
 
 declare const REPOSITORY_REVIEW_ACTIONS: readonly ["repository_review_get", "repository_review_packet", "repository_review_feedback", "repository_review_recommendation", "repository_review_export"];
 type RepositoryReviewAction = typeof REPOSITORY_REVIEW_ACTIONS[number];
+/** What a criterion relies on. A revision that touches a linked file or replaces the preview invalidates the criterion conservatively; a criterion with no links is treated as relying on everything in the packet. */
+type RepositoryCriterionLink = {
+    kind: 'file';
+    path: string;
+} | {
+    kind: 'check';
+    name: string;
+    app_id: number;
+} | {
+    kind: 'preview';
+};
 interface RepositoryReviewContent {
     brief: string;
     success_criteria: Array<{
         id: string;
         text: string;
+        evidence?: RepositoryCriterionLink[];
     }>;
     preview_policy?: {
         environment: string;
@@ -2125,6 +2243,14 @@ interface RepositoryCodingPublication {
     issued_at: string;
     expires_at: string;
 }
+/** The Actions workflow run that produced a result, as the worker saw it from inside that run. Bound into the signed result so the evidence names its producer. */
+interface RepositoryCodingWorkflowRun {
+    id: number;
+    attempt: number;
+    workflow_ref: string;
+    workflow_sha: string;
+    repository: string;
+}
 interface RepositoryCodingResult {
     type: 'scopeblind.repository.coding-result.v1';
     job_id: string;
@@ -2148,6 +2274,8 @@ interface RepositoryCodingResult {
         conclusion: 'success';
     };
     observed_at: string;
+    /** Present from protect-mcp 0.29.0: the workflow run and attempt this result was produced in. Older results carry none. */
+    workflow_run?: RepositoryCodingWorkflowRun;
 }
 interface RepositoryCodingJob {
     type: 'scopeblind.repository.coding-job.v1';
@@ -2211,6 +2339,10 @@ declare function validRepositoryCodingRequest(v: unknown): v is RepositoryCoding
 declare function validRepositoryCodingStop(v: unknown): v is RepositoryCodingStop;
 declare function validRepositoryCodingPlan(v: unknown, m: RepositoryCodingMandate): v is RepositoryCodingPlan;
 declare function codingScopeWithin(paths: string[], m: RepositoryCodingMandate): boolean;
+/** A workflow run is named exactly as GitHub names it: numeric run and attempt, the workflow file under .github/workflows of the same repository at a ref, and the commit the workflow file was read from. */
+declare function validRepositoryCodingWorkflowRun(v: unknown, repository: string): v is RepositoryCodingWorkflowRun;
+/** The run the worker is inside, read from the environment GitHub Actions provides; undefined outside Actions or when any part is missing or malformed. */
+declare function workflowRunFromEnvironment(env: Record<string, string | undefined>, repository: string): RepositoryCodingWorkflowRun | undefined;
 declare function validRepositoryCodingResult(v: unknown): v is RepositoryCodingResult;
 
 /** Managed, disposable repository transport. Human and coding authority remains in the existing protocols. */
@@ -4199,6 +4331,73 @@ declare function generateCedarSchema(tools: McpToolDescription[], config?: Schem
  */
 declare function generateSchemaStub(namespace?: string): string;
 
+/**
+ * protect-mcp starter policy for coding agents, v1, and its opt-in project rules.
+ *
+ * The starter is seven `@id`/`@reason` forbid rules over a default allow, in
+ * plain Cedar. The same text is what `--policy builtin:starter` evaluates, what
+ * `init --starter` writes to ./protect.cedar, the `coding-starter` policy pack,
+ * and the policy `init-hooks` writes. policies/starter.cedar ships the same
+ * bytes for reading; src/starter-policy.test.ts holds the two equal, and
+ * vectors/starter-policy.v1.json pins the digest and the cases it must decide.
+ *
+ * Shell rules match the raw command text, so they are a guardrail for an agent
+ * working in good faith, not a sandbox: a reworded command can get past them.
+ */
+declare const STARTER_POLICY_VERSION = 1;
+/** The name the starter ships under in policies/ and the name the built-in reports. */
+declare const STARTER_POLICY_FILE = "starter.cedar";
+/** starter.cedar v1, byte for byte (policies/starter.cedar is the same file; a test holds them equal). */
+declare const STARTER_POLICY: string;
+/**
+ * The opt-in project rules (init --starter --contain), with __PROJECT__, __TILDE__ and __HOME__ still to fill.
+ */
+declare const STARTER_CONTAIN_TEMPLATE: string;
+interface AnnotatedRule {
+    /** The rule's `@id` annotation. */
+    id: string;
+    /** The rule's `@reason` annotation; empty when it has none. */
+    reason: string;
+}
+/**
+ * The `@id` and `@reason` annotations of a policy text, in source order. A plain
+ * reading for display (init prints the rules in words); the evaluator reads the
+ * annotations through the Cedar engine itself.
+ */
+declare function annotatedRules(source: string): AnnotatedRule[];
+/** The starter's seven forbid rules, in order, each with its reason. */
+declare function starterRules(): AnnotatedRule[];
+/**
+ * A literal for a Cedar `like` pattern written inside a Cedar string: a
+ * backslash, a double quote and a star are escaped, so a path containing any
+ * of them matches only itself.
+ */
+declare function cedarLikeLiteral(value: string): string;
+/**
+ * The opt-in project rules with the project filled in: `__PROJECT__` becomes the
+ * project's absolute path, `__TILDE__` its `~/` form when it is under home (the
+ * absolute path again when it is not), and `__HOME__` the home folder, each
+ * escaped as a Cedar `like` literal. POSIX paths only, since the rules name /tmp
+ * and /var/folders; the project must be a folder below `/` other than home itself.
+ */
+declare function renderContainRules(projectDir: string, homeDir: string): string;
+/** `--policy builtin:<name>` names a bundled policy text instead of a file. */
+declare const BUILTIN_POLICY_PREFIX = "builtin:";
+/** The built-in policy specs, such as `builtin:starter`. */
+declare function builtinPolicyNames(): string[];
+/** True when a policy argument names a built-in policy rather than a path. */
+declare function isBuiltinPolicySpec(spec: string | undefined): spec is string;
+/**
+ * The bundled text a `builtin:<name>` spec names, or null when the name is not a
+ * built-in policy (the caller reports that and fails closed).
+ */
+declare function resolveBuiltinPolicy(spec: string): {
+    spec: string;
+    name: string;
+    file: string;
+    source: string;
+} | null;
+
 interface PolicyPack {
     id: string;
     name: string;
@@ -6148,6 +6347,8 @@ declare class RepositoryCodingRunner {
     private sandboxFactory;
     private publicationUntil;
     private stopped;
+    /** The Actions run this worker is inside, when it is inside one; bound into every result it signs. */
+    workflowRun: RepositoryCodingWorkflowRun | undefined;
     constructor(config: RepositoryCodingConfig, identity: SigningIdentity, githubToken: string, fetcher?: typeof fetch, sandboxFactory?: (dir: string) => CodingSandbox);
     private rpc;
     private github;
@@ -6250,4 +6451,4 @@ declare class RepositoryTrialRunner {
     runOne(): Promise<boolean>;
 }
 
-export { type ActaEnvelope, type ActaSignature, type ActionReceipt, type AdmissionResult, type AgentId, type AgentManifest, type ApprovalAssertion, type ApprovalChallenge, type ApprovalNotification, type ApprovalResult, type ArenaPayload, type ArenaReceipt, type AttestationDocument, type AttestationPayload, type AttestationProvider, type AttestationReceipt, type AttestationResult, type AuditBundle, type AuditBundleOptions, type BenchmarkPayload, type BenchmarkReceipt, type BuilderId, type C2PAAssertion, type C2PAIngredient, type C2PAManifest, type C2PAOptions, type CCRConnectorConfig, type CCRSessionContext, CODING_PERMISSIONS, CONNECTOR_PILOTS, type CalibrationScore, type CedarEvalOptions, type CedarEvalRequest, type CedarPolicySet, type CedarSchema, type CedarSchemaResult, type CodingSandbox, type CommittedFieldOpening, type CommittedSignResult, type ComplianceReport, ConfidentialGate, type ConfidentialGateConfig, type ConfidentialInferenceConfig, type ConnectorAction, type ConnectorEnvVar, type ConnectorPilot, type ConnectorPilotId, CoordinationClient, type CoordinationConfig, CoordinationError, type CoordinationPayment, type CoordinationPaymentResult, type CredentialConfig, type DecisionContext, type DecisionLog, type DelegationReceipt, type DeviceAuthorization, type DevicePermission, type DeviceUse, type DirectController, type DisclosureMode, DockerCodingSandbox, EGRESS_SUMMARY_FIELDS, type Ed25519PublicKey, type EvidenceAttestation, type EvidenceAttestationInput, type EvidenceIssuer, type EvidenceReceipt, type EvidenceReceiptBase, type EvidenceSummary, type EvidenceSummaryEntry, type EvidenceType, type ExternalDecision, type ExternalPDPConfig, type GateSigner, type HFDatasetMetadata, type HFReceiptRow, type HookEventName, type HookInput, type HookResponse, type HumanContext, type InstalledConnectorPilot, type IssuerType, type JsonRpcRequest, type JsonRpcResponse, type LeaseCompatibility, type MandateApproval, type MandateController, type MandateProposal, type MandateRegistry, type MandateTransition, type ManifestBuilder, type ManifestCapabilities, type ManifestConfig, type ManifestIdentity, type ManifestPresentation, type ManifestSignature, type ManifestStatus, type McpToolDescription, type MinimalDisclosure, type NegotiationExport, type NegotiationMandate, type NegotiationProposal, type NegotiationReport, type NegotiationVerification, type NotificationConfig, POLICY_PACKS, PREVIEW_TYPES, type PassportTokenClaims, type PayloadDigest, type PlanReceipt, type PolicyDiff, type PolicyEngineMode, type PolicyPack, type PolicySnapshot, type PredictionReceipt, type PredictionResolution, type PropagatorConfig, type ProtectConfig, ProtectGateway, type ProtectPolicy, type PublicSnapshot, REPOSITORY_CODING_ACTIONS, REPOSITORY_CODING_IMAGE, REPOSITORY_DEVICE_ACTIONS, REPOSITORY_DEVICE_DOMAIN, REPOSITORY_DEVICE_LINK_MS, REPOSITORY_DEVICE_MAX_MS, REPOSITORY_DEVICE_PERMISSIONS, REPOSITORY_GUIDED_WORKFLOW, REPOSITORY_PREVIEW_MAX_BYTES, REPOSITORY_PREVIEW_MAX_FILES, REPOSITORY_RECOVERY_CODES, REPOSITORY_SETUP_ACTIONS, REPOSITORY_SETUP_TTL, REPOSITORY_TRIAL_ACTIONS, type RateLimit, ReceiptPropagator, type ReceiptShape, type ReceiptVerification, type RedactedResult, type RedactionSalt, type RegistryCheck, type RehearsalExport, type RehearsalVerification, type RekorAnchor, type RekorVerification, type RepositoryAcceptance, type RepositoryApproval, type RepositoryClaim, type RepositoryCodingAction, type RepositoryCodingConfig, type RepositoryCodingConnectionConfig, type RepositoryCodingEvidence, type RepositoryCodingFile, type RepositoryCodingJob, type RepositoryCodingMandate, type RepositoryCodingMandateView, type RepositoryCodingModelAction, type RepositoryCodingModelContext, type RepositoryCodingPlan, type RepositoryCodingPublication, type RepositoryCodingRefreshableConnection, type RepositoryCodingRequest, type RepositoryCodingResult, RepositoryCodingRunner, type RepositoryCodingSource, type RepositoryCodingStatus, type RepositoryCodingStop, type RepositoryCodingTest, type RepositoryCollaborationEvidence, type RepositoryDeviceAction, type RepositoryDeviceAuthorization, type RepositoryDeviceConfirmation, type RepositoryDeviceLink, type RepositoryDeviceLinkState, type RepositoryDeviceListState, type RepositoryDevicePermission, type RepositoryDeviceStatus, type RepositoryDeviceUse, type RepositoryDeviceView, type RepositoryEvidence, type RepositoryExecution, type RepositoryGuidedReceiverConfig, type RepositoryHumanContext, type RepositoryOutcome, type RepositoryPreviewBundle, type RepositoryPreviewEntry, type RepositoryPreviewFile, type RepositoryProposal, type RepositoryRecoveryCode, type RepositoryRecoveryIssue, type RepositoryRecoveryObservation, type RepositoryReviewBrief, type RepositoryReviewContent, type RepositoryReviewDecision, type RepositoryReviewEvidence, type RepositoryReviewFeedback, type RepositoryReviewPacket, type RepositoryReviewRecommendation, type RepositoryReviewState, type RepositorySetupAction, type RepositorySetupAuthorization, type RepositorySetupChallenge, type RepositorySetupCoding, type RepositorySetupCodingReady, type RepositorySetupEnrollment, type RepositorySetupGitHub, type RepositorySetupInfo, type RepositorySetupInspection, type RepositorySetupInstallation, type RepositorySetupJob, type RepositorySetupJobState, type RepositorySetupReady, type RepositorySetupRenewal, type RepositorySetupRequest, type RepositorySetupState, type RepositorySetupStatus, type RepositorySetupTaskBinding, type RepositorySetupWorkflowProof, type RepositoryState, type RepositoryTask, type RepositoryTrialAction, type RepositoryTrialCompletion, type RepositoryTrialHtml, type RepositoryTrialInfo, type RepositoryTrialJob, type RepositoryTrialJobKind, type RepositoryTrialJobView, type RepositoryTrialPoll, type RepositoryTrialProvision, type RepositoryTrialReadiness, type RepositoryTrialRequest, RepositoryTrialRunner, type RepositoryTrialState, type RepositoryWorkspace, type RepositoryWorkspaceAgentState, type RepositoryWorkspaceInbox, type RepositoryWorkspaceState, type RestraintPayload, type RestraintReceipt, type SHA256Hash, type SafetyTranscript, type Sandbox, type SandboxConfig, type SandboxReceipt, type SandboxResult, type SandboxToolCall, type SchemaGeneratorConfig, ScopeBlindBridge, type SelectiveDisclosurePackageV0, type SelectiveDisclosureVerification, type SelfTestCase, type SelfTestReport, type SigningConfig, type SimulationResult, type SimulationSummary, type SnapshotReceipt, type SnapshotVerification, type SwarmContext, TRIAL_CODING_CHECK, TRIAL_DOCKER_IMAGE, TRIAL_LIMITS, TRIAL_REPOSITORY, TRIAL_SOURCE_CHECK, TRIAL_TEMPLATE, TRIAL_WORKFLOW, type TierOverrides, type TimingMetrics, type ToolPolicy, type TrustTier, type WebAuthnController, type WorkPayload, type WorkReceipt, type WorkspaceMember, type WorkspacePreparationMandate, type WorkspaceReviewDraft, type WorkspaceTaskAssignment, anchorToRekor, approvePolicyProposalWithDirectSignature, approvePolicyProposalWithWebAuthn, assertEgressSafe, buildDecisionContext, checkRateLimit, codingCommand, codingSafePath, codingScopeWithin, collectSignedReceipts, computeCalibration, computeSbIssuerKid, confidentialInference, connectorDirectory, connectorDoctor, connectorPilotIds, coordinationConfigFromArgs, createApprovalChallenge, createApprovalReceiptPayload, createAttestationField, createAuditBundle, createC2PAManifest, createDirectControllerApproval, createDisclosurePackage, createEvidenceAttestation, createLogAnchorField, createPolicyProposal, createReceiptChannel, createReceiptEnvelope, createSandbox, createSelectiveDisclosurePackage, createWebAuthnPolicyChallenge, describePolicyDiff, destroySandbox, discloseField, ed25519ToDIDKey, evaluateCedar, evaluateTier, exportC2PAManifestJSON, exportJSONL, exportMandateDisciplineRecord, formatReportMarkdown, formatSimulation, forwardReceipt, generateC2PACommand, generateCedarSchema, generateDatasetCard, generateHFMetadata, generateReport, generateSafetyTranscript, generateSchemaStub, getConnectorPilot, getPolicyPack, getScopeBlindBridge, getSignerInfo, getToolPolicy, hashReceipt, hashResponseBody, humanPrincipal, initSigning, initializeMandateRegistry, inspectEgress, isAgentId, isCedarAvailable, isDisclosureMode, isEvidenceType, isManifestStatus, isSigningEnabled, listCredentialLabels, loadCedarPolicies, loadGateSigner, loadMandateRegistry, loadPolicy, mandatePaths, manifestToVC, meetsMinTier, parseLogFile, parseNotificationConfigFromEnv, parseRateLimit, policyPackIds, policySetFromSource, publicMandateStatus, queryExternalPDP, readInstalledConnectorPilots, receiptHash, receiptIdentity, receiptToVP, receiptsToHFRows, redactFields, refreshManagedMandate, repositoryDevicePermission, repositoryDevicePreimage, repositoryHumanPermission, repositoryHumanPrincipal, repositoryPreviewPath, repositorySetupArtifactUrl, repositorySnapshotDigest, resolveCredential, revealField, runEgressSelfCheck, runEvaluatorSelfTest, runInSandbox, sameRepositoryHumanIntent, sendApprovalNotification, signCommittedDecision, signDecision, simulate, snapshotFromDirectory, toCredentialRequestOptions, toEgressSummary, toManifoldFormat, toMetaculusFormat, trialBase, trialCodingConfig, trialSource, validRepositoryCodingConnectionConfig, validRepositoryCodingMandate, validRepositoryCodingPlan, validRepositoryCodingRefreshableConnections, validRepositoryCodingRequest, validRepositoryCodingResult, validRepositoryCodingSource, validRepositoryCodingStop, validRepositoryDeviceAuthorization, validRepositoryDeviceConfirmation, validRepositoryDeviceLink, validRepositoryHumanEnvelope, validRepositoryRecoveryObservation, validRepositorySetupAuthorization, validRepositorySetupInspection, validRepositorySetupRenewal, validRepositorySetupRequest, validRepositoryTrialProvision, validRepositoryTrialRequest, validTrialReadiness, validateCoordinationConfig, validateCoordinationPayment, validateCredentials, validateEvidenceReceipt, validateManifest, validateRepositoryPreviewBundle, verifyActaC2PAAssertions, verifyAllCommitments, verifyApprovalAssertion, verifyCommitment, verifyDeviceAuthorization, verifyEvidenceAttestation, verifyHuman, verifyMandateLifecycleExport, verifyMandateRegistry, verifyNegotiationEvidence, verifyOwnerAgreement, verifyPublicSnapshot, verifyReceipt, verifyRehearsalEvidence, verifyRekorAnchor, verifyRepositoryCodingEvidence, verifyRepositoryCollaborationEvidence, verifyRepositoryDeviceAuthorization, verifyRepositoryEvidence, verifyRepositoryHuman, verifyRepositoryRecoveryObservation, verifyRepositoryReviewEvidence, verifyRepositorySetupEnrollment, verifyRepositorySetupReplacement, verifyRepositorySetupState, verifyRepositoryTrialConnection, verifyRepositoryTrialState, verifyRepositoryWorkspaceAgentState, verifyRepositoryWorkspaceState, verifySelectiveDisclosurePackage, writeConnectorPilots };
+export { type ActaEnvelope, type ActaSignature, type ActionReceipt, type AdmissionResult, type AgentId, type AgentManifest, type AnnotatedRule, type ApprovalAssertion, type ApprovalChallenge, type ApprovalNotification, type ApprovalResult, type ArenaPayload, type ArenaReceipt, type AttestationDocument, type AttestationPayload, type AttestationProvider, type AttestationReceipt, type AttestationResult, type AuditBundle, type AuditBundleOptions, BUILTIN_POLICY_PREFIX, type BenchmarkPayload, type BenchmarkReceipt, type BuilderId, type C2PAAssertion, type C2PAIngredient, type C2PAManifest, type C2PAOptions, type CCRConnectorConfig, type CCRSessionContext, CODING_PERMISSIONS, CONNECTOR_PILOTS, type CalibrationScore, type CedarEvalOptions, type CedarEvalRequest, type CedarPolicySet, type CedarSchema, type CedarSchemaResult, type CodingSandbox, type CommittedFieldOpening, type CommittedSignResult, type ComplianceReport, ConfidentialGate, type ConfidentialGateConfig, type ConfidentialInferenceConfig, type ConnectorAction, type ConnectorEnvVar, type ConnectorPilot, type ConnectorPilotId, CoordinationClient, type CoordinationConfig, CoordinationError, type CoordinationPayment, type CoordinationPaymentResult, type CredentialConfig, type DecisionContext, type DecisionLog, type DelegationReceipt, type DeviceAuthorization, type DevicePermission, type DeviceUse, type DirectController, type DisclosureMode, DockerCodingSandbox, EGRESS_SUMMARY_FIELDS, type Ed25519PublicKey, type EvidenceAttestation, type EvidenceAttestationInput, type EvidenceIssuer, type EvidenceReceipt, type EvidenceReceiptBase, type EvidenceSummary, type EvidenceSummaryEntry, type EvidenceType, type ExternalDecision, type ExternalPDPConfig, type GateSigner, type HFDatasetMetadata, type HFReceiptRow, type HookEventName, type HookInput, type HookResponse, type HumanContext, type InstalledConnectorPilot, type IssuerType, type JsonRpcRequest, type JsonRpcResponse, type LeaseCompatibility, type MandateApproval, type MandateController, type MandateProposal, type MandateRegistry, type MandateTransition, type ManifestBuilder, type ManifestCapabilities, type ManifestConfig, type ManifestIdentity, type ManifestPresentation, type ManifestSignature, type ManifestStatus, type McpToolDescription, type MinimalDisclosure, type NegotiationExport, type NegotiationMandate, type NegotiationProposal, type NegotiationReport, type NegotiationVerification, type NotificationConfig, POLICY_PACKS, PREVIEW_TYPES, type PassportTokenClaims, type PayloadDigest, type PlanReceipt, type PolicyDiff, type PolicyEngineMode, type PolicyPack, type PolicySnapshot, type PredictionReceipt, type PredictionResolution, type PropagatorConfig, type ProtectConfig, ProtectGateway, type ProtectPolicy, type PublicSnapshot, REPOSITORY_CODING_ACTIONS, REPOSITORY_CODING_IMAGE, REPOSITORY_DEVICE_ACTIONS, REPOSITORY_DEVICE_DOMAIN, REPOSITORY_DEVICE_LINK_MS, REPOSITORY_DEVICE_MAX_MS, REPOSITORY_DEVICE_PERMISSIONS, REPOSITORY_GUIDED_WORKFLOW, REPOSITORY_PREVIEW_MAX_BYTES, REPOSITORY_PREVIEW_MAX_FILES, REPOSITORY_RECOVERY_CODES, REPOSITORY_SETUP_ACTIONS, REPOSITORY_SETUP_TTL, REPOSITORY_TRIAL_ACTIONS, type RateLimit, ReceiptPropagator, type ReceiptShape, type ReceiptVerification, type RedactedResult, type RedactionSalt, type RegistryCheck, type RehearsalExport, type RehearsalVerification, type RekorAnchor, type RekorVerification, type RepositoryAcceptance, type RepositoryApproval, type RepositoryClaim, type RepositoryCodingAction, type RepositoryCodingConfig, type RepositoryCodingConnectionConfig, type RepositoryCodingEvidence, type RepositoryCodingFile, type RepositoryCodingJob, type RepositoryCodingMandate, type RepositoryCodingMandateView, type RepositoryCodingModelAction, type RepositoryCodingModelContext, type RepositoryCodingPlan, type RepositoryCodingPublication, type RepositoryCodingRefreshableConnection, type RepositoryCodingRequest, type RepositoryCodingResult, RepositoryCodingRunner, type RepositoryCodingSource, type RepositoryCodingStatus, type RepositoryCodingStop, type RepositoryCodingTest, type RepositoryCodingWorkflowRun, type RepositoryCollaborationEvidence, type RepositoryDeviceAction, type RepositoryDeviceAuthorization, type RepositoryDeviceConfirmation, type RepositoryDeviceLink, type RepositoryDeviceLinkState, type RepositoryDeviceListState, type RepositoryDevicePermission, type RepositoryDeviceStatus, type RepositoryDeviceUse, type RepositoryDeviceView, type RepositoryEvidence, type RepositoryExecution, type RepositoryGuidedReceiverConfig, type RepositoryHumanContext, type RepositoryOutcome, type RepositoryPreviewBundle, type RepositoryPreviewEntry, type RepositoryPreviewFile, type RepositoryProposal, type RepositoryRecoveryCode, type RepositoryRecoveryIssue, type RepositoryRecoveryObservation, type RepositoryReviewBrief, type RepositoryReviewContent, type RepositoryReviewDecision, type RepositoryReviewEvidence, type RepositoryReviewFeedback, type RepositoryReviewPacket, type RepositoryReviewRecommendation, type RepositoryReviewState, type RepositorySetupAction, type RepositorySetupAuthorization, type RepositorySetupChallenge, type RepositorySetupCoding, type RepositorySetupCodingReady, type RepositorySetupEnrollment, type RepositorySetupGitHub, type RepositorySetupInfo, type RepositorySetupInspection, type RepositorySetupInstallation, type RepositorySetupJob, type RepositorySetupJobState, type RepositorySetupReady, type RepositorySetupRenewal, type RepositorySetupRequest, type RepositorySetupState, type RepositorySetupStatus, type RepositorySetupTaskBinding, type RepositorySetupWorkflowProof, type RepositoryState, type RepositoryTask, type RepositoryTrialAction, type RepositoryTrialCompletion, type RepositoryTrialHtml, type RepositoryTrialInfo, type RepositoryTrialJob, type RepositoryTrialJobKind, type RepositoryTrialJobView, type RepositoryTrialPoll, type RepositoryTrialProvision, type RepositoryTrialReadiness, type RepositoryTrialRequest, RepositoryTrialRunner, type RepositoryTrialState, type RepositoryWorkspace, type RepositoryWorkspaceAgentState, type RepositoryWorkspaceInbox, type RepositoryWorkspaceState, type RestraintPayload, type RestraintReceipt, type SHA256Hash, STARTER_CONTAIN_TEMPLATE, STARTER_POLICY, STARTER_POLICY_FILE, STARTER_POLICY_VERSION, type SafetyTranscript, type Sandbox, type SandboxConfig, type SandboxReceipt, type SandboxResult, type SandboxToolCall, type SchemaGeneratorConfig, ScopeBlindBridge, type SelectiveDisclosurePackageV0, type SelectiveDisclosureVerification, type SelfTestCase, type SelfTestReport, type SigningConfig, type SimulationResult, type SimulationSummary, type SnapshotReceipt, type SnapshotVerification, type SwarmContext, TRIAL_CODING_CHECK, TRIAL_DOCKER_IMAGE, TRIAL_LIMITS, TRIAL_REPOSITORY, TRIAL_SOURCE_CHECK, TRIAL_TEMPLATE, TRIAL_WORKFLOW, type TierOverrides, type TimingMetrics, type ToolPolicy, type TrustTier, type WebAuthnController, type WorkPayload, type WorkReceipt, type WorkspaceMember, type WorkspacePreparationMandate, type WorkspaceReviewDraft, type WorkspaceTaskAssignment, anchorToRekor, annotatedRules, approvePolicyProposalWithDirectSignature, approvePolicyProposalWithWebAuthn, assertEgressSafe, buildDecisionContext, builtinPolicyNames, cedarLikeLiteral, cedarSafeContext, cedarSafeValue, checkCedarPolicyText, checkRateLimit, codingCommand, codingSafePath, codingScopeWithin, collectSignedReceipts, computeCalibration, computeSbIssuerKid, confidentialInference, connectorDirectory, connectorDoctor, connectorPilotIds, coordinationConfigFromArgs, createApprovalChallenge, createApprovalReceiptPayload, createAttestationField, createAuditBundle, createC2PAManifest, createDirectControllerApproval, createDisclosurePackage, createEvidenceAttestation, createLogAnchorField, createPolicyProposal, createReceiptChannel, createReceiptEnvelope, createSandbox, createSelectiveDisclosurePackage, createWebAuthnPolicyChallenge, describePolicyDiff, destroySandbox, discloseField, ed25519ToDIDKey, evaluateCedar, evaluateTier, exportC2PAManifestJSON, exportJSONL, exportMandateDisciplineRecord, formatReportMarkdown, formatSimulation, forwardReceipt, generateC2PACommand, generateCedarSchema, generateDatasetCard, generateHFMetadata, generateReport, generateSafetyTranscript, generateSchemaStub, getConnectorPilot, getPolicyPack, getScopeBlindBridge, getSignerInfo, getToolPolicy, hashReceipt, hashResponseBody, humanPrincipal, initSigning, initializeMandateRegistry, inspectEgress, isAgentId, isBuiltinPolicySpec, isCedarAvailable, isDisclosureMode, isEvidenceType, isManifestStatus, isSigningEnabled, listCredentialLabels, loadCedarPolicies, loadGateSigner, loadMandateRegistry, loadPolicy, mandatePaths, manifestToVC, meetsMinTier, parseLogFile, parseNotificationConfigFromEnv, parseRateLimit, policyPackIds, policySetFromSource, publicMandateStatus, queryExternalPDP, readInstalledConnectorPilots, receiptHash, receiptIdentity, receiptToVP, receiptsToHFRows, redactFields, refreshManagedMandate, renderContainRules, repositoryDevicePermission, repositoryDevicePreimage, repositoryHumanPermission, repositoryHumanPrincipal, repositoryPreviewPath, repositorySetupArtifactUrl, repositorySnapshotDigest, resolveBuiltinPolicy, resolveCredential, revealField, runEgressSelfCheck, runEvaluatorSelfTest, runInSandbox, sameRepositoryHumanIntent, sendApprovalNotification, signCommittedDecision, signDecision, simulate, snapshotFromDirectory, starterRules, toCredentialRequestOptions, toEgressSummary, toManifoldFormat, toMetaculusFormat, trialBase, trialCodingConfig, trialSource, validRepositoryCodingConnectionConfig, validRepositoryCodingMandate, validRepositoryCodingPlan, validRepositoryCodingRefreshableConnections, validRepositoryCodingRequest, validRepositoryCodingResult, validRepositoryCodingSource, validRepositoryCodingStop, validRepositoryCodingWorkflowRun, validRepositoryDeviceAuthorization, validRepositoryDeviceConfirmation, validRepositoryDeviceLink, validRepositoryHumanEnvelope, validRepositoryRecoveryObservation, validRepositorySetupAuthorization, validRepositorySetupInspection, validRepositorySetupRenewal, validRepositorySetupRequest, validRepositoryTrialProvision, validRepositoryTrialRequest, validTrialReadiness, validateCoordinationConfig, validateCoordinationPayment, validateCredentials, validateEvidenceReceipt, validateManifest, validateRepositoryPreviewBundle, verifyActaC2PAAssertions, verifyAllCommitments, verifyApprovalAssertion, verifyCommitment, verifyDeviceAuthorization, verifyEvidenceAttestation, verifyHuman, verifyMandateLifecycleExport, verifyMandateRegistry, verifyNegotiationEvidence, verifyOwnerAgreement, verifyPublicSnapshot, verifyReceipt, verifyRehearsalEvidence, verifyRekorAnchor, verifyRepositoryCodingEvidence, verifyRepositoryCollaborationEvidence, verifyRepositoryDeviceAuthorization, verifyRepositoryEvidence, verifyRepositoryHuman, verifyRepositoryRecoveryObservation, verifyRepositoryReviewEvidence, verifyRepositorySetupEnrollment, verifyRepositorySetupReplacement, verifyRepositorySetupState, verifyRepositoryTrialConnection, verifyRepositoryTrialState, verifyRepositoryWorkspaceAgentState, verifyRepositoryWorkspaceState, verifySelectiveDisclosurePackage, workflowRunFromEnvironment, writeConnectorPilots };

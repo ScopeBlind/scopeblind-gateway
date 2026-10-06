@@ -103,13 +103,14 @@ export class RepositoryReceiver {
  async execute(taskId:string){
   requireValue(REPOSITORY_ID.test(taskId),'invalid_repository_task_id');let state=await this.rpc('repository_get',taskId);if(state.payload.execution)return this.reconcileState(state);
   requireValue(state.payload.status==='approved'&&state.payload.proposal&&Date.parse(state.payload.task.payload.expires_at)>Date.now(),'repository_joint_approval_required');
-  const reviewed=await this.review(taskId);if(reviewed.review){requireValue(reviewed.repository_task.payload.proposal?.digest===state.payload.proposal.digest&&reviewed.review.payload.decisions.length===2&&reviewed.review.payload.packet&&Date.parse(reviewed.review.payload.packet.payload.expires_at)>Date.now(),'repository_review_joint_decision_required');}
-  if(reviewed.review)await this.checkReviewObservation(reviewed.review,state.payload.proposal);
+  const reviewed=await this.review(taskId);if(reviewed.review){requireValue(reviewed.repository_task.payload.proposal?.digest===state.payload.proposal.digest&&reviewed.review.payload.decisions.length===2&&!!reviewed.review.payload.packet,'repository_review_joint_decision_required');}
+  // Approvals are held for days. The packet's freshness mattered when each person decided; at delivery the receiver re-observes the same evidence and refuses if it moved.
+  if(reviewed.review)await this.checkReviewObservation(reviewed.review,state.payload.proposal,false);
   const approved=state.payload.proposal,observed=await this.snapshot(state.payload.task);requireValue(await repositorySnapshotDigest(approved.payload)===await repositorySnapshotDigest(observed),'repository_approval_stale');
   const operationId=`repo-${taskId}`,attemptId=crypto.randomUUID();state=await this.rpc('repository_begin',taskId,{proposal_digest:approved.digest,operation_id:operationId,attempt_id:attemptId});const execution=state.payload.execution!;requireValue(execution&&execution.payload.receiver_attempt_id===attemptId&&execution.payload.operation_id===operationId&&execution.payload.proposal_digest===approved.digest,'repository_execution_mismatch');requireValue(Date.parse(execution.payload.expires_at)>Date.now(),'repository_execution_expired');
   let sent=false,requestId='',note='';
   try{
-   if(reviewed.review)await this.checkReviewObservation(reviewed.review,approved);
+   if(reviewed.review)await this.checkReviewObservation(reviewed.review,approved,false);
    const final=await this.snapshot(state.payload.task);requireValue(await repositorySnapshotDigest(final)===await repositorySnapshotDigest(approved.payload),'repository_approval_stale');requireValue(Date.parse(execution.payload.expires_at)>Date.now()&&state.payload.approvals.every(a=>Date.parse(a.payload.expires_at)>Date.now()),'repository_execution_expired');
    // GitHub applies both reference preconditions atomically. The no-op head
    // update prevents a changed PR head from borrowing this exact approval.
@@ -119,8 +120,8 @@ export class RepositoryReceiver {
   }catch(error){note=error instanceof RepositoryReceiverError?error.message:'The receiver could not establish the operation outcome.';if(!sent)return this.report(state,{status:'failed',observed_base_sha:null,readback:'not_confirmed',note});}
   return this.reconcileState(state,note,requestId);
  }
- private async checkReviewObservation(review:Signed<RepositoryReviewState>,proposal:Signed<RepositoryProposal>){
-  requireValue(review.payload.packet&&Date.parse(review.payload.packet.payload.expires_at)>Date.now(),'repository_review_packet_expired');
+ private async checkReviewObservation(review:Signed<RepositoryReviewState>,proposal:Signed<RepositoryProposal>,requireFresh=true){
+  requireValue(review.payload.packet&&(!requireFresh||Date.parse(review.payload.packet.payload.expires_at)>Date.now()),'repository_review_packet_expired');
   const observed=await observeRepositoryReviewPreview(path=>this.github(path),this.config.repository,review.payload.brief,proposal);requireValue(canonical(observed)===canonical(review.payload.packet.payload.preview),'repository_review_preview_changed');
  }
  async reconcile(taskId:string){return this.reconcileState(await this.rpc('repository_get',taskId));}

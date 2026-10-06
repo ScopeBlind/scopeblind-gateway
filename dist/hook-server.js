@@ -295,6 +295,105 @@ function buildEntities(req) {
     }
   ];
 }
+var CEDAR_ESCAPE_KEYS = /* @__PURE__ */ new Set(["__entity", "__extn", "__expr"]);
+var CEDAR_LONG_LIMIT = 2 ** 63;
+function cedarSafeValue(value) {
+  if (value === null || value === void 0) return void 0;
+  switch (typeof value) {
+    case "string":
+    case "boolean":
+      return value;
+    case "number":
+      return Number.isInteger(value) && Math.abs(value) < CEDAR_LONG_LIMIT ? value : String(value);
+    case "bigint":
+      return value >= BigInt(Number.MIN_SAFE_INTEGER) && value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value.toString();
+    case "object": {
+      if (Array.isArray(value)) {
+        const items = [];
+        for (const item of value) {
+          const safe = cedarSafeValue(item);
+          if (safe !== void 0) items.push(safe);
+        }
+        return items;
+      }
+      const record = {};
+      for (const [key, item] of Object.entries(value)) {
+        if (CEDAR_ESCAPE_KEYS.has(key)) continue;
+        const safe = cedarSafeValue(item);
+        if (safe !== void 0) Object.defineProperty(record, key, { value: safe, enumerable: true, writable: true, configurable: true });
+      }
+      return record;
+    }
+    default:
+      return void 0;
+  }
+}
+function cedarSafeContext(context) {
+  return cedarSafeValue(context);
+}
+var preparedPolicies = /* @__PURE__ */ new Map();
+var PREPARED_CACHE_LIMIT = 32;
+function oneLine(text, max = 400) {
+  const line = text.replace(/\s+/g, " ").trim();
+  return line.length > max ? `${line.slice(0, max - 3)}...` : line;
+}
+function preparePolicies(engine, source) {
+  const cached = preparedPolicies.get(source);
+  if (cached) return cached;
+  let prepared = { staticPolicies: source, names: /* @__PURE__ */ new Map() };
+  try {
+    if (typeof engine?.policySetTextToParts === "function" && typeof engine?.policyToJson === "function") {
+      const parts = engine.policySetTextToParts(source);
+      const texts = parts?.policies;
+      const templates = parts?.policy_templates;
+      if (parts?.type === "success" && Array.isArray(texts) && texts.length > 0 && (!Array.isArray(templates) || templates.length === 0) && texts.every((text) => typeof text === "string" && source.includes(text))) {
+        const positional = texts.map((_, i) => `policy${i}`).sort();
+        const annotations = texts.map((text) => {
+          const json = engine.policyToJson(text);
+          return json?.type === "success" ? json.json?.annotations ?? {} : null;
+        });
+        if (annotations.every((a) => a !== null)) {
+          const idOf = (a) => a && typeof a.id === "string" ? a.id : "";
+          const counts = /* @__PURE__ */ new Map();
+          for (const a of annotations) {
+            const id = idOf(a);
+            if (id) counts.set(id, (counts.get(id) || 0) + 1);
+          }
+          const keyed = /* @__PURE__ */ Object.create(null);
+          const names = /* @__PURE__ */ new Map();
+          texts.forEach((text, k) => {
+            const a = annotations[k];
+            const id = idOf(a);
+            const usable = id.trim() !== "" && counts.get(id) === 1 && !/^policy\d+$/.test(id) && id !== "__proto__";
+            const key = usable ? id : positional[k];
+            const reason = a && typeof a.reason === "string" && a.reason.trim() !== "" ? oneLine(a.reason) : void 0;
+            keyed[key] = text;
+            names.set(key, { id: key, ...reason ? { reason } : {}, order: Number(positional[k].slice("policy".length)) });
+          });
+          if (Object.keys(keyed).length === texts.length && names.size === texts.length) {
+            prepared = { staticPolicies: { ...keyed }, names };
+          }
+        }
+      }
+    }
+  } catch {
+    prepared = { staticPolicies: source, names: /* @__PURE__ */ new Map() };
+  }
+  if (preparedPolicies.size >= PREPARED_CACHE_LIMIT) {
+    const oldest = preparedPolicies.keys().next().value;
+    if (oldest !== void 0) preparedPolicies.delete(oldest);
+  }
+  preparedPolicies.set(source, prepared);
+  return prepared;
+}
+function namedPolicies(ids, prepared) {
+  const list = Array.isArray(ids) ? ids.filter((id) => typeof id === "string") : [];
+  return list.map((id) => prepared.names.get(id) ?? { id, order: Number.MAX_SAFE_INTEGER }).sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map(({ id, reason }) => reason ? { id, reason } : { id });
+}
+function denyReason(deniedBy) {
+  if (deniedBy.length === 0) return "cedar_deny: no permit matched (default deny)";
+  return `cedar_deny: ${deniedBy.map((p) => p.reason ? `${p.id}: ${p.reason}` : p.id).join("; ")}`;
+}
 function onEvalError(reason, failClosed, extra) {
   return {
     allowed: !failClosed,
@@ -321,14 +420,18 @@ async function evaluateCedar(policySet, req, schema, options) {
       principal: { type: "Agent", id: agentId },
       action: { type: "Action", id: req.actionModel === "tool" ? req.tool : "MCP::Tool::call" },
       resource: { type: "Tool", id: req.tool },
-      context
+      // Only values Cedar can hold: a fraction, a null or an escape key in the
+      // input no longer makes the engine refuse the whole call (see cedarSafeValue).
+      context: cedarSafeContext(context)
     };
     const entities = buildEntities(req);
     const cedarSchema = schema?.schemaJson ?? null;
     let result;
+    let prepared = { staticPolicies: policySet.source, names: /* @__PURE__ */ new Map() };
     if (typeof cedarWasm.isAuthorized === "function") {
+      prepared = preparePolicies(cedarWasm, policySet.source);
       result = cedarWasm.isAuthorized({
-        policies: { staticPolicies: policySet.source },
+        policies: { staticPolicies: prepared.staticPolicies },
         entities,
         principal: authRequest.principal,
         action: authRequest.action,
@@ -345,8 +448,9 @@ async function evaluateCedar(policySet, req, schema, options) {
     } else {
       const cedarEngine = cedarWasm.default || cedarWasm;
       if (typeof cedarEngine.isAuthorized === "function") {
+        prepared = preparePolicies(cedarEngine, policySet.source);
         result = cedarEngine.isAuthorized({
-          policies: { staticPolicies: policySet.source },
+          policies: { staticPolicies: prepared.staticPolicies },
           entities,
           principal: authRequest.principal,
           action: authRequest.action,
@@ -370,12 +474,28 @@ async function evaluateCedar(policySet, req, schema, options) {
         { policy_errors: policyErrors.slice(0, 5), policy_digest: policySet.digest }
       );
     }
+    if (parsed.kind === "allow") {
+      return {
+        allowed: true,
+        reason: void 0,
+        metadata: {
+          policy_digest: policySet.digest,
+          ...parsed.matchedPolicies ? { matched_policies: namedPolicies(parsed.matchedPolicies, prepared).map((p) => p.id) } : {}
+        }
+      };
+    }
+    if (!parsed.matchedPolicies && parsed.diagnostics === void 0) {
+      return { allowed: false, reason: "cedar_deny", metadata: { policy_digest: policySet.digest } };
+    }
+    const deniedBy = namedPolicies(parsed.matchedPolicies, prepared);
     return {
-      allowed: parsed.kind === "allow",
-      reason: parsed.kind === "allow" ? void 0 : `cedar_deny${parsed.diagnostics ? ": " + parsed.diagnostics : ""}`,
+      allowed: false,
+      reason: denyReason(deniedBy),
       metadata: {
         policy_digest: policySet.digest,
-        ...parsed.matchedPolicies ? { matched_policies: parsed.matchedPolicies } : {}
+        matched_policies: deniedBy.map((p) => p.id),
+        denied_by: deniedBy,
+        default_deny: deniedBy.length === 0
       }
     };
   } catch (err) {
@@ -454,18 +574,25 @@ function parseStandard(value) {
   if (!isObj(value.signature) || typeof value.signature.value !== "string") throw new Error("the standard is not signed");
   const q = isObj(value.requirements) ? value.requirements : {};
   const run = isObj(q.run) ? q.run : null;
-  const tools = run && Array.isArray(run.allowed_tools) ? run.allowed_tools.filter((t) => typeof t === "string") : null;
+  const runTools = run && Array.isArray(run.allowed_tools) ? run.allowed_tools.filter((t) => typeof t === "string") : null;
   const limits = isObj(q.action_limits) ? q.action_limits : null;
   const amount_max = limits ? moneyFrom(limits.amount_max) : null;
   const approval = isObj(q.human_approval) ? q.human_approval : null;
   const required_above = approval ? moneyFrom(approval.required_above) : null;
   const enforcement = isObj(value.enforcement) ? value.enforcement : null;
   const policy_digest = enforcement && typeof enforcement.policy_digest === "string" ? enforcement.policy_digest : null;
+  const enforcementTool = enforcement && typeof enforcement.tool === "string" && enforcement.tool ? enforcement.tool : null;
+  const payment_tool = !run && amount_max ? enforcementTool ?? "submit_payment" : null;
+  const tools = run ? runTools : payment_tool ? [payment_tool] : null;
+  const gate_policy = !!run || !!payment_tool;
   const parts = [tools ? `${tools.length} tool${tools.length === 1 ? "" : "s"}` : "no tool list", amount_max ? `at most ${fmt(amount_max)} per instruction` : "no amount limit", required_above ? `a person approves above ${fmt(required_above)}` : "no approval threshold"];
-  return { request_id: value.request_id, digest: value.digest, signer_key: recipient.verification_key.toLowerCase(), tools, amount_max, required_above, policy_digest, summary: parts.join(", ") };
+  return { request_id: value.request_id, digest: value.digest, signer_key: recipient.verification_key.toLowerCase(), tools, amount_max, required_above, policy_digest, payment_tool, gate_policy, summary: gate_policy ? parts.join(", ") : `${parts.join(", ")}; the gate admits nothing until the standard states tools or a limit` };
 }
 function loadStandardFile(path) {
   return parseStandard(JSON.parse((0, import_node_fs3.readFileSync)(path, "utf-8")));
+}
+function carriesAmount(input) {
+  return isObj(input) && ("amount_minor" in input || "amount" in input);
 }
 function readAmount(input) {
   if (!isObj(input)) return null;
@@ -474,12 +601,15 @@ function readAmount(input) {
   if (typeof input.amount === "number" && Number.isFinite(input.amount)) return { minor: Math.round(input.amount * 100), currency: currency ?? "" };
   return null;
 }
-function checkAmount(gate, input) {
+function checkAmount(gate, tool, input) {
   if (!gate.amount_max) return { ok: true };
-  const amount = readAmount(input);
-  if (!amount) return { ok: true };
-  if (amount.currency !== gate.amount_max.currency) return { ok: false, reason: "standard_currency_not_permitted", detail: `the standard permits ${gate.amount_max.currency} only; this call is in ${amount.currency || "no named currency"}` };
-  if (amount.minor > gate.amount_max.minor) return { ok: false, reason: "standard_amount_over_limit", detail: `${fmt(amount)} is over the standard's limit of ${fmt(gate.amount_max)} per instruction` };
+  if (gate.payment_tool ? tool !== gate.payment_tool : !carriesAmount(input)) return { ok: true };
+  const cap = gate.amount_max;
+  const minor = isObj(input) && typeof input.amount_minor === "number" && Number.isInteger(input.amount_minor) ? input.amount_minor : null;
+  const currency = isObj(input) && typeof input.currency === "string" ? input.currency : null;
+  if (minor === null) return { ok: false, reason: "standard_amount_missing", detail: `the standard limits each ${tool} instruction to ${fmt(cap)}, and this call carries no integer amount_minor to check` };
+  if (currency !== cap.currency) return { ok: false, reason: "standard_currency_not_permitted", detail: `the standard permits ${cap.currency} only; this call is in ${currency ?? "no currency"}` };
+  if (minor > cap.minor) return { ok: false, reason: "standard_amount_over_limit", detail: `${fmt({ minor, currency })} is over the standard's limit of ${fmt(cap)} per instruction` };
   return { ok: true };
 }
 function personRequired(gate, input) {
@@ -489,6 +619,15 @@ function personRequired(gate, input) {
   if (amount.currency !== gate.required_above.currency) return { required: true, detail: `${fmt(amount)} cannot be compared with the standard's threshold of ${fmt(gate.required_above)}` };
   if (amount.minor > gate.required_above.minor) return { required: true, detail: `${fmt(amount)} is above ${fmt(gate.required_above)}, so a named person approves it` };
   return { required: false };
+}
+function standardDecision(gate, tool, input) {
+  if (!gate.gate_policy) return { decision: "deny", reason: "standard_no_gate_policy", detail: "the standard states neither tools nor a per-instruction limit, so the gate admits nothing under it; state one on its page and sign it again" };
+  if (gate.tools && !gate.tools.includes(tool)) return { decision: "deny", reason: "standard_tool_not_allowed", detail: `"${tool}" is not among the tools the standard permits (${gate.tools.join(", ")}); the name must match exactly` };
+  const amount = checkAmount(gate, tool, input);
+  if (!amount.ok) return { decision: "deny", reason: amount.reason, detail: amount.detail };
+  const person = personRequired(gate, input);
+  if (person.required) return { decision: "hold", reason: "standard_requires_person", detail: person.detail };
+  return { decision: "allow", reason: gate.payment_tool ? "standard_within_limit" : "standard_tool_allowed", detail: "" };
 }
 function heldIdFor(sid, tool, payloadHash) {
   return (0, import_node_crypto2.createHash)("sha256").update(`scopeblind.held_action.v1\0${sid}\0${tool}\0${payloadHash}`).digest("hex").slice(0, 24);
@@ -712,6 +851,7 @@ function signDecision(entry, prevReceiptHash) {
     if (entry.mandate_registry) payload.mandate_registry = entry.mandate_registry;
     if (entry.standard) payload.standard = entry.standard;
     if (entry.approval) payload.approval = entry.approval;
+    if (entry.connector) payload.connector = entry.connector;
     const result = createReceiptEnvelope(
       payload,
       signerState.privateKey,
@@ -2272,27 +2412,24 @@ async function handlePreToolUse(input, state) {
       if (!state.enforce) return null;
       return { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `[ScopeBlind] ${why}` } };
     };
-    if (std.tools && !std.tools.includes(toolName)) {
-      const r = refuse("standard_tool_not_allowed", `"${toolName}" is not among the tools the standard permits.`);
+    const verdict = standardDecision(std, toolName, input.toolInput);
+    if (verdict.decision === "deny") {
+      const r = refuse(verdict.reason, `"${toolName}" refused by the standard: ${verdict.detail}.`);
       if (r) return r;
     } else {
-      const amount = checkAmount(std, input.toolInput);
-      if (!amount.ok) {
-        const r = refuse(amount.reason, `"${toolName}" refused by the standard: ${amount.detail}.`);
-        if (r) return r;
-      } else {
-        const person = personRequired(std, input.toolInput);
+      {
+        const person = verdict.decision === "hold" ? { required: true, detail: verdict.detail } : { required: false };
         if (person.required) {
           const hid = heldIdFor(state.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
           const page = state.reporter ? `${new URL(state.reporter.url).origin}/standard?s=${state.reporter.sid}#held-${hid}` : "";
-          const verdict = state.reporter ? await state.reporter.decision(hid) : null;
-          if (verdict === "unreachable") {
+          const verdict2 = state.reporter ? await state.reporter.decision(hid) : null;
+          if (verdict2 === "unreachable") {
             const r = refuse("standard_page_unreachable", `"${toolName}" needs a named person's approval and the standard's page could not be reached; retry the same call later.`);
             if (r) return r;
-          } else if (verdict) {
-            state.approvalsToRecord.set(requestId, { hid, approver_key_id: verdict.approver_key_id, digest: verdict.digest, page });
-            if (verdict.decision === "deny") {
-              const r = refuse("person_denied", `"${toolName}" was denied by ${verdict.approver_key_id} on the standard's page${verdict.note ? `: ${verdict.note}` : ""}.`);
+          } else if (verdict2) {
+            state.approvalsToRecord.set(requestId, { hid, approver_key_id: verdict2.approver_key_id, digest: verdict2.digest, page });
+            if (verdict2.decision === "deny") {
+              const r = refuse("person_denied", `"${toolName}" was denied by ${verdict2.approver_key_id} on the standard's page${verdict2.note ? `: ${verdict2.note}` : ""}.`);
               if (r) return r;
             }
           } else {
@@ -2353,13 +2490,21 @@ async function handlePreToolUse(input, state) {
           sandbox_state: detectSandboxState(),
           plan_receipt_id: state.activePlanReceiptId || void 0
         });
-        const isDefaultDeny = !reason || reason === "cedar_deny" || /reason":\[\]/.test(reason);
+        const meta = cedarDecision.metadata || {};
+        const deniedBy = Array.isArray(meta.denied_by) ? meta.denied_by : [];
+        const isEngineError = meta.error === true;
+        const isDefaultDeny = !isEngineError && deniedBy.length === 0;
         const policyRef = state.cedarDir ? ` Policy: ${state.cedarDir}.` : "";
-        const howTo = isDefaultDeny ? ` No permit matched (default-deny, fail-closed).${policyRef} Allow it: npx protect-mcp policy allow ${toolName}` : ` Blocked by an explicit forbid rule.${policyRef} Review: npx protect-mcp policy show`;
+        const sentence = (text) => /[.!?]$/.test(text) ? text : `${text}.`;
+        const named = deniedBy.map((p) => p.reason ? `${p.id}: ${p.reason}` : p.id).join("; ");
+        const howTo = isEngineError ? ` The policy could not be evaluated, so the gate fails closed: ${sentence(reason)}${policyRef}` : isDefaultDeny ? ` No permit matched (default-deny, fail-closed).${policyRef} Allow it: npx protect-mcp policy allow ${toolName}` : ` Blocked by the forbid rule ${sentence(named)}${policyRef} Review: npx protect-mcp policy show`;
         if (denyCount === 1) {
           process.stderr.write(
-            `[PROTECT_MCP] Denied "${toolName}" (${isDefaultDeny ? "default-deny" : "forbid"}).
+            isEngineError ? `[PROTECT_MCP] Denied "${toolName}" (policy error, fail-closed): ${reason}
+` : isDefaultDeny ? `[PROTECT_MCP] Denied "${toolName}" (default-deny).
   Allow with: npx protect-mcp policy allow ${toolName}
+` : `[PROTECT_MCP] Denied "${toolName}" (forbid: ${named}).
+  Review: npx protect-mcp policy show
 `
           );
         }

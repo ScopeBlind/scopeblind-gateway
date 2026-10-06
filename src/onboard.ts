@@ -32,7 +32,7 @@ const out = (s = '') => process.stdout.write(s + '\n');
 interface DemoAction { tool: string; input: Record<string, unknown>; label: string; expect: 'allow' | 'deny'; context?: Record<string, unknown>; }
 interface Scenario { plainEnglish: string; tradeoff: string; demoActions: DemoAction[]; }
 
-/** The five onboarding packs, with a plain-English tooltip and synthetic actions. */
+/** The onboarding packs, with a plain-English tooltip and synthetic actions. */
 export const ONBOARD_PACKS: Array<{ id: string; scenario: Scenario }> = [
   {
     id: 'research-safe',
@@ -91,6 +91,19 @@ export const ONBOARD_PACKS: Array<{ id: string; scenario: Scenario }> = [
         { tool: 'pms.book', input: { symbol: 'AAPL', side: 'BUY', quantity: 50, on_restricted_list: false }, label: 'Book an in-mandate order', expect: 'allow' },
         { tool: 'pms.book', input: { symbol: 'RESTR', side: 'BUY', quantity: 100, on_restricted_list: true }, label: 'Book a RESTRICTED-list name', expect: 'deny' },
         { tool: 'order.execute', input: { symbol: 'XYZ', post_trade_weight_bps: 1500 }, label: 'Push a single name to 15% (cap is 10%)', expect: 'deny' },
+      ],
+    },
+  },
+  {
+    id: 'coding-starter',
+    scenario: {
+      plainEnglish: 'A coding agent works as usual, but cannot delete / or the home folder, force-push main, read credential files, pipe a download into a shell, or edit shell profiles and agent settings.',
+      tradeoff: 'Everything else is allowed. Shell rules match the command text, so they guard an agent working in good faith; they are not a sandbox.',
+      demoActions: [
+        { tool: 'Read', input: { file_path: '/project/src/index.ts' }, label: 'Read a source file', expect: 'allow' },
+        { tool: 'Bash', input: { command: 'git push -u origin feat/login' }, label: 'Push a feature branch', expect: 'allow' },
+        { tool: 'Read', input: { file_path: '/project/.env' }, label: 'Read the .env file', expect: 'deny' },
+        { tool: 'Bash', input: { command: 'git push --force origin main' }, label: 'Force-push to main', expect: 'deny' },
       ],
     },
   },

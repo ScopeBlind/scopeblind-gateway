@@ -3,7 +3,8 @@ import {
   generateHookSettings,
   generateSampleCedarPolicy,
   generateVerifyReceiptSkill
-} from "./chunk-NMZPXXL3.mjs";
+} from "./chunk-66AX3DHG.mjs";
+import "./chunk-WE2AYP6X.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 export {
   BUILTIN_PATTERNS,

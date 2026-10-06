@@ -287,6 +287,105 @@ function buildEntities(req) {
     }
   ];
 }
+var CEDAR_ESCAPE_KEYS = /* @__PURE__ */ new Set(["__entity", "__extn", "__expr"]);
+var CEDAR_LONG_LIMIT = 2 ** 63;
+function cedarSafeValue(value) {
+  if (value === null || value === void 0) return void 0;
+  switch (typeof value) {
+    case "string":
+    case "boolean":
+      return value;
+    case "number":
+      return Number.isInteger(value) && Math.abs(value) < CEDAR_LONG_LIMIT ? value : String(value);
+    case "bigint":
+      return value >= BigInt(Number.MIN_SAFE_INTEGER) && value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value.toString();
+    case "object": {
+      if (Array.isArray(value)) {
+        const items = [];
+        for (const item of value) {
+          const safe = cedarSafeValue(item);
+          if (safe !== void 0) items.push(safe);
+        }
+        return items;
+      }
+      const record = {};
+      for (const [key, item] of Object.entries(value)) {
+        if (CEDAR_ESCAPE_KEYS.has(key)) continue;
+        const safe = cedarSafeValue(item);
+        if (safe !== void 0) Object.defineProperty(record, key, { value: safe, enumerable: true, writable: true, configurable: true });
+      }
+      return record;
+    }
+    default:
+      return void 0;
+  }
+}
+function cedarSafeContext(context) {
+  return cedarSafeValue(context);
+}
+var preparedPolicies = /* @__PURE__ */ new Map();
+var PREPARED_CACHE_LIMIT = 32;
+function oneLine(text, max = 400) {
+  const line = text.replace(/\s+/g, " ").trim();
+  return line.length > max ? `${line.slice(0, max - 3)}...` : line;
+}
+function preparePolicies(engine, source) {
+  const cached = preparedPolicies.get(source);
+  if (cached) return cached;
+  let prepared = { staticPolicies: source, names: /* @__PURE__ */ new Map() };
+  try {
+    if (typeof engine?.policySetTextToParts === "function" && typeof engine?.policyToJson === "function") {
+      const parts = engine.policySetTextToParts(source);
+      const texts = parts?.policies;
+      const templates = parts?.policy_templates;
+      if (parts?.type === "success" && Array.isArray(texts) && texts.length > 0 && (!Array.isArray(templates) || templates.length === 0) && texts.every((text) => typeof text === "string" && source.includes(text))) {
+        const positional = texts.map((_, i) => `policy${i}`).sort();
+        const annotations = texts.map((text) => {
+          const json = engine.policyToJson(text);
+          return json?.type === "success" ? json.json?.annotations ?? {} : null;
+        });
+        if (annotations.every((a) => a !== null)) {
+          const idOf = (a) => a && typeof a.id === "string" ? a.id : "";
+          const counts = /* @__PURE__ */ new Map();
+          for (const a of annotations) {
+            const id = idOf(a);
+            if (id) counts.set(id, (counts.get(id) || 0) + 1);
+          }
+          const keyed = /* @__PURE__ */ Object.create(null);
+          const names = /* @__PURE__ */ new Map();
+          texts.forEach((text, k) => {
+            const a = annotations[k];
+            const id = idOf(a);
+            const usable = id.trim() !== "" && counts.get(id) === 1 && !/^policy\d+$/.test(id) && id !== "__proto__";
+            const key = usable ? id : positional[k];
+            const reason = a && typeof a.reason === "string" && a.reason.trim() !== "" ? oneLine(a.reason) : void 0;
+            keyed[key] = text;
+            names.set(key, { id: key, ...reason ? { reason } : {}, order: Number(positional[k].slice("policy".length)) });
+          });
+          if (Object.keys(keyed).length === texts.length && names.size === texts.length) {
+            prepared = { staticPolicies: { ...keyed }, names };
+          }
+        }
+      }
+    }
+  } catch {
+    prepared = { staticPolicies: source, names: /* @__PURE__ */ new Map() };
+  }
+  if (preparedPolicies.size >= PREPARED_CACHE_LIMIT) {
+    const oldest = preparedPolicies.keys().next().value;
+    if (oldest !== void 0) preparedPolicies.delete(oldest);
+  }
+  preparedPolicies.set(source, prepared);
+  return prepared;
+}
+function namedPolicies(ids, prepared) {
+  const list = Array.isArray(ids) ? ids.filter((id) => typeof id === "string") : [];
+  return list.map((id) => prepared.names.get(id) ?? { id, order: Number.MAX_SAFE_INTEGER }).sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map(({ id, reason }) => reason ? { id, reason } : { id });
+}
+function denyReason(deniedBy) {
+  if (deniedBy.length === 0) return "cedar_deny: no permit matched (default deny)";
+  return `cedar_deny: ${deniedBy.map((p) => p.reason ? `${p.id}: ${p.reason}` : p.id).join("; ")}`;
+}
 function onEvalError(reason, failClosed, extra) {
   return {
     allowed: !failClosed,
@@ -313,14 +412,18 @@ async function evaluateCedar(policySet, req, schema, options) {
       principal: { type: "Agent", id: agentId },
       action: { type: "Action", id: req.actionModel === "tool" ? req.tool : "MCP::Tool::call" },
       resource: { type: "Tool", id: req.tool },
-      context
+      // Only values Cedar can hold: a fraction, a null or an escape key in the
+      // input no longer makes the engine refuse the whole call (see cedarSafeValue).
+      context: cedarSafeContext(context)
     };
     const entities = buildEntities(req);
     const cedarSchema = schema?.schemaJson ?? null;
     let result;
+    let prepared = { staticPolicies: policySet.source, names: /* @__PURE__ */ new Map() };
     if (typeof cedarWasm.isAuthorized === "function") {
+      prepared = preparePolicies(cedarWasm, policySet.source);
       result = cedarWasm.isAuthorized({
-        policies: { staticPolicies: policySet.source },
+        policies: { staticPolicies: prepared.staticPolicies },
         entities,
         principal: authRequest.principal,
         action: authRequest.action,
@@ -337,8 +440,9 @@ async function evaluateCedar(policySet, req, schema, options) {
     } else {
       const cedarEngine = cedarWasm.default || cedarWasm;
       if (typeof cedarEngine.isAuthorized === "function") {
+        prepared = preparePolicies(cedarEngine, policySet.source);
         result = cedarEngine.isAuthorized({
-          policies: { staticPolicies: policySet.source },
+          policies: { staticPolicies: prepared.staticPolicies },
           entities,
           principal: authRequest.principal,
           action: authRequest.action,
@@ -362,12 +466,28 @@ async function evaluateCedar(policySet, req, schema, options) {
         { policy_errors: policyErrors.slice(0, 5), policy_digest: policySet.digest }
       );
     }
+    if (parsed.kind === "allow") {
+      return {
+        allowed: true,
+        reason: void 0,
+        metadata: {
+          policy_digest: policySet.digest,
+          ...parsed.matchedPolicies ? { matched_policies: namedPolicies(parsed.matchedPolicies, prepared).map((p) => p.id) } : {}
+        }
+      };
+    }
+    if (!parsed.matchedPolicies && parsed.diagnostics === void 0) {
+      return { allowed: false, reason: "cedar_deny", metadata: { policy_digest: policySet.digest } };
+    }
+    const deniedBy = namedPolicies(parsed.matchedPolicies, prepared);
     return {
-      allowed: parsed.kind === "allow",
-      reason: parsed.kind === "allow" ? void 0 : `cedar_deny${parsed.diagnostics ? ": " + parsed.diagnostics : ""}`,
+      allowed: false,
+      reason: denyReason(deniedBy),
       metadata: {
         policy_digest: policySet.digest,
-        ...parsed.matchedPolicies ? { matched_policies: parsed.matchedPolicies } : {}
+        matched_policies: deniedBy.map((p) => p.id),
+        denied_by: deniedBy,
+        default_deny: deniedBy.length === 0
       }
     };
   } catch (err) {

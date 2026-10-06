@@ -39,7 +39,7 @@ import type {
   TrustTier,
 } from './types.js';
 import { loadCedarPolicies, evaluateCedar, isCedarAvailable, runEvaluatorSelfTest, type CedarPolicySet } from './cedar-evaluator.js';
-import { loadStandardFile, checkAmount, personRequired, readAmount, heldIdFor, RecordReporter, type StandardGate } from './standard-gate.js';
+import { loadStandardFile, standardDecision, readAmount, heldIdFor, RecordReporter, type StandardGate } from './standard-gate.js';
 import { initSigning, signDecision, isSigningEnabled, getSignerInfo } from './signing.js';
 import { receiptHash } from './acta-envelope.js';
 import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
@@ -320,16 +320,13 @@ async function handlePreToolUse(
       if (!state.enforce) return null;
       return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: `[ScopeBlind] ${why}` } };
     };
-    if (std.tools && !std.tools.includes(toolName)) {
-      const r = refuse('standard_tool_not_allowed', `"${toolName}" is not among the tools the standard permits.`);
+    const verdict = standardDecision(std, toolName, input.toolInput);
+    if (verdict.decision === 'deny') {
+      const r = refuse(verdict.reason, `"${toolName}" refused by the standard: ${verdict.detail}.`);
       if (r) return r;
     } else {
-      const amount = checkAmount(std, input.toolInput);
-      if (!amount.ok) {
-        const r = refuse(amount.reason, `"${toolName}" refused by the standard: ${amount.detail}.`);
-        if (r) return r;
-      } else {
-        const person = personRequired(std, input.toolInput);
+      {
+        const person = verdict.decision === 'hold' ? { required: true as const, detail: verdict.detail } : { required: false as const };
         if (person.required) {
           const hid = heldIdFor(state.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
           const page = state.reporter ? `${new URL(state.reporter.url).origin}/standard?s=${state.reporter.sid}#held-${hid}` : '';
@@ -409,19 +406,30 @@ async function handlePreToolUse(
           plan_receipt_id: state.activePlanReceiptId || undefined,
         });
 
-        // A deny that teaches: name the policy file and the one command that
-        // fixes it, and distinguish default-deny (no permit matched) from an
-        // explicit forbid, so the operator knows where to look.
-        const isDefaultDeny = !reason || reason === 'cedar_deny' || /reason":\[\]/.test(reason);
+        // A deny that teaches: name the rule that matched and its reason (from
+        // its @id and @reason), the policy file, and the one command that fixes
+        // it, and distinguish default-deny (no permit matched) from an explicit
+        // forbid, so the agent and the operator know where to look.
+        const meta = (cedarDecision.metadata || {}) as { error?: boolean; denied_by?: Array<{ id: string; reason?: string }> };
+        const deniedBy = Array.isArray(meta.denied_by) ? meta.denied_by : [];
+        const isEngineError = meta.error === true;
+        const isDefaultDeny = !isEngineError && deniedBy.length === 0;
         const policyRef = state.cedarDir ? ` Policy: ${state.cedarDir}.` : '';
-        const howTo = isDefaultDeny
-          ? ` No permit matched (default-deny, fail-closed).${policyRef} Allow it: npx protect-mcp policy allow ${toolName}`
-          : ` Blocked by an explicit forbid rule.${policyRef} Review: npx protect-mcp policy show`;
+        const sentence = (text: string): string => (/[.!?]$/.test(text) ? text : `${text}.`);
+        const named = deniedBy.map((p) => (p.reason ? `${p.id}: ${p.reason}` : p.id)).join('; ');
+        const howTo = isEngineError
+          ? ` The policy could not be evaluated, so the gate fails closed: ${sentence(reason)}${policyRef}`
+          : isDefaultDeny
+            ? ` No permit matched (default-deny, fail-closed).${policyRef} Allow it: npx protect-mcp policy allow ${toolName}`
+            : ` Blocked by the forbid rule ${sentence(named)}${policyRef} Review: npx protect-mcp policy show`;
 
         if (denyCount === 1) {
           process.stderr.write(
-            `[PROTECT_MCP] Denied "${toolName}" (${isDefaultDeny ? 'default-deny' : 'forbid'}).\n` +
-            `  Allow with: npx protect-mcp policy allow ${toolName}\n`,
+            isEngineError
+              ? `[PROTECT_MCP] Denied "${toolName}" (policy error, fail-closed): ${reason}\n`
+              : isDefaultDeny
+                ? `[PROTECT_MCP] Denied "${toolName}" (default-deny).\n  Allow with: npx protect-mcp policy allow ${toolName}\n`
+                : `[PROTECT_MCP] Denied "${toolName}" (forbid: ${named}).\n  Review: npx protect-mcp policy show\n`,
           );
         }
 

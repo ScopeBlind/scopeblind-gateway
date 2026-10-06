@@ -1,0 +1,399 @@
+{
+ "type": "acta.connector-action.vectors.v1",
+ "profile": "draft-farley-acta-connector-action-00",
+ "gate_public_key": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+ "platform_keys": {
+  "sb:platform:vector-muse": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+ },
+ "vectors": [
+  {
+   "id": "unsigned-context",
+   "description": "The platform presented its grant without a signature. The gate recorded it as unsigned; nothing about the grant is established beyond the platform's word.",
+   "expect": {
+    "gate_signature": "valid",
+    "schema": "ok",
+    "with_platform_key": "absent",
+    "verdict_with_platform_key": "valid",
+    "verdict_without_platform_key": "valid",
+    "context_check": "unsigned"
+   },
+   "receipt": {
+    "payload": {
+     "type": "protectmcp:decision",
+     "tool_name": "prepare_repository_review",
+     "decision": "allow",
+     "reason": "default_allow",
+     "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "request_id": "vector-1",
+     "mode": "enforce",
+     "spec": "draft-farley-acta-signed-receipts-04",
+     "connector": {
+      "v": 1,
+      "context": {
+       "type": "acta:connector-context",
+       "platform": "meta.muse",
+       "agent": "agent-e8d36428",
+       "grant": {
+        "type": "task",
+        "id": "grant-42",
+        "purpose": "Prepare the client review of pull request 25",
+        "issued_at": "2026-09-20T05:44:36.339Z",
+        "expires_at": "2026-09-21T05:44:36.339Z"
+       },
+       "mandate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "issued_at": "2026-09-20T05:45:00.000Z"
+      },
+      "context_check": "unsigned",
+      "request_digest": "e231139d128e078265a3ca89e716498cd2231648bfd56508a61928e0205314af"
+     },
+     "issued_at": "2026-09-20T06:00:00.000Z",
+     "issuer_id": "sb:issuer:F25s3DdjXdCx"
+    },
+    "signature": {
+     "alg": "EdDSA",
+     "kid": "sb:issuer:F25s3DdjXdCx",
+     "sig": "9e6e264b7d825451b64ebef0ef8c580079d117054118ac77bcf15ffe9e459fdc294cbbd6560ee91d4f484bcb848b24a1c7d2dca4507145b8e0cf80fa514d4a03"
+    }
+   }
+  },
+  {
+   "id": "signed-context-valid-confirmed",
+   "description": "The platform signed the context, the gate held its key and verified it, and the service confirmed the effect with a readback digest.",
+   "expect": {
+    "gate_signature": "valid",
+    "schema": "ok",
+    "with_platform_key": "valid",
+    "verdict_with_platform_key": "valid",
+    "verdict_without_platform_key": "valid",
+    "context_check": "valid",
+    "effect": "confirmed"
+   },
+   "receipt": {
+    "payload": {
+     "type": "protectmcp:decision",
+     "tool_name": "prepare_repository_review",
+     "decision": "allow",
+     "reason": "default_allow",
+     "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "request_id": "vector-2",
+     "mode": "enforce",
+     "spec": "draft-farley-acta-signed-receipts-04",
+     "connector": {
+      "v": 1,
+      "context": {
+       "type": "acta:connector-context",
+       "platform": "meta.muse",
+       "agent": "agent-e8d36428",
+       "grant": {
+        "type": "task",
+        "id": "grant-42",
+        "purpose": "Prepare the client review of pull request 25",
+        "issued_at": "2026-09-20T05:44:36.339Z",
+        "expires_at": "2026-09-21T05:44:36.339Z"
+       },
+       "mandate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "issued_at": "2026-09-20T05:45:00.000Z",
+       "issuer_id": "sb:platform:vector-muse"
+      },
+      "context_check": "valid",
+      "request_digest": "e231139d128e078265a3ca89e716498cd2231648bfd56508a61928e0205314af",
+      "context_signature": {
+       "alg": "EdDSA",
+       "kid": "sb:platform:vector-muse",
+       "sig": "dce7d6cd80d5e6821b2d470c0b6f0de2b54c538ffdcf92bef053895f4fd4fc83ea5031263b3490d3056c4b520a520e7f2f19ed5cb4666087ddc71b8afce79c0c"
+      },
+      "platform_kid": "sb:platform:vector-muse",
+      "effect": {
+       "status": "confirmed",
+       "readback_digest": "59650437a0a164d6a69a94a3a2227e80b85ae6d1d37094fdffd7ab0defda586a",
+       "observed_at": "2026-09-20T06:09:00.000Z"
+      }
+     },
+     "issued_at": "2026-09-20T06:00:00.000Z",
+     "issuer_id": "sb:issuer:F25s3DdjXdCx"
+    },
+    "signature": {
+     "alg": "EdDSA",
+     "kid": "sb:issuer:F25s3DdjXdCx",
+     "sig": "f054957dd9c2250a158fb89d7564ce13df003f3b0a4e58c6ee2352ee58681b5de487c78883a469d91b21de4de16302b841dfd58452bb891f0a8a9a4f136c6507"
+    }
+   }
+  },
+  {
+   "id": "signed-context-unverifiable-at-the-gate",
+   "description": "The platform signed the context but the gate held no key for it, so it recorded unverifiable. A verifier that holds the key can still check the signature itself.",
+   "expect": {
+    "gate_signature": "valid",
+    "schema": "ok",
+    "with_platform_key": "valid",
+    "verdict_with_platform_key": "valid",
+    "verdict_without_platform_key": "valid",
+    "context_check": "unverifiable"
+   },
+   "receipt": {
+    "payload": {
+     "type": "protectmcp:decision",
+     "tool_name": "prepare_repository_review",
+     "decision": "allow",
+     "reason": "default_allow",
+     "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "request_id": "vector-3",
+     "mode": "enforce",
+     "spec": "draft-farley-acta-signed-receipts-04",
+     "connector": {
+      "v": 1,
+      "context": {
+       "type": "acta:connector-context",
+       "platform": "meta.muse",
+       "agent": "agent-e8d36428",
+       "grant": {
+        "type": "task",
+        "id": "grant-42",
+        "purpose": "Prepare the client review of pull request 25",
+        "issued_at": "2026-09-20T05:44:36.339Z",
+        "expires_at": "2026-09-21T05:44:36.339Z"
+       },
+       "mandate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "issued_at": "2026-09-20T05:45:00.000Z",
+       "issuer_id": "sb:platform:vector-muse"
+      },
+      "context_check": "unverifiable",
+      "request_digest": "e231139d128e078265a3ca89e716498cd2231648bfd56508a61928e0205314af",
+      "context_signature": {
+       "alg": "EdDSA",
+       "kid": "sb:platform:vector-muse",
+       "sig": "dce7d6cd80d5e6821b2d470c0b6f0de2b54c538ffdcf92bef053895f4fd4fc83ea5031263b3490d3056c4b520a520e7f2f19ed5cb4666087ddc71b8afce79c0c"
+      }
+     },
+     "issued_at": "2026-09-20T06:00:00.000Z",
+     "issuer_id": "sb:issuer:F25s3DdjXdCx"
+    },
+    "signature": {
+     "alg": "EdDSA",
+     "kid": "sb:issuer:F25s3DdjXdCx",
+     "sig": "06cd6ae24465f9c0d613cdca52594fcad0978973fbdc20d6235f349293151864a1776113cc0459019e216ac33084ef40ad2f21b9ecade2be41ed093baf9f1d02"
+    }
+   }
+  },
+  {
+   "id": "tampered-context-recorded-as-valid",
+   "description": "The recorded context differs from what the platform signed (the purpose was changed), yet the record claims the check was valid. A verifier with the platform key must refuse the receipt; without it the claim cannot be tested and is reported as unverifiable.",
+   "expect": {
+    "gate_signature": "valid",
+    "schema": "ok",
+    "with_platform_key": "invalid",
+    "verdict_with_platform_key": "invalid",
+    "verdict_without_platform_key": "valid",
+    "context_check": "valid"
+   },
+   "receipt": {
+    "payload": {
+     "type": "protectmcp:decision",
+     "tool_name": "prepare_repository_review",
+     "decision": "allow",
+     "reason": "default_allow",
+     "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "request_id": "vector-4",
+     "mode": "enforce",
+     "spec": "draft-farley-acta-signed-receipts-04",
+     "connector": {
+      "v": 1,
+      "context": {
+       "type": "acta:connector-context",
+       "platform": "meta.muse",
+       "agent": "agent-e8d36428",
+       "grant": {
+        "type": "task",
+        "id": "grant-42",
+        "purpose": "Merge whatever is open",
+        "issued_at": "2026-09-20T05:44:36.339Z",
+        "expires_at": "2026-09-21T05:44:36.339Z"
+       },
+       "mandate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "issued_at": "2026-09-20T05:45:00.000Z",
+       "issuer_id": "sb:platform:vector-muse"
+      },
+      "context_check": "valid",
+      "request_digest": "e231139d128e078265a3ca89e716498cd2231648bfd56508a61928e0205314af",
+      "context_signature": {
+       "alg": "EdDSA",
+       "kid": "sb:platform:vector-muse",
+       "sig": "dce7d6cd80d5e6821b2d470c0b6f0de2b54c538ffdcf92bef053895f4fd4fc83ea5031263b3490d3056c4b520a520e7f2f19ed5cb4666087ddc71b8afce79c0c"
+      },
+      "platform_kid": "sb:platform:vector-muse"
+     },
+     "issued_at": "2026-09-20T06:00:00.000Z",
+     "issuer_id": "sb:issuer:F25s3DdjXdCx"
+    },
+    "signature": {
+     "alg": "EdDSA",
+     "kid": "sb:issuer:F25s3DdjXdCx",
+     "sig": "b124190abb5fc4582303d74f3e37afbf96a3d8bc00388c5acafe5674c9d0270d7c20cd66532eb338e7e19512cde1473d9b388bf9ddabafd8f964331a7e74730e"
+    }
+   }
+  },
+  {
+   "id": "grant-type-outside-the-profile",
+   "description": "The grant type is not one of the five the profile admits. The member fails the schema, so the receipt is invalid whatever keys the verifier holds.",
+   "expect": {
+    "gate_signature": "valid",
+    "schema": "invalid",
+    "with_platform_key": "absent",
+    "verdict_with_platform_key": "invalid",
+    "verdict_without_platform_key": "invalid",
+    "context_check": "unsigned"
+   },
+   "receipt": {
+    "payload": {
+     "type": "protectmcp:decision",
+     "tool_name": "prepare_repository_review",
+     "decision": "allow",
+     "reason": "default_allow",
+     "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "request_id": "vector-5",
+     "mode": "enforce",
+     "spec": "draft-farley-acta-signed-receipts-04",
+     "connector": {
+      "v": 1,
+      "context": {
+       "type": "acta:connector-context",
+       "platform": "meta.muse",
+       "agent": "agent-e8d36428",
+       "grant": {
+        "type": "forever",
+        "id": "grant-42",
+        "purpose": "Prepare the client review of pull request 25",
+        "issued_at": "2026-09-20T05:44:36.339Z",
+        "expires_at": "2026-09-21T05:44:36.339Z"
+       },
+       "mandate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "issued_at": "2026-09-20T05:45:00.000Z"
+      },
+      "context_check": "unsigned",
+      "request_digest": "e231139d128e078265a3ca89e716498cd2231648bfd56508a61928e0205314af"
+     },
+     "issued_at": "2026-09-20T06:00:00.000Z",
+     "issuer_id": "sb:issuer:F25s3DdjXdCx"
+    },
+    "signature": {
+     "alg": "EdDSA",
+     "kid": "sb:issuer:F25s3DdjXdCx",
+     "sig": "50fec2cbd97c1be827bafbcd3ddca6331975165e25e8d1ca7adc6d79e509de8b1a29e65c79dac2fc352d0e08c1aa92d935b462dc6d65c070a8c7b51f0aee2007"
+    }
+   }
+  },
+  {
+   "id": "confirmed-effect-without-readback",
+   "description": "The effect says confirmed but carries no readback digest. Confirmation without a readback is a claim, not a record; the schema refuses it.",
+   "expect": {
+    "gate_signature": "valid",
+    "schema": "invalid",
+    "with_platform_key": "valid",
+    "verdict_with_platform_key": "invalid",
+    "verdict_without_platform_key": "invalid",
+    "context_check": "valid",
+    "effect": "confirmed"
+   },
+   "receipt": {
+    "payload": {
+     "type": "protectmcp:decision",
+     "tool_name": "prepare_repository_review",
+     "decision": "allow",
+     "reason": "default_allow",
+     "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "request_id": "vector-6",
+     "mode": "enforce",
+     "spec": "draft-farley-acta-signed-receipts-04",
+     "connector": {
+      "v": 1,
+      "context": {
+       "type": "acta:connector-context",
+       "platform": "meta.muse",
+       "agent": "agent-e8d36428",
+       "grant": {
+        "type": "task",
+        "id": "grant-42",
+        "purpose": "Prepare the client review of pull request 25",
+        "issued_at": "2026-09-20T05:44:36.339Z",
+        "expires_at": "2026-09-21T05:44:36.339Z"
+       },
+       "mandate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "issued_at": "2026-09-20T05:45:00.000Z",
+       "issuer_id": "sb:platform:vector-muse"
+      },
+      "context_check": "valid",
+      "request_digest": "e231139d128e078265a3ca89e716498cd2231648bfd56508a61928e0205314af",
+      "context_signature": {
+       "alg": "EdDSA",
+       "kid": "sb:platform:vector-muse",
+       "sig": "dce7d6cd80d5e6821b2d470c0b6f0de2b54c538ffdcf92bef053895f4fd4fc83ea5031263b3490d3056c4b520a520e7f2f19ed5cb4666087ddc71b8afce79c0c"
+      },
+      "platform_kid": "sb:platform:vector-muse",
+      "effect": {
+       "status": "confirmed",
+       "observed_at": "2026-09-20T06:09:00.000Z"
+      }
+     },
+     "issued_at": "2026-09-20T06:00:00.000Z",
+     "issuer_id": "sb:issuer:F25s3DdjXdCx"
+    },
+    "signature": {
+     "alg": "EdDSA",
+     "kid": "sb:issuer:F25s3DdjXdCx",
+     "sig": "6722f3f620c50e9de11241d4adcc31cf2fc208f91c4275c76b5481d431ea5e2dbdf0686c5e5885c4c5dd2f720125594ae9ab20400249956287df5cdb4b075f03"
+    }
+   }
+  },
+  {
+   "id": "unsigned-context-recorded-as-valid",
+   "description": "No signature was presented, yet the record claims a valid check and names a platform key. The schema refuses it.",
+   "expect": {
+    "gate_signature": "valid",
+    "schema": "invalid",
+    "with_platform_key": "absent",
+    "verdict_with_platform_key": "invalid",
+    "verdict_without_platform_key": "invalid",
+    "context_check": "valid"
+   },
+   "receipt": {
+    "payload": {
+     "type": "protectmcp:decision",
+     "tool_name": "prepare_repository_review",
+     "decision": "allow",
+     "reason": "default_allow",
+     "policy_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "request_id": "vector-7",
+     "mode": "enforce",
+     "spec": "draft-farley-acta-signed-receipts-04",
+     "connector": {
+      "v": 1,
+      "context": {
+       "type": "acta:connector-context",
+       "platform": "meta.muse",
+       "agent": "agent-e8d36428",
+       "grant": {
+        "type": "task",
+        "id": "grant-42",
+        "purpose": "Prepare the client review of pull request 25",
+        "issued_at": "2026-09-20T05:44:36.339Z",
+        "expires_at": "2026-09-21T05:44:36.339Z"
+       },
+       "mandate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+       "issued_at": "2026-09-20T05:45:00.000Z"
+      },
+      "context_check": "valid",
+      "request_digest": "e231139d128e078265a3ca89e716498cd2231648bfd56508a61928e0205314af",
+      "platform_kid": "sb:platform:vector-muse"
+     },
+     "issued_at": "2026-09-20T06:00:00.000Z",
+     "issuer_id": "sb:issuer:F25s3DdjXdCx"
+    },
+    "signature": {
+     "alg": "EdDSA",
+     "kid": "sb:issuer:F25s3DdjXdCx",
+     "sig": "be2874ecbd87b3e1d42b52d178faaed795590fb6ebc1facb21a19e685890fff6e7052a10cf2bddae29dbc7ecbf44c9cb51111d0053fbddc7c1648afa22071400"
+    }
+   }
+  }
+ ]
+}

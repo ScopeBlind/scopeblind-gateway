@@ -1,3 +1,5 @@
+import { STARTER_POLICY } from './starter-policy.js';
+
 export interface PolicyPack {
   id: string;
   name: string;
@@ -171,6 +173,14 @@ forbid(principal, action == Action::"MCP::Tool::call", resource) when {
 ${defaultPermit}`;
 
 export const POLICY_PACKS: PolicyPack[] = [
+  {
+    // The starter policy, byte for byte (the same text as --policy builtin:starter and init --starter).
+    id: 'coding-starter',
+    name: 'Coding Starter',
+    description: 'Allows a coding agent everything except seven named forbids: recursive delete of / or home, force-push to main, credential reads, downloads piped to a shell, and writes to system, profile, credential or agent-control files.',
+    recommendedMode: 'enforce-ready',
+    files: [{ path: 'coding-starter.cedar', contents: STARTER_POLICY }],
+  },
   {
     id: 'research-safe',
     name: 'Research Safe',

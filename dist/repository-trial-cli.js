@@ -188,7 +188,8 @@ function validRepositoryRecord(v, kind) {
   const common = ["type", "task_id", "task_digest"];
   if (kind === "claim") return exact2(v, [...common, "reviewer_key", "name", "issued_at"]) && REPOSITORY_HEX.test(String(v.reviewer_key)) && text(v.name, 60) && time2(v.issued_at);
   const note = (v2) => typeof v2 === "string" && v2.length <= 600;
-  if (kind === "approval") return exact2(v, [...common, "proposal_digest", "role", "principal_key", "decision", "issued_at", "expires_at", "note"]) && REPOSITORY_HEX.test(String(v.proposal_digest)) && REPOSITORY_HEX.test(String(v.principal_key)) && ["owner", "reviewer"].includes(String(v.role)) && ["approve", "reject"].includes(String(v.decision)) && time2(v.issued_at) && time2(v.expires_at) && note(v.note) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 9e5;
+  if (kind === "approval") return exact2(v, [...common, "proposal_digest", "role", "principal_key", "decision", "issued_at", "expires_at", "note"]) && REPOSITORY_HEX.test(String(v.proposal_digest)) && REPOSITORY_HEX.test(String(v.principal_key)) && ["owner", "reviewer"].includes(String(v.role)) && ["approve", "reject"].includes(String(v.decision)) && time2(v.issued_at) && time2(v.expires_at) && note(v.note) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 7 * 864e5;
+  if (kind === "revocation") return exact2(v, [...common, "proposal_digest", "approval_digest", "role", "principal_key", "issued_at", "note"]) && REPOSITORY_HEX.test(String(v.proposal_digest)) && REPOSITORY_HEX.test(String(v.approval_digest)) && REPOSITORY_HEX.test(String(v.principal_key)) && ["owner", "reviewer"].includes(String(v.role)) && time2(v.issued_at) && note(v.note);
   if (kind === "execution") return exact2(v, [...common, "operation_id", "receiver_attempt_id", "proposal_digest", "owner_approval_digest", "reviewer_approval_digest", "receiver_key", "action", "issued_at", "expires_at"]) && [v.operation_id, v.receiver_attempt_id].every((x) => REPOSITORY_ID.test(String(x))) && [v.proposal_digest, v.owner_approval_digest, v.reviewer_approval_digest, v.receiver_key].every((x) => REPOSITORY_HEX.test(String(x))) && v.action === "github.updateRefs" && time2(v.issued_at) && time2(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 12e4;
   if (kind === "outcome") return exact2(v, [...common, "operation_id", "proposal_digest", "execution_digest", "status", "observed_base_sha", "readback", "observed_at", "note"], ["github_request_id"]) && REPOSITORY_ID.test(String(v.operation_id)) && [v.proposal_digest, v.execution_digest].every((x) => REPOSITORY_HEX.test(String(x))) && ["confirmed", "failed", "unknown"].includes(String(v.status)) && (v.observed_base_sha === null || REPOSITORY_SHA.test(String(v.observed_base_sha))) && ["exact_ref", "descendant_ref", "not_confirmed"].includes(String(v.readback)) && (v.status === "confirmed" ? v.readback !== "not_confirmed" && v.observed_base_sha !== null : v.readback === "not_confirmed") && time2(v.observed_at) && note(v.note) && (v.github_request_id === void 0 || text(v.github_request_id, 200));
   return exact2(v, [...common, "outcome_digest", "reviewer_key", "decision", "issued_at", "note"]) && [v.outcome_digest, v.reviewer_key].every((x) => REPOSITORY_HEX.test(String(x))) && ["accept", "request_changes"].includes(String(v.decision)) && time2(v.issued_at) && note(v.note);
@@ -203,7 +204,7 @@ async function verifyRepositoryEvidence(value, pin) {
   };
   try {
     const e = value, s = e.state?.payload, t = s?.task?.payload;
-    check(object(e) && exact2(e, ["type", "state"]) && e.type === "scopeblind.repository.evidence.v1" && validRepositoryEnvelope(e.state) && !!s && s.type === "scopeblind.repository.state.v1" && exact2(s, ["type", "task", "reviewer", "proposal", "approvals", "execution", "outcome", "acceptance", "status", "revision", "observed_at"]) && Number.isSafeInteger(s.revision) && s.revision > 0 && time2(s.observed_at) && await verify(e.state, pins.authority_key), "Service state signature or shape is invalid");
+    check(object(e) && exact2(e, ["type", "state"]) && e.type === "scopeblind.repository.evidence.v1" && validRepositoryEnvelope(e.state) && !!s && s.type === "scopeblind.repository.state.v1" && exact2(s, ["type", "task", "reviewer", "proposal", "approvals", "execution", "outcome", "acceptance", "status", "revision", "observed_at"], ["revocations"]) && Number.isSafeInteger(s.revision) && s.revision > 0 && time2(s.observed_at) && await verify(e.state, pins.authority_key), "Service state signature or shape is invalid");
     check(validRepositoryEnvelope(s.task) && validRepositoryTask(t) && await verify(s.task, t.owner_key) && t.authority_key === pins.authority_key && (!pins.owner_key || pins.owner_key === t.owner_key) && (!pins.receiver_key || pins.receiver_key === t.receiver_key) && Date.parse(s.observed_at) >= Date.parse(t.issued_at), "Task or pinned owner/receiver is invalid");
     const reviewer = s.reviewer?.payload;
     if (s.reviewer) check(validRepositoryHumanEnvelope(s.reviewer) && validRepositoryRecord(reviewer, "claim") && reviewer.task_id === t.id && reviewer.task_digest === s.task.digest && ![t.owner_key, t.receiver_key, t.authority_key].includes(reviewer.reviewer_key) && await verifyRepositoryHuman(s.reviewer, reviewer.reviewer_key, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && (!pins.reviewer_key || pins.reviewer_key === reviewer.reviewer_key) && Date.parse(reviewer.issued_at) >= Date.parse(t.issued_at) && Date.parse(reviewer.issued_at) < Date.parse(t.expires_at), "Reviewer role is invalid");
@@ -212,6 +213,13 @@ async function verifyRepositoryEvidence(value, pin) {
     for (const approval of s.approvals) {
       const a = approval.payload, key5 = a.role === "owner" ? t.owner_key : reviewer?.reviewer_key;
       check(!!s.proposal && validRepositoryHumanEnvelope(approval) && validRepositoryRecord(a, "approval") && a.principal_key === key5 && a.task_id === t.id && a.task_digest === s.task.digest && a.proposal_digest === s.proposal.digest && await verifyRepositoryHuman(approval, key5, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && Date.parse(a.issued_at) >= Date.parse(s.proposal.payload.observed_at) && Date.parse(a.expires_at) <= Date.parse(t.expires_at), "Exact proposal approval is invalid");
+    }
+    if (s.revocations !== void 0) {
+      check(Array.isArray(s.revocations) && s.revocations.length >= 1 && s.revocations.length <= 64, "Revocation list is invalid");
+      for (const revocation of s.revocations ?? []) {
+        const r = revocation.payload, key5 = r.role === "owner" ? t.owner_key : reviewer?.reviewer_key;
+        check(validRepositoryHumanEnvelope(revocation) && validRepositoryRecord(r, "revocation") && r.task_id === t.id && r.task_digest === s.task.digest && r.principal_key === key5 && !!key5 && await verifyRepositoryHuman(revocation, key5, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && Date.parse(r.issued_at) >= Date.parse(t.issued_at) && !s.approvals.some((a) => a.digest === r.approval_digest), "A withdrawn approval is invalid or still counted");
+      }
     }
     if (s.execution) {
       const x = s.execution.payload, owner = s.approvals.find((a) => a.payload.role === "owner"), review = s.approvals.find((a) => a.payload.role === "reviewer");
@@ -255,8 +263,16 @@ function safeRepositoryPreviewUrl(value) {
     return false;
   }
 }
+function validCriterionLink(e) {
+  if (!e || typeof e !== "object") return false;
+  const v = e;
+  if (v.kind === "preview") return shape(v, ["kind"]);
+  if (v.kind === "file") return shape(v, ["kind", "path"]) && typeof v.path === "string" && v.path.length >= 1 && v.path.length <= 400 && !v.path.includes("..") && !v.path.startsWith("/") && !/[\u0000-\u001f]/.test(v.path);
+  if (v.kind === "check") return shape(v, ["kind", "name", "app_id"]) && line(v.name, 100) && num(v.app_id);
+  return false;
+}
 function content(v) {
-  if (!text2(v.brief, 4e3) || !Array.isArray(v.success_criteria) || v.success_criteria.length < 1 || v.success_criteria.length > 20 || !v.success_criteria.every((c) => shape(c, ["id", "text"]) && id2(c.id) && text2(c.text, 600)) || new Set(v.success_criteria.map((c) => c.id)).size !== v.success_criteria.length) return false;
+  if (!text2(v.brief, 4e3) || !Array.isArray(v.success_criteria) || v.success_criteria.length < 1 || v.success_criteria.length > 20 || !v.success_criteria.every((c) => shape(c, ["id", "text"], ["evidence"]) && id2(c.id) && text2(c.text, 600) && (c.evidence === void 0 || Array.isArray(c.evidence) && c.evidence.length <= 12 && c.evidence.every(validCriterionLink) && new Set(c.evidence.map((e) => JSON.stringify(e))).size === c.evidence.length)) || new Set(v.success_criteria.map((c) => c.id)).size !== v.success_criteria.length) return false;
   const p = v.preview_policy;
   return p === void 0 || shape(p, ["environment", "check", "allowed_origins", "required"]) && line(p.environment, 100) && shape(p.check, ["name", "app_id"]) && line(p.check.name, 100) && num(p.check.app_id) && typeof p.required === "boolean" && Array.isArray(p.allowed_origins) && p.allowed_origins.length > 0 && p.allowed_origins.length <= 8 && new Set(p.allowed_origins).size === p.allowed_origins.length && p.allowed_origins.every((origin) => typeof origin === "string" && safeRepositoryPreviewUrl(origin + "/") && new URL(origin).origin === origin);
 }
@@ -278,7 +294,7 @@ function validRepositoryReviewPacket(v, brief, proposal) {
   return a === void 0 || shape(a, ["id", "name", "sha256", "workflow_run_id", "head_sha", "expires_at"]) && num(a.id) && line(a.name, 200) && hex(a.sha256) && num(a.workflow_run_id) && a.head_sha === v.head_sha && at(a.expires_at) && Date.parse(a.expires_at) > Date.parse(String(v.observed_at));
 }
 function validRepositoryReviewDecision(v, brief, packet, approval) {
-  return shape(v, ["type", "task_id", "task_digest", "brief_digest", "packet_digest", "proposal_digest", "approval_digest", "principal_key", "role", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.review-decision.v1" && v.task_id === brief.payload.task_id && v.task_digest === brief.payload.task_digest && v.brief_digest === brief.digest && v.packet_digest === packet.digest && v.proposal_digest === packet.payload.proposal_digest && v.approval_digest === approval.digest && v.principal_key === approval.payload.principal_key && v.role === approval.payload.role && v.issued_at === approval.payload.issued_at && v.expires_at === approval.payload.expires_at && at(v.issued_at) && at(v.expires_at) && Date.parse(v.issued_at) >= Date.parse(packet.payload.observed_at) && Date.parse(v.expires_at) <= Date.parse(packet.payload.expires_at) && (!brief.payload.preview_policy?.required || packet.payload.preview.status === "available" || approval.payload.decision === "reject");
+  return shape(v, ["type", "task_id", "task_digest", "brief_digest", "packet_digest", "proposal_digest", "approval_digest", "principal_key", "role", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.review-decision.v1" && v.task_id === brief.payload.task_id && v.task_digest === brief.payload.task_digest && v.brief_digest === brief.digest && v.packet_digest === packet.digest && v.proposal_digest === packet.payload.proposal_digest && v.approval_digest === approval.digest && v.principal_key === approval.payload.principal_key && v.role === approval.payload.role && v.issued_at === approval.payload.issued_at && v.expires_at === approval.payload.expires_at && at(v.issued_at) && at(v.expires_at) && Date.parse(v.issued_at) >= Date.parse(packet.payload.observed_at) && Date.parse(v.issued_at) <= Date.parse(packet.payload.expires_at) && (!brief.payload.preview_policy?.required || packet.payload.preview.status === "available" || approval.payload.decision === "reject");
 }
 function validRepositoryReviewFeedback(v, brief, packet) {
   return shape(v, ["type", "id", "task_id", "task_digest", "basis_digest", "packet_digest", "requester_key", "criterion_ids", "message", "requested_changes", "issued_at"], ["mandate_digest"]) && v.type === "scopeblind.repository.review-feedback.v1" && id2(v.id) && v.task_id === brief.payload.task_id && v.task_digest === brief.payload.task_digest && hex(v.basis_digest) && v.packet_digest === packet.digest && hex(v.requester_key) && (v.mandate_digest === void 0 || hex(v.mandate_digest)) && Array.isArray(v.criterion_ids) && v.criterion_ids.length <= 20 && new Set(v.criterion_ids).size === v.criterion_ids.length && v.criterion_ids.every((cid) => brief.payload.success_criteria.some((c) => c.id === cid)) && text2(v.message, 2e3) && text2(v.requested_changes, 4e3, true) && at(v.issued_at) && Date.parse(v.issued_at) >= Date.parse(packet.payload.observed_at);
@@ -768,8 +784,20 @@ function validRepositoryCodingStop(v) {
 function validRepositoryCodingPlan(v, m) {
   return object4(v) && exact4(v, ["type", "job_id", "request_digest", "mandate_digest", "source_head_sha", "source_base_sha", "branch", "commit_sha", "tree_sha", "files", "tests", "build", "preview_digest", "model_calls", "reserved_tokens", "issued_at"]) && v.type === "scopeblind.repository.coding-plan.v1" && id5(v.job_id) && [v.request_digest, v.mandate_digest, v.preview_digest].every(key3) && [v.source_head_sha, v.source_base_sha, v.commit_sha, v.tree_sha].every(hex40) && v.branch === "scopeblind/code/" + v.job_id && Array.isArray(v.files) && v.files.length > 0 && v.files.length <= m.max_changed_files && new Set(v.files.map((f) => object4(f) ? f.path : null)).size === v.files.length && v.files.every((f) => object4(f) && exact4(f, ["path", "before_sha", "after_sha", "bytes"]) && codingSafePath(f.path) && pathAllowed(f.path, m.allowed_paths) && (f.before_sha === null || hex40(f.before_sha)) && (f.after_sha === null || hex40(f.after_sha)) && f.before_sha !== f.after_sha && number(f.bytes, 0, m.max_changed_bytes)) && v.files.reduce((n, f) => n + Number(f.bytes), 0) <= m.max_changed_bytes && [v.tests, v.build].every((t) => object4(t) && exact4(t, ["command_digest", "exit_code", "output_sha256", "duration_ms"]) && key3(t.command_digest) && key3(t.output_sha256) && t.exit_code === 0 && number(t.duration_ms, 0, m.max_seconds * 1e3)) && number(v.model_calls, 1, m.max_model_calls) && number(v.reserved_tokens, 4096, m.max_tokens) && at5(v.issued_at);
 }
+var WORKFLOW_FILE = /^[A-Za-z0-9_.-]+\.ya?ml$/;
+function validRepositoryCodingWorkflowRun(v, repository) {
+  if (!object4(v) || !exact4(v, ["id", "attempt", "workflow_ref", "workflow_sha", "repository"]) || !number(v.id, 1, Number.MAX_SAFE_INTEGER) || !number(v.attempt, 1, 1e4) || !hex40(v.workflow_sha) || v.repository !== repository || typeof v.workflow_ref !== "string" || v.workflow_ref.length > 300) return false;
+  const at8 = v.workflow_ref.indexOf("@");
+  if (at8 < 0) return false;
+  const path = v.workflow_ref.slice(0, at8), ref = v.workflow_ref.slice(at8 + 1);
+  return path.startsWith(`${repository}/.github/workflows/`) && WORKFLOW_FILE.test(path.slice(`${repository}/.github/workflows/`.length)) && /^refs\/(heads|tags)\/[^\s]{1,200}$/.test(ref);
+}
+function workflowRunFromEnvironment(env, repository) {
+  const id7 = Number(env.GITHUB_RUN_ID), attempt = Number(env.GITHUB_RUN_ATTEMPT), run = { id: id7, attempt, workflow_ref: env.GITHUB_WORKFLOW_REF ?? "", workflow_sha: env.GITHUB_WORKFLOW_SHA ?? "", repository: env.GITHUB_REPOSITORY ?? "" };
+  return validRepositoryCodingWorkflowRun(run, repository) ? run : void 0;
+}
 function validRepositoryCodingResult(v) {
-  return object4(v) && exact4(v, ["type", "job_id", "plan_digest", "publication_digest", "repository", "branch", "head_sha", "pull_number", "pull_url", "preview_url", "preview_digest", "deployment_id", "deployment_status_id", "deployment_environment", "check", "observed_at"]) && v.type === "scopeblind.repository.coding-result.v1" && id5(v.job_id) && [v.plan_digest, v.publication_digest, v.preview_digest].every(key3) && hex40(v.head_sha) && typeof v.repository === "string" && typeof v.branch === "string" && number(v.pull_number, 1, Number.MAX_SAFE_INTEGER) && v.pull_url === `https://github.com/${v.repository}/pull/${v.pull_number}` && typeof v.preview_url === "string" && v.preview_url.startsWith("https://") && number(v.deployment_id, 1, Number.MAX_SAFE_INTEGER) && number(v.deployment_status_id, 1, Number.MAX_SAFE_INTEGER) && v.deployment_environment === "ScopeBlind coding preview" && object4(v.check) && exact4(v.check, ["id", "name", "app_id", "head_sha", "conclusion"]) && number(v.check.id, 1, Number.MAX_SAFE_INTEGER) && v.check.name === "ScopeBlind isolated coding checks" && v.check.app_id === 15368 && v.check.head_sha === v.head_sha && v.check.conclusion === "success" && at5(v.observed_at);
+  return object4(v) && exact4(v, ["type", "job_id", "plan_digest", "publication_digest", "repository", "branch", "head_sha", "pull_number", "pull_url", "preview_url", "preview_digest", "deployment_id", "deployment_status_id", "deployment_environment", "check", "observed_at"], ["workflow_run"]) && (v.workflow_run === void 0 || typeof v.repository === "string" && validRepositoryCodingWorkflowRun(v.workflow_run, v.repository)) && v.type === "scopeblind.repository.coding-result.v1" && id5(v.job_id) && [v.plan_digest, v.publication_digest, v.preview_digest].every(key3) && hex40(v.head_sha) && typeof v.repository === "string" && typeof v.branch === "string" && number(v.pull_number, 1, Number.MAX_SAFE_INTEGER) && v.pull_url === `https://github.com/${v.repository}/pull/${v.pull_number}` && typeof v.preview_url === "string" && v.preview_url.startsWith("https://") && number(v.deployment_id, 1, Number.MAX_SAFE_INTEGER) && number(v.deployment_status_id, 1, Number.MAX_SAFE_INTEGER) && v.deployment_environment === "ScopeBlind coding preview" && object4(v.check) && exact4(v.check, ["id", "name", "app_id", "head_sha", "conclusion"]) && number(v.check.id, 1, Number.MAX_SAFE_INTEGER) && v.check.name === "ScopeBlind isolated coding checks" && v.check.app_id === 15368 && v.check.head_sha === v.head_sha && v.check.conclusion === "success" && at5(v.observed_at);
 }
 
 // src/coordination-repository-coding-evidence.ts
@@ -826,7 +854,8 @@ async function verifyRepositoryCodingEvidence(value, authorityKey) {
   } catch (error) {
     errors.push(error instanceof Error ? error.message : "Malformed coding evidence");
   }
-  return { valid: errors.length === 0, errors, published: errors.length === 0 && published, authorityPinned: !!authorityKey, limitations: ["Code-edit authority permits only bounded work and a new pull request; no merge or recipient acceptance is inherited.", "The service attests live membership, revocation, spending reservations and the publication gate. The worker attests model work, isolated test results and GitHub readbacks.", "A content-addressed preview identifies the published bundle; verification does not execute it or prove that the code satisfies the brief."] };
+  const unnamedRun = !!(object5(value) && object5(value.job) && object5(value.job.payload) && value.job.payload.result && !value.job.payload.result.payload.workflow_run);
+  return { valid: errors.length === 0, errors, published: errors.length === 0 && published, authorityPinned: !!authorityKey, limitations: [...unnamedRun ? ["The result does not name the workflow run and attempt that produced it; results from protect-mcp 0.29.0 onward do."] : [], "Code-edit authority permits only bounded work and a new pull request; no merge or recipient acceptance is inherited.", "The service attests live membership, revocation, spending reservations and the publication gate. The worker attests model work, isolated test results and GitHub readbacks.", "A content-addressed preview identifies the published bundle; verification does not execute it or prove that the code satisfies the brief."] };
 }
 
 // src/repository-review-preview.ts
@@ -1083,9 +1112,9 @@ var RepositoryReceiver = class {
     requireValue(state.payload.status === "approved" && state.payload.proposal && Date.parse(state.payload.task.payload.expires_at) > Date.now(), "repository_joint_approval_required");
     const reviewed = await this.review(taskId);
     if (reviewed.review) {
-      requireValue(reviewed.repository_task.payload.proposal?.digest === state.payload.proposal.digest && reviewed.review.payload.decisions.length === 2 && reviewed.review.payload.packet && Date.parse(reviewed.review.payload.packet.payload.expires_at) > Date.now(), "repository_review_joint_decision_required");
+      requireValue(reviewed.repository_task.payload.proposal?.digest === state.payload.proposal.digest && reviewed.review.payload.decisions.length === 2 && !!reviewed.review.payload.packet, "repository_review_joint_decision_required");
     }
-    if (reviewed.review) await this.checkReviewObservation(reviewed.review, state.payload.proposal);
+    if (reviewed.review) await this.checkReviewObservation(reviewed.review, state.payload.proposal, false);
     const approved = state.payload.proposal, observed = await this.snapshot(state.payload.task);
     requireValue(await repositorySnapshotDigest(approved.payload) === await repositorySnapshotDigest(observed), "repository_approval_stale");
     const operationId = `repo-${taskId}`, attemptId = crypto.randomUUID();
@@ -1095,7 +1124,7 @@ var RepositoryReceiver = class {
     requireValue(Date.parse(execution.payload.expires_at) > Date.now(), "repository_execution_expired");
     let sent = false, requestId = "", note = "";
     try {
-      if (reviewed.review) await this.checkReviewObservation(reviewed.review, approved);
+      if (reviewed.review) await this.checkReviewObservation(reviewed.review, approved, false);
       const final = await this.snapshot(state.payload.task);
       requireValue(await repositorySnapshotDigest(final) === await repositorySnapshotDigest(approved.payload), "repository_approval_stale");
       requireValue(Date.parse(execution.payload.expires_at) > Date.now() && state.payload.approvals.every((a) => Date.parse(a.payload.expires_at) > Date.now()), "repository_execution_expired");
@@ -1111,8 +1140,8 @@ var RepositoryReceiver = class {
     }
     return this.reconcileState(state, note, requestId);
   }
-  async checkReviewObservation(review, proposal) {
-    requireValue(review.payload.packet && Date.parse(review.payload.packet.payload.expires_at) > Date.now(), "repository_review_packet_expired");
+  async checkReviewObservation(review, proposal, requireFresh = true) {
+    requireValue(review.payload.packet && (!requireFresh || Date.parse(review.payload.packet.payload.expires_at) > Date.now()), "repository_review_packet_expired");
     const observed = await observeRepositoryReviewPreview((path) => this.github(path), this.config.repository, review.payload.brief, proposal);
     requireValue(canonical(observed) === canonical(review.payload.packet.payload.preview), "repository_review_preview_changed");
   }
@@ -1310,11 +1339,14 @@ var RepositoryCodingRunner = class {
     this.githubToken = githubToken;
     this.fetcher = fetcher;
     this.sandboxFactory = sandboxFactory;
+    this.workflowRun = workflowRunFromEnvironment(process.env, config.repository);
     const u = new URL(config.endpoint);
     need(u.protocol === "https:" && u.pathname === "/api/coordination" && !u.search && !u.hash && !u.username && !u.password && config.worker_key === identity.publicKey && githubToken, "coding_config_invalid");
   }
   publicationUntil = 0;
   stopped = false;
+  /** The Actions run this worker is inside, when it is inside one; bound into every result it signs. */
+  workflowRun;
   async rpc(action, id7, body = {}) {
     const request = await sign(makeRequest(action, id7, body), this.identity), r = await this.fetcher(this.config.endpoint, { method: "POST", headers: { "content-type": "application/json", "x-scopeblind-action": action }, body: JSON.stringify({ request }), redirect: "error", signal: AbortSignal.timeout(55e3) }), v = await bounded(r);
     need(r.ok && v.ok === true, typeof v.error === "string" ? v.error : "coding_service_refused");
@@ -1348,7 +1380,7 @@ var RepositoryCodingRunner = class {
   }
   async result(j, pull, preview, deployment, status2, check) {
     need(check.name === "ScopeBlind isolated coding checks" && check.app?.id === 15368 && check.head_sha === j.plan.payload.commit_sha && check.conclusion === "success", "coding_check_invalid");
-    const result = await sign({ type: "scopeblind.repository.coding-result.v1", job_id: j.request.payload.id, plan_digest: j.plan.digest, publication_digest: j.publication.digest, repository: this.config.repository, branch: j.plan.payload.branch, head_sha: j.plan.payload.commit_sha, pull_number: pull.number, pull_url: `https://github.com/${this.config.repository}/pull/${pull.number}`, preview_url: preview.url, preview_digest: preview.digest, deployment_id: deployment.id, deployment_status_id: status2.id, deployment_environment: "ScopeBlind coding preview", check: { id: check.id, name: "ScopeBlind isolated coding checks", app_id: 15368, head_sha: j.plan.payload.commit_sha, conclusion: "success" }, observed_at: (/* @__PURE__ */ new Date()).toISOString() }, this.identity);
+    const result = await sign({ type: "scopeblind.repository.coding-result.v1", job_id: j.request.payload.id, plan_digest: j.plan.digest, publication_digest: j.publication.digest, repository: this.config.repository, branch: j.plan.payload.branch, head_sha: j.plan.payload.commit_sha, pull_number: pull.number, pull_url: `https://github.com/${this.config.repository}/pull/${pull.number}`, preview_url: preview.url, preview_digest: preview.digest, deployment_id: deployment.id, deployment_status_id: status2.id, deployment_environment: "ScopeBlind coding preview", check: { id: check.id, name: "ScopeBlind isolated coding checks", app_id: 15368, head_sha: j.plan.payload.commit_sha, conclusion: "success" }, observed_at: (/* @__PURE__ */ new Date()).toISOString(), ...this.workflowRun ? { workflow_run: this.workflowRun } : {} }, this.identity);
     await this.rpc("repository_coding_complete", j.request.payload.workspace_id, { job_id: j.request.payload.id, lease_id: j.lease_id, result });
   }
   async runOne(jobIdFilter) {

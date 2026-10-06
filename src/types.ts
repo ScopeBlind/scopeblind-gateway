@@ -12,6 +12,8 @@ export interface ProtectPolicy {
   external?: ExternalPDPConfig;
   /** Directory containing .cedar policy files (when policy_engine is "cedar") */
   cedar_dir?: string;
+  /** Platform keys the gate trusts for signed connector contexts: key identifier to hex Ed25519 public key (connector-action profile) */
+  connector_platform_keys?: Record<string, string>;
 }
 
 export interface ToolPolicy {
@@ -180,6 +182,7 @@ export interface JsonRpcNotification {
 // ============================================================
 
 import type { StandardGate, RecordReporter } from './standard-gate.js';
+import type { ConnectorRecord } from './connector-action.js';
 
 export interface DecisionLog {
   /** Schema version */
@@ -194,6 +197,8 @@ export interface DecisionLog {
   standard?: { request_id: string; digest: string };
   /** A named person's signed decision on the standard's page, attached to the receipt of the call it decided */
   approval?: { hid: string; approver_key_id: string; digest: string; page: string };
+  /** The grant an agent platform presented with this call, what the gate checked about it, and the digest of the call as received (connector-action profile) */
+  connector?: ConnectorRecord;
   /** SHA-256 digest of the canonicalized policy file */
   policy_digest: string;
   /** Which policy engine made the decision */

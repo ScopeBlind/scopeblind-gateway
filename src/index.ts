@@ -83,7 +83,9 @@ export { generateCedarSchema, generateSchemaStub } from './cedar-schema.js';
 export type { McpToolDescription, CedarSchemaResult, SchemaGeneratorConfig } from './cedar-schema.js';
 
 // ── Cedar Evaluator ──────────────────────────────────────────
-export { evaluateCedar, loadCedarPolicies, isCedarAvailable, runEvaluatorSelfTest, policySetFromSource } from './cedar-evaluator.js';
+export { evaluateCedar, loadCedarPolicies, isCedarAvailable, runEvaluatorSelfTest, policySetFromSource, cedarSafeValue, cedarSafeContext, checkCedarPolicyText } from './cedar-evaluator.js';
+export { STARTER_POLICY, STARTER_POLICY_VERSION, STARTER_POLICY_FILE, STARTER_CONTAIN_TEMPLATE, BUILTIN_POLICY_PREFIX, starterRules, annotatedRules, cedarLikeLiteral, renderContainRules, builtinPolicyNames, isBuiltinPolicySpec, resolveBuiltinPolicy } from './starter-policy.js';
+export type { AnnotatedRule } from './starter-policy.js';
 export type { CedarPolicySet, CedarEvalRequest, CedarSchema, CedarEvalOptions, SelfTestReport, SelfTestCase } from './cedar-evaluator.js';
 export type { HookPattern } from './hook-patterns.js';
 

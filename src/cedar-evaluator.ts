@@ -189,6 +189,181 @@ function buildEntities(req: CedarEvalRequest): Array<Record<string, unknown>> {
 }
 
 // ============================================================
+// Inputs Cedar can hold
+// ============================================================
+
+/** Keys Cedar's JSON format reads as typed escapes rather than data. */
+const CEDAR_ESCAPE_KEYS = new Set(['__entity', '__extn', '__expr']);
+/** Cedar's Long is a signed 64-bit integer; the engine refuses a whole number at or beyond 2^63 either way. */
+const CEDAR_LONG_LIMIT = 2 ** 63;
+
+/**
+ * A value as Cedar can hold it. Cedar has no null, no fractions and no integers
+ * beyond 64 bits, and the engine refuses the whole request when the context
+ * carries one, so before 0.31.0 a single `"zoom": 1.5` denied the call under
+ * every policy, permit-all included. Here a null (or undefined) is dropped, in a
+ * list as in a record; a whole number inside Cedar's Long range stays a number;
+ * any other number becomes the string JavaScript writes for it (1.5 becomes
+ * "1.5", 1e20 becomes "100000000000000000000"); and the `__entity`, `__extn` and
+ * `__expr` keys are dropped, so tool input is never read as a Cedar entity
+ * reference or extension value. Strings and booleans pass unchanged. Returns
+ * undefined for a value that is dropped.
+ */
+export function cedarSafeValue(value: unknown): unknown {
+  if (value === null || value === undefined) return undefined;
+  switch (typeof value) {
+    case 'string':
+    case 'boolean':
+      return value;
+    case 'number':
+      return Number.isInteger(value) && Math.abs(value) < CEDAR_LONG_LIMIT ? value : String(value);
+    case 'bigint':
+      return value >= BigInt(Number.MIN_SAFE_INTEGER) && value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value.toString();
+    case 'object': {
+      if (Array.isArray(value)) {
+        const items: unknown[] = [];
+        for (const item of value) {
+          const safe = cedarSafeValue(item);
+          if (safe !== undefined) items.push(safe);
+        }
+        return items;
+      }
+      const record: Record<string, unknown> = {};
+      for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+        if (CEDAR_ESCAPE_KEYS.has(key)) continue;
+        const safe = cedarSafeValue(item);
+        // Defined, not assigned: a "__proto__" key in the input stays an ordinary
+        // field, as JSON.parse made it, instead of becoming the record's prototype.
+        if (safe !== undefined) Object.defineProperty(record, key, { value: safe, enumerable: true, writable: true, configurable: true });
+      }
+      return record;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/** A request context as Cedar can hold it (see cedarSafeValue). */
+export function cedarSafeContext(context: Record<string, unknown>): Record<string, unknown> {
+  return cedarSafeValue(context) as Record<string, unknown>;
+}
+
+// ============================================================
+// Rules by name
+// ============================================================
+
+interface PolicyName {
+  /** The id the decision reports: the rule's @id, or Cedar's positional policyN. */
+  id: string;
+  /** The rule's @reason annotation, on one line. */
+  reason?: string;
+  /** Position in the policy text, so several matched rules are reported in source order. */
+  order: number;
+}
+
+interface PreparedPolicies {
+  /** What the engine evaluates: the text itself, or one entry per rule keyed by its name. */
+  staticPolicies: string | Record<string, string>;
+  names: Map<string, PolicyName>;
+}
+
+const preparedPolicies = new Map<string, PreparedPolicies>();
+const PREPARED_CACHE_LIMIT = 32;
+
+/** Collapse a text to one line and bound it, for reasons that reach stderr and receipts. */
+function oneLine(text: string, max = 400): string {
+  const line = text.replace(/\s+/g, ' ').trim();
+  return line.length > max ? `${line.slice(0, max - 3)}...` : line;
+}
+
+/**
+ * Key each rule by its `@id`, so a decision names the rule that made it instead
+ * of Cedar's positional "policy2", and keep its `@reason` for the deny.
+ * cedar-wasm's policySetTextToParts splits the text into one verbatim slice per
+ * rule, sorted by the positional ids the parser gave them (policy0, policy1,
+ * policy10, policy11, policy2, ... as strings), so position k of the parts is
+ * the k-th of those ids in string order. A rule without an @id, or one whose @id
+ * repeats, looks positional or is "__proto__", keeps its positional id.
+ * Evaluation is unchanged: the same rules, word for word, under names. A text
+ * the engine cannot split (or one with templates, or parts that are not
+ * verbatim slices, or any rule that would not get its own key) is evaluated
+ * whole, as before, and its rules report positional ids.
+ */
+function preparePolicies(engine: any, source: string): PreparedPolicies {
+  const cached = preparedPolicies.get(source);
+  if (cached) return cached;
+  let prepared: PreparedPolicies = { staticPolicies: source, names: new Map() };
+  try {
+    if (typeof engine?.policySetTextToParts === 'function' && typeof engine?.policyToJson === 'function') {
+      const parts = engine.policySetTextToParts(source);
+      const texts: unknown = parts?.policies;
+      const templates: unknown = parts?.policy_templates;
+      // Only verbatim slices of the source are evaluated by name: if an engine
+      // ever returned rewritten text, the rules would no longer be the ones written.
+      if (parts?.type === 'success' && Array.isArray(texts) && texts.length > 0 && (!Array.isArray(templates) || templates.length === 0)
+        && texts.every((text) => typeof text === 'string' && source.includes(text))) {
+        const positional = texts.map((_, i) => `policy${i}`).sort();
+        const annotations = texts.map((text) => {
+          const json = engine.policyToJson(text);
+          return json?.type === 'success' ? ((json.json?.annotations ?? {}) as Record<string, unknown>) : null;
+        });
+        if (annotations.every((a) => a !== null)) {
+          const idOf = (a: Record<string, unknown> | null): string => (a && typeof a.id === 'string' ? a.id : '');
+          const counts = new Map<string, number>();
+          for (const a of annotations) {
+            const id = idOf(a);
+            if (id) counts.set(id, (counts.get(id) || 0) + 1);
+          }
+          const keyed: Record<string, string> = Object.create(null);
+          const names = new Map<string, PolicyName>();
+          texts.forEach((text: string, k: number) => {
+            const a = annotations[k];
+            const id = idOf(a);
+            const usable = id.trim() !== '' && counts.get(id) === 1 && !/^policy\d+$/.test(id) && id !== '__proto__';
+            const key = usable ? id : positional[k];
+            const reason = a && typeof a.reason === 'string' && a.reason.trim() !== '' ? oneLine(a.reason) : undefined;
+            keyed[key] = text;
+            names.set(key, { id: key, ...(reason ? { reason } : {}), order: Number(positional[k].slice('policy'.length)) });
+          });
+          // Every rule must reach the engine under its own key. If any did not,
+          // evaluate the text whole rather than risk a forbid going missing.
+          if (Object.keys(keyed).length === texts.length && names.size === texts.length) {
+            prepared = { staticPolicies: { ...keyed }, names };
+          }
+        }
+      }
+    }
+  } catch {
+    prepared = { staticPolicies: source, names: new Map() };
+  }
+  if (preparedPolicies.size >= PREPARED_CACHE_LIMIT) {
+    const oldest = preparedPolicies.keys().next().value;
+    if (oldest !== undefined) preparedPolicies.delete(oldest);
+  }
+  preparedPolicies.set(source, prepared);
+  return prepared;
+}
+
+/** The rules a decision names, in source order, each with its @reason when it has one. */
+function namedPolicies(ids: unknown, prepared: PreparedPolicies): Array<{ id: string; reason?: string }> {
+  const list = Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [];
+  return list
+    .map((id) => prepared.names.get(id) ?? { id, order: Number.MAX_SAFE_INTEGER })
+    .sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map(({ id, reason }) => (reason ? { id, reason } : { id }));
+}
+
+/**
+ * The deny reason: the forbid rules that matched, by @id and @reason
+ * (`cedar_deny: starter.read-secret-file: Reads a credential file ...`), or
+ * `cedar_deny: no permit matched (default deny)` when no rule permitted the call.
+ */
+function denyReason(deniedBy: Array<{ id: string; reason?: string }>): string {
+  if (deniedBy.length === 0) return 'cedar_deny: no permit matched (default deny)';
+  return `cedar_deny: ${deniedBy.map((p) => (p.reason ? `${p.id}: ${p.reason}` : p.id)).join('; ')}`;
+}
+
+// ============================================================
 // Evaluation
 // ============================================================
 
@@ -256,7 +431,9 @@ export async function evaluateCedar(
       principal: { type: 'Agent', id: agentId },
       action: { type: 'Action', id: req.actionModel === 'tool' ? req.tool : 'MCP::Tool::call' },
       resource: { type: 'Tool', id: req.tool },
-      context,
+      // Only values Cedar can hold: a fraction, a null or an escape key in the
+      // input no longer makes the engine refuse the whole call (see cedarSafeValue).
+      context: cedarSafeContext(context),
     };
 
     const entities = buildEntities(req);
@@ -268,10 +445,12 @@ export async function evaluateCedar(
     // The WASM module exports different APIs depending on version.
     // We support both the newer `isAuthorized` and older `checkAuthorization`.
     let result: any;
+    let prepared: PreparedPolicies = { staticPolicies: policySet.source, names: new Map() };
 
     if (typeof cedarWasm.isAuthorized === 'function') {
+      prepared = preparePolicies(cedarWasm, policySet.source);
       result = cedarWasm.isAuthorized({
-        policies: { staticPolicies: policySet.source },
+        policies: { staticPolicies: prepared.staticPolicies },
         entities,
         principal: authRequest.principal,
         action: authRequest.action,
@@ -289,8 +468,9 @@ export async function evaluateCedar(
       // Fallback: try the default export
       const cedarEngine = cedarWasm.default || cedarWasm;
       if (typeof cedarEngine.isAuthorized === 'function') {
+        prepared = preparePolicies(cedarEngine, policySet.source);
         result = cedarEngine.isAuthorized({
-          policies: { staticPolicies: policySet.source },
+          policies: { staticPolicies: prepared.staticPolicies },
           entities,
           principal: authRequest.principal,
           action: authRequest.action,
@@ -322,12 +502,31 @@ export async function evaluateCedar(
       );
     }
 
+    // Name the rules that decided: a deny says which forbid matched, by its
+    // @id, with its @reason, so the agent learns why and the receipt says so.
+    if (parsed.kind === 'allow') {
+      return {
+        allowed: true,
+        reason: undefined,
+        metadata: {
+          policy_digest: policySet.digest,
+          ...(parsed.matchedPolicies ? { matched_policies: namedPolicies(parsed.matchedPolicies, prepared).map((p) => p.id) } : {}),
+        },
+      };
+    }
+    if (!parsed.matchedPolicies && parsed.diagnostics === undefined) {
+      // A legacy engine answer with no diagnostics: nothing to name.
+      return { allowed: false, reason: 'cedar_deny', metadata: { policy_digest: policySet.digest } };
+    }
+    const deniedBy = namedPolicies(parsed.matchedPolicies, prepared);
     return {
-      allowed: parsed.kind === 'allow',
-      reason: parsed.kind === 'allow' ? undefined : `cedar_deny${parsed.diagnostics ? ': ' + parsed.diagnostics : ''}`,
+      allowed: false,
+      reason: denyReason(deniedBy),
       metadata: {
         policy_digest: policySet.digest,
-        ...(parsed.matchedPolicies ? { matched_policies: parsed.matchedPolicies } : {}),
+        matched_policies: deniedBy.map((p) => p.id),
+        denied_by: deniedBy,
+        default_deny: deniedBy.length === 0,
       },
     };
   } catch (err) {
@@ -397,6 +596,25 @@ function extractPolicyErrors(result: any): string[] {
  */
 export async function isCedarAvailable(): Promise<boolean> {
   return ensureCedarWasm();
+}
+
+/**
+ * Check that a policy text parses, before a command writes it. `checked` is
+ * false when the engine is not installed here, so the caller can say the text
+ * went unchecked rather than claim it parses.
+ */
+export async function checkCedarPolicyText(source: string): Promise<{ checked: boolean; ok: boolean; error?: string }> {
+  if (!(await ensureCedarWasm())) return { checked: false, ok: true };
+  const engine = typeof cedarWasm.checkParsePolicySet === 'function' ? cedarWasm : cedarWasm.default;
+  if (!engine || typeof engine.checkParsePolicySet !== 'function') return { checked: false, ok: true };
+  try {
+    const answer = engine.checkParsePolicySet({ staticPolicies: source });
+    if (answer?.type === 'success') return { checked: true, ok: true };
+    const first = Array.isArray(answer?.errors) ? answer.errors[0] : undefined;
+    return { checked: true, ok: false, error: oneLine(String(first?.message ?? JSON.stringify(answer))) };
+  } catch (err) {
+    return { checked: true, ok: false, error: err instanceof Error ? oneLine(err.message) : 'unknown parse error' };
+  }
 }
 
 // ============================================================

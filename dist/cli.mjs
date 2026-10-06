@@ -8,16 +8,25 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-TAOHHOM3.mjs";
+} from "./chunk-2CLG27IZ.mjs";
 import {
   POLICY_PACKS,
   getPolicyPack,
   policyPackIds
-} from "./chunk-CIQDC3FN.mjs";
+} from "./chunk-HBK47UIZ.mjs";
 import {
   ProtectGateway,
   validateCredentials
-} from "./chunk-BQK6J5FY.mjs";
+} from "./chunk-PXYYGA4G.mjs";
+import {
+  STARTER_POLICY,
+  STARTER_POLICY_VERSION,
+  annotatedRules,
+  builtinPolicyNames,
+  isBuiltinPolicySpec,
+  renderContainRules,
+  resolveBuiltinPolicy
+} from "./chunk-WE2AYP6X.mjs";
 import {
   approvePolicyProposalWithDirectSignature,
   createDirectControllerApproval,
@@ -30,21 +39,22 @@ import {
   publicMandateStatus,
   snapshotFromDirectory,
   verifyMandateRegistry
-} from "./chunk-66IKCPUU.mjs";
+} from "./chunk-S2D67RLW.mjs";
 import {
   RecordReporter,
   buildActionReadback,
   loadStandardFile
-} from "./chunk-MZOD6A6U.mjs";
+} from "./chunk-7NEKA6GE.mjs";
 import {
   loadPolicy
-} from "./chunk-5MQK42SD.mjs";
+} from "./chunk-EB7LESYM.mjs";
 import {
   initSigning,
   signDecision
-} from "./chunk-GLPAPBKX.mjs";
+} from "./chunk-LXAQG3UR.mjs";
 import {
   buildPolicyBundle,
+  checkCedarPolicyText,
   digestCedarDir,
   evaluateCedar,
   isCedarAvailable,
@@ -53,7 +63,7 @@ import {
   runEvaluatorSelfTest,
   shortPolicyLabel,
   verifyPolicyBundle
-} from "./chunk-YNNVGCWP.mjs";
+} from "./chunk-P2YFFXF2.mjs";
 import {
   canonicalize,
   chainLink,
@@ -95,6 +105,8 @@ Usage:
   protect-mcp policy-packs list|show|install [pack] [--dir ./cedar] [--force]
   protect-mcp connect
   protect-mcp init [--dir <path>]
+  protect-mcp init --starter [--contain] [--force] [--dir <path>]   # ./protect.cedar from the starter policy, plus the plugin's signing key
+  protect-mcp evaluate --policy <file.cedar|builtin:starter> --tool <name> --input <json>   # exit 2 = deny, reason on stderr
   protect-mcp sample [--dir <path>] [--force]
   protect-mcp policy list|show|allow <tool>|deny <tool>|path
   protect-mcp mandate init|status|history|propose|approve|export|continuity|verify [--cedar <dir>]
@@ -148,6 +160,8 @@ Commands:
   mandate           Require dual control, signed policy heads, automatic expiry, and optional external continuity anchors
   connect           Create a ScopeBlind sandbox dashboard and configure receipt upload
   init              Generate config template, Ed25519 keypair, and sample policy
+                    (--starter: write ./protect.cedar from the starter policy and ./protect-mcp.key;
+                    --contain adds the opt-in only-inside-this-folder rules)
   demo              Start a demo server wrapped with protect-mcp (see receipts instantly)
   doctor            Check your setup: keys, policies, verifier, API connectivity
   trace <id>        Visualize the receipt DAG from a given receipt_id (ASCII tree)
@@ -169,6 +183,8 @@ Examples:
   protect-mcp serve                           # Start hook server (Claude Code)
   protect-mcp serve --enforce --cedar ./cedar  # Enforce Cedar policies
   protect-mcp init-hooks                       # One-command Claude Code setup
+  protect-mcp init --starter                   # Starter policy at ./protect.cedar + signing key
+  protect-mcp evaluate --policy builtin:starter --tool Bash --input '{"command":"git push --force origin main"}'
   protect-mcp quickstart
   protect-mcp quickstart --connect               # Quickstart + create dashboard
   protect-mcp wrap -- node my-server.js          # Print wrapped MCP command
@@ -254,6 +270,10 @@ function parseArgs(argv) {
   return { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId };
 }
 async function handleInit(argv) {
+  if (argv.includes("--starter") || argv.includes("--contain")) {
+    await handleInitStarter(argv);
+    return;
+  }
   const { writeFileSync, existsSync, mkdirSync } = await import("fs");
   const { join } = await import("path");
   let dir = process.cwd();
@@ -365,6 +385,93 @@ ${bold("Quick demo:")}
 Shadow mode is the default \u2014 all tool calls are logged and nothing is blocked.
 Add --enforce when ready to block policy violations.
 `);
+}
+function firstSentence(text) {
+  return text.split(/(?<=\.)\s+/)[0] || text;
+}
+async function handleInitStarter(argv) {
+  const dir = resolveCli(flagValue(argv, "--dir") || process.cwd());
+  const force = argv.includes("--force");
+  const contain = argv.includes("--contain");
+  const policyPath = joinCli(dir, "protect.cedar");
+  const keyPath = joinCli(dir, "protect-mcp.key");
+  const gitignorePath = joinCli(dir, ".gitignore");
+  const out = (line = "") => {
+    process.stdout.write(`${line}
+`);
+  };
+  const fail = (message) => {
+    process.stderr.write(`protect-mcp init --starter: ${message}
+`);
+    process.exit(1);
+  };
+  if (!existsSyncCli(dir) || !statSyncCli(dir).isDirectory()) fail(`${dir} is not a folder`);
+  let policyText = STARTER_POLICY;
+  if (contain) {
+    try {
+      policyText = `${STARTER_POLICY}
+${renderContainRules(dir, homedirCli())}`;
+    } catch (err) {
+      fail(err instanceof Error ? err.message : String(err));
+    }
+  }
+  const parsed = await checkCedarPolicyText(policyText);
+  if (!parsed.ok) fail(`the policy did not parse (${parsed.error}); nothing was written`);
+  const version = await pkgVersion();
+  out();
+  out(bold("protect-mcp init --starter"));
+  out("\u2500".repeat(55));
+  out();
+  const policyExisted = existsSyncCli(policyPath);
+  if (policyExisted && !force) {
+    out(`  ${yellow("\u2022")} ${policyPath} already exists, so it was left as it is.`);
+    out(`    Pass --force to replace it with the starter${contain ? " and the --contain rules" : ""}.`);
+  } else {
+    writeFileSyncCli(policyPath, policyText);
+    out(`  ${green("\u2713")} ${policyPath}${policyExisted ? " (replaced: --force)" : ""}`);
+    out(`    The starter policy, v${STARTER_POLICY_VERSION}${contain ? ", with the --contain rules" : ""}. Every tool call is allowed except`);
+    out("    these, and a forbid always wins:");
+    const rules = annotatedRules(policyText).filter((rule) => rule.reason !== "");
+    const width = Math.max(...rules.map((rule) => rule.id.length));
+    for (const rule of rules) out(`      ${rule.id.padEnd(width)}  ${firstSentence(rule.reason)}`);
+    if (contain) out(`    The --contain rules allow writes under ${dir}, /tmp, /var/folders and Claude's memory and plans.`);
+    if (!parsed.checked) out(dim("    The Cedar engine is not installed here, so the text was not parsed before it was written."));
+  }
+  out();
+  if (existsSyncCli(keyPath)) {
+    out(`  ${green("\u2713")} ${keyPath} (existing key kept; it is never replaced)`);
+  } else {
+    const { randomBytes } = await import("crypto");
+    const { ed25519 } = await import("@noble/curves/ed25519");
+    const { bytesToHex } = await import("@noble/hashes/utils");
+    const privateKey = randomBytes(32);
+    const publicKey = bytesToHex(ed25519.getPublicKey(privateKey));
+    writeFileSyncCli(keyPath, JSON.stringify({
+      privateKey: bytesToHex(privateKey),
+      publicKey,
+      kid: "generated",
+      generated_at: (/* @__PURE__ */ new Date()).toISOString(),
+      warning: "KEEP THIS FILE SECRET. Never commit to version control."
+    }, null, 2) + "\n", { mode: 384, flag: "wx" });
+    out(`  ${green("\u2713")} ${keyPath} (Ed25519 key that signs receipts; keep it secret)`);
+    out(`    Public key: ${publicKey}`);
+  }
+  const ignore = existsSyncCli(gitignorePath) ? readFileSyncCli(gitignorePath, "utf-8") : "";
+  if (ignore.split(/\r?\n/).some((line) => line.trim() === "/protect-mcp.key" || line.trim() === "protect-mcp.key")) {
+    out(`  ${green("\u2713")} ${gitignorePath} already lists the key`);
+  } else {
+    appendFileSyncCli(gitignorePath, `${ignore !== "" && !ignore.endsWith("\n") ? "\n" : ""}/protect-mcp.key
+`);
+    out(`  ${green("\u2713")} ${gitignorePath} lists /protect-mcp.key`);
+  }
+  out();
+  out("  Shell rules match the command text, so they are a guardrail for an agent working");
+  out("  in good faith, not a sandbox: a reworded command can get past them. A denied call");
+  out("  exits 2 and prints the rule and its reason on stderr. The file is yours to edit.");
+  out();
+  out(`  Check a call:  ${dim(`npx protect-mcp@${version} evaluate --policy ./protect.cedar --tool Bash --input '{"command":"git push --force origin main"}'`)}`);
+  if (!contain) out(`  Keep writes inside this folder too:  ${dim(`npx protect-mcp@${version} init --starter --contain --force`)} (rewrites protect.cedar)`);
+  out();
 }
 async function handleDemo() {
   const { existsSync } = await import("fs");
@@ -3939,7 +4046,9 @@ ${bold("protect-mcp init-hooks")}
     writeFileSync(cedarPath, generateSampleCedarPolicy());
     process.stdout.write(`  ${green("\u2713")} ${cedarPath}
 `);
-    process.stdout.write(`    Edit to customize tool permissions. Cedar deny is AUTHORITATIVE.
+    process.stdout.write(`    The starter policy: every tool call is allowed except seven named forbids, and a forbid always wins.
+`);
+    process.stdout.write(`    Edit it to fit your project: npx protect-mcp policy show
 
 `);
   } else {
@@ -4062,17 +4171,30 @@ function flagValue(argv, name) {
   const i = argv.indexOf(name);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : void 0;
 }
+function builtinPolicySet(spec) {
+  const builtin = resolveBuiltinPolicy(spec);
+  return builtin ? policySetFromSource(builtin.source, builtin.spec) : null;
+}
 function loadPolicyArg(argv) {
   const cedarDir = flagValue(argv, "--cedar");
   const policyFile = flagValue(argv, "--policy");
   try {
-    if (cedarDir) return loadCedarPolicies(cedarDir);
+    if (cedarDir) return isBuiltinPolicySpec(cedarDir) ? builtinPolicySet(cedarDir) : loadCedarPolicies(cedarDir);
+    if (isBuiltinPolicySpec(policyFile)) return builtinPolicySet(policyFile);
     if (policyFile && existsSyncCli(policyFile)) {
       return policySetFromSource(readFileSyncCli(policyFile, "utf-8"), basenameCli(policyFile));
     }
   } catch {
   }
   return null;
+}
+function missingPolicyDetail(argv) {
+  const spec = flagValue(argv, "--cedar") ?? flagValue(argv, "--policy");
+  if (isBuiltinPolicySpec(spec)) return `there is no built-in policy ${spec} (available: ${builtinPolicyNames().join(", ")})`;
+  return spec ? `no policy at ${spec}` : "no --policy or --cedar was given";
+}
+function reasonLine(reason) {
+  return reason.replace(/\s+/g, " ").trim();
 }
 async function readHookStdin() {
   if (process.stdin.isTTY) return null;
@@ -4096,6 +4218,8 @@ function mapHookPayload(j) {
 function emitDecision(format, allowed, reason) {
   if (format === "hermes") {
     process.stdout.write(JSON.stringify(allowed ? {} : { decision: "block", reason }) + "\n");
+    if (!allowed) process.stderr.write(`protect-mcp denied: ${reasonLine(reason)}
+`);
     process.exit(0);
   }
   if (allowed) {
@@ -4109,7 +4233,7 @@ function emitDecision(format, allowed, reason) {
   } else if (format === "claude") {
     process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `protect-mcp denied: ${reason}` } }) + "\n");
   }
-  process.stderr.write(`protect-mcp denied: ${reason}
+  process.stderr.write(`protect-mcp denied: ${reasonLine(reason)}
 `);
   process.exit(2);
 }
@@ -4131,8 +4255,9 @@ async function handleEvaluate(argv) {
   const policySet = loadPolicyArg(argv);
   if (!policySet) {
     if (failOnMissing) {
-      if (format) emitDecision(format, false, "policy not found (fail-closed)");
-      process.stderr.write("protect-mcp evaluate: policy not found; denying (fail-closed). Pass --fail-on-missing-policy false to allow.\n");
+      if (format) emitDecision(format, false, `policy not found (fail-closed): ${missingPolicyDetail(argv)}`);
+      process.stderr.write(`protect-mcp evaluate: policy not found (${missingPolicyDetail(argv)}); denying (fail-closed). Pass --fail-on-missing-policy false to allow.
+`);
       process.exit(2);
     }
     process.stderr.write(`protect-mcp evaluate: no policy found${flagValue(argv, "--cedar") ? ` at ${flagValue(argv, "--cedar")}` : flagValue(argv, "--policy") ? ` at ${flagValue(argv, "--policy")}` : ""}; allowing because --fail-on-missing-policy false is set. Nothing is being enforced.
@@ -4160,6 +4285,8 @@ async function handleEvaluate(argv) {
   const decision = await evaluateCedar(policySet, { tool, tier: "unknown", context, toolInput: input, actionModel }, void 0, { failClosed: true });
   if (format) emitDecision(format, decision.allowed, decision.reason || (decision.allowed ? "allowed" : "denied by policy"));
   process.stdout.write(JSON.stringify({ allowed: decision.allowed, reason: decision.reason, policy_digest: policySet.digest }) + "\n");
+  if (!decision.allowed) process.stderr.write(`protect-mcp denied: ${reasonLine(decision.reason || "denied by policy")}
+`);
   process.exit(decision.allowed ? 0 : 2);
 }
 async function handleSign(argv) {
@@ -4239,7 +4366,18 @@ async function handleSign(argv) {
     let decisionValue = "allow";
     let reasonCode = "post_execution_receipt";
     if (cedarDir) {
-      const policySet = loadCedarPolicies(resolveCli(cedarDir));
+      let policySet;
+      if (isBuiltinPolicySpec(cedarDir)) {
+        const builtin = builtinPolicySet(cedarDir);
+        if (!builtin) {
+          process.stderr.write(`protect-mcp sign: ${missingPolicyDetail(["--cedar", cedarDir])}
+`);
+          process.exit(2);
+        }
+        policySet = builtin;
+      } else {
+        policySet = loadCedarPolicies(resolveCli(cedarDir));
+      }
       let ctx = {};
       if (contextRaw) {
         try {
@@ -4888,23 +5026,23 @@ async function main() {
     return;
   }
   if (args[0] === "repository") {
-    await (await import("./repository-setup-DWMSTCGK.mjs")).runRepositoryCommand(args.slice(1));
+    await (await import("./repository-setup-XGCPRIDP.mjs")).runRepositoryCommand(args.slice(1));
     return;
   }
   if (args[0] === "coordination" && args[1] === "agent") {
-    await (await import("./coordination-agent-server-FRWXB7C6.mjs")).runCoordinationAgent(args.slice(2));
+    await (await import("./coordination-agent-server-W3OFGOJE.mjs")).runCoordinationAgent(args.slice(2));
     return;
   }
   if (args[0] === "coordination" && args[1] === "pair") {
-    await (await import("./coordination-pair-cli-AXT2MNZA.mjs")).runCoordinationPair(args.slice(2));
+    await (await import("./coordination-pair-cli-FWMJOOOZ.mjs")).runCoordinationPair(args.slice(2));
     return;
   }
   if (args[0] === "coordination" && args[1] === "setup") {
-    (await import("./coordination-pair-cli-AXT2MNZA.mjs")).runCoordinationSetup(args.slice(2));
+    (await import("./coordination-pair-cli-FWMJOOOZ.mjs")).runCoordinationSetup(args.slice(2));
     return;
   }
   if (args[0] === "coordination") {
-    await (await import("./coordination-server-EZQ56266.mjs")).runCoordinationServer(args.slice(1));
+    await (await import("./coordination-server-FOUCMCAF.mjs")).runCoordinationServer(args.slice(1));
     return;
   }
   if (args[0] === "serve") {
@@ -4980,12 +5118,12 @@ async function main() {
     return;
   }
   if (args[0] === "onboard") {
-    const { handleOnboard } = await import("./onboard-BK7L3XYP.mjs");
+    const { handleOnboard } = await import("./onboard-7LG76ADN.mjs");
     await handleOnboard(args.slice(1));
     return;
   }
   if (args[0] === "offboard") {
-    const { handleOffboard } = await import("./onboard-BK7L3XYP.mjs");
+    const { handleOffboard } = await import("./onboard-7LG76ADN.mjs");
     await handleOffboard(args.slice(1));
     return;
   }
@@ -5046,7 +5184,7 @@ async function main() {
     return;
   }
   if (args[0] === "coverage") {
-    const { handleCoverage } = await import("./coverage-L4PY7W4A.mjs");
+    const { handleCoverage } = await import("./coverage-UWDTGHAM.mjs");
     await handleCoverage(args.slice(1));
     process.exit(process.exitCode || 0);
   }
@@ -5221,7 +5359,7 @@ async function main() {
   if (useHttp) {
     const portIdx = args.indexOf("--port");
     const httpPort = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 3e3;
-    const { startHttpTransport } = await import("./http-transport-HWPJ6ETZ.mjs");
+    const { startHttpTransport } = await import("./http-transport-QBVNCWBE.mjs");
     startHttpTransport({ port: httpPort, config, serverCommand: childCommand, cedarPolicySet: cedarPolicySet ?? void 0 });
     return;
   }

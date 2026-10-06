@@ -48,26 +48,26 @@ var require_util = __commonJS({
       }
       util2.assertNever = assertNever;
       util2.arrayToEnum = (items) => {
-        const obj5 = {};
+        const obj6 = {};
         for (const item of items) {
-          obj5[item] = item;
+          obj6[item] = item;
         }
-        return obj5;
+        return obj6;
       };
-      util2.getValidEnumValues = (obj5) => {
-        const validKeys = util2.objectKeys(obj5).filter((k) => typeof obj5[obj5[k]] !== "number");
+      util2.getValidEnumValues = (obj6) => {
+        const validKeys = util2.objectKeys(obj6).filter((k) => typeof obj6[obj6[k]] !== "number");
         const filtered = {};
         for (const k of validKeys) {
-          filtered[k] = obj5[k];
+          filtered[k] = obj6[k];
         }
         return util2.objectValues(filtered);
       };
-      util2.objectValues = (obj5) => {
-        return util2.objectKeys(obj5).map(function(e) {
-          return obj5[e];
+      util2.objectValues = (obj6) => {
+        return util2.objectKeys(obj6).map(function(e) {
+          return obj6[e];
         });
       };
-      util2.objectKeys = typeof Object.keys === "function" ? (obj5) => Object.keys(obj5) : (object8) => {
+      util2.objectKeys = typeof Object.keys === "function" ? (obj6) => Object.keys(obj6) : (object8) => {
         const keys2 = [];
         for (const key5 in object8) {
           if (Object.prototype.hasOwnProperty.call(object8, key5)) {
@@ -197,8 +197,8 @@ var require_ZodError = __commonJS({
       "not_multiple_of",
       "not_finite"
     ]);
-    var quotelessJson = (obj5) => {
-      const json3 = JSON.stringify(obj5, null, 2);
+    var quotelessJson = (obj6) => {
+      const json3 = JSON.stringify(obj6, null, 2);
       return json3.replace(/"([^"]+)":/g, "$1:");
     };
     exports2.quotelessJson = quotelessJson;
@@ -4433,8 +4433,8 @@ var require_util2 = __commonJS({
         configurable: true
       });
     }
-    function objectClone(obj5) {
-      return Object.create(Object.getPrototypeOf(obj5), Object.getOwnPropertyDescriptors(obj5));
+    function objectClone(obj6) {
+      return Object.create(Object.getPrototypeOf(obj6), Object.getOwnPropertyDescriptors(obj6));
     }
     function assignProp(target, prop, value) {
       Object.defineProperty(target, prop, {
@@ -4455,10 +4455,10 @@ var require_util2 = __commonJS({
     function cloneDef(schema) {
       return mergeDefs(schema._zod.def);
     }
-    function getElementAtPath(obj5, path) {
+    function getElementAtPath(obj6, path) {
       if (!path)
-        return obj5;
-      return path.reduce((acc, key5) => acc?.[key5], obj5);
+        return obj6;
+      return path.reduce((acc, key5) => acc?.[key5], obj6);
     }
     function promiseAllObject(promisesObj) {
       const keys2 = Object.keys(promisesObj);
@@ -4895,9 +4895,9 @@ var require_util2 = __commonJS({
           if (Array.isArray(data)) {
             return "array";
           }
-          const obj5 = data;
-          if (obj5 && Object.getPrototypeOf(obj5) !== Object.prototype && "constructor" in obj5 && obj5.constructor) {
-            return obj5.constructor.name;
+          const obj6 = data;
+          if (obj6 && Object.getPrototypeOf(obj6) !== Object.prototype && "constructor" in obj6 && obj6.constructor) {
+            return obj6.constructor.name;
           }
         }
       }
@@ -4915,8 +4915,8 @@ var require_util2 = __commonJS({
       }
       return { ...iss };
     }
-    function cleanEnum(obj5) {
-      return Object.entries(obj5).filter(([k, _]) => {
+    function cleanEnum(obj6) {
+      return Object.entries(obj6).filter(([k, _]) => {
         return Number.isNaN(Number.parseInt(k, 10));
       }).map((el) => el[1]);
     }
@@ -11989,8 +11989,8 @@ var require_lt = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.default = default_1;
     var util = __importStar(require_util2());
-    var capitalizeFirstCharacter = (text8) => {
-      return text8.charAt(0).toUpperCase() + text8.slice(1);
+    var capitalizeFirstCharacter = (text9) => {
+      return text9.charAt(0).toUpperCase() + text9.slice(1);
     };
     function getUnitTypeFromNumber(number2) {
       const abs = Math.abs(number2);
@@ -27110,12 +27110,12 @@ var require_codegen = __commonJS({
       }
       // `for-in` statement.
       // With option `ownProperties` replaced with a `for-of` loop for object keys
-      forIn(nameOrPrefix, obj5, forBody, varKind = this.opts.es5 ? scope_1.varKinds.var : scope_1.varKinds.const) {
+      forIn(nameOrPrefix, obj6, forBody, varKind = this.opts.es5 ? scope_1.varKinds.var : scope_1.varKinds.const) {
         if (this.opts.ownProperties) {
-          return this.forOf(nameOrPrefix, (0, code_1._)`Object.keys(${obj5})`, forBody);
+          return this.forOf(nameOrPrefix, (0, code_1._)`Object.keys(${obj6})`, forBody);
         }
         const name2 = this._scope.toName(nameOrPrefix);
-        return this._for(new ForIter("in", varKind, name2, obj5), () => forBody(name2));
+        return this._for(new ForIter("in", varKind, name2, obj6), () => forBody(name2));
       }
       // end `for` loop
       endFor() {
@@ -28935,11 +28935,11 @@ var require_validate = __commonJS({
         if (!this.allErrors)
           this.gen.if(cond);
       }
-      setParams(obj5, assign) {
+      setParams(obj6, assign) {
         if (assign)
-          Object.assign(this.params, obj5);
+          Object.assign(this.params, obj6);
         else
-          this.params = obj5;
+          this.params = obj6;
       }
       block$data(valid, codeBlock, $dataValid = codegen_1.nil) {
         this.gen.block(() => {
@@ -30389,13 +30389,14 @@ var require_fast_uri = __commonJS({
         if (!malformedIPLiteral) {
           malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP);
         }
-        if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
-          if (uri.indexOf("%") !== -1) {
-            if (parsed.host !== void 0 && !malformedIPLiteral) {
-              const host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true);
-              parsed.host = reescapeHostDelimiters(host, isIP);
-            }
+        if (uri.indexOf("%") !== -1 && parsed.host !== void 0 && !malformedIPLiteral) {
+          let host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true);
+          if (!isIP) {
+            host = normalizePercentEncoding(host.toLowerCase());
           }
+          parsed.host = reescapeHostDelimiters(host, isIP);
+        }
+        if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
           if (parsed.path) {
             parsed.path = normalizePathEncoding(parsed.path);
           }
@@ -30865,7 +30866,7 @@ var require_core3 = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text8, msg) => text8 + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text9, msg) => text9 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -34651,8 +34652,8 @@ var require_mcp = __commonJS({
               title: tool.title,
               description: tool.description,
               inputSchema: (() => {
-                const obj5 = (0, zod_compat_js_1.normalizeObjectSchema)(tool.inputSchema);
-                return obj5 ? (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj5, {
+                const obj6 = (0, zod_compat_js_1.normalizeObjectSchema)(tool.inputSchema);
+                return obj6 ? (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj6, {
                   strictUnions: true,
                   pipeStrategy: "input"
                 }) : EMPTY_OBJECT_JSON_SCHEMA;
@@ -34662,9 +34663,9 @@ var require_mcp = __commonJS({
               _meta: tool._meta
             };
             if (tool.outputSchema) {
-              const obj5 = (0, zod_compat_js_1.normalizeObjectSchema)(tool.outputSchema);
-              if (obj5) {
-                toolDefinition.outputSchema = (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj5, {
+              const obj6 = (0, zod_compat_js_1.normalizeObjectSchema)(tool.outputSchema);
+              if (obj6) {
+                toolDefinition.outputSchema = (0, zod_json_schema_compat_js_1.toJsonSchemaCompat)(obj6, {
                   strictUnions: true,
                   pipeStrategy: "output"
                 });
@@ -35340,20 +35341,20 @@ var require_mcp = __commonJS({
     function isZodTypeLike(value) {
       return value !== null && typeof value === "object" && "parse" in value && typeof value.parse === "function" && "safeParse" in value && typeof value.safeParse === "function";
     }
-    function isZodSchemaInstance(obj5) {
-      return "_def" in obj5 || "_zod" in obj5 || isZodTypeLike(obj5);
+    function isZodSchemaInstance(obj6) {
+      return "_def" in obj6 || "_zod" in obj6 || isZodTypeLike(obj6);
     }
-    function isZodRawShapeCompat(obj5) {
-      if (typeof obj5 !== "object" || obj5 === null) {
+    function isZodRawShapeCompat(obj6) {
+      if (typeof obj6 !== "object" || obj6 === null) {
         return false;
       }
-      if (isZodSchemaInstance(obj5)) {
+      if (isZodSchemaInstance(obj6)) {
         return false;
       }
-      if (Object.keys(obj5).length === 0) {
+      if (Object.keys(obj6).length === 0) {
         return true;
       }
-      return Object.values(obj5).some(isZodTypeLike);
+      return Object.values(obj6).some(isZodTypeLike);
     }
     function getZodSchemaObject(schema) {
       if (!schema) {
@@ -35415,6 +35416,7 @@ var require_mcp = __commonJS({
 var index_exports = {};
 __export(index_exports, {
   BUILTIN_PATTERNS: () => BUILTIN_PATTERNS,
+  BUILTIN_POLICY_PREFIX: () => BUILTIN_POLICY_PREFIX,
   CODING_PERMISSIONS: () => CODING_PERMISSIONS,
   CONNECTOR_PILOTS: () => CONNECTOR_PILOTS,
   ConfidentialGate: () => ConfidentialGate,
@@ -35442,6 +35444,10 @@ __export(index_exports, {
   ReceiptPropagator: () => ReceiptPropagator,
   RepositoryCodingRunner: () => RepositoryCodingRunner,
   RepositoryTrialRunner: () => RepositoryTrialRunner,
+  STARTER_CONTAIN_TEMPLATE: () => STARTER_CONTAIN_TEMPLATE,
+  STARTER_POLICY: () => STARTER_POLICY,
+  STARTER_POLICY_FILE: () => STARTER_POLICY_FILE,
+  STARTER_POLICY_VERSION: () => STARTER_POLICY_VERSION,
   ScopeBlindBridge: () => ScopeBlindBridge,
   TRIAL_CODING_CHECK: () => TRIAL_CODING_CHECK,
   TRIAL_DOCKER_IMAGE: () => TRIAL_DOCKER_IMAGE,
@@ -35451,10 +35457,16 @@ __export(index_exports, {
   TRIAL_TEMPLATE: () => TRIAL_TEMPLATE,
   TRIAL_WORKFLOW: () => TRIAL_WORKFLOW,
   anchorToRekor: () => anchorToRekor,
+  annotatedRules: () => annotatedRules,
   approvePolicyProposalWithDirectSignature: () => approvePolicyProposalWithDirectSignature,
   approvePolicyProposalWithWebAuthn: () => approvePolicyProposalWithWebAuthn,
   assertEgressSafe: () => assertEgressSafe,
   buildDecisionContext: () => buildDecisionContext,
+  builtinPolicyNames: () => builtinPolicyNames,
+  cedarLikeLiteral: () => cedarLikeLiteral,
+  cedarSafeContext: () => cedarSafeContext,
+  cedarSafeValue: () => cedarSafeValue,
+  checkCedarPolicyText: () => checkCedarPolicyText,
   checkRateLimit: () => checkRateLimit,
   codingCommand: () => codingCommand,
   codingSafePath: () => codingSafePath,
@@ -35517,6 +35529,7 @@ __export(index_exports, {
   initializeMandateRegistry: () => initializeMandateRegistry,
   inspectEgress: () => inspectEgress,
   isAgentId: () => isAgentId,
+  isBuiltinPolicySpec: () => isBuiltinPolicySpec,
   isCedarAvailable: () => isCedarAvailable,
   isDisclosureMode: () => isDisclosureMode,
   isEvidenceType: () => isEvidenceType,
@@ -35544,6 +35557,7 @@ __export(index_exports, {
   receiptsToHFRows: () => receiptsToHFRows,
   redactFields: () => redactFields,
   refreshManagedMandate: () => refreshManagedMandate,
+  renderContainRules: () => renderContainRules,
   repositoryDevicePermission: () => repositoryDevicePermission,
   repositoryDevicePreimage: () => repositoryDevicePreimage,
   repositoryHumanPermission: () => repositoryHumanPermission,
@@ -35551,6 +35565,7 @@ __export(index_exports, {
   repositoryPreviewPath: () => repositoryPreviewPath,
   repositorySetupArtifactUrl: () => repositorySetupArtifactUrl,
   repositorySnapshotDigest: () => repositorySnapshotDigest,
+  resolveBuiltinPolicy: () => resolveBuiltinPolicy,
   resolveCredential: () => resolveCredential,
   revealField: () => revealField,
   runEgressSelfCheck: () => runEgressSelfCheck,
@@ -35563,6 +35578,7 @@ __export(index_exports, {
   simulate: () => simulate,
   snapshotFromDirectory: () => snapshotFromDirectory,
   startHookServer: () => startHookServer,
+  starterRules: () => starterRules,
   toCredentialRequestOptions: () => toCredentialRequestOptions,
   toEgressSummary: () => toEgressSummary,
   toManifoldFormat: () => toManifoldFormat,
@@ -35578,6 +35594,7 @@ __export(index_exports, {
   validRepositoryCodingResult: () => validRepositoryCodingResult,
   validRepositoryCodingSource: () => validRepositoryCodingSource,
   validRepositoryCodingStop: () => validRepositoryCodingStop,
+  validRepositoryCodingWorkflowRun: () => validRepositoryCodingWorkflowRun,
   validRepositoryDeviceAuthorization: () => validRepositoryDeviceAuthorization,
   validRepositoryDeviceConfirmation: () => validRepositoryDeviceConfirmation,
   validRepositoryDeviceLink: () => validRepositoryDeviceLink,
@@ -35626,6 +35643,7 @@ __export(index_exports, {
   verifyRepositoryWorkspaceAgentState: () => verifyRepositoryWorkspaceAgentState,
   verifyRepositoryWorkspaceState: () => verifyRepositoryWorkspaceState,
   verifySelectiveDisclosurePackage: () => verifySelectiveDisclosurePackage,
+  workflowRunFromEnvironment: () => workflowRunFromEnvironment,
   writeConnectorPilots: () => writeConnectorPilots
 });
 module.exports = __toCommonJS(index_exports);
@@ -35633,8 +35651,11 @@ module.exports = __toCommonJS(index_exports);
 // src/gateway.ts
 var import_node_child_process = require("child_process");
 var import_node_crypto4 = require("crypto");
-var import_node_readline = require("readline");
-var import_node_fs8 = require("fs");
+
+// src/connector-action.ts
+var import_ed255192 = require("@noble/curves/ed25519");
+var import_sha2562 = require("@noble/hashes/sha256");
+var import_utils2 = require("@noble/hashes/utils");
 
 // src/acta-envelope.ts
 var import_ed25519 = require("@noble/curves/ed25519");
@@ -35726,20 +35747,20 @@ function makeRequest(action, room_id, body) {
 }
 
 // src/acta-envelope.ts
-function canonicalize(obj5) {
-  if (Array.isArray(obj5)) return "[" + Array.from(obj5, canonicalize).join(",") + "]";
-  if (obj5 !== null && typeof obj5 === "object") {
-    if (Object.getPrototypeOf(obj5) !== Object.prototype && Object.getPrototypeOf(obj5) !== null) throw new Error("Expected a plain JSON object");
-    const record = obj5;
+function canonicalize(obj6) {
+  if (Array.isArray(obj6)) return "[" + Array.from(obj6, canonicalize).join(",") + "]";
+  if (obj6 !== null && typeof obj6 === "object") {
+    if (Object.getPrototypeOf(obj6) !== Object.prototype && Object.getPrototypeOf(obj6) !== null) throw new Error("Expected a plain JSON object");
+    const record = obj6;
     return "{" + Object.keys(record).sort().map((key5) => {
       if (!/^[\x20-\x7E]*$/.test(key5)) throw new Error(`Non-ASCII key "${key5}" in receipt payload. Only ASCII keys are permitted.`);
       return JSON.stringify(key5) + ":" + canonicalize(record[key5]);
     }).join(",") + "}";
   }
-  return canonical(obj5);
+  return canonical(obj6);
 }
-function legacyCanonicalize(obj5) {
-  return JSON.stringify(obj5, (_key, value) => {
+function legacyCanonicalize(obj6) {
+  return JSON.stringify(obj6, (_key, value) => {
     if (value && typeof value === "object" && !Array.isArray(value)) {
       const sorted = {};
       for (const k of Object.keys(value).sort()) {
@@ -35780,8 +35801,8 @@ function verifyEncoding(payload, envelope2, signature, publicKeyHex, shape8, all
   }
   return { valid: false, shape: shape8, error: "invalid_signature" };
 }
-function receiptHash(obj5) {
-  return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj5))));
+function receiptHash(obj6) {
+  return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj6))));
 }
 function chainLink(receipt) {
   return "sha256:" + receiptHash(receipt);
@@ -35866,7 +35887,65 @@ function receiptIdentity(envelope2) {
   };
 }
 
+// src/connector-action.ts
+var CONNECTOR_META_KEY = "veritasacta.com/connector";
+var CONNECTOR_CONTEXT_TYPE = "acta:connector-context";
+var CONNECTOR_RECORD_VERSION = 1;
+var GRANT_TYPES = ["one_time", "session", "task", "time_bounded", "perpetual"];
+var HEX64 = /^[0-9a-f]{64}$/;
+var HEX128 = /^[0-9a-f]{128}$/;
+var SHA256_PREFIXED = /^sha256:[0-9a-f]{64}$/;
+var CONTROL = /[\u0000-\u001f\u007f]/;
+var SHORT = 200;
+var PURPOSE = 500;
+var obj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var text = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max && !CONTROL.test(v);
+var at = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var only = (v, keys2) => Object.keys(v).every((k) => keys2.includes(k));
+function validConnectorGrant(v) {
+  return obj(v) && only(v, ["type", "id", "purpose", "issued_at", "expires_at"]) && GRANT_TYPES.includes(v.type) && (v.id === void 0 || text(v.id, SHORT)) && (v.purpose === void 0 || text(v.purpose, PURPOSE)) && (v.issued_at === void 0 || at(v.issued_at)) && (v.expires_at === void 0 || at(v.expires_at)) && (v.issued_at === void 0 || v.expires_at === void 0 || Date.parse(v.expires_at) > Date.parse(v.issued_at));
+}
+function validConnectorContext(v) {
+  return obj(v) && only(v, ["type", "platform", "agent", "grant", "mandate_digest", "issued_at", "issuer_id"]) && v.type === CONNECTOR_CONTEXT_TYPE && text(v.platform, SHORT) && /^[a-z0-9][a-z0-9.-]*$/.test(v.platform) && text(v.agent, SHORT) && validConnectorGrant(v.grant) && (v.mandate_digest === void 0 || SHA256_PREFIXED.test(v.mandate_digest)) && (v.issued_at === void 0 || at(v.issued_at)) && (v.issuer_id === void 0 || text(v.issuer_id, SHORT));
+}
+function validConnectorSignature(v) {
+  return obj(v) && only(v, ["alg", "kid", "sig"]) && v.alg === "EdDSA" && text(v.kid, SHORT) && HEX128.test(v.sig);
+}
+function validPresentedConnectorContext(v) {
+  return obj(v) && only(v, ["payload", "signature"]) && validConnectorContext(v.payload) && (v.signature === void 0 || validConnectorSignature(v.signature)) && (v.signature === void 0 || v.payload.issuer_id === v.signature.kid);
+}
+function requestDigest(tool, input) {
+  return (0, import_utils2.bytesToHex)((0, import_sha2562.sha256)((0, import_utils2.utf8ToBytes)(canonicalize({ tool, input: input ?? {} }))));
+}
+function checkContextSignature(context, signature, keys2) {
+  if (!signature) return { check: "unsigned" };
+  const key5 = keys2?.[signature.kid];
+  if (!key5 || !HEX64.test(key5)) return { check: "unverifiable" };
+  try {
+    const ok = import_ed255192.ed25519.verify((0, import_utils2.hexToBytes)(signature.sig), (0, import_utils2.utf8ToBytes)(canonicalize(context)), (0, import_utils2.hexToBytes)(key5));
+    return ok ? { check: "valid", kid: signature.kid } : { check: "invalid" };
+  } catch {
+    return { check: "invalid" };
+  }
+}
+function recordConnectorAction(presented, tool, input, keys2) {
+  const { check, kid } = checkContextSignature(presented.payload, presented.signature, keys2);
+  const record = { v: CONNECTOR_RECORD_VERSION, context: presented.payload, context_check: check, request_digest: requestDigest(tool, input) };
+  if (presented.signature) record.context_signature = presented.signature;
+  if (kid) record.platform_kid = kid;
+  return record;
+}
+function readConnectorContext(params, tool, input, keys2) {
+  const meta = obj(params) && obj(params._meta) ? params._meta : null;
+  if (!meta || !(CONNECTOR_META_KEY in meta)) return { record: null, problem: null };
+  const presented = meta[CONNECTOR_META_KEY];
+  if (!validPresentedConnectorContext(presented)) return { record: null, problem: "connector_context_malformed" };
+  return { record: recordConnectorAction(presented, tool, input, keys2), problem: null };
+}
+
 // src/gateway.ts
+var import_node_readline = require("readline");
+var import_node_fs8 = require("fs");
 var import_node_path5 = require("path");
 
 // src/policy.ts
@@ -36322,6 +36401,7 @@ function signDecision(entry, prevReceiptHash) {
     if (entry.mandate_registry) payload.mandate_registry = entry.mandate_registry;
     if (entry.standard) payload.standard = entry.standard;
     if (entry.approval) payload.approval = entry.approval;
+    if (entry.connector) payload.connector = entry.connector;
     const result = createReceiptEnvelope(
       payload,
       signerState.privateKey,
@@ -36618,6 +36698,105 @@ function buildEntities(req) {
     }
   ];
 }
+var CEDAR_ESCAPE_KEYS = /* @__PURE__ */ new Set(["__entity", "__extn", "__expr"]);
+var CEDAR_LONG_LIMIT = 2 ** 63;
+function cedarSafeValue(value) {
+  if (value === null || value === void 0) return void 0;
+  switch (typeof value) {
+    case "string":
+    case "boolean":
+      return value;
+    case "number":
+      return Number.isInteger(value) && Math.abs(value) < CEDAR_LONG_LIMIT ? value : String(value);
+    case "bigint":
+      return value >= BigInt(Number.MIN_SAFE_INTEGER) && value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : value.toString();
+    case "object": {
+      if (Array.isArray(value)) {
+        const items = [];
+        for (const item of value) {
+          const safe = cedarSafeValue(item);
+          if (safe !== void 0) items.push(safe);
+        }
+        return items;
+      }
+      const record = {};
+      for (const [key5, item] of Object.entries(value)) {
+        if (CEDAR_ESCAPE_KEYS.has(key5)) continue;
+        const safe = cedarSafeValue(item);
+        if (safe !== void 0) Object.defineProperty(record, key5, { value: safe, enumerable: true, writable: true, configurable: true });
+      }
+      return record;
+    }
+    default:
+      return void 0;
+  }
+}
+function cedarSafeContext(context) {
+  return cedarSafeValue(context);
+}
+var preparedPolicies = /* @__PURE__ */ new Map();
+var PREPARED_CACHE_LIMIT = 32;
+function oneLine(text9, max = 400) {
+  const line3 = text9.replace(/\s+/g, " ").trim();
+  return line3.length > max ? `${line3.slice(0, max - 3)}...` : line3;
+}
+function preparePolicies(engine, source) {
+  const cached = preparedPolicies.get(source);
+  if (cached) return cached;
+  let prepared = { staticPolicies: source, names: /* @__PURE__ */ new Map() };
+  try {
+    if (typeof engine?.policySetTextToParts === "function" && typeof engine?.policyToJson === "function") {
+      const parts = engine.policySetTextToParts(source);
+      const texts = parts?.policies;
+      const templates = parts?.policy_templates;
+      if (parts?.type === "success" && Array.isArray(texts) && texts.length > 0 && (!Array.isArray(templates) || templates.length === 0) && texts.every((text9) => typeof text9 === "string" && source.includes(text9))) {
+        const positional = texts.map((_, i) => `policy${i}`).sort();
+        const annotations = texts.map((text9) => {
+          const json3 = engine.policyToJson(text9);
+          return json3?.type === "success" ? json3.json?.annotations ?? {} : null;
+        });
+        if (annotations.every((a) => a !== null)) {
+          const idOf = (a) => a && typeof a.id === "string" ? a.id : "";
+          const counts = /* @__PURE__ */ new Map();
+          for (const a of annotations) {
+            const id11 = idOf(a);
+            if (id11) counts.set(id11, (counts.get(id11) || 0) + 1);
+          }
+          const keyed = /* @__PURE__ */ Object.create(null);
+          const names = /* @__PURE__ */ new Map();
+          texts.forEach((text9, k) => {
+            const a = annotations[k];
+            const id11 = idOf(a);
+            const usable = id11.trim() !== "" && counts.get(id11) === 1 && !/^policy\d+$/.test(id11) && id11 !== "__proto__";
+            const key5 = usable ? id11 : positional[k];
+            const reason = a && typeof a.reason === "string" && a.reason.trim() !== "" ? oneLine(a.reason) : void 0;
+            keyed[key5] = text9;
+            names.set(key5, { id: key5, ...reason ? { reason } : {}, order: Number(positional[k].slice("policy".length)) });
+          });
+          if (Object.keys(keyed).length === texts.length && names.size === texts.length) {
+            prepared = { staticPolicies: { ...keyed }, names };
+          }
+        }
+      }
+    }
+  } catch {
+    prepared = { staticPolicies: source, names: /* @__PURE__ */ new Map() };
+  }
+  if (preparedPolicies.size >= PREPARED_CACHE_LIMIT) {
+    const oldest = preparedPolicies.keys().next().value;
+    if (oldest !== void 0) preparedPolicies.delete(oldest);
+  }
+  preparedPolicies.set(source, prepared);
+  return prepared;
+}
+function namedPolicies(ids, prepared) {
+  const list = Array.isArray(ids) ? ids.filter((id11) => typeof id11 === "string") : [];
+  return list.map((id11) => prepared.names.get(id11) ?? { id: id11, order: Number.MAX_SAFE_INTEGER }).sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).map(({ id: id11, reason }) => reason ? { id: id11, reason } : { id: id11 });
+}
+function denyReason(deniedBy) {
+  if (deniedBy.length === 0) return "cedar_deny: no permit matched (default deny)";
+  return `cedar_deny: ${deniedBy.map((p) => p.reason ? `${p.id}: ${p.reason}` : p.id).join("; ")}`;
+}
 function onEvalError(reason, failClosed, extra) {
   return {
     allowed: !failClosed,
@@ -36644,14 +36823,18 @@ async function evaluateCedar(policySet, req, schema, options) {
       principal: { type: "Agent", id: agentId },
       action: { type: "Action", id: req.actionModel === "tool" ? req.tool : "MCP::Tool::call" },
       resource: { type: "Tool", id: req.tool },
-      context
+      // Only values Cedar can hold: a fraction, a null or an escape key in the
+      // input no longer makes the engine refuse the whole call (see cedarSafeValue).
+      context: cedarSafeContext(context)
     };
     const entities = buildEntities(req);
     const cedarSchema = schema?.schemaJson ?? null;
     let result;
+    let prepared = { staticPolicies: policySet.source, names: /* @__PURE__ */ new Map() };
     if (typeof cedarWasm.isAuthorized === "function") {
+      prepared = preparePolicies(cedarWasm, policySet.source);
       result = cedarWasm.isAuthorized({
-        policies: { staticPolicies: policySet.source },
+        policies: { staticPolicies: prepared.staticPolicies },
         entities,
         principal: authRequest.principal,
         action: authRequest.action,
@@ -36668,8 +36851,9 @@ async function evaluateCedar(policySet, req, schema, options) {
     } else {
       const cedarEngine = cedarWasm.default || cedarWasm;
       if (typeof cedarEngine.isAuthorized === "function") {
+        prepared = preparePolicies(cedarEngine, policySet.source);
         result = cedarEngine.isAuthorized({
-          policies: { staticPolicies: policySet.source },
+          policies: { staticPolicies: prepared.staticPolicies },
           entities,
           principal: authRequest.principal,
           action: authRequest.action,
@@ -36693,12 +36877,28 @@ async function evaluateCedar(policySet, req, schema, options) {
         { policy_errors: policyErrors.slice(0, 5), policy_digest: policySet.digest }
       );
     }
+    if (parsed.kind === "allow") {
+      return {
+        allowed: true,
+        reason: void 0,
+        metadata: {
+          policy_digest: policySet.digest,
+          ...parsed.matchedPolicies ? { matched_policies: namedPolicies(parsed.matchedPolicies, prepared).map((p) => p.id) } : {}
+        }
+      };
+    }
+    if (!parsed.matchedPolicies && parsed.diagnostics === void 0) {
+      return { allowed: false, reason: "cedar_deny", metadata: { policy_digest: policySet.digest } };
+    }
+    const deniedBy = namedPolicies(parsed.matchedPolicies, prepared);
     return {
-      allowed: parsed.kind === "allow",
-      reason: parsed.kind === "allow" ? void 0 : `cedar_deny${parsed.diagnostics ? ": " + parsed.diagnostics : ""}`,
+      allowed: false,
+      reason: denyReason(deniedBy),
       metadata: {
         policy_digest: policySet.digest,
-        ...parsed.matchedPolicies ? { matched_policies: parsed.matchedPolicies } : {}
+        matched_policies: deniedBy.map((p) => p.id),
+        denied_by: deniedBy,
+        default_deny: deniedBy.length === 0
       }
     };
   } catch (err) {
@@ -36731,6 +36931,19 @@ function extractPolicyErrors(result) {
 }
 async function isCedarAvailable() {
   return ensureCedarWasm();
+}
+async function checkCedarPolicyText(source) {
+  if (!await ensureCedarWasm()) return { checked: false, ok: true };
+  const engine = typeof cedarWasm.checkParsePolicySet === "function" ? cedarWasm : cedarWasm.default;
+  if (!engine || typeof engine.checkParsePolicySet !== "function") return { checked: false, ok: true };
+  try {
+    const answer = engine.checkParsePolicySet({ staticPolicies: source });
+    if (answer?.type === "success") return { checked: true, ok: true };
+    const first = Array.isArray(answer?.errors) ? answer.errors[0] : void 0;
+    return { checked: true, ok: false, error: oneLine(String(first?.message ?? JSON.stringify(answer))) };
+  } catch (err) {
+    return { checked: true, ok: false, error: err instanceof Error ? oneLine(err.message) : "unknown parse error" };
+  }
 }
 function policySetFromSource(source, name2 = "inline") {
   const digest = digestCedarSource(source).policy_digest;
@@ -37193,8 +37406,8 @@ var DESTINATION_KEYS = [
 function stableStringify(value) {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
-  const obj5 = value;
-  return `{${Object.keys(obj5).sort().map((key5) => `${JSON.stringify(key5)}:${stableStringify(obj5[key5])}`).join(",")}}`;
+  const obj6 = value;
+  return `{${Object.keys(obj6).sort().map((key5) => `${JSON.stringify(key5)}:${stableStringify(obj6[key5])}`).join(",")}}`;
 }
 function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   if (depth > 4) return "[truncated-depth]";
@@ -37271,18 +37484,25 @@ function parseStandard(value) {
   if (!isObj(value.signature) || typeof value.signature.value !== "string") throw new Error("the standard is not signed");
   const q = isObj(value.requirements) ? value.requirements : {};
   const run = isObj(q.run) ? q.run : null;
-  const tools = run && Array.isArray(run.allowed_tools) ? run.allowed_tools.filter((t) => typeof t === "string") : null;
+  const runTools = run && Array.isArray(run.allowed_tools) ? run.allowed_tools.filter((t) => typeof t === "string") : null;
   const limits = isObj(q.action_limits) ? q.action_limits : null;
   const amount_max = limits ? moneyFrom(limits.amount_max) : null;
   const approval = isObj(q.human_approval) ? q.human_approval : null;
   const required_above = approval ? moneyFrom(approval.required_above) : null;
   const enforcement = isObj(value.enforcement) ? value.enforcement : null;
   const policy_digest = enforcement && typeof enforcement.policy_digest === "string" ? enforcement.policy_digest : null;
+  const enforcementTool = enforcement && typeof enforcement.tool === "string" && enforcement.tool ? enforcement.tool : null;
+  const payment_tool = !run && amount_max ? enforcementTool ?? "submit_payment" : null;
+  const tools = run ? runTools : payment_tool ? [payment_tool] : null;
+  const gate_policy = !!run || !!payment_tool;
   const parts = [tools ? `${tools.length} tool${tools.length === 1 ? "" : "s"}` : "no tool list", amount_max ? `at most ${fmt(amount_max)} per instruction` : "no amount limit", required_above ? `a person approves above ${fmt(required_above)}` : "no approval threshold"];
-  return { request_id: value.request_id, digest: value.digest, signer_key: recipient.verification_key.toLowerCase(), tools, amount_max, required_above, policy_digest, summary: parts.join(", ") };
+  return { request_id: value.request_id, digest: value.digest, signer_key: recipient.verification_key.toLowerCase(), tools, amount_max, required_above, policy_digest, payment_tool, gate_policy, summary: gate_policy ? parts.join(", ") : `${parts.join(", ")}; the gate admits nothing until the standard states tools or a limit` };
 }
 function loadStandardFile(path) {
   return parseStandard(JSON.parse((0, import_node_fs7.readFileSync)(path, "utf-8")));
+}
+function carriesAmount(input) {
+  return isObj(input) && ("amount_minor" in input || "amount" in input);
 }
 function readAmount(input) {
   if (!isObj(input)) return null;
@@ -37291,12 +37511,15 @@ function readAmount(input) {
   if (typeof input.amount === "number" && Number.isFinite(input.amount)) return { minor: Math.round(input.amount * 100), currency: currency ?? "" };
   return null;
 }
-function checkAmount(gate, input) {
+function checkAmount(gate, tool, input) {
   if (!gate.amount_max) return { ok: true };
-  const amount = readAmount(input);
-  if (!amount) return { ok: true };
-  if (amount.currency !== gate.amount_max.currency) return { ok: false, reason: "standard_currency_not_permitted", detail: `the standard permits ${gate.amount_max.currency} only; this call is in ${amount.currency || "no named currency"}` };
-  if (amount.minor > gate.amount_max.minor) return { ok: false, reason: "standard_amount_over_limit", detail: `${fmt(amount)} is over the standard's limit of ${fmt(gate.amount_max)} per instruction` };
+  if (gate.payment_tool ? tool !== gate.payment_tool : !carriesAmount(input)) return { ok: true };
+  const cap = gate.amount_max;
+  const minor = isObj(input) && typeof input.amount_minor === "number" && Number.isInteger(input.amount_minor) ? input.amount_minor : null;
+  const currency = isObj(input) && typeof input.currency === "string" ? input.currency : null;
+  if (minor === null) return { ok: false, reason: "standard_amount_missing", detail: `the standard limits each ${tool} instruction to ${fmt(cap)}, and this call carries no integer amount_minor to check` };
+  if (currency !== cap.currency) return { ok: false, reason: "standard_currency_not_permitted", detail: `the standard permits ${cap.currency} only; this call is in ${currency ?? "no currency"}` };
+  if (minor > cap.minor) return { ok: false, reason: "standard_amount_over_limit", detail: `${fmt({ minor, currency })} is over the standard's limit of ${fmt(cap)} per instruction` };
   return { ok: true };
 }
 function personRequired(gate, input) {
@@ -37306,6 +37529,15 @@ function personRequired(gate, input) {
   if (amount.currency !== gate.required_above.currency) return { required: true, detail: `${fmt(amount)} cannot be compared with the standard's threshold of ${fmt(gate.required_above)}` };
   if (amount.minor > gate.required_above.minor) return { required: true, detail: `${fmt(amount)} is above ${fmt(gate.required_above)}, so a named person approves it` };
   return { required: false };
+}
+function standardDecision(gate, tool, input) {
+  if (!gate.gate_policy) return { decision: "deny", reason: "standard_no_gate_policy", detail: "the standard states neither tools nor a per-instruction limit, so the gate admits nothing under it; state one on its page and sign it again" };
+  if (gate.tools && !gate.tools.includes(tool)) return { decision: "deny", reason: "standard_tool_not_allowed", detail: `"${tool}" is not among the tools the standard permits (${gate.tools.join(", ")}); the name must match exactly` };
+  const amount = checkAmount(gate, tool, input);
+  if (!amount.ok) return { decision: "deny", reason: amount.reason, detail: amount.detail };
+  const person = personRequired(gate, input);
+  if (person.required) return { decision: "hold", reason: "standard_requires_person", detail: person.detail };
+  return { decision: "allow", reason: gate.payment_tool ? "standard_within_limit" : "standard_tool_allowed", detail: "" };
 }
 function heldIdFor(sid, tool, payloadHash2) {
   return (0, import_node_crypto3.createHash)("sha256").update(`scopeblind.held_action.v1\0${sid}\0${tool}\0${payloadHash2}`).digest("hex").slice(0, 24);
@@ -37438,6 +37670,8 @@ var ProtectGateway = class {
   reporter = null;
   /** A person's decision on the page, attached to the receipt of the call it decided (keyed by request_id) */
   approvalsToRecord = /* @__PURE__ */ new Map();
+  /** The connector-action record for the request in flight, attached to the receipt of its decision. */
+  connectorToRecord = /* @__PURE__ */ new Map();
   constructor(config) {
     this.config = config;
     this.logFilePath = (0, import_node_path5.join)(process.cwd(), LOG_FILE2);
@@ -37602,6 +37836,9 @@ var ProtectGateway = class {
     const mode = this.config.enforce ? "enforce" : "shadow";
     const toolInput = request.params?.arguments && typeof request.params.arguments === "object" ? request.params.arguments : request.params || {};
     const actionReadback = buildActionReadback(toolName, toolInput);
+    const connector = readConnectorContext(request.params, toolName, toolInput, this.config.policy?.connector_platform_keys);
+    if (connector.record) this.connectorToRecord.set(requestId, connector.record);
+    else if (connector.problem && this.config.verbose) this.log(`Connector context ignored for tool=${toolName}: ${connector.problem}`);
     let resolvedAgentKid = this.admissionResult?.agent_id;
     let effectiveToolPolicy;
     if (this.config.multiAgent?.enabled) {
@@ -37640,31 +37877,26 @@ var ProtectGateway = class {
     }
     if (this.standard) {
       const std = this.standard;
-      if (std.tools && !std.tools.includes(toolName)) {
-        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "standard_tool_not_allowed", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-        if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" is not among the tools the standard permits`);
+      const verdict = standardDecision(std, toolName, toolInput);
+      if (verdict.decision === "deny") {
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: verdict.reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" refused by the standard: ${verdict.detail}`);
         return null;
       }
-      const amount = checkAmount(std, toolInput);
-      if (!amount.ok) {
-        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: amount.reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-        if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" refused by the standard: ${amount.detail}`);
-        return null;
-      }
-      const person = personRequired(std, toolInput);
+      const person = verdict.decision === "hold" ? { required: true, detail: verdict.detail } : { required: false };
       if (person.required) {
         const hid = heldIdFor(this.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
         const page = this.reporter ? `${new URL(this.reporter.url).origin}/standard?s=${this.reporter.sid}#held-${hid}` : "";
         const localGrant = this.approvalStore.get(`always:${toolName}`);
-        const verdict = localGrant && Date.now() < localGrant.expires_at ? { decision: "approve", approver_key_id: "gate", digest: "", note: "granted at the gate" } : this.reporter ? await this.reporter.decision(hid) : null;
-        if (verdict === "unreachable") {
+        const verdict2 = localGrant && Date.now() < localGrant.expires_at ? { decision: "approve", approver_key_id: "gate", digest: "", note: "granted at the gate" } : this.reporter ? await this.reporter.decision(hid) : null;
+        if (verdict2 === "unreachable") {
           this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "standard_page_unreachable", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" needs a named person's approval and the standard's page could not be reached; retry the same call later`);
-        } else if (verdict) {
-          this.approvalsToRecord.set(requestId, { hid, approver_key_id: verdict.approver_key_id, digest: verdict.digest, page });
-          if (verdict.decision === "deny") {
+        } else if (verdict2) {
+          this.approvalsToRecord.set(requestId, { hid, approver_key_id: verdict2.approver_key_id, digest: verdict2.digest, page });
+          if (verdict2.decision === "deny") {
             this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "person_denied", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-            if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" was denied by ${verdict.approver_key_id} on the standard's page${verdict.note ? `: ${verdict.note}` : ""}`);
+            if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" was denied by ${verdict2.approver_key_id} on the standard's page${verdict2.note ? `: ${verdict2.note}` : ""}`);
           }
         } else {
           const amt = readAmount(toolInput);
@@ -37699,7 +37931,9 @@ var ProtectGateway = class {
           const reason = cedarDecision.reason || "cedar_deny";
           this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: reason, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) {
-            return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied by Cedar policy`);
+            const deniedBy = Array.isArray(cedarDecision.metadata?.denied_by) ? cedarDecision.metadata.denied_by : [];
+            const why = deniedBy.length ? `: ${deniedBy.map((p) => p.reason ? `${p.id}: ${p.reason}` : p.id).join("; ")}` : "";
+            return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied by Cedar policy${why}`);
           }
           return null;
         }
@@ -37852,6 +38086,11 @@ var ProtectGateway = class {
     if (approval) {
       log.approval = approval;
       this.approvalsToRecord.delete(log.request_id);
+    }
+    const connector = this.connectorToRecord.get(log.request_id);
+    if (connector) {
+      log.connector = connector;
+      this.connectorToRecord.delete(log.request_id);
     }
     const callLine = this.reporter ? JSON.stringify({ tool: log.tool, input: log.action_readback?.payload_preview ?? {}, decision: log.decision, request_id: log.request_id, at: new Date(log.timestamp).toISOString() }) : void 0;
     process.stderr.write(`[PROTECT_MCP] ${JSON.stringify(log)}
@@ -38248,15 +38487,15 @@ var time2 = (v) => typeof v === "string" ? Date.parse(v) : NaN;
 var exact2 = (v, required, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
 var same = (a, b) => canonical(a) === canonical(b);
 var keys = (s) => s.split(" ");
-var text = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max;
+var text2 = (v, max) => typeof v === "string" && v.length > 0 && v.length <= max;
 async function signed(v, key5) {
   return exact2(v, keys("payload signer digest signature")) && HEX.test(key5) && await verify(v, key5);
 }
 function boundedAgreement(a) {
-  return exact2(a, keys("type id version title owner_key registrar_key currency budget_minor approval_above_minor approval_ttl_seconds allowed_destinations issued_at"), keys("mode brief preferences assumptions require_po_match")) && a.type === "scopeblind.coordination.agreement.v1" && id2(a.id) && a.version === 1 && text(a.title, 200) && HEX.test(a.owner_key) && HEX.test(a.registrar_key) && a.currency === "USD" && integer(a.budget_minor, 1, 1e7) && integer(a.approval_above_minor, 0, a.budget_minor) && integer(a.approval_ttl_seconds, 30, 900) && Number.isFinite(time2(a.issued_at)) && Array.isArray(a.allowed_destinations) && a.allowed_destinations.length > 0 && a.allowed_destinations.length <= 100 && new Set(a.allowed_destinations).size === a.allowed_destinations.length && a.allowed_destinations.every((d) => text(d, 500)) && (a.mode === void 0 || ["guided", "live"].includes(a.mode)) && (a.require_po_match === void 0 || typeof a.require_po_match === "boolean") && (a.brief === void 0 || typeof a.brief === "string" && a.brief.length <= 1e4) && [a.preferences, a.assumptions].every((v) => v === void 0 || Array.isArray(v) && v.length <= 100 && v.every((t) => typeof t === "string" && t.length <= 2e3));
+  return exact2(a, keys("type id version title owner_key registrar_key currency budget_minor approval_above_minor approval_ttl_seconds allowed_destinations issued_at"), keys("mode brief preferences assumptions require_po_match")) && a.type === "scopeblind.coordination.agreement.v1" && id2(a.id) && a.version === 1 && text2(a.title, 200) && HEX.test(a.owner_key) && HEX.test(a.registrar_key) && a.currency === "USD" && integer(a.budget_minor, 1, 1e7) && integer(a.approval_above_minor, 0, a.budget_minor) && integer(a.approval_ttl_seconds, 30, 900) && Number.isFinite(time2(a.issued_at)) && Array.isArray(a.allowed_destinations) && a.allowed_destinations.length > 0 && a.allowed_destinations.length <= 100 && new Set(a.allowed_destinations).size === a.allowed_destinations.length && a.allowed_destinations.every((d) => text2(d, 500)) && (a.mode === void 0 || ["guided", "live"].includes(a.mode)) && (a.require_po_match === void 0 || typeof a.require_po_match === "boolean") && (a.brief === void 0 || typeof a.brief === "string" && a.brief.length <= 1e4) && [a.preferences, a.assumptions].every((v) => v === void 0 || Array.isArray(v) && v.length <= 100 && v.every((t) => typeof t === "string" && t.length <= 2e3));
 }
 function boundedFixtures(f) {
-  return exact2(f, keys("revision invoices purchase_orders")) && integer(f.revision, 1, 1e7) && Array.isArray(f.invoices) && f.invoices.length > 0 && f.invoices.length <= 100 && f.invoices.some((i) => !i.duplicate_of) && new Set(f.invoices.filter((i) => !i.duplicate_of).map((i) => i.invoice_id)).size === f.invoices.filter((i) => !i.duplicate_of).length && f.invoices.every((i) => !i.duplicate_of || f.invoices.some((base) => !base.duplicate_of && base.id === i.duplicate_of && base.invoice_id === i.invoice_id && base.amount_minor === i.amount_minor && base.destination === i.destination && base.vendor === i.vendor)) && new Set(f.invoices.map((i) => i.id)).size === f.invoices.length && f.invoices.every((i) => exact2(i, keys("id invoice_id vendor description amount_minor destination"), keys("duplicate_of purchase_order_id")) && text(i.id, 100) && text(i.invoice_id, 60) && text(i.vendor, 300) && typeof i.description === "string" && i.description.length <= 2e3 && integer(i.amount_minor, 1, 1e7) && text(i.destination, 500) && (i.duplicate_of === void 0 || text(i.duplicate_of, 60)) && (i.purchase_order_id === void 0 || text(i.purchase_order_id, 100))) && Array.isArray(f.purchase_orders) && f.purchase_orders.length <= 100 && new Set(f.purchase_orders.map((p) => p.id)).size === f.purchase_orders.length && f.purchase_orders.every((p) => exact2(p, keys("id vendor destination amount_minor currency")) && text(p.id, 100) && text(p.vendor, 300) && text(p.destination, 500) && integer(p.amount_minor, 1, 1e7) && p.currency === "USD");
+  return exact2(f, keys("revision invoices purchase_orders")) && integer(f.revision, 1, 1e7) && Array.isArray(f.invoices) && f.invoices.length > 0 && f.invoices.length <= 100 && f.invoices.some((i) => !i.duplicate_of) && new Set(f.invoices.filter((i) => !i.duplicate_of).map((i) => i.invoice_id)).size === f.invoices.filter((i) => !i.duplicate_of).length && f.invoices.every((i) => !i.duplicate_of || f.invoices.some((base) => !base.duplicate_of && base.id === i.duplicate_of && base.invoice_id === i.invoice_id && base.amount_minor === i.amount_minor && base.destination === i.destination && base.vendor === i.vendor)) && new Set(f.invoices.map((i) => i.id)).size === f.invoices.length && f.invoices.every((i) => exact2(i, keys("id invoice_id vendor description amount_minor destination"), keys("duplicate_of purchase_order_id")) && text2(i.id, 100) && text2(i.invoice_id, 60) && text2(i.vendor, 300) && typeof i.description === "string" && i.description.length <= 2e3 && integer(i.amount_minor, 1, 1e7) && text2(i.destination, 500) && (i.duplicate_of === void 0 || text2(i.duplicate_of, 60)) && (i.purchase_order_id === void 0 || text2(i.purchase_order_id, 100))) && Array.isArray(f.purchase_orders) && f.purchase_orders.length <= 100 && new Set(f.purchase_orders.map((p) => p.id)).size === f.purchase_orders.length && f.purchase_orders.every((p) => exact2(p, keys("id vendor destination amount_minor currency")) && text2(p.id, 100) && text2(p.vendor, 300) && text2(p.destination, 500) && integer(p.amount_minor, 1, 1e7) && p.currency === "USD");
 }
 function observationConsistent(c, o, a, f) {
   if (!exact2(o, keys("actual matched reason steps payments spent_minor"), ["invariant_passed"]) || !["allow", "ask", "refuse", "error"].includes(o.actual) || typeof o.matched !== "boolean" || typeof o.reason !== "string" || o.reason.length > 2e3 || !integer(o.payments, 0, 2) || !integer(o.spent_minor, 0, 2e7) || !Array.isArray(o.steps) || o.steps.length < 1 || o.steps.length > 50 || !o.steps.every((s) => exact2(s, keys("action decision reason"), keys("operation_id payload_hash")) && ["setup", "admit", "submit_changed_request", "approve_exact", "submit_expired_approval", "execute"].includes(s.action) && ["allow", "ask", "refuse", "confirmed", "rejected"].includes(s.decision) && typeof s.reason === "string" && s.reason.length <= 2e3 && (s.operation_id === void 0 || id2(s.operation_id)) && (s.payload_hash === void 0 || HEX.test(s.payload_hash)))) return false;
@@ -38315,26 +38554,26 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
     const a = e.agreement.payload, s = e.session.payload, i = e.invitation.payload, b = e.binding.payload;
     const authority = authorityKey ?? a.registrar_key;
     add("Owner signed the bounded source agreement and exact fixture snapshot", boundedAgreement(a) && boundedFixtures(e.fixtures) && await verifyOwnerAgreement(e.agreement, e.source_negotiation, depth + 1) && a.registrar_key === authority);
-    add("Named authority signed a bounded session tied to this source", await signed(e.session, authority) && exact2(s, keys("type id room_id agreement_digest fixture_digest owner_key registrar_key invitation_digest created_at expires_at max_proposals"), ["parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]) && s.type === "scopeblind.coordination.negotiation-session.v1" && id2(s.id) && s.room_id === a.id && s.agreement_digest === e.agreement.digest && s.fixture_digest === await negotiationDigest(e.fixtures) && (s.parent_session_id === void 0 || id2(s.parent_session_id) && s.parent_session_id !== s.id) && s.parent_session_id === i.parent_session_id && s.source_operation_id === i.source_operation_id && (s.source_operation_id === void 0 ? s.source_invoice_id === void 0 && s.source_operation_digest === void 0 : id2(s.source_operation_id) && text(s.source_invoice_id, 60) && HEX.test(s.source_operation_digest ?? "") && e.fixtures.invoices.some((v) => !v.duplicate_of && v.invoice_id === s.source_invoice_id)) && s.owner_key === a.owner_key && s.registrar_key === authority && s.invitation_digest === e.invitation.digest && s.max_proposals === 3 && time2(s.created_at) >= time2(a.issued_at) - 3e5 && time2(s.expires_at) > time2(s.created_at) && time2(s.expires_at) <= time2(s.created_at) + 864e5);
-    const during = (at9) => time2(at9) >= time2(s.created_at) - 3e5 && time2(at9) < time2(s.expires_at);
+    add("Named authority signed a bounded session tied to this source", await signed(e.session, authority) && exact2(s, keys("type id room_id agreement_digest fixture_digest owner_key registrar_key invitation_digest created_at expires_at max_proposals"), ["parent_session_id", "source_operation_id", "source_invoice_id", "source_operation_digest"]) && s.type === "scopeblind.coordination.negotiation-session.v1" && id2(s.id) && s.room_id === a.id && s.agreement_digest === e.agreement.digest && s.fixture_digest === await negotiationDigest(e.fixtures) && (s.parent_session_id === void 0 || id2(s.parent_session_id) && s.parent_session_id !== s.id) && s.parent_session_id === i.parent_session_id && s.source_operation_id === i.source_operation_id && (s.source_operation_id === void 0 ? s.source_invoice_id === void 0 && s.source_operation_digest === void 0 : id2(s.source_operation_id) && text2(s.source_invoice_id, 60) && HEX.test(s.source_operation_digest ?? "") && e.fixtures.invoices.some((v) => !v.duplicate_of && v.invoice_id === s.source_invoice_id)) && s.owner_key === a.owner_key && s.registrar_key === authority && s.invitation_digest === e.invitation.digest && s.max_proposals === 3 && time2(s.created_at) >= time2(a.issued_at) - 3e5 && time2(s.expires_at) > time2(s.created_at) && time2(s.expires_at) <= time2(s.created_at) + 864e5);
+    const during = (at10) => time2(at10) >= time2(s.created_at) - 3e5 && time2(at10) < time2(s.expires_at);
     add("Owner invited one counterparty for this exact session", await signed(e.invitation, a.owner_key) && exact2(i, keys("type session_id room_id agreement_digest fixture_digest issuer registrar_key role token_hash max_claims expires_at"), ["parent_session_id", "source_operation_id"]) && i.type === "scopeblind.coordination.negotiation-invitation.v1" && i.session_id === s.id && i.room_id === a.id && i.agreement_digest === e.agreement.digest && i.fixture_digest === s.fixture_digest && i.issuer === a.owner_key && i.registrar_key === authority && i.role === "counterparty" && i.max_claims === 1 && HEX.test(i.token_hash) && i.expires_at === s.expires_at);
     const claim = b.claim.payload, partner = b.guest_key, principals = [a.owner_key, partner];
-    add("Distinct counterparty signed its claim and the authority bound that claim", await signed(e.binding, authority) && await signed(b.claim, partner) && exact2(b, keys("type session_id room_id invitation_digest guest_key name issued_at expires_at claim")) && b.type === "scopeblind.coordination.negotiation-binding.v1" && b.session_id === s.id && b.room_id === a.id && b.invitation_digest === e.invitation.digest && HEX.test(partner) && partner !== a.owner_key && during(b.issued_at) && b.expires_at === s.expires_at && exact2(claim, keys("type session_id room_id guest_key name issued_at nonce")) && claim.type === "scopeblind.coordination.negotiation-claim.v1" && claim.session_id === s.id && claim.room_id === a.id && claim.guest_key === partner && text(claim.name, 60) && claim.name === b.name && id2(claim.nonce) && Math.abs(time2(claim.issued_at) - time2(b.issued_at)) <= 3e5);
+    add("Distinct counterparty signed its claim and the authority bound that claim", await signed(e.binding, authority) && await signed(b.claim, partner) && exact2(b, keys("type session_id room_id invitation_digest guest_key name issued_at expires_at claim")) && b.type === "scopeblind.coordination.negotiation-binding.v1" && b.session_id === s.id && b.room_id === a.id && b.invitation_digest === e.invitation.digest && HEX.test(partner) && partner !== a.owner_key && during(b.issued_at) && b.expires_at === s.expires_at && exact2(claim, keys("type session_id room_id guest_key name issued_at nonce")) && claim.type === "scopeblind.coordination.negotiation-claim.v1" && claim.session_id === s.id && claim.room_id === a.id && claim.guest_key === partner && text2(claim.name, 60) && claim.name === b.name && id2(claim.nonce) && Math.abs(time2(claim.issued_at) - time2(b.issued_at)) <= 3e5);
     add("Exactly two distinct principal mandates are included in organizer/partner order", Array.isArray(e.mandates) && e.mandates.length === 2 && e.mandates.every((m, n) => m.payload.principal_key === principals[n]) && new Set(e.mandates.map((m) => m.digest)).size === 2);
     const mandateDigests = e.mandates.map((m) => m.digest);
     for (let n = 0; n < e.mandates.length; n++) {
       const m = e.mandates[n].payload;
       add(`Principal ${n + 1} signed bounded negotiation-only authority`, await verifyHuman(e.mandates[n], principals[n], { requireRecordedUse: true, authorityKey: authority }) && exact2(m, keys("type session_id room_id principal_key version agreement_digest fixture_digest min_threshold_minor max_threshold_minor required_invoices private_brief_commitment agent_mode actions issued_at expires_at"), ["min_budget_minor", "max_budget_minor"]) && m.type === "scopeblind.coordination.negotiation-mandate.v1" && m.session_id === s.id && m.room_id === a.id && m.principal_key === principals[n] && m.agreement_digest === e.agreement.digest && m.fixture_digest === s.fixture_digest && integer(m.version, 1, 1e6) && (m.min_budget_minor === void 0 && m.max_budget_minor === void 0 || integer(m.min_budget_minor, 1, 1e7) && integer(m.max_budget_minor, m.min_budget_minor, 1e7)) && integer(m.min_threshold_minor, 0, mandateBudget(m, a.budget_minor).max) && integer(m.max_threshold_minor, m.min_threshold_minor, mandateBudget(m, a.budget_minor).max) && Array.isArray(m.required_invoices) && m.required_invoices.length <= 2 && new Set(m.required_invoices.map((r2) => r2.invoice_id)).size === m.required_invoices.length && m.required_invoices.every((r2) => exact2(r2, keys("invoice_id expected")) && ["allow", "ask"].includes(r2.expected) && e.fixtures.invoices.some((v) => v.invoice_id === r2.invoice_id && !v.duplicate_of)) && (s.source_invoice_id === void 0 || m.required_invoices.some((r2) => r2.invoice_id === s.source_invoice_id)) && HEX.test(m.private_brief_commitment) && ["hosted", "own", "manual"].includes(m.agent_mode) && same(m.actions, NEGOTIATION_AGENT_ACTIONS) && during(m.issued_at) && time2(m.expires_at) > time2(m.issued_at) && time2(m.expires_at) <= time2(s.expires_at));
     }
-    const validAt = (principal, at9) => {
+    const validAt = (principal, at10) => {
       const m = e.mandates.find((m2) => m2.payload.principal_key === principal)?.payload;
-      return !!m && during(at9) && time2(at9) >= time2(m.issued_at) - 3e5 && time2(at9) < time2(m.expires_at);
+      return !!m && during(at10) && time2(at10) >= time2(m.issued_at) - 3e5 && time2(at10) < time2(m.expires_at);
     };
     const agentBindings = e.agent_bindings ?? [];
     add("Installed agent bindings are bounded and independently scoped per principal", Array.isArray(agentBindings) && agentBindings.length <= 12 && new Set(agentBindings.map((v) => v.payload.pair_id)).size === agentBindings.length);
     for (const binding of agentBindings) {
       const g = binding.payload, auth = g.owner_authorization, q = auth.payload, body = q.body, principal = g.principal_key;
-      add("Principal signed the installed agent pairing authorization", await signed(binding, authority) && await signed(auth, principal) && exact2(g, keys("type pair_id room_id session_id principal_key agreement_digest owner_key agent_key name scope audience issued_at expires_at owner_authorization")) && g.type === "scopeblind.coordination.agent-binding.v1" && g.audience === "scopeblind.coordination.negotiation" && id2(g.pair_id) && g.room_id === a.id && g.session_id === s.id && principals.includes(principal) && g.owner_key === principal && HEX.test(g.agent_key) && !principals.includes(g.agent_key) && g.agreement_digest === e.agreement.digest && same(g.scope, NEGOTIATION_AGENT_ACTIONS) && validAt(principal, g.issued_at) && time2(g.expires_at) > time2(g.issued_at) && time2(g.expires_at) <= time2(e.mandates.find((m) => m.payload.principal_key === principal).payload.expires_at) && exact2(q, keys("type action room_id body issued_at nonce")) && q.type === "scopeblind.coordination.request.v1" && q.action === "negotiation_pair_create" && q.room_id === a.id && id2(q.nonce) && exact2(body, keys("session_id pair_id secret_hash name expires_at token_expires_at scope"), ["expected_agent_key"]) && (body.expected_agent_key === void 0 || body.expected_agent_key === g.agent_key) && body.session_id === s.id && body.pair_id === g.pair_id && HEX.test(String(body.secret_hash)) && text(body.name, 60) && text(g.name, 60) && same(body.scope, NEGOTIATION_AGENT_ACTIONS) && body.token_expires_at === g.expires_at && validAt(principal, q.issued_at) && time2(body.expires_at) > time2(q.issued_at) && time2(body.expires_at) <= time2(q.issued_at) + 9e5 && time2(g.issued_at) < time2(body.expires_at) && time2(g.issued_at) >= time2(q.issued_at) - 3e5 && time2(body.expires_at) <= time2(g.expires_at) && !agentBindings.some((other) => other.payload.agent_key === g.agent_key && other.payload.principal_key !== principal));
+      add("Principal signed the installed agent pairing authorization", await signed(binding, authority) && await signed(auth, principal) && exact2(g, keys("type pair_id room_id session_id principal_key agreement_digest owner_key agent_key name scope audience issued_at expires_at owner_authorization")) && g.type === "scopeblind.coordination.agent-binding.v1" && g.audience === "scopeblind.coordination.negotiation" && id2(g.pair_id) && g.room_id === a.id && g.session_id === s.id && principals.includes(principal) && g.owner_key === principal && HEX.test(g.agent_key) && !principals.includes(g.agent_key) && g.agreement_digest === e.agreement.digest && same(g.scope, NEGOTIATION_AGENT_ACTIONS) && validAt(principal, g.issued_at) && time2(g.expires_at) > time2(g.issued_at) && time2(g.expires_at) <= time2(e.mandates.find((m) => m.payload.principal_key === principal).payload.expires_at) && exact2(q, keys("type action room_id body issued_at nonce")) && q.type === "scopeblind.coordination.request.v1" && q.action === "negotiation_pair_create" && q.room_id === a.id && id2(q.nonce) && exact2(body, keys("session_id pair_id secret_hash name expires_at token_expires_at scope"), ["expected_agent_key"]) && (body.expected_agent_key === void 0 || body.expected_agent_key === g.agent_key) && body.session_id === s.id && body.pair_id === g.pair_id && HEX.test(String(body.secret_hash)) && text2(body.name, 60) && text2(g.name, 60) && same(body.scope, NEGOTIATION_AGENT_ACTIONS) && body.token_expires_at === g.expires_at && validAt(principal, q.issued_at) && time2(body.expires_at) > time2(q.issued_at) && time2(body.expires_at) <= time2(q.issued_at) + 9e5 && time2(g.issued_at) < time2(body.expires_at) && time2(g.issued_at) >= time2(q.issued_at) - 3e5 && time2(body.expires_at) <= time2(g.expires_at) && !agentBindings.some((other) => other.payload.agent_key === g.agent_key && other.payload.principal_key !== principal));
     }
     const actorBound = (p2) => {
       const mandate = e.mandates.find((m) => m.payload.principal_key === p2.principal_key)?.payload;
@@ -38370,7 +38609,7 @@ async function verifyNegotiationEvidence(value, authorityKey, depth = 0) {
       const d = e.adoption.payload, next = e.adopted_agreement, g = e.reviewer_grant, binding = e.reviewer_binding, rb = binding.payload, claim2 = rb.claim.payload;
       add("Both unexpired human approvals authorize adoption of this exact tested candidate", e.approvals.length === 2 && e.approvals.every((v) => v.payload.decision === "approve" && time2(d.issued_at) >= time2(v.payload.issued_at) - 3e5 && time2(d.issued_at) < time2(v.payload.expires_at)) && selected.digest === e.proposals.at(-1).digest && principals.every((key5) => validAt(key5, d.issued_at)) && r.required_passed && r.expectations_met && r.mandates_met && (e.approvals.every((v) => v.payload.selection_basis === "human-selected-tested-plan") || principals.every((key5) => e.responses.some((v) => v.payload.principal_key === key5 && v.payload.proposal_digest === selected.digest && v.payload.decision === "support"))));
       add("Authority recorded exact lineage into a new separately authorized sample task", await signed(e.adoption, authority) && exact2(d, keys("type session_id source_room_id room_id source_agreement_digest agreement_digest proposal_digest report_digest approval_digests issued_at scope")) && d.type === "scopeblind.coordination.negotiation-adoption.v1" && d.session_id === s.id && d.source_room_id === a.id && d.room_id === p.next_agreement.id && d.room_id !== a.id && d.source_agreement_digest === e.agreement.digest && d.agreement_digest === p.next_agreement_digest && d.proposal_digest === selected.digest && d.report_digest === e.report.digest && same(d.approval_digests, principals.map((key5) => e.approvals.find((v) => v.payload.principal_key === key5).digest)) && d.scope === "new-separate-sample-task" && await verifyHuman(next, a.owner_key, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === a.owner_key), requireRecordedUse: true, authorityKey: authority }) && same(next.payload, p.next_agreement) && next.digest === d.agreement_digest);
-      add("Partner independently claimed the fixed reviewer role in the new task", await signed(binding, authority) && await verifyHuman(rb.claim, partner, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === partner), requireRecordedUse: true, authorityKey: authority }) && exact2(rb, keys("type grant_id grant_digest room_id guest_key name issued_at expires_at claim")) && rb.type === "scopeblind.coordination.binding.v1" && rb.grant_id === g.payload.grant_id && rb.grant_digest === g.digest && rb.room_id === d.room_id && rb.guest_key === partner && rb.expires_at === g.payload.expires_at && time2(rb.issued_at) >= time2(d.issued_at) && time2(rb.issued_at) < time2(rb.expires_at) && exact2(claim2, keys("type grant_id room_id guest_key name issued_at nonce")) && claim2.type === "scopeblind.coordination.claim.v1" && claim2.grant_id === rb.grant_id && claim2.room_id === d.room_id && claim2.guest_key === partner && text(claim2.name, 60) && claim2.name === rb.name && id2(claim2.nonce) && time2(claim2.issued_at) >= time2(r.issued_at) - 3e5 && time2(claim2.issued_at) <= time2(rb.issued_at) + 3e5);
+      add("Partner independently claimed the fixed reviewer role in the new task", await signed(binding, authority) && await verifyHuman(rb.claim, partner, { proposal: selected, approval: e.approvals.find((v) => v.payload.principal_key === partner), requireRecordedUse: true, authorityKey: authority }) && exact2(rb, keys("type grant_id grant_digest room_id guest_key name issued_at expires_at claim")) && rb.type === "scopeblind.coordination.binding.v1" && rb.grant_id === g.payload.grant_id && rb.grant_digest === g.digest && rb.room_id === d.room_id && rb.guest_key === partner && rb.expires_at === g.payload.expires_at && time2(rb.issued_at) >= time2(d.issued_at) && time2(rb.issued_at) < time2(rb.expires_at) && exact2(claim2, keys("type grant_id room_id guest_key name issued_at nonce")) && claim2.type === "scopeblind.coordination.claim.v1" && claim2.grant_id === rb.grant_id && claim2.room_id === d.room_id && claim2.guest_key === partner && text2(claim2.name, 60) && claim2.name === rb.name && id2(claim2.nonce) && time2(claim2.issued_at) >= time2(r.issued_at) - 3e5 && time2(claim2.issued_at) <= time2(rb.issued_at) + 3e5);
     } else add("No unbound adopted agreement or reviewer binding is present", !e.adopted_agreement && !e.reviewer_binding);
   } catch {
     add("Complete, well-formed negotiation evidence", false);
@@ -39313,27 +39552,27 @@ var CoordinationClient = class {
 };
 
 // src/signing-committed.ts
-var import_ed255192 = require("@noble/curves/ed25519");
-var import_sha2564 = require("@noble/hashes/sha256");
-var import_utils4 = require("@noble/hashes/utils");
+var import_ed255193 = require("@noble/curves/ed25519");
+var import_sha2565 = require("@noble/hashes/sha256");
+var import_utils5 = require("@noble/hashes/utils");
 
 // src/commitments/merkle.ts
-var import_sha2562 = require("@noble/hashes/sha256");
-var import_utils2 = require("@noble/hashes/utils");
+var import_sha2563 = require("@noble/hashes/sha256");
+var import_utils3 = require("@noble/hashes/utils");
 var DOMAIN_LEAF = 0;
 var DOMAIN_INTERNAL = 1;
 function hashLeaf(leafBytes) {
   const buf = new Uint8Array(leafBytes.length + 1);
   buf[0] = DOMAIN_LEAF;
   buf.set(leafBytes, 1);
-  return (0, import_sha2562.sha256)(buf);
+  return (0, import_sha2563.sha256)(buf);
 }
 function hashInternal(left, right) {
   const buf = new Uint8Array(left.length + right.length + 1);
   buf[0] = DOMAIN_INTERNAL;
   buf.set(left, 1);
   buf.set(right, 1 + left.length);
-  return (0, import_sha2562.sha256)(buf);
+  return (0, import_sha2563.sha256)(buf);
 }
 function merkleRoot(leafHashes) {
   if (leafHashes.length === 0) {
@@ -39362,7 +39601,7 @@ function generateProof(leafHashes, index) {
   return {
     index,
     treeSize: leafHashes.length,
-    siblings: siblings.map((s) => (0, import_utils2.bytesToHex)(s))
+    siblings: siblings.map((s) => (0, import_utils3.bytesToHex)(s))
   };
 }
 function collectPath(leaves, index, out) {
@@ -39380,7 +39619,7 @@ function collectPath(leaves, index, out) {
 function verifyProof(expectedRootHex, leafHash, proof) {
   if (proof.index < 0 || proof.index >= proof.treeSize) return false;
   if (proof.treeSize === 1) {
-    return proof.siblings.length === 0 && (0, import_utils2.bytesToHex)(leafHash).toLowerCase() === expectedRootHex.toLowerCase();
+    return proof.siblings.length === 0 && (0, import_utils3.bytesToHex)(leafHash).toLowerCase() === expectedRootHex.toLowerCase();
   }
   let result;
   try {
@@ -39393,7 +39632,7 @@ function verifyProof(expectedRootHex, leafHash, proof) {
   } catch {
     return false;
   }
-  return (0, import_utils2.bytesToHex)(result).toLowerCase() === expectedRootHex.toLowerCase();
+  return (0, import_utils3.bytesToHex)(result).toLowerCase() === expectedRootHex.toLowerCase();
 }
 function reconstructRoot(leafHash, index, treeSize, siblings) {
   if (treeSize === 1) {
@@ -39406,7 +39645,7 @@ function reconstructRoot(leafHash, index, treeSize, siblings) {
     throw new Error("reconstructRoot: ran out of siblings before single-leaf");
   }
   const k = largestPowerOfTwoLessThan(treeSize);
-  const outermostSibling = (0, import_utils2.hexToBytes)(siblings[siblings.length - 1]);
+  const outermostSibling = (0, import_utils3.hexToBytes)(siblings[siblings.length - 1]);
   const innerSiblings = siblings.slice(0, -1);
   if (index < k) {
     const leftHash = reconstructRoot(leafHash, index, k, innerSiblings);
@@ -39431,9 +39670,9 @@ function largestPowerOfTwoLessThan(n) {
 }
 
 // src/commitments/primitives.ts
-var import_sha2563 = require("@noble/hashes/sha256");
+var import_sha2564 = require("@noble/hashes/sha256");
 var import_hmac = require("@noble/hashes/hmac");
-var import_utils3 = require("@noble/hashes/utils");
+var import_utils4 = require("@noble/hashes/utils");
 function jcs(value) {
   if (value === null || value === void 0) return "null";
   if (typeof value === "boolean" || typeof value === "number")
@@ -39441,9 +39680,9 @@ function jcs(value) {
   if (typeof value === "string") return JSON.stringify(value);
   if (Array.isArray(value))
     return "[" + value.map(jcs).join(",") + "]";
-  const obj5 = value;
-  const keys2 = Object.keys(obj5).sort();
-  return "{" + keys2.map((k) => JSON.stringify(k) + ":" + jcs(obj5[k])).join(",") + "}";
+  const obj6 = value;
+  const keys2 = Object.keys(obj6).sort();
+  return "{" + keys2.map((k) => JSON.stringify(k) + ":" + jcs(obj6[k])).join(",") + "}";
 }
 
 // src/commitments/leaf.ts
@@ -39463,12 +39702,12 @@ function base64urlDecode(s) {
   return out;
 }
 function encodeLeaf(field) {
-  const obj5 = {
+  const obj6 = {
     name: field.name,
     salt: base64urlNoPad(field.salt),
     value: field.value
   };
-  const canonical2 = jcs(obj5);
+  const canonical2 = jcs(obj6);
   return new TextEncoder().encode(canonical2);
 }
 function sortFields(fields) {
@@ -39495,7 +39734,7 @@ function leavesFromFields(fields) {
 
 // src/signing-committed.ts
 function freshSalt() {
-  return (0, import_utils4.randomBytes)(32);
+  return (0, import_utils5.randomBytes)(32);
 }
 function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey, kid, issuer) {
   const allFields = {
@@ -39535,7 +39774,7 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     const { sorted, leafBytes } = leavesFromFields(committedFields);
     const leafHashes = leafBytes.map(hashLeaf);
     const root = merkleRoot(leafHashes);
-    committedFieldsRoot = (0, import_utils4.bytesToHex)(root);
+    committedFieldsRoot = (0, import_utils5.bytesToHex)(root);
     sorted.forEach((f, i) => {
       openings[f.name] = { name: f.name, value: f.value, salt: f.salt, index: i };
     });
@@ -39552,18 +39791,18 @@ function signCommittedDecision(entry, committedFieldNames, signingKey, publicKey
     payload.committed_field_names = committedFields.map((f) => f.name);
   }
   const canonical2 = jcs(payload);
-  const signatureBytes = import_ed255192.ed25519.sign(new TextEncoder().encode(canonical2), (0, import_utils4.hexToBytes)(signingKey));
+  const signatureBytes = import_ed255193.ed25519.sign(new TextEncoder().encode(canonical2), (0, import_utils5.hexToBytes)(signingKey));
   const signedReceipt = {
     payload,
     signature: {
       alg: "EdDSA",
       kid,
       issuer,
-      sig: (0, import_utils4.bytesToHex)(signatureBytes)
+      sig: (0, import_utils5.bytesToHex)(signatureBytes)
     }
   };
   const signedJson = JSON.stringify(signedReceipt);
-  const receiptHash2 = (0, import_utils4.bytesToHex)((0, import_sha2564.sha256)(new TextEncoder().encode(jcs(signedReceipt))));
+  const receiptHash2 = (0, import_utils5.bytesToHex)((0, import_sha2565.sha256)(new TextEncoder().encode(jcs(signedReceipt))));
   return {
     signed: signedJson,
     artifact_type: "decision_receipt_committed_v1",
@@ -39696,7 +39935,7 @@ function committedFieldNamesFromReceipt(receipt, openings) {
   return Array.from(new Set(names)).sort();
 }
 function receiptHashHex(receipt) {
-  return (0, import_utils4.bytesToHex)((0, import_sha2564.sha256)(new TextEncoder().encode(jcs(receipt))));
+  return (0, import_utils5.bytesToHex)((0, import_sha2565.sha256)(new TextEncoder().encode(jcs(receipt))));
 }
 function committedPayload(receipt) {
   const p = receipt.payload;
@@ -39712,9 +39951,9 @@ function verifyCommittedReceiptSignature(receipt, publicKeyHex) {
   const key5 = publicKeyHex ?? (typeof sig.public_key === "string" ? sig.public_key : void 0);
   if (!key5) return null;
   const signed2 = committedPayload(receipt);
-  const sigBytes = /^[0-9a-f]+$/i.test(sig.sig) && sig.sig.length % 2 === 0 ? (0, import_utils4.hexToBytes)(sig.sig) : base64urlDecode(sig.sig);
+  const sigBytes = /^[0-9a-f]+$/i.test(sig.sig) && sig.sig.length % 2 === 0 ? (0, import_utils5.hexToBytes)(sig.sig) : base64urlDecode(sig.sig);
   try {
-    return import_ed255192.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed2)), (0, import_utils4.hexToBytes)(key5));
+    return import_ed255193.ed25519.verify(sigBytes, new TextEncoder().encode(jcs(signed2)), (0, import_utils5.hexToBytes)(key5));
   } catch {
     return false;
   }
@@ -39984,8 +40223,8 @@ function generateReport(logPath, receiptPath, periodDays) {
       policyDigests.set(entry.policy_digest, new Date(entry.timestamp).toISOString());
     }
   }
-  const policyChanges = Array.from(policyDigests.entries()).map(([digest, at9]) => ({
-    at: at9,
+  const policyChanges = Array.from(policyDigests.entries()).map(([digest, at10]) => ({
+    at: at10,
     policy_digest: digest
   })).sort((a, b) => a.at.localeCompare(b.at));
   return {
@@ -40343,10 +40582,10 @@ function toEgressSummary(envelope2, opts) {
   };
   return summary;
 }
-function inspectEgress(obj5, opts = {}) {
+function inspectEgress(obj6, opts = {}) {
   const violations = [];
-  if (!obj5 || typeof obj5 !== "object" || Array.isArray(obj5)) return { safe: false, violations: [{ path: "$", reason: "not an egress summary object" }] };
-  const o = obj5;
+  if (!obj6 || typeof obj6 !== "object" || Array.isArray(obj6)) return { safe: false, violations: [{ path: "$", reason: "not an egress summary object" }] };
+  const o = obj6;
   const allowed = opts.signed ? EGRESS_SIGNED_PAYLOAD_FIELDS : EGRESS_SUMMARY_FIELDS;
   for (const [key5, value] of Object.entries(o)) {
     if (!allowed.has(key5)) {
@@ -40572,8 +40811,8 @@ var ScopeBlindBridge = class {
         })
       });
       if (!res.ok) {
-        const text8 = await res.text().catch(() => "");
-        this.stats.last_error = `brass-issue: HTTP ${res.status} ${text8.slice(0, 160)}`;
+        const text9 = await res.text().catch(() => "");
+        this.stats.last_error = `brass-issue: HTTP ${res.status} ${text9.slice(0, 160)}`;
         return null;
       }
       const body = await res.json();
@@ -40647,8 +40886,8 @@ function forwardReceipt(signedReceipt) {
 }
 
 // src/receipt-enrichment.ts
-var import_sha2565 = require("@noble/hashes/sha256");
-var import_utils5 = require("@noble/hashes/utils");
+var import_sha2566 = require("@noble/hashes/sha256");
+var import_utils6 = require("@noble/hashes/utils");
 var ENRICHMENT_VERSION = 2;
 function canonicalJson(value) {
   const seen = /* @__PURE__ */ new WeakSet();
@@ -40673,7 +40912,7 @@ function canonicalJson(value) {
   return enc(value);
 }
 function sha256Hex(s) {
-  return (0, import_utils5.bytesToHex)((0, import_sha2565.sha256)(new TextEncoder().encode(s)));
+  return (0, import_utils6.bytesToHex)((0, import_sha2566.sha256)(new TextEncoder().encode(s)));
 }
 var RULES = [
   { cap: "exec.shell", tool: /bash|shell|exec|terminal|run_command|command/ },
@@ -40694,15 +40933,15 @@ var RULES = [
 ];
 function deriveCapabilities(tool, input) {
   const t = String(tool || "").toLowerCase();
-  let text8 = "";
+  let text9 = "";
   try {
-    text8 = canonicalJson(input).toLowerCase();
+    text9 = canonicalJson(input).toLowerCase();
   } catch {
   }
   const caps = /* @__PURE__ */ new Set();
   for (const r of RULES) {
     if (r.tool && r.tool.test(t)) caps.add(r.cap);
-    if (r.text && r.text.test(text8)) caps.add(r.cap);
+    if (r.text && r.text.test(text9)) caps.add(r.cap);
   }
   return Array.from(caps).sort();
 }
@@ -40772,9 +41011,9 @@ var import_node_path7 = require("path");
 // src/webauthn-approval.ts
 var import_node_crypto8 = require("crypto");
 var import_p256 = require("@noble/curves/p256");
-var import_ed255193 = require("@noble/curves/ed25519");
-var import_sha2566 = require("@noble/hashes/sha256");
-var import_utils6 = require("@noble/hashes/utils");
+var import_ed255194 = require("@noble/curves/ed25519");
+var import_sha2567 = require("@noble/hashes/sha256");
+var import_utils7 = require("@noble/hashes/utils");
 function createApprovalChallenge(requestId, toolName, agentId, rpId = "scopeblind.com", timeoutSeconds = 300, boundChallenge) {
   const challenge = boundChallenge ?? base64urlEncode((0, import_node_crypto8.randomBytes)(32));
   const contextHash = (0, import_node_crypto8.createHash)("sha256").update(JSON.stringify({ requestId, toolName, agentId, timestamp: Date.now() })).digest("hex");
@@ -40836,7 +41075,7 @@ function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts
   const authData = base64urlDecode2(assertion.authenticatorData);
   if (authData.length < 37) return fail("authenticator_data_too_short");
   const rpIdHash = authData.slice(0, 32);
-  const expectedRpIdHash = (0, import_sha2566.sha256)(new TextEncoder().encode(challenge.rpId));
+  const expectedRpIdHash = (0, import_sha2567.sha256)(new TextEncoder().encode(challenge.rpId));
   if (!bytesEqual(rpIdHash, expectedRpIdHash)) return fail("rp_id_hash_mismatch");
   const flags = authData[32];
   const userPresent = !!(flags & 1);
@@ -40847,14 +41086,14 @@ function verifyApprovalAssertion(challenge, assertion, credentialPublicKey, opts
   if (typeof opts.prevSignCount === "number" && signCount !== 0 && signCount <= opts.prevSignCount) {
     return fail("sign_count_regression", { userVerified, signCount });
   }
-  const signedData = concatBytes(authData, (0, import_sha2566.sha256)(clientDataBytes));
+  const signedData = concatBytes(authData, (0, import_sha2567.sha256)(clientDataBytes));
   const sigBytes = base64urlDecode2(assertion.signature);
   let sigOk = false;
   try {
     if (credentialPublicKey.alg === -7) {
-      sigOk = import_p256.p256.verify(sigBytes, (0, import_sha2566.sha256)(signedData), (0, import_utils6.hexToBytes)(credentialPublicKey.publicKeyHex), { format: "der" });
+      sigOk = import_p256.p256.verify(sigBytes, (0, import_sha2567.sha256)(signedData), (0, import_utils7.hexToBytes)(credentialPublicKey.publicKeyHex), { format: "der" });
     } else if (credentialPublicKey.alg === -8) {
-      sigOk = import_ed255193.ed25519.verify(sigBytes, signedData, (0, import_utils6.hexToBytes)(credentialPublicKey.publicKeyHex));
+      sigOk = import_ed255194.ed25519.verify(sigBytes, signedData, (0, import_utils7.hexToBytes)(credentialPublicKey.publicKeyHex));
     } else {
       return fail("unsupported_algorithm", { userVerified, signCount });
     }
@@ -41108,7 +41347,7 @@ function proposalUnsigned(input) {
 function approvalDigest(approval) {
   return stableDigest(approval);
 }
-function transition(registry, signer, event, headBefore, headAfter, fields = {}, at9 = nowIso()) {
+function transition(registry, signer, event, headBefore, headAfter, fields = {}, at10 = nowIso()) {
   const sequence = registry.history.length + 1;
   const body = {
     event,
@@ -41121,11 +41360,11 @@ function transition(registry, signer, event, headBefore, headAfter, fields = {},
   return {
     sequence,
     event,
-    occurred_at: at9,
+    occurred_at: at10,
     head_before: headBefore,
     head_after: headAfter,
     ...fields,
-    transition_receipt: signLifecycleEvent(signer, body, at9)
+    transition_receipt: signLifecycleEvent(signer, body, at10)
   };
 }
 function initializeMandateRegistry(input) {
@@ -41387,7 +41626,7 @@ function installSnapshotAtomically(cedarDir, snapshot) {
     if ((0, import_node_fs12.existsSync)(backup) && !(0, import_node_fs12.existsSync)(target)) (0, import_node_fs12.renameSync)(backup, target);
   }
 }
-function addTransition(registry, signer, item, at9) {
+function addTransition(registry, signer, item, at10) {
   const previous = registry.history[registry.history.length - 1];
   const previousTransitionHash = previous ? stableDigest(previous.transition_receipt) : void 0;
   const trans = transition(registry, signer, item.event, item.head_before, item.head_after, {
@@ -41396,7 +41635,7 @@ function addTransition(registry, signer, item, at9) {
     ...item.policy_digest ? { policy_digest: item.policy_digest } : {},
     ...item.expiry ? { expiry: item.expiry } : {},
     ...previousTransitionHash ? { previous_transition_hash: previousTransitionHash } : {}
-  }, at9 || item.occurred_at);
+  }, at10 || item.occurred_at);
   registry.history.push(trans);
   return trans;
 }
@@ -41498,11 +41737,11 @@ function createWebAuthnPolicyChallenge(input) {
   persistRegistry(input.cedarDir, registry);
   return challenge;
 }
-function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at9) {
-  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at9)));
+function activateApprovedProposal(cedarDir, registry, signer, proposal, approval, at10) {
+  const integrity = verifyMandateRegistry(registry, new Date(Date.parse(at10)));
   if (!integrity.valid && integrity.code !== "active_grant_expired") throw new Error(`cannot activate against invalid registry: ${integrity.code}`);
   if (registry.active.policy_digest !== proposal.base_policy_digest) throw new Error("active policy changed after proposal; create a new proposal against the current head");
-  if (Date.parse(proposal.expires_at) <= Date.parse(at9)) throw new Error("proposal expired before approval; it cannot be activated");
+  if (Date.parse(proposal.expires_at) <= Date.parse(at10)) throw new Error("proposal expired before approval; it cannot be activated");
   const controller = registry.controllers.find((item) => item.id === approval.controller_id);
   if (!controller) throw new Error("approval controller is not registered");
   const error = approval.method === "ed25519" ? verifyDirectApproval(registry, proposal, approval) : verifyWebAuthnApproval(registry, proposal, approval);
@@ -41519,35 +41758,35 @@ function activateApprovedProposal(cedarDir, registry, signer, proposal, approval
     snapshot_digest: stableDigest(candidate),
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval)
-  }, at9);
+  }, at10);
   registry.policies[candidate.policy_digest] = candidate;
   registry.approvals[proposal.proposal_id] = approval;
   registry.active = {
     policy_digest: candidate.policy_digest,
     baseline_policy_digest: before3,
-    activated_at: at9,
+    activated_at: at10,
     expires_at: proposal.expires_at,
     proposal_id: proposal.proposal_id,
     compilation_receipt: compilationReceipt
   };
   addTransition(registry, signer, {
     event: "proposal_approved",
-    occurred_at: at9,
+    occurred_at: at10,
     head_before: before3,
     head_after: before3,
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval)
-  }, at9);
+  }, at10);
   addTransition(registry, signer, {
     event: "policy_activated",
-    occurred_at: at9,
+    occurred_at: at10,
     head_before: before3,
     head_after: candidate.policy_digest,
     proposal_id: proposal.proposal_id,
     approval_digest: approvalDigest(approval),
     policy_digest: candidate.policy_digest,
     expiry: proposal.expires_at
-  }, at9);
+  }, at10);
   delete registry.pending_webauthn[proposal.proposal_id];
   persistRegistry(cedarDir, registry);
   return registry;
@@ -41570,12 +41809,12 @@ function approvePolicyProposalWithWebAuthn(input) {
   if (pending.challenge.challenge !== policyApprovalChallenge(proposal, controller.id)) {
     throw new Error("pending WebAuthn challenge is not bound to this proposal");
   }
-  const at9 = nowIso(input.now);
+  const at10 = nowIso(input.now);
   const result = verifyApprovalAssertion(pending.challenge, input.assertion, controller.credential_public_key, {
     expectedOrigin: input.expectedOrigin,
     requireUserVerification: true,
     prevSignCount: controller.sign_count,
-    now: Date.parse(at9)
+    now: Date.parse(at10)
   });
   if (!result.valid || !result.userVerified) throw new Error(`WebAuthn approval rejected: ${result.reason || "user verification required"}`);
   controller.sign_count = result.signCount;
@@ -41587,9 +41826,9 @@ function approvePolicyProposalWithWebAuthn(input) {
     assertion: input.assertion,
     result,
     expected_origin: input.expectedOrigin,
-    approved_at: at9
+    approved_at: at10
   };
-  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at9);
+  return activateApprovedProposal(input.cedarDir, registry, input.signer, proposal, approval, at10);
 }
 function refreshManagedMandate(input) {
   const registry = loadMandateRegistry(input.cedarDir);
@@ -41606,7 +41845,7 @@ function refreshManagedMandate(input) {
     if (!baseline) return { valid: false, code: "expiry_baseline_missing", message: "Expired policy has no baseline snapshot to restore." };
     try {
       installSnapshotAtomically(input.cedarDir, baseline);
-      const at9 = nowIso(now);
+      const at10 = nowIso(now);
       const before3 = registry.active.policy_digest;
       const compilationReceipt = signLifecycleEvent(input.signer, {
         event: "compiled",
@@ -41614,21 +41853,21 @@ function refreshManagedMandate(input) {
         policy_digest: baseline.policy_digest,
         snapshot_digest: stableDigest(baseline),
         reverted_from: before3
-      }, at9);
+      }, at10);
       registry.active = {
         policy_digest: baseline.policy_digest,
         baseline_policy_digest: baseline.policy_digest,
-        activated_at: at9,
+        activated_at: at10,
         compilation_receipt: compilationReceipt
       };
       addTransition(registry, input.signer, {
         event: "policy_expired_reverted",
-        occurred_at: at9,
+        occurred_at: at10,
         head_before: before3,
         head_after: baseline.policy_digest,
         policy_digest: baseline.policy_digest,
         expiry: savedExpiry
-      }, at9);
+      }, at10);
       persistRegistry(input.cedarDir, registry);
       return { valid: true, registry, expired_reverted: true };
     } catch (error) {
@@ -41852,27 +42091,24 @@ async function handlePreToolUse(input, state) {
       if (!state.enforce) return null;
       return { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: `[ScopeBlind] ${why}` } };
     };
-    if (std.tools && !std.tools.includes(toolName)) {
-      const r = refuse("standard_tool_not_allowed", `"${toolName}" is not among the tools the standard permits.`);
+    const verdict = standardDecision(std, toolName, input.toolInput);
+    if (verdict.decision === "deny") {
+      const r = refuse(verdict.reason, `"${toolName}" refused by the standard: ${verdict.detail}.`);
       if (r) return r;
     } else {
-      const amount = checkAmount(std, input.toolInput);
-      if (!amount.ok) {
-        const r = refuse(amount.reason, `"${toolName}" refused by the standard: ${amount.detail}.`);
-        if (r) return r;
-      } else {
-        const person = personRequired(std, input.toolInput);
+      {
+        const person = verdict.decision === "hold" ? { required: true, detail: verdict.detail } : { required: false };
         if (person.required) {
           const hid = heldIdFor(state.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
           const page = state.reporter ? `${new URL(state.reporter.url).origin}/standard?s=${state.reporter.sid}#held-${hid}` : "";
-          const verdict = state.reporter ? await state.reporter.decision(hid) : null;
-          if (verdict === "unreachable") {
+          const verdict2 = state.reporter ? await state.reporter.decision(hid) : null;
+          if (verdict2 === "unreachable") {
             const r = refuse("standard_page_unreachable", `"${toolName}" needs a named person's approval and the standard's page could not be reached; retry the same call later.`);
             if (r) return r;
-          } else if (verdict) {
-            state.approvalsToRecord.set(requestId, { hid, approver_key_id: verdict.approver_key_id, digest: verdict.digest, page });
-            if (verdict.decision === "deny") {
-              const r = refuse("person_denied", `"${toolName}" was denied by ${verdict.approver_key_id} on the standard's page${verdict.note ? `: ${verdict.note}` : ""}.`);
+          } else if (verdict2) {
+            state.approvalsToRecord.set(requestId, { hid, approver_key_id: verdict2.approver_key_id, digest: verdict2.digest, page });
+            if (verdict2.decision === "deny") {
+              const r = refuse("person_denied", `"${toolName}" was denied by ${verdict2.approver_key_id} on the standard's page${verdict2.note ? `: ${verdict2.note}` : ""}.`);
               if (r) return r;
             }
           } else {
@@ -41933,13 +42169,21 @@ async function handlePreToolUse(input, state) {
           sandbox_state: detectSandboxState(),
           plan_receipt_id: state.activePlanReceiptId || void 0
         });
-        const isDefaultDeny = !reason || reason === "cedar_deny" || /reason":\[\]/.test(reason);
+        const meta = cedarDecision.metadata || {};
+        const deniedBy = Array.isArray(meta.denied_by) ? meta.denied_by : [];
+        const isEngineError = meta.error === true;
+        const isDefaultDeny = !isEngineError && deniedBy.length === 0;
         const policyRef = state.cedarDir ? ` Policy: ${state.cedarDir}.` : "";
-        const howTo = isDefaultDeny ? ` No permit matched (default-deny, fail-closed).${policyRef} Allow it: npx protect-mcp policy allow ${toolName}` : ` Blocked by an explicit forbid rule.${policyRef} Review: npx protect-mcp policy show`;
+        const sentence = (text9) => /[.!?]$/.test(text9) ? text9 : `${text9}.`;
+        const named = deniedBy.map((p) => p.reason ? `${p.id}: ${p.reason}` : p.id).join("; ");
+        const howTo = isEngineError ? ` The policy could not be evaluated, so the gate fails closed: ${sentence(reason)}${policyRef}` : isDefaultDeny ? ` No permit matched (default-deny, fail-closed).${policyRef} Allow it: npx protect-mcp policy allow ${toolName}` : ` Blocked by the forbid rule ${sentence(named)}${policyRef} Review: npx protect-mcp policy show`;
         if (denyCount === 1) {
           process.stderr.write(
-            `[PROTECT_MCP] Denied "${toolName}" (${isDefaultDeny ? "default-deny" : "forbid"}).
+            isEngineError ? `[PROTECT_MCP] Denied "${toolName}" (policy error, fail-closed): ${reason}
+` : isDefaultDeny ? `[PROTECT_MCP] Denied "${toolName}" (default-deny).
   Allow with: npx protect-mcp policy allow ${toolName}
+` : `[PROTECT_MCP] Denied "${toolName}" (forbid: ${named}).
+  Review: npx protect-mcp policy show
 `
           );
         }
@@ -43097,6 +43341,229 @@ function normalizeHookInput(raw) {
   return result;
 }
 
+// src/starter-policy.ts
+var STARTER_POLICY_VERSION = 1;
+var STARTER_POLICY_FILE = "starter.cedar";
+var STARTER_POLICY = [
+  "// protect-mcp starter policy for coding agents, v1.",
+  "// Everything is allowed except the forbids below, and a forbid always wins.",
+  "// Shell rules match the raw command text, so they are best effort: a reworded",
+  "// command can get past them. Every rule checks `has` first, because the gate",
+  "// denies on any policy error. This file is yours to edit.",
+  "",
+  '@id("starter.allow-by-default")',
+  "permit (principal, action, resource);",
+  "",
+  '@id("starter.delete-root-or-home")',
+  '@reason("Recursive delete of /, the home folder or the parent folder. Delete a specific path inside the project instead.")',
+  'forbid (principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash")',
+  "when {",
+  "  context has input && context.input has command && (",
+  '    context.input.command like "*rm -rf /" || context.input.command like "*rm -rf / *" ||',
+  '    context.input.command like "*rm -rf ~" || context.input.command like "*rm -rf ~ *" ||',
+  '    context.input.command like "*rm -rf ~/" || context.input.command like "*rm -rf ~/ *" ||',
+  '    context.input.command like "*rm -rf $HOME" || context.input.command like "*rm -rf $HOME *" ||',
+  '    context.input.command like "*rm -rf $HOME/" || context.input.command like "*rm -rf $HOME/ *" ||',
+  '    context.input.command like "*rm -rf \\"$HOME\\"" || context.input.command like "*rm -rf \\"$HOME\\" *" ||',
+  '    context.input.command like "*rm -rf .." || context.input.command like "*rm -rf .. *" ||',
+  '    context.input.command like "*rm -rf ../" || context.input.command like "*rm -rf ../ *" ||',
+  '    context.input.command like "*rm -rf /\\**" || context.input.command like "*rm -rf ~/\\**" ||',
+  '    context.input.command like "*rm -rf $HOME/\\**" || context.input.command like "*rm -rf \\"$HOME/\\"\\**" ||',
+  '    context.input.command like "*rm -fr /" || context.input.command like "*rm -fr ~" ||',
+  '    context.input.command like "*rm -fr ~/" || context.input.command like "*rm -fr $HOME")',
+  "};",
+  "",
+  '@id("starter.force-push-main")',
+  '@reason("Force-push to main or master, or a force-push that names no branch. Push a named feature branch instead.")',
+  'forbid (principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash")',
+  "when {",
+  "  context has input && context.input has command && (",
+  '    context.input.command like "*git push*--force* origin main*" || context.input.command like "*git push*-f origin main*" ||',
+  '    context.input.command like "*git push*origin main --force*" || context.input.command like "*git push*origin main -f*" ||',
+  '    context.input.command like "*git push*--force*:main*" || context.input.command like "*git push*origin +main*" ||',
+  '    context.input.command like "*git push*--force* origin master*" || context.input.command like "*git push*-f origin master*" ||',
+  '    context.input.command like "*git push*origin master --force*" || context.input.command like "*git push*origin master -f*" ||',
+  '    context.input.command like "*git push*--force*:master*" || context.input.command like "*git push*origin +master*" ||',
+  '    context.input.command like "*git push*--force" || context.input.command like "*git push*--force 2>&1*" ||',
+  '    context.input.command like "*git push*--force &&*" || context.input.command like "*git push*--force-with-lease" ||',
+  '    context.input.command like "*git push*--force-with-lease 2>&1*" || context.input.command like "*git push*--force-with-lease &&*" ||',
+  '    context.input.command like "*git push*-f" || context.input.command like "*git push*-f 2>&1*" ||',
+  '    context.input.command like "*git push*-f &&*")',
+  "};",
+  "",
+  '@id("starter.read-secret-file")',
+  '@reason("Reads a credential file such as .env, ~/.ssh or ~/.aws. Ask the person for the value you need.")',
+  'forbid (principal, action == Action::"MCP::Tool::call", resource)',
+  "when {",
+  '  resource == Tool::"Read" && context has input && context.input has file_path && (',
+  '    context.input.file_path like "*/.env" || context.input.file_path like "*/.env.*" ||',
+  '    context.input.file_path like "*/.ssh/*" || context.input.file_path like "*/.aws/*" ||',
+  '    context.input.file_path like "*/.netrc" || context.input.file_path like "*/.git-credentials" ||',
+  '    context.input.file_path like "*/.npmrc" || context.input.file_path like "*/.pypirc" ||',
+  '    context.input.file_path like "*/.docker/config.json" || context.input.file_path like "*/.kube/config" ||',
+  '    context.input.file_path like "*/.config/gh/hosts.yml" || context.input.file_path like "*/.gnupg/*" ||',
+  '    context.input.file_path like "*/protect-mcp.key" || context.input.file_path like "*/keys/gateway.json")',
+  "}",
+  "unless {",
+  '  context.input.file_path like "*.pub" || context.input.file_path like "*.example" ||',
+  '  context.input.file_path like "*.sample" || context.input.file_path like "*.template"',
+  "};",
+  "",
+  '@id("starter.grep-secret-path")',
+  '@reason("Searches inside a credential file or folder. Ask the person for the value you need.")',
+  'forbid (principal, action == Action::"MCP::Tool::call", resource)',
+  "when {",
+  '  resource == Tool::"Grep" && context has input && context.input has path && (',
+  '    context.input.path like "*/.env" || context.input.path like "*/.env.*" ||',
+  '    context.input.path like "*/.ssh*" || context.input.path like "*/.aws*")',
+  "};",
+  "",
+  '@id("starter.shell-reads-secret")',
+  '@reason("Prints a credential file in the shell. Ask the person for the value you need.")',
+  'forbid (principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash")',
+  "when {",
+  "  context has input && context.input has command && (",
+  '    context.input.command like "*cat *" || context.input.command like "*grep *" ||',
+  '    context.input.command like "*rg *" || context.input.command like "*head *" ||',
+  '    context.input.command like "*tail *" || context.input.command like "*less *" ||',
+  '    context.input.command like "*more *" || context.input.command like "*strings *" ||',
+  '    context.input.command like "*base64 *" || context.input.command like "*xxd *") && (',
+  '    context.input.command like "* .env" || context.input.command like "* .env *" ||',
+  '    context.input.command like "*/.env" || context.input.command like "*/.env *" ||',
+  '    context.input.command like "* .env.*" || context.input.command like "*/.env.*" ||',
+  '    context.input.command like "*.ssh/id_*" || context.input.command like "*.aws/credentials*" ||',
+  '    context.input.command like "*.netrc*" || context.input.command like "*.git-credentials*" ||',
+  '    context.input.command like "*.docker/config.json*" || context.input.command like "*gh/hosts.yml*")',
+  "}",
+  "unless {",
+  '  context.input.command like "*.env.example*" || context.input.command like "*.env.sample*" ||',
+  '  context.input.command like "*.env.template*" || context.input.command like "*.pub*"',
+  "};",
+  "",
+  '@id("starter.pipe-network-to-shell")',
+  '@reason("Runs a downloaded script without review. Save it to a file and read it first.")',
+  'forbid (principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash")',
+  "when {",
+  "  context has input && context.input has command &&",
+  '  (context.input.command like "*curl *" || context.input.command like "*wget *") && (',
+  '    context.input.command like "*| sh" || context.input.command like "*| sh *" ||',
+  '    context.input.command like "*|sh" || context.input.command like "*|sh *" ||',
+  '    context.input.command like "*| bash" || context.input.command like "*| bash *" ||',
+  '    context.input.command like "*|bash" || context.input.command like "*|bash *" ||',
+  '    context.input.command like "*| zsh" || context.input.command like "*| zsh *" ||',
+  '    context.input.command like "*| sudo sh*" || context.input.command like "*| sudo bash*" ||',
+  '    context.input.command like "*| sudo -E bash*" || context.input.command like "*sh <(curl*" ||',
+  '    context.input.command like "*sh <(wget*" || context.input.command like "*source <(curl*" ||',
+  '    context.input.command like "*sh -c \\"$(curl*" || context.input.command like "*sh -c \\"$(wget*" ||',
+  '    context.input.command like "*eval \\"$(curl*" || context.input.command like "*eval $(curl*")',
+  "};",
+  "",
+  '@id("starter.write-sensitive-location")',
+  '@reason("Writes a system, shell-profile, SSH, credential or agent-control file. A person makes this change.")',
+  'forbid (principal, action == Action::"MCP::Tool::call", resource)',
+  "when {",
+  '  (resource == Tool::"Write" || resource == Tool::"Edit" || resource == Tool::"MultiEdit") &&',
+  "  context has input && context.input has file_path && (",
+  '    context.input.file_path like "/etc/*" || context.input.file_path like "/private/etc/*" ||',
+  '    context.input.file_path like "/usr/*" || context.input.file_path like "/bin/*" ||',
+  '    context.input.file_path like "/sbin/*" || context.input.file_path like "/System/*" ||',
+  '    context.input.file_path like "/Library/*" || context.input.file_path like "*/Library/LaunchAgents/*" ||',
+  '    context.input.file_path like "*/.bashrc" || context.input.file_path like "*/.bash_profile" ||',
+  '    context.input.file_path like "*/.zshrc" || context.input.file_path like "*/.zprofile" ||',
+  '    context.input.file_path like "*/.zshenv" || context.input.file_path like "*/.profile" ||',
+  '    context.input.file_path like "*/.config/autostart/*" || context.input.file_path like "*/.gitconfig" ||',
+  '    context.input.file_path like "*/.ssh/*" || context.input.file_path like "*/.aws/*" ||',
+  '    context.input.file_path like "*/.netrc" || context.input.file_path like "*/.git-credentials" ||',
+  '    context.input.file_path like "*/.claude/settings.json" || context.input.file_path like "*/.claude/settings.local.json" ||',
+  '    context.input.file_path like "*/.codex/config.toml" || context.input.file_path like "*/.codex/hooks.json" ||',
+  '    context.input.file_path like "*/protect.cedar" || context.input.file_path like "*/protect-mcp.key" ||',
+  '    context.input.file_path like "*/keys/gateway.json" || context.input.file_path like "*/../*")',
+  "};",
+  ""
+].join("\n");
+var STARTER_CONTAIN_TEMPLATE = [
+  '@id("starter.write-outside-project")',
+  '@reason("Writes outside this project. Work inside the project or a temporary folder, or ask the person.")',
+  'forbid (principal, action == Action::"MCP::Tool::call", resource)',
+  "when {",
+  '  (resource == Tool::"Write" || resource == Tool::"Edit" || resource == Tool::"MultiEdit") &&',
+  "  context has input && context.input has file_path",
+  "}",
+  "unless {",
+  '  context.input.file_path like "__PROJECT__/*" ||',
+  '  context.input.file_path like "/tmp/*" || context.input.file_path like "/private/tmp/*" ||',
+  '  context.input.file_path like "/var/folders/*" || context.input.file_path like "/private/var/folders/*" ||',
+  '  context.input.file_path like "__HOME__/.claude/projects/*/memory/*" ||',
+  '  context.input.file_path like "__HOME__/.claude/plans/*"',
+  "};",
+  "",
+  '@id("starter.delete-outside-project")',
+  '@reason("Recursive delete of an absolute path outside this project. Delete inside the project, or ask the person.")',
+  'forbid (principal, action == Action::"MCP::Tool::call", resource == Tool::"Bash")',
+  "when {",
+  "  context has input && context.input has command && (",
+  '    context.input.command like "*rm -rf /*" || context.input.command like "*rm -rf \\"/*" ||',
+  '    context.input.command like "*rm -rf ~/*" || context.input.command like "*rm -rf $HOME/*" ||',
+  '    context.input.command like "*rm -rf \\"$HOME/*")',
+  "}",
+  "unless {",
+  '  context.input.command like "*rm -rf __PROJECT__/*" || context.input.command like "*rm -rf \\"__PROJECT__/*" ||',
+  '  context.input.command like "*rm -rf __TILDE__/*" ||',
+  '  context.input.command like "*rm -rf /tmp/*" || context.input.command like "*rm -rf \\"/tmp/*" ||',
+  '  context.input.command like "*rm -rf /private/tmp/*" || context.input.command like "*rm -rf \\"/private/tmp/*" ||',
+  '  context.input.command like "*rm -rf /var/folders/*" || context.input.command like "*rm -rf \\"/var/folders/*" ||',
+  '  context.input.command like "*rm -rf /private/var/folders/*" || context.input.command like "*rm -rf \\"/private/var/folders/*" ||',
+  '  context.input.command like "*rm -rf $TMPDIR*" || context.input.command like "*rm -rf \\"$TMPDIR*"',
+  "};",
+  ""
+].join("\n");
+var unescapeCedarString = (s) => s.replace(/\\(.)/g, (_, c) => c === "n" ? "\n" : c === "t" ? "	" : c);
+function annotatedRules(source) {
+  const rules = [];
+  const re = /@id\("((?:[^"\\]|\\.)*)"\)\s*(?:@reason\("((?:[^"\\]|\\.)*)"\))?/g;
+  let m;
+  while (m = re.exec(source)) rules.push({ id: unescapeCedarString(m[1]), reason: m[2] === void 0 ? "" : unescapeCedarString(m[2]) });
+  return rules;
+}
+function starterRules() {
+  return annotatedRules(STARTER_POLICY).filter((rule) => rule.reason !== "");
+}
+function cedarLikeLiteral(value) {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\*/g, "\\*");
+}
+function renderContainRules(projectDir, homeDir) {
+  const trim = (p) => p.length > 1 ? p.replace(/\/+$/, "") : p;
+  const project = trim(projectDir);
+  const home = trim(homeDir);
+  for (const [label, path] of [["project", project], ["home", home]]) {
+    if (!path.startsWith("/")) throw new Error(`--contain needs an absolute POSIX ${label} path; got ${JSON.stringify(path)}`);
+    if (/[\u0000-\u001f\u007f]/.test(path)) throw new Error(`--contain cannot use a ${label} path that contains control characters`);
+  }
+  if (project === "/" || project === home) {
+    throw new Error("--contain needs a project folder; it will not treat / or the home folder itself as the project");
+  }
+  const homePrefix = home === "/" ? "" : home;
+  const tilde = project.startsWith(`${homePrefix}/`) && homePrefix !== "" ? `~${project.slice(homePrefix.length)}` : project;
+  const values = { PROJECT: project, TILDE: tilde, HOME: homePrefix };
+  return STARTER_CONTAIN_TEMPLATE.replace(/__(PROJECT|TILDE|HOME)__/g, (_, key5) => cedarLikeLiteral(values[key5]));
+}
+var BUILTIN_POLICY_PREFIX = "builtin:";
+var BUILTIN_POLICIES = {
+  starter: { file: STARTER_POLICY_FILE, source: STARTER_POLICY }
+};
+function builtinPolicyNames() {
+  return Object.keys(BUILTIN_POLICIES).map((name2) => `${BUILTIN_POLICY_PREFIX}${name2}`);
+}
+function isBuiltinPolicySpec(spec) {
+  return typeof spec === "string" && spec.startsWith(BUILTIN_POLICY_PREFIX);
+}
+function resolveBuiltinPolicy(spec) {
+  if (!isBuiltinPolicySpec(spec)) return null;
+  const name2 = spec.slice(BUILTIN_POLICY_PREFIX.length);
+  const policy = Object.prototype.hasOwnProperty.call(BUILTIN_POLICIES, name2) ? BUILTIN_POLICIES[name2] : void 0;
+  return policy ? { spec, name: name2, file: policy.file, source: policy.source } : null;
+}
+
 // src/hook-patterns.ts
 var BUILTIN_PATTERNS = [
   // ── Destructive filesystem operations ──
@@ -43305,60 +43772,7 @@ function generateHookSettings(hookUrl, patterns = BUILTIN_PATTERNS) {
   };
 }
 function generateSampleCedarPolicy() {
-  const lines = [
-    "// Generated by protect-mcp init-hooks",
-    "// Customize these policies to match your security requirements.",
-    "// Cedar deny decisions are AUTHORITATIVE \u2014 they cannot be overridden.",
-    "",
-    "// Allow all read-only tools by default",
-    "permit(",
-    "  principal,",
-    '  action == Action::"MCP::Tool::call",',
-    '  resource == Tool::"Read"',
-    ");",
-    "",
-    "permit(",
-    "  principal,",
-    '  action == Action::"MCP::Tool::call",',
-    '  resource == Tool::"Glob"',
-    ");",
-    "",
-    "permit(",
-    "  principal,",
-    '  action == Action::"MCP::Tool::call",',
-    '  resource == Tool::"Grep"',
-    ");",
-    "",
-    "// Allow write/edit tools (remove these to require explicit approval)",
-    "permit(",
-    "  principal,",
-    '  action == Action::"MCP::Tool::call",',
-    '  resource == Tool::"Write"',
-    ");",
-    "",
-    "permit(",
-    "  principal,",
-    '  action == Action::"MCP::Tool::call",',
-    '  resource == Tool::"Edit"',
-    ");",
-    "",
-    "// Allow Bash with caution (Cedar evaluates before hook patterns)",
-    "permit(",
-    "  principal,",
-    '  action == Action::"MCP::Tool::call",',
-    '  resource == Tool::"Bash"',
-    ");",
-    "",
-    "// Block dangerous tools entirely",
-    "// Uncomment any of these to block specific tools:",
-    "// forbid(",
-    "//   principal,",
-    '//   action == Action::"MCP::Tool::call",',
-    '//   resource == Tool::"delete_file"',
-    "// );",
-    ""
-  ];
-  return lines.join("\n");
+  return STARTER_POLICY;
 }
 function generateVerifyReceiptSkill() {
   return `---
@@ -43845,6 +44259,14 @@ forbid(principal, action == Action::"MCP::Tool::call", resource) when {
 };
 ${defaultPermit}`;
 var POLICY_PACKS = [
+  {
+    // The starter policy, byte for byte (the same text as --policy builtin:starter and init --starter).
+    id: "coding-starter",
+    name: "Coding Starter",
+    description: "Allows a coding agent everything except seven named forbids: recursive delete of / or home, force-push to main, credential reads, downloads piped to a shell, and writes to system, profile, credential or agent-control files.",
+    recommendedMode: "enforce-ready",
+    files: [{ path: "coding-starter.cedar", contents: STARTER_POLICY }]
+  },
   {
     id: "research-safe",
     name: "Research Safe",
@@ -44788,8 +45210,8 @@ function computeCommitment(salt, value) {
   const serialized = typeof value === "string" ? value : JSON.stringify(value);
   return (0, import_node_crypto12.createHash)("sha256").update(salt + serialized).digest("hex");
 }
-function hashObject(obj5) {
-  const canonical2 = JSON.stringify(obj5, Object.keys(obj5).sort());
+function hashObject(obj6) {
+  const canonical2 = JSON.stringify(obj6, Object.keys(obj6).sort());
   return (0, import_node_crypto12.createHash)("sha256").update(canonical2).digest("hex");
 }
 
@@ -46032,22 +46454,22 @@ var REPOSITORY_DEVICE_ACTIONS = ["repository_device_link_request", "repository_d
 var REPOSITORY_DEVICE_PERMISSIONS = ["read", "claim", "review", "feedback", "accept"];
 var REPOSITORY_DEVICE_LINK_MS = 10 * 60 * 1e3;
 var REPOSITORY_DEVICE_MAX_MS = 7 * 864e5;
-var obj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var obj2 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 var exact4 = (v, required, optional = []) => required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
 var key = (v) => typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
 var id3 = (v) => typeof v === "string" && /^[A-Za-z0-9_-]{8,100}$/.test(v);
 var name = (v) => typeof v === "string" && v === v.trim() && v.length > 0 && v.length <= 60 && !/[\u0000-\u001f\u007f]/.test(v);
 var time3 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v));
 var period = (v, max) => time3(v.issued_at) && time3(v.expires_at) && Date.parse(v.expires_at) > Date.parse(v.issued_at) && Date.parse(v.expires_at) - Date.parse(v.issued_at) <= max;
-var clean = (v) => obj(v) && exact4(v, ["payload", "signer", "digest", "signature"]);
+var clean = (v) => obj2(v) && exact4(v, ["payload", "signer", "digest", "signature"]);
 function validRepositoryDeviceLink(v) {
-  return obj(v) && exact4(v, ["type", "id", "workspace_id", "device_key", "name", "secret_hash", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.device-link.v1" && id3(v.id) && id3(v.workspace_id) && key(v.device_key) && key(v.secret_hash) && name(v.name) && period(v, REPOSITORY_DEVICE_LINK_MS);
+  return obj2(v) && exact4(v, ["type", "id", "workspace_id", "device_key", "name", "secret_hash", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.device-link.v1" && id3(v.id) && id3(v.workspace_id) && key(v.device_key) && key(v.secret_hash) && name(v.name) && period(v, REPOSITORY_DEVICE_LINK_MS);
 }
 function validRepositoryDeviceAuthorization(v) {
-  return obj(v) && exact4(v, ["type", "id", "link_id", "workspace_id", "workspace_digest", "member_id", "member_revision", "principal_key", "device_key", "device_name", "actions", "authority_key", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.device-authorization.v1" && [v.id, v.link_id, v.workspace_id, v.member_id].every(id3) && [v.workspace_digest, v.principal_key, v.device_key, v.authority_key].every(key) && (/* @__PURE__ */ new Set([v.principal_key, v.device_key, v.authority_key])).size === 3 && Number.isSafeInteger(v.member_revision) && Number(v.member_revision) > 0 && name(v.device_name) && Array.isArray(v.actions) && v.actions.includes("read") && v.actions.length <= REPOSITORY_DEVICE_PERMISSIONS.length && new Set(v.actions).size === v.actions.length && v.actions.every((a) => REPOSITORY_DEVICE_PERMISSIONS.includes(a)) && period(v, REPOSITORY_DEVICE_MAX_MS);
+  return obj2(v) && exact4(v, ["type", "id", "link_id", "workspace_id", "workspace_digest", "member_id", "member_revision", "principal_key", "device_key", "device_name", "actions", "authority_key", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.device-authorization.v1" && [v.id, v.link_id, v.workspace_id, v.member_id].every(id3) && [v.workspace_digest, v.principal_key, v.device_key, v.authority_key].every(key) && (/* @__PURE__ */ new Set([v.principal_key, v.device_key, v.authority_key])).size === 3 && Number.isSafeInteger(v.member_revision) && Number(v.member_revision) > 0 && name(v.device_name) && Array.isArray(v.actions) && v.actions.includes("read") && v.actions.length <= REPOSITORY_DEVICE_PERMISSIONS.length && new Set(v.actions).size === v.actions.length && v.actions.every((a) => REPOSITORY_DEVICE_PERMISSIONS.includes(a)) && period(v, REPOSITORY_DEVICE_MAX_MS);
 }
 function validRepositoryDeviceConfirmation(v) {
-  return obj(v) && exact4(v, ["type", "authorization_digest", "workspace_id", "device_key", "issued_at"]) && v.type === "scopeblind.repository.device-confirmation.v1" && key(v.authorization_digest) && key(v.device_key) && id3(v.workspace_id) && time3(v.issued_at);
+  return obj2(v) && exact4(v, ["type", "authorization_digest", "workspace_id", "device_key", "issued_at"]) && v.type === "scopeblind.repository.device-confirmation.v1" && key(v.authorization_digest) && key(v.device_key) && id3(v.workspace_id) && time3(v.issued_at);
 }
 async function verifyRepositoryDeviceAuthorization(value) {
   return clean(value) && validRepositoryDeviceAuthorization(value.payload) && await verify(value, value.payload.principal_key);
@@ -46073,7 +46495,7 @@ function repositoryDevicePermission(action) {
 }
 function repositoryHumanPermission(value) {
   const p = value.payload, g = value.repository_authorization?.payload;
-  if (!obj(p) || !g || !time3(p.issued_at)) return null;
+  if (!obj2(p) || !g || !time3(p.issued_at)) return null;
   if (p.type === "scopeblind.coordination.request.v1") {
     const action2 = typeof p.action === "string" ? repositoryDevicePermission(p.action) : null;
     return action2 ? { action: action2, at: p.issued_at } : null;
@@ -46082,7 +46504,7 @@ function repositoryHumanPermission(value) {
   return action && id3(p.task_id) && key(p.task_digest) ? { action, at: p.issued_at } : null;
 }
 function validRepositoryHumanEnvelope(value) {
-  if (!obj(value)) return false;
+  if (!obj2(value)) return false;
   if (!Object.hasOwn(value, "repository_authorization")) return clean(value);
   return exact4(value, ["payload", "signer", "digest", "signature", "repository_authorization", "repository_authorization_signature"], ["repository_authorization_use"]);
 }
@@ -46101,7 +46523,7 @@ async function verifyRepositoryHuman(value, principal, context) {
     const use = value.repository_authorization_use;
     if (!use) return !context.requireRecordedUse;
     const u = use.payload;
-    return clean(use) && obj(u) && exact4(u, ["type", "authorization_digest", "workspace_id", "workspace_digest", "member_id", "member_revision", "principal_key", "device_key", "task_id", "task_digest", "payload_digest", "action", "recorded_at"]) && u.type === "scopeblind.repository.device-use.v1" && await verify(use, g.authority_key) && u.authorization_digest === authorization.digest && u.workspace_id === g.workspace_id && u.workspace_digest === g.workspace_digest && u.member_id === g.member_id && u.member_revision === g.member_revision && u.principal_key === g.principal_key && u.device_key === g.device_key && u.task_id === p.task_id && u.task_digest === p.task_digest && u.payload_digest === value.digest && u.action === permission.action && time3(u.recorded_at) && Date.parse(u.recorded_at) >= Date.parse(permission.at) && Date.parse(u.recorded_at) < Date.parse(g.expires_at);
+    return clean(use) && obj2(u) && exact4(u, ["type", "authorization_digest", "workspace_id", "workspace_digest", "member_id", "member_revision", "principal_key", "device_key", "task_id", "task_digest", "payload_digest", "action", "recorded_at"]) && u.type === "scopeblind.repository.device-use.v1" && await verify(use, g.authority_key) && u.authorization_digest === authorization.digest && u.workspace_id === g.workspace_id && u.workspace_digest === g.workspace_digest && u.member_id === g.member_id && u.member_revision === g.member_revision && u.principal_key === g.principal_key && u.device_key === g.device_key && u.task_id === p.task_id && u.task_digest === p.task_digest && u.payload_digest === value.digest && u.action === permission.action && time3(u.recorded_at) && Date.parse(u.recorded_at) >= Date.parse(permission.at) && Date.parse(u.recorded_at) < Date.parse(g.expires_at);
   } catch {
     return false;
   }
@@ -46112,14 +46534,14 @@ var REPOSITORY_HEX = /^[0-9a-f]{64}$/;
 var REPOSITORY_SHA = /^[0-9a-f]{40}$/;
 var REPOSITORY_ID = /^[A-Za-z0-9_-]{8,100}$/;
 var object2 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-var text2 = (v, n) => typeof v === "string" && v.length > 0 && v.length <= n && !/[\u0000-\u001f\u007f]/.test(v);
+var text3 = (v, n) => typeof v === "string" && v.length > 0 && v.length <= n && !/[\u0000-\u001f\u007f]/.test(v);
 var time4 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v));
 var exact5 = (v, required, optional = []) => required.every((k) => k in v) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
 function repositoryPath(path) {
-  return text2(path, 300) && !path.startsWith("/") && !path.endsWith("/") && !path.includes("\\") && !path.split("/").some((p) => !p || p === "." || p === ".." || p.toLowerCase() === ".git");
+  return text3(path, 300) && !path.startsWith("/") && !path.endsWith("/") && !path.includes("\\") && !path.split("/").some((p) => !p || p === "." || p === ".." || p.toLowerCase() === ".git");
 }
 function repositoryBranch(branch) {
-  return text2(branch, 150) && !branch.includes("..") && !/[~^:?*\[\\\s]/.test(branch) && !branch.startsWith("/") && !branch.endsWith("/") && !branch.endsWith(".lock") && !branch.includes("@{") && !branch.split("/").some((p) => !p || p.startsWith(".") || p.endsWith("."));
+  return text3(branch, 150) && !branch.includes("..") && !/[~^:?*\[\\\s]/.test(branch) && !branch.startsWith("/") && !branch.endsWith("/") && !branch.endsWith(".lock") && !branch.includes("@{") && !branch.split("/").some((p) => !p || p.startsWith(".") || p.endsWith("."));
 }
 function pathAllowed(path, allowed) {
   if (!repositoryPath(path) || /^\.github(?:\/|$)/i.test(path) || /(^|\/)(?:\.gitmodules|CODEOWNERS)$/i.test(path)) return false;
@@ -46127,11 +46549,11 @@ function pathAllowed(path, allowed) {
 }
 function validRepositoryTask(v) {
   if (!object2(v) || !exact5(v, ["type", "id", "title", "repository", "pull_number", "base_branch", "owner_key", "receiver_key", "authority_key", "allowed_paths", "required_checks", "reviewer_secret_hash", "issued_at", "expires_at"])) return false;
-  return v.type === "scopeblind.repository.task.v1" && REPOSITORY_ID.test(String(v.id)) && text2(v.title, 140) && typeof v.repository === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v.repository) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every((x) => typeof x === "string" && REPOSITORY_HEX.test(x)) && v.owner_key !== v.receiver_key && v.owner_key !== v.authority_key && v.receiver_key !== v.authority_key && Array.isArray(v.allowed_paths) && v.allowed_paths.length > 0 && v.allowed_paths.length <= 12 && new Set(v.allowed_paths).size === v.allowed_paths.length && v.allowed_paths.every((p) => typeof p === "string" && repositoryPath(p.endsWith("/**") ? p.slice(0, -3) : p) && pathAllowed(p.endsWith("/**") ? p.slice(0, -2) + "placeholder" : p, [p])) && Array.isArray(v.required_checks) && v.required_checks.length > 0 && v.required_checks.length <= 12 && v.required_checks.every((c) => object2(c) && exact5(c, ["name", "app_id"]) && text2(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0) && new Set(v.required_checks.map((c) => canonical(c))).size === v.required_checks.length && time4(v.issued_at) && time4(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 7 * 864e5;
+  return v.type === "scopeblind.repository.task.v1" && REPOSITORY_ID.test(String(v.id)) && text3(v.title, 140) && typeof v.repository === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v.repository) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every((x) => typeof x === "string" && REPOSITORY_HEX.test(x)) && v.owner_key !== v.receiver_key && v.owner_key !== v.authority_key && v.receiver_key !== v.authority_key && Array.isArray(v.allowed_paths) && v.allowed_paths.length > 0 && v.allowed_paths.length <= 12 && new Set(v.allowed_paths).size === v.allowed_paths.length && v.allowed_paths.every((p) => typeof p === "string" && repositoryPath(p.endsWith("/**") ? p.slice(0, -3) : p) && pathAllowed(p.endsWith("/**") ? p.slice(0, -2) + "placeholder" : p, [p])) && Array.isArray(v.required_checks) && v.required_checks.length > 0 && v.required_checks.length <= 12 && v.required_checks.every((c) => object2(c) && exact5(c, ["name", "app_id"]) && text3(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0) && new Set(v.required_checks.map((c) => canonical(c))).size === v.required_checks.length && time4(v.issued_at) && time4(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 7 * 864e5;
 }
 function validRepositoryProposal(v, task, taskDigest) {
   if (!object2(v) || !exact5(v, ["type", "id", "task_id", "task_digest", "repository_id", "base_ref", "head_ref", "base_sha", "head_sha", "merge_sha", "tree_sha", "files", "checks", "observed_at"])) return false;
-  if (v.type !== "scopeblind.repository.proposal.v1" || !REPOSITORY_ID.test(String(v.id)) || v.task_id !== task.id || v.task_digest !== taskDigest || !text2(v.repository_id, 100) || v.base_ref !== `refs/heads/${task.base_branch}` || typeof v.head_ref !== "string" || !v.head_ref.startsWith("refs/heads/") || !repositoryBranch(v.head_ref.slice(11)) || v.head_ref === v.base_ref || ![v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every((s) => typeof s === "string" && REPOSITORY_SHA.test(s)) || v.base_sha === v.head_sha || v.merge_sha === v.base_sha || !time4(v.observed_at)) return false;
+  if (v.type !== "scopeblind.repository.proposal.v1" || !REPOSITORY_ID.test(String(v.id)) || v.task_id !== task.id || v.task_digest !== taskDigest || !text3(v.repository_id, 100) || v.base_ref !== `refs/heads/${task.base_branch}` || typeof v.head_ref !== "string" || !v.head_ref.startsWith("refs/heads/") || !repositoryBranch(v.head_ref.slice(11)) || v.head_ref === v.base_ref || ![v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every((s) => typeof s === "string" && REPOSITORY_SHA.test(s)) || v.base_sha === v.head_sha || v.merge_sha === v.base_sha || !time4(v.observed_at)) return false;
   if (!Array.isArray(v.files) || !v.files.length || v.files.length > 50 || new Set(v.files.map((f) => object2(f) ? f.path : null)).size !== v.files.length || !v.files.every((f) => object2(f) && exact5(f, ["path", "status", "mode", "additions", "deletions"], ["previous_path", "patch", "patch_truncated"]) && typeof f.path === "string" && pathAllowed(f.path, task.allowed_paths) && ["added", "modified", "removed", "renamed"].includes(String(f.status)) && ["100644", "100755"].includes(String(f.mode)) && Number.isSafeInteger(f.additions) && Number(f.additions) >= 0 && Number.isSafeInteger(f.deletions) && Number(f.deletions) >= 0 && (f.patch === void 0 || typeof f.patch === "string" && f.patch.length <= 400) && (f.patch_truncated === void 0 || f.patch_truncated === true) && (f.status === "renamed" ? typeof f.previous_path === "string" && pathAllowed(f.previous_path, task.allowed_paths) : f.previous_path === void 0))) return false;
   return Array.isArray(v.checks) && v.checks.length === task.required_checks.length && v.checks.every((c) => object2(c) && exact5(c, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(c.id) && Number(c.id) > 0 && c.head_sha === v.head_sha && c.conclusion === "success" && task.required_checks.some((r) => r.name === c.name && r.app_id === c.app_id)) && new Set(v.checks.map((c) => `${c.name}:${c.app_id}`)).size === v.checks.length;
 }
@@ -46142,11 +46564,12 @@ async function repositorySnapshotDigest(p) {
 function validRepositoryRecord(v, kind) {
   if (!object2(v) || v.type !== `scopeblind.repository.${kind}.v1` || !REPOSITORY_ID.test(String(v.task_id)) || !REPOSITORY_HEX.test(String(v.task_digest))) return false;
   const common = ["type", "task_id", "task_digest"];
-  if (kind === "claim") return exact5(v, [...common, "reviewer_key", "name", "issued_at"]) && REPOSITORY_HEX.test(String(v.reviewer_key)) && text2(v.name, 60) && time4(v.issued_at);
+  if (kind === "claim") return exact5(v, [...common, "reviewer_key", "name", "issued_at"]) && REPOSITORY_HEX.test(String(v.reviewer_key)) && text3(v.name, 60) && time4(v.issued_at);
   const note = (v2) => typeof v2 === "string" && v2.length <= 600;
-  if (kind === "approval") return exact5(v, [...common, "proposal_digest", "role", "principal_key", "decision", "issued_at", "expires_at", "note"]) && REPOSITORY_HEX.test(String(v.proposal_digest)) && REPOSITORY_HEX.test(String(v.principal_key)) && ["owner", "reviewer"].includes(String(v.role)) && ["approve", "reject"].includes(String(v.decision)) && time4(v.issued_at) && time4(v.expires_at) && note(v.note) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 9e5;
+  if (kind === "approval") return exact5(v, [...common, "proposal_digest", "role", "principal_key", "decision", "issued_at", "expires_at", "note"]) && REPOSITORY_HEX.test(String(v.proposal_digest)) && REPOSITORY_HEX.test(String(v.principal_key)) && ["owner", "reviewer"].includes(String(v.role)) && ["approve", "reject"].includes(String(v.decision)) && time4(v.issued_at) && time4(v.expires_at) && note(v.note) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 7 * 864e5;
+  if (kind === "revocation") return exact5(v, [...common, "proposal_digest", "approval_digest", "role", "principal_key", "issued_at", "note"]) && REPOSITORY_HEX.test(String(v.proposal_digest)) && REPOSITORY_HEX.test(String(v.approval_digest)) && REPOSITORY_HEX.test(String(v.principal_key)) && ["owner", "reviewer"].includes(String(v.role)) && time4(v.issued_at) && note(v.note);
   if (kind === "execution") return exact5(v, [...common, "operation_id", "receiver_attempt_id", "proposal_digest", "owner_approval_digest", "reviewer_approval_digest", "receiver_key", "action", "issued_at", "expires_at"]) && [v.operation_id, v.receiver_attempt_id].every((x) => REPOSITORY_ID.test(String(x))) && [v.proposal_digest, v.owner_approval_digest, v.reviewer_approval_digest, v.receiver_key].every((x) => REPOSITORY_HEX.test(String(x))) && v.action === "github.updateRefs" && time4(v.issued_at) && time4(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 12e4;
-  if (kind === "outcome") return exact5(v, [...common, "operation_id", "proposal_digest", "execution_digest", "status", "observed_base_sha", "readback", "observed_at", "note"], ["github_request_id"]) && REPOSITORY_ID.test(String(v.operation_id)) && [v.proposal_digest, v.execution_digest].every((x) => REPOSITORY_HEX.test(String(x))) && ["confirmed", "failed", "unknown"].includes(String(v.status)) && (v.observed_base_sha === null || REPOSITORY_SHA.test(String(v.observed_base_sha))) && ["exact_ref", "descendant_ref", "not_confirmed"].includes(String(v.readback)) && (v.status === "confirmed" ? v.readback !== "not_confirmed" && v.observed_base_sha !== null : v.readback === "not_confirmed") && time4(v.observed_at) && note(v.note) && (v.github_request_id === void 0 || text2(v.github_request_id, 200));
+  if (kind === "outcome") return exact5(v, [...common, "operation_id", "proposal_digest", "execution_digest", "status", "observed_base_sha", "readback", "observed_at", "note"], ["github_request_id"]) && REPOSITORY_ID.test(String(v.operation_id)) && [v.proposal_digest, v.execution_digest].every((x) => REPOSITORY_HEX.test(String(x))) && ["confirmed", "failed", "unknown"].includes(String(v.status)) && (v.observed_base_sha === null || REPOSITORY_SHA.test(String(v.observed_base_sha))) && ["exact_ref", "descendant_ref", "not_confirmed"].includes(String(v.readback)) && (v.status === "confirmed" ? v.readback !== "not_confirmed" && v.observed_base_sha !== null : v.readback === "not_confirmed") && time4(v.observed_at) && note(v.note) && (v.github_request_id === void 0 || text3(v.github_request_id, 200));
   return exact5(v, [...common, "outcome_digest", "reviewer_key", "decision", "issued_at", "note"]) && [v.outcome_digest, v.reviewer_key].every((x) => REPOSITORY_HEX.test(String(x))) && ["accept", "request_changes"].includes(String(v.decision)) && time4(v.issued_at) && note(v.note);
 }
 var validRepositoryEnvelope = (e) => object2(e) && exact5(e, ["payload", "signer", "digest", "signature"]);
@@ -46159,7 +46582,7 @@ async function verifyRepositoryEvidence(value, pin) {
   };
   try {
     const e = value, s = e.state?.payload, t = s?.task?.payload;
-    check(object2(e) && exact5(e, ["type", "state"]) && e.type === "scopeblind.repository.evidence.v1" && validRepositoryEnvelope(e.state) && !!s && s.type === "scopeblind.repository.state.v1" && exact5(s, ["type", "task", "reviewer", "proposal", "approvals", "execution", "outcome", "acceptance", "status", "revision", "observed_at"]) && Number.isSafeInteger(s.revision) && s.revision > 0 && time4(s.observed_at) && await verify(e.state, pins.authority_key), "Service state signature or shape is invalid");
+    check(object2(e) && exact5(e, ["type", "state"]) && e.type === "scopeblind.repository.evidence.v1" && validRepositoryEnvelope(e.state) && !!s && s.type === "scopeblind.repository.state.v1" && exact5(s, ["type", "task", "reviewer", "proposal", "approvals", "execution", "outcome", "acceptance", "status", "revision", "observed_at"], ["revocations"]) && Number.isSafeInteger(s.revision) && s.revision > 0 && time4(s.observed_at) && await verify(e.state, pins.authority_key), "Service state signature or shape is invalid");
     check(validRepositoryEnvelope(s.task) && validRepositoryTask(t) && await verify(s.task, t.owner_key) && t.authority_key === pins.authority_key && (!pins.owner_key || pins.owner_key === t.owner_key) && (!pins.receiver_key || pins.receiver_key === t.receiver_key) && Date.parse(s.observed_at) >= Date.parse(t.issued_at), "Task or pinned owner/receiver is invalid");
     const reviewer = s.reviewer?.payload;
     if (s.reviewer) check(validRepositoryHumanEnvelope(s.reviewer) && validRepositoryRecord(reviewer, "claim") && reviewer.task_id === t.id && reviewer.task_digest === s.task.digest && ![t.owner_key, t.receiver_key, t.authority_key].includes(reviewer.reviewer_key) && await verifyRepositoryHuman(s.reviewer, reviewer.reviewer_key, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && (!pins.reviewer_key || pins.reviewer_key === reviewer.reviewer_key) && Date.parse(reviewer.issued_at) >= Date.parse(t.issued_at) && Date.parse(reviewer.issued_at) < Date.parse(t.expires_at), "Reviewer role is invalid");
@@ -46168,6 +46591,13 @@ async function verifyRepositoryEvidence(value, pin) {
     for (const approval of s.approvals) {
       const a = approval.payload, key5 = a.role === "owner" ? t.owner_key : reviewer?.reviewer_key;
       check(!!s.proposal && validRepositoryHumanEnvelope(approval) && validRepositoryRecord(a, "approval") && a.principal_key === key5 && a.task_id === t.id && a.task_digest === s.task.digest && a.proposal_digest === s.proposal.digest && await verifyRepositoryHuman(approval, key5, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && Date.parse(a.issued_at) >= Date.parse(s.proposal.payload.observed_at) && Date.parse(a.expires_at) <= Date.parse(t.expires_at), "Exact proposal approval is invalid");
+    }
+    if (s.revocations !== void 0) {
+      check(Array.isArray(s.revocations) && s.revocations.length >= 1 && s.revocations.length <= 64, "Revocation list is invalid");
+      for (const revocation of s.revocations ?? []) {
+        const r = revocation.payload, key5 = r.role === "owner" ? t.owner_key : reviewer?.reviewer_key;
+        check(validRepositoryHumanEnvelope(revocation) && validRepositoryRecord(r, "revocation") && r.task_id === t.id && r.task_digest === s.task.digest && r.principal_key === key5 && !!key5 && await verifyRepositoryHuman(revocation, key5, { authorityKey: pins.authority_key, task: s.task, requireRecordedUse: true }) && Date.parse(r.issued_at) >= Date.parse(t.issued_at) && !s.approvals.some((a) => a.digest === r.approval_digest), "A withdrawn approval is invalid or still counted");
+      }
     }
     if (s.execution) {
       const x = s.execution.payload, owner = s.approvals.find((a) => a.payload.role === "owner"), review = s.approvals.find((a) => a.payload.role === "reviewer");
@@ -46198,15 +46628,15 @@ var DEMO_CHECK = { name: "ScopeBlind contact validation", app_id: 4962726 };
 var CONTACT_PATH = "demo/contact.json";
 var object3 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
 var shape = (value, required, optional = []) => object3(value) && required.every((key5) => key5 in value) && Object.keys(value).every((key5) => required.includes(key5) || optional.includes(key5));
-var text3 = (value, max, empty = false) => typeof value === "string" && (empty || value.trim().length > 0) && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
+var text4 = (value, max, empty = false) => typeof value === "string" && (empty || value.trim().length > 0) && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
 var hex2 = (value) => typeof value === "string" && REPOSITORY_HEX.test(value);
 var id4 = (value) => typeof value === "string" && REPOSITORY_ID.test(value);
 var sha = (value) => typeof value === "string" && REPOSITORY_SHA.test(value);
-var at = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
-var span = (issued, expires, max) => at(issued) && at(expires) && Date.parse(String(expires)) > Date.parse(String(issued)) && Date.parse(String(expires)) - Date.parse(String(issued)) <= max;
+var at2 = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+var span = (issued, expires, max) => at2(issued) && at2(expires) && Date.parse(String(expires)) > Date.parse(String(issued)) && Date.parse(String(expires)) - Date.parse(String(issued)) <= max;
 var repository = (value) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(value);
 function validContactPage(value) {
-  return shape(value, ["type", "button_label", "target", "accent"]) && value.type === "scopeblind.contact-page.v1" && text3(value.button_label, 40) && ["broken", "contact"].includes(String(value.target)) && ["indigo", "emerald", "rose"].includes(String(value.accent));
+  return shape(value, ["type", "button_label", "target", "accent"]) && value.type === "scopeblind.contact-page.v1" && text4(value.button_label, 40) && ["broken", "contact"].includes(String(value.target)) && ["indigo", "emerald", "rose"].includes(String(value.accent));
 }
 function contactPageBytes(value) {
   if (!validContactPage(value))
@@ -46227,31 +46657,31 @@ function validRepositoryConnection(v) {
 function validRepositoryReadiness(v) {
   if (!shape(v, ["type", "connection_digest", "repository", "base_branch", "owner_key", "receiver_key", "authority_key", "checks", "base_sha", "check_head_sha", "protection", "runtime", "workflow", "observed_at", "expires_at"], ["required_checks", "workflow_sha"]))
     return false;
-  return v.type === "scopeblind.repository.readiness.v1" && hex2(v.connection_digest) && repository(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(hex2) && sha(v.base_sha) && sha(v.check_head_sha) && ["observed", "unavailable"].includes(String(v.protection)) && ["local", "github_actions"].includes(String(v.runtime)) && ["not_checked", "missing", "matching", "different", "unavailable"].includes(String(v.workflow)) && (v.workflow_sha === void 0 || sha(v.workflow_sha)) && span(v.observed_at, v.expires_at, 864e5) && Array.isArray(v.checks) && v.checks.length <= 100 && v.checks.every((c) => shape(c, ["name", "app_id"], ["app_name"]) && text3(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0 && (c.app_name === void 0 || text3(c.app_name, 100))) && (v.required_checks === void 0 || Array.isArray(v.required_checks) && v.required_checks.length <= 100 && v.required_checks.every((c) => shape(c, ["name", "app_id"]) && text3(c.name, 100) && (c.app_id === null || Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0)));
+  return v.type === "scopeblind.repository.readiness.v1" && hex2(v.connection_digest) && repository(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(hex2) && sha(v.base_sha) && sha(v.check_head_sha) && ["observed", "unavailable"].includes(String(v.protection)) && ["local", "github_actions"].includes(String(v.runtime)) && ["not_checked", "missing", "matching", "different", "unavailable"].includes(String(v.workflow)) && (v.workflow_sha === void 0 || sha(v.workflow_sha)) && span(v.observed_at, v.expires_at, 864e5) && Array.isArray(v.checks) && v.checks.length <= 100 && v.checks.every((c) => shape(c, ["name", "app_id"], ["app_name"]) && text4(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0 && (c.app_name === void 0 || text4(c.app_name, 100))) && (v.required_checks === void 0 || Array.isArray(v.required_checks) && v.required_checks.length <= 100 && v.required_checks.every((c) => shape(c, ["name", "app_id"]) && text4(c.name, 100) && (c.app_id === null || Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0)));
 }
 function validRepositoryParticipants(v) {
   return shape(v, ["type", "task_id", "task_digest", "owner_key", "receiver_key", "reviewer_key", "reviewer_claim_digest", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.participants.v1" && id4(v.task_id) && [v.task_digest, v.owner_key, v.receiver_key, v.reviewer_key, v.reviewer_claim_digest].every(hex2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.reviewer_key])).size === 3 && span(v.issued_at, v.expires_at, 7 * 864e5);
 }
 function validRepositoryPreview(v) {
-  return shape(v, ["type", "task_id", "task_digest", "proposal_digest", "base_sha", "head_sha", "merge_sha", "tree_sha", "path", "before", "after", "renderer", "observed_at"]) && v.type === "scopeblind.repository.preview.v1" && id4(v.task_id) && hex2(v.task_digest) && hex2(v.proposal_digest) && [v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every(sha) && v.path === CONTACT_PATH && v.renderer === "scopeblind.contact-page.v1" && at(v.observed_at) && [v.before, v.after].every((side) => shape(side, ["model", "blob_sha", "content_sha256"]) && validContactPage(side.model) && sha(side.blob_sha) && hex2(side.content_sha256));
+  return shape(v, ["type", "task_id", "task_digest", "proposal_digest", "base_sha", "head_sha", "merge_sha", "tree_sha", "path", "before", "after", "renderer", "observed_at"]) && v.type === "scopeblind.repository.preview.v1" && id4(v.task_id) && hex2(v.task_digest) && hex2(v.proposal_digest) && [v.base_sha, v.head_sha, v.merge_sha, v.tree_sha].every(sha) && v.path === CONTACT_PATH && v.renderer === "scopeblind.contact-page.v1" && at2(v.observed_at) && [v.before, v.after].every((side) => shape(side, ["model", "blob_sha", "content_sha256"]) && validContactPage(side.model) && sha(side.blob_sha) && hex2(side.content_sha256));
 }
 function validRepositoryAgentGrant(v) {
   return shape(v, ["type", "id", "task_id", "task_digest", "issuer_key", "agent_key", "permissions", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.agent-grant.v1" && id4(v.id) && id4(v.task_id) && [v.task_digest, v.issuer_key, v.agent_key].every(hex2) && v.issuer_key !== v.agent_key && Array.isArray(v.permissions) && v.permissions.length > 0 && v.permissions.length <= 2 && new Set(v.permissions).size === v.permissions.length && v.permissions.every((p) => p === "read_task" || p === "request_revision") && v.permissions.includes("read_task") && span(v.issued_at, v.expires_at, 36e5);
 }
 function validRepositoryRevisionRequest(v) {
-  return shape(v, ["type", "id", "task_id", "task_digest", "basis_digest", "requester_key", "message", "proposed", "issued_at"], ["grant_digest"]) && v.type === "scopeblind.repository.revision-request.v1" && id4(v.id) && id4(v.task_id) && [v.task_digest, v.basis_digest, v.requester_key].every(hex2) && (v.grant_digest === void 0 || hex2(v.grant_digest)) && text3(v.message, 600) && validContactPage(v.proposed) && at(v.issued_at);
+  return shape(v, ["type", "id", "task_id", "task_digest", "basis_digest", "requester_key", "message", "proposed", "issued_at"], ["grant_digest"]) && v.type === "scopeblind.repository.revision-request.v1" && id4(v.id) && id4(v.task_id) && [v.task_digest, v.basis_digest, v.requester_key].every(hex2) && (v.grant_digest === void 0 || hex2(v.grant_digest)) && text4(v.message, 600) && validContactPage(v.proposed) && at2(v.issued_at);
 }
 function validRepositoryRevisionLink(v) {
-  return shape(v, ["type", "id", "parent_task_id", "parent_task_digest", "parent_basis_digest", "request_digest", "child_task_id", "child_task_digest", "owner_key", "issued_at"]) && v.type === "scopeblind.repository.revision-link.v1" && [v.id, v.parent_task_id, v.child_task_id].every(id4) && v.parent_task_id !== v.child_task_id && [v.parent_task_digest, v.parent_basis_digest, v.request_digest, v.child_task_digest, v.owner_key].every(hex2) && at(v.issued_at);
+  return shape(v, ["type", "id", "parent_task_id", "parent_task_digest", "parent_basis_digest", "request_digest", "child_task_id", "child_task_digest", "owner_key", "issued_at"]) && v.type === "scopeblind.repository.revision-link.v1" && [v.id, v.parent_task_id, v.child_task_id].every(id4) && v.parent_task_id !== v.child_task_id && [v.parent_task_digest, v.parent_basis_digest, v.request_digest, v.child_task_digest, v.owner_key].every(hex2) && at2(v.issued_at);
 }
 function validRepositoryDemoRequest(v) {
   if (!shape(v, ["type", "id", "owner_key", "receiver_key", "authority_key", "title", "goal", "proposed", "reviewer_secret_hash", "issued_at", "expires_at"], ["parent_task_id", "parent_task_digest", "parent_basis_digest", "revision_request_digest"]))
     return false;
   const parent = ["parent_task_id", "parent_task_digest", "parent_basis_digest", "revision_request_digest"];
-  return v.type === "scopeblind.repository.demo-request.v1" && id4(v.id) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every(hex2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && text3(v.title, 140) && text3(v.goal, 600) && validContactPage(v.proposed) && span(v.issued_at, v.expires_at, 864e5) && (parent.every((k) => v[k] === void 0) || id4(v.parent_task_id) && [v.parent_task_digest, v.parent_basis_digest, v.revision_request_digest].every(hex2));
+  return v.type === "scopeblind.repository.demo-request.v1" && id4(v.id) && [v.owner_key, v.receiver_key, v.authority_key, v.reviewer_secret_hash].every(hex2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && text4(v.title, 140) && text4(v.goal, 600) && validContactPage(v.proposed) && span(v.issued_at, v.expires_at, 864e5) && (parent.every((k) => v[k] === void 0) || id4(v.parent_task_id) && [v.parent_task_digest, v.parent_basis_digest, v.revision_request_digest].every(hex2));
 }
 function validRepositoryDemoProvision(v) {
-  return shape(v, ["type", "request_id", "request_digest", "repository", "base_branch", "head_branch", "pull_number", "initial_base_sha", "initial_head_sha", "receiver_key", "required_checks", "observed_at"]) && v.type === "scopeblind.repository.demo-provision.v1" && id4(v.request_id) && [v.request_digest, v.receiver_key].every(hex2) && v.repository === DEMO_REPOSITORY && v.base_branch === `scopeblind/demo/${v.request_id}/base` && v.head_branch === `scopeblind/demo/${v.request_id}/change` && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && sha(v.initial_base_sha) && sha(v.initial_head_sha) && Array.isArray(v.required_checks) && canonical(v.required_checks) === canonical([DEMO_CHECK]) && at(v.observed_at);
+  return shape(v, ["type", "request_id", "request_digest", "repository", "base_branch", "head_branch", "pull_number", "initial_base_sha", "initial_head_sha", "receiver_key", "required_checks", "observed_at"]) && v.type === "scopeblind.repository.demo-provision.v1" && id4(v.request_id) && [v.request_digest, v.receiver_key].every(hex2) && v.repository === DEMO_REPOSITORY && v.base_branch === `scopeblind/demo/${v.request_id}/base` && v.head_branch === `scopeblind/demo/${v.request_id}/change` && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && sha(v.initial_base_sha) && sha(v.initial_head_sha) && Array.isArray(v.required_checks) && canonical(v.required_checks) === canonical([DEMO_CHECK]) && at2(v.observed_at);
 }
 function repositoryRevisionBasis(state) {
   return state.acceptance?.digest ?? state.outcome?.digest ?? state.proposal?.digest ?? null;
@@ -46261,7 +46691,7 @@ function repositoryRevisionBasis(state) {
 var shape2 = (v, required, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
 var envelope = (v) => shape2(v, ["payload", "signer", "digest", "signature"]);
 var time5 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
-var within = (at9, start, end) => Date.parse(at9) >= Date.parse(start) && Date.parse(at9) <= Date.parse(end);
+var within = (at10, start, end) => Date.parse(at10) >= Date.parse(start) && Date.parse(at10) <= Date.parse(end);
 function requireValid(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -46368,14 +46798,14 @@ async function verifyRepositoryCollaborationEvidence(input, pins) {
 // src/coordination-repository-review.ts
 var object4 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 var shape3 = (v, required, optional = []) => object4(v) && required.every((k) => Object.prototype.hasOwnProperty.call(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
-var text4 = (v, max, empty = false) => typeof v === "string" && (empty || v.trim().length > 0) && v.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);
-var line = (v, max) => text4(v, max) && !/[\r\n\t]/.test(String(v));
+var text5 = (v, max, empty = false) => typeof v === "string" && (empty || v.trim().length > 0) && v.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);
+var line = (v, max) => text5(v, max) && !/[\r\n\t]/.test(String(v));
 var hex3 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
 var id5 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
 var sha2 = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
 var num = (v) => typeof v === "number" && Number.isSafeInteger(v) && v > 0;
-var at2 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
-var span2 = (a, b, max) => at2(a) && at2(b) && Date.parse(b) > Date.parse(a) && Date.parse(b) - Date.parse(a) <= max;
+var at3 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var span2 = (a, b, max) => at3(a) && at3(b) && Date.parse(b) > Date.parse(a) && Date.parse(b) - Date.parse(a) <= max;
 function safeRepositoryPreviewUrl(value) {
   if (typeof value !== "string" || value.length > 2e3 || /[\s\u0000-\u001f\u007f]/.test(value)) return false;
   try {
@@ -46385,8 +46815,16 @@ function safeRepositoryPreviewUrl(value) {
     return false;
   }
 }
+function validCriterionLink(e) {
+  if (!e || typeof e !== "object") return false;
+  const v = e;
+  if (v.kind === "preview") return shape3(v, ["kind"]);
+  if (v.kind === "file") return shape3(v, ["kind", "path"]) && typeof v.path === "string" && v.path.length >= 1 && v.path.length <= 400 && !v.path.includes("..") && !v.path.startsWith("/") && !/[\u0000-\u001f]/.test(v.path);
+  if (v.kind === "check") return shape3(v, ["kind", "name", "app_id"]) && line(v.name, 100) && num(v.app_id);
+  return false;
+}
 function content(v) {
-  if (!text4(v.brief, 4e3) || !Array.isArray(v.success_criteria) || v.success_criteria.length < 1 || v.success_criteria.length > 20 || !v.success_criteria.every((c) => shape3(c, ["id", "text"]) && id5(c.id) && text4(c.text, 600)) || new Set(v.success_criteria.map((c) => c.id)).size !== v.success_criteria.length) return false;
+  if (!text5(v.brief, 4e3) || !Array.isArray(v.success_criteria) || v.success_criteria.length < 1 || v.success_criteria.length > 20 || !v.success_criteria.every((c) => shape3(c, ["id", "text"], ["evidence"]) && id5(c.id) && text5(c.text, 600) && (c.evidence === void 0 || Array.isArray(c.evidence) && c.evidence.length <= 12 && c.evidence.every(validCriterionLink) && new Set(c.evidence.map((e) => JSON.stringify(e))).size === c.evidence.length)) || new Set(v.success_criteria.map((c) => c.id)).size !== v.success_criteria.length) return false;
   const p = v.preview_policy;
   return p === void 0 || shape3(p, ["environment", "check", "allowed_origins", "required"]) && line(p.environment, 100) && shape3(p.check, ["name", "app_id"]) && line(p.check.name, 100) && num(p.check.app_id) && typeof p.required === "boolean" && Array.isArray(p.allowed_origins) && p.allowed_origins.length > 0 && p.allowed_origins.length <= 8 && new Set(p.allowed_origins).size === p.allowed_origins.length && p.allowed_origins.every((origin) => typeof origin === "string" && safeRepositoryPreviewUrl(origin + "/") && new URL(origin).origin === origin);
 }
@@ -46400,23 +46838,23 @@ function validRepositoryReviewPacket(v, brief, proposal) {
   if (!shape3(v, ["type", "task_id", "task_digest", "brief_digest", "proposal_digest", "base_sha", "head_sha", "merge_sha", "preview", "observed_at", "expires_at"]) || v.type !== "scopeblind.repository.review-packet.v1" || v.task_id !== brief.payload.task_id || v.task_digest !== brief.payload.task_digest || v.brief_digest !== brief.digest || v.proposal_digest !== proposal.digest || v.base_sha !== proposal.payload.base_sha || v.head_sha !== proposal.payload.head_sha || v.merge_sha !== proposal.payload.merge_sha || !span2(v.observed_at, v.expires_at, 9e5) || Date.parse(String(v.observed_at)) < Math.max(Date.parse(brief.payload.issued_at), Date.parse(proposal.payload.observed_at)) || Date.parse(String(v.expires_at)) > Date.parse(brief.payload.expires_at)) return false;
   const p = v.preview, policy = brief.payload.preview_policy;
   if (!object4(p)) return false;
-  if (p.status !== "available") return shape3(p, ["status", "reason"]) && ["not_requested", "missing", "pending", "failed", "unavailable", "ambiguous"].includes(String(p.status)) && text4(p.reason, 600) && p.status === "not_requested" === !policy;
+  if (p.status !== "available") return shape3(p, ["status", "reason"]) && ["not_requested", "missing", "pending", "failed", "unavailable", "ambiguous"].includes(String(p.status)) && text5(p.reason, 600) && p.status === "not_requested" === !policy;
   if (!policy || !shape3(p, ["status", "deployment"], ["artifact"])) return false;
   const d = p.deployment;
-  if (!shape3(d, ["deployment_id", "status_id", "sha", "environment", "state", "environment_url", "deployment_creator_id", "status_creator_id", "created_at", "updated_at", "check"]) || ![d.deployment_id, d.status_id, d.deployment_creator_id, d.status_creator_id].every(num) || d.sha !== v.head_sha || d.environment !== policy.environment || d.state !== "success" || !safeRepositoryPreviewUrl(d.environment_url) || !policy.allowed_origins.includes(new URL(d.environment_url).origin) || !at2(d.created_at) || !at2(d.updated_at) || Date.parse(d.updated_at) < Date.parse(d.created_at) || Date.parse(d.updated_at) > Date.parse(String(v.observed_at)) || !shape3(d.check, ["id", "name", "app_id", "head_sha", "conclusion"]) || !num(d.check.id) || d.check.name !== policy.check.name || d.check.app_id !== policy.check.app_id || d.check.head_sha !== v.head_sha || d.check.conclusion !== "success") return false;
+  if (!shape3(d, ["deployment_id", "status_id", "sha", "environment", "state", "environment_url", "deployment_creator_id", "status_creator_id", "created_at", "updated_at", "check"]) || ![d.deployment_id, d.status_id, d.deployment_creator_id, d.status_creator_id].every(num) || d.sha !== v.head_sha || d.environment !== policy.environment || d.state !== "success" || !safeRepositoryPreviewUrl(d.environment_url) || !policy.allowed_origins.includes(new URL(d.environment_url).origin) || !at3(d.created_at) || !at3(d.updated_at) || Date.parse(d.updated_at) < Date.parse(d.created_at) || Date.parse(d.updated_at) > Date.parse(String(v.observed_at)) || !shape3(d.check, ["id", "name", "app_id", "head_sha", "conclusion"]) || !num(d.check.id) || d.check.name !== policy.check.name || d.check.app_id !== policy.check.app_id || d.check.head_sha !== v.head_sha || d.check.conclusion !== "success") return false;
   const a = p.artifact;
-  return a === void 0 || shape3(a, ["id", "name", "sha256", "workflow_run_id", "head_sha", "expires_at"]) && num(a.id) && line(a.name, 200) && hex3(a.sha256) && num(a.workflow_run_id) && a.head_sha === v.head_sha && at2(a.expires_at) && Date.parse(a.expires_at) > Date.parse(String(v.observed_at));
+  return a === void 0 || shape3(a, ["id", "name", "sha256", "workflow_run_id", "head_sha", "expires_at"]) && num(a.id) && line(a.name, 200) && hex3(a.sha256) && num(a.workflow_run_id) && a.head_sha === v.head_sha && at3(a.expires_at) && Date.parse(a.expires_at) > Date.parse(String(v.observed_at));
 }
 function validRepositoryReviewDecision(v, brief, packet, approval) {
-  return shape3(v, ["type", "task_id", "task_digest", "brief_digest", "packet_digest", "proposal_digest", "approval_digest", "principal_key", "role", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.review-decision.v1" && v.task_id === brief.payload.task_id && v.task_digest === brief.payload.task_digest && v.brief_digest === brief.digest && v.packet_digest === packet.digest && v.proposal_digest === packet.payload.proposal_digest && v.approval_digest === approval.digest && v.principal_key === approval.payload.principal_key && v.role === approval.payload.role && v.issued_at === approval.payload.issued_at && v.expires_at === approval.payload.expires_at && at2(v.issued_at) && at2(v.expires_at) && Date.parse(v.issued_at) >= Date.parse(packet.payload.observed_at) && Date.parse(v.expires_at) <= Date.parse(packet.payload.expires_at) && (!brief.payload.preview_policy?.required || packet.payload.preview.status === "available" || approval.payload.decision === "reject");
+  return shape3(v, ["type", "task_id", "task_digest", "brief_digest", "packet_digest", "proposal_digest", "approval_digest", "principal_key", "role", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.review-decision.v1" && v.task_id === brief.payload.task_id && v.task_digest === brief.payload.task_digest && v.brief_digest === brief.digest && v.packet_digest === packet.digest && v.proposal_digest === packet.payload.proposal_digest && v.approval_digest === approval.digest && v.principal_key === approval.payload.principal_key && v.role === approval.payload.role && v.issued_at === approval.payload.issued_at && v.expires_at === approval.payload.expires_at && at3(v.issued_at) && at3(v.expires_at) && Date.parse(v.issued_at) >= Date.parse(packet.payload.observed_at) && Date.parse(v.issued_at) <= Date.parse(packet.payload.expires_at) && (!brief.payload.preview_policy?.required || packet.payload.preview.status === "available" || approval.payload.decision === "reject");
 }
 function validRepositoryReviewFeedback(v, brief, packet) {
-  return shape3(v, ["type", "id", "task_id", "task_digest", "basis_digest", "packet_digest", "requester_key", "criterion_ids", "message", "requested_changes", "issued_at"], ["mandate_digest"]) && v.type === "scopeblind.repository.review-feedback.v1" && id5(v.id) && v.task_id === brief.payload.task_id && v.task_digest === brief.payload.task_digest && hex3(v.basis_digest) && v.packet_digest === packet.digest && hex3(v.requester_key) && (v.mandate_digest === void 0 || hex3(v.mandate_digest)) && Array.isArray(v.criterion_ids) && v.criterion_ids.length <= 20 && new Set(v.criterion_ids).size === v.criterion_ids.length && v.criterion_ids.every((cid) => brief.payload.success_criteria.some((c) => c.id === cid)) && text4(v.message, 2e3) && text4(v.requested_changes, 4e3, true) && at2(v.issued_at) && Date.parse(v.issued_at) >= Date.parse(packet.payload.observed_at);
+  return shape3(v, ["type", "id", "task_id", "task_digest", "basis_digest", "packet_digest", "requester_key", "criterion_ids", "message", "requested_changes", "issued_at"], ["mandate_digest"]) && v.type === "scopeblind.repository.review-feedback.v1" && id5(v.id) && v.task_id === brief.payload.task_id && v.task_digest === brief.payload.task_digest && hex3(v.basis_digest) && v.packet_digest === packet.digest && hex3(v.requester_key) && (v.mandate_digest === void 0 || hex3(v.mandate_digest)) && Array.isArray(v.criterion_ids) && v.criterion_ids.length <= 20 && new Set(v.criterion_ids).size === v.criterion_ids.length && v.criterion_ids.every((cid) => brief.payload.success_criteria.some((c) => c.id === cid)) && text5(v.message, 2e3) && text5(v.requested_changes, 4e3, true) && at3(v.issued_at) && Date.parse(v.issued_at) >= Date.parse(packet.payload.observed_at);
 }
 function validRepositoryReviewRecommendation(v, brief, packet, proposal) {
-  if (!shape3(v, ["type", "id", "task_id", "task_digest", "packet_digest", "proposal_digest", "brief_digest", "agent_key", "mandate_digest", "recommendation", "criteria", "source", "observed_at"]) || v.type !== "scopeblind.repository.review-recommendation.v1" || !id5(v.id) || v.task_id !== brief.payload.task_id || v.task_digest !== brief.payload.task_digest || v.packet_digest !== packet.digest || v.proposal_digest !== proposal.digest || v.brief_digest !== brief.digest || !hex3(v.agent_key) || !hex3(v.mandate_digest) || !["ready_for_human_review", "changes_recommended", "insufficient_evidence"].includes(String(v.recommendation)) || !shape3(v.source, ["kind"], ["model"]) || v.source.kind !== "agent" || v.source.model !== void 0 && !line(v.source.model, 120) || !at2(v.observed_at) || Date.parse(v.observed_at) < Date.parse(packet.payload.observed_at) || !Array.isArray(v.criteria) || v.criteria.length !== brief.payload.success_criteria.length) return false;
+  if (!shape3(v, ["type", "id", "task_id", "task_digest", "packet_digest", "proposal_digest", "brief_digest", "agent_key", "mandate_digest", "recommendation", "criteria", "source", "observed_at"]) || v.type !== "scopeblind.repository.review-recommendation.v1" || !id5(v.id) || v.task_id !== brief.payload.task_id || v.task_digest !== brief.payload.task_digest || v.packet_digest !== packet.digest || v.proposal_digest !== proposal.digest || v.brief_digest !== brief.digest || !hex3(v.agent_key) || !hex3(v.mandate_digest) || !["ready_for_human_review", "changes_recommended", "insufficient_evidence"].includes(String(v.recommendation)) || !shape3(v.source, ["kind"], ["model"]) || v.source.kind !== "agent" || v.source.model !== void 0 && !line(v.source.model, 120) || !at3(v.observed_at) || Date.parse(v.observed_at) < Date.parse(packet.payload.observed_at) || !Array.isArray(v.criteria) || v.criteria.length !== brief.payload.success_criteria.length) return false;
   if (new Set(v.criteria.map((c) => object4(c) ? c.criterion_id : null)).size !== v.criteria.length) return false;
-  return v.criteria.every((c) => shape3(c, ["criterion_id", "verdict", "evidence_refs", "explanation"]) && brief.payload.success_criteria.some((b) => b.id === c.criterion_id) && ["met", "not_met", "unknown"].includes(String(c.verdict)) && text4(c.explanation, 1e3) && Array.isArray(c.evidence_refs) && c.evidence_refs.length <= 12 && c.evidence_refs.every((r) => {
+  return v.criteria.every((c) => shape3(c, ["criterion_id", "verdict", "evidence_refs", "explanation"]) && brief.payload.success_criteria.some((b) => b.id === c.criterion_id) && ["met", "not_met", "unknown"].includes(String(c.verdict)) && text5(c.explanation, 1e3) && Array.isArray(c.evidence_refs) && c.evidence_refs.length <= 12 && c.evidence_refs.every((r) => {
     if (!object4(r)) return false;
     if (r.kind === "check") return shape3(r, ["kind", "id"]) && proposal.payload.checks.some((check) => check.id === r.id);
     if (r.kind === "file") return shape3(r, ["kind", "path"]) && proposal.payload.files.some((file) => file.path === r.path);
@@ -46434,49 +46872,49 @@ async function verifyRepositoryPreviewDiscovery(value, pins, now = Date.now()) {
 }
 
 // src/coordination-repository-workspace.ts
-var obj2 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var obj3 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 var exact6 = (v, req, opt = []) => req.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => req.includes(k) || opt.includes(k));
-var text5 = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
+var text6 = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
 var key2 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
 var id6 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
-var at3 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
-var period2 = (v, max) => at3(v.issued_at) && at3(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= max;
+var at4 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var period2 = (v, max) => at4(v.issued_at) && at4(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= max;
 var repo = (v) => typeof v === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v);
 var paths = (v) => Array.isArray(v) && v.length > 0 && v.length <= 12 && new Set(v).size === v.length && v.every((p) => typeof p === "string" && repositoryPath(p.endsWith("/**") ? p.slice(0, -3) : p) && pathAllowed(p.endsWith("/**") ? p.slice(0, -2) + "placeholder" : p, [p]));
-var checks = (v) => Array.isArray(v) && v.length > 0 && v.length <= 12 && v.every((c) => obj2(c) && exact6(c, ["name", "app_id"]) && text5(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0) && new Set(v.map((c) => c.name)).size === v.length;
+var checks = (v) => Array.isArray(v) && v.length > 0 && v.length <= 12 && v.every((c) => obj3(c) && exact6(c, ["name", "app_id"]) && text6(c.name, 100) && Number.isSafeInteger(c.app_id) && Number(c.app_id) > 0) && new Set(v.map((c) => c.name)).size === v.length;
 var revision = (v) => Number.isSafeInteger(v) && Number(v) > 0;
 function workspacePathsWithin(proposed, allowed) {
   return proposed.every((path) => path.endsWith("/**") ? allowed.some((rule) => rule.endsWith("/**") && (path === rule || path.slice(0, -3).startsWith(rule.slice(0, -2)))) : pathAllowed(path, allowed));
 }
 function validRepositoryWorkspace(v) {
-  return obj2(v) && exact6(v, ["type", "id", "title", "client_name", "repository", "base_branch", "receiver_key", "authority_key", "owner_member_id", "owner_key", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.workspace.v1" && id6(v.id) && id6(v.owner_member_id) && text5(v.title, 100) && text5(v.client_name, 100) && repo(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(key2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && period2(v, 365 * 864e5);
+  return obj3(v) && exact6(v, ["type", "id", "title", "client_name", "repository", "base_branch", "receiver_key", "authority_key", "owner_member_id", "owner_key", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.workspace.v1" && id6(v.id) && id6(v.owner_member_id) && text6(v.title, 100) && text6(v.client_name, 100) && repo(v.repository) && repositoryBranch(v.base_branch) && [v.owner_key, v.receiver_key, v.authority_key].every(key2) && (/* @__PURE__ */ new Set([v.owner_key, v.receiver_key, v.authority_key])).size === 3 && period2(v, 365 * 864e5);
 }
 function validWorkspaceInvitation(v) {
-  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "workspace_digest", "member_id", "role", "display_name", "issuer_key", "secret_hash", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.workspace-invitation.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && [v.workspace_digest, v.issuer_key, v.secret_hash].every(key2) && ["reviewer", "observer"].includes(String(v.role)) && text5(v.display_name, 60) && period2(v, 7 * 864e5);
+  return obj3(v) && exact6(v, ["type", "id", "workspace_id", "workspace_digest", "member_id", "role", "display_name", "issuer_key", "secret_hash", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.workspace-invitation.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && [v.workspace_digest, v.issuer_key, v.secret_hash].every(key2) && ["reviewer", "observer"].includes(String(v.role)) && text6(v.display_name, 60) && period2(v, 7 * 864e5);
 }
 function validWorkspaceMemberClaim(v) {
-  return obj2(v) && exact6(v, ["type", "workspace_id", "invitation_digest", "member_id", "member_key", "issued_at"]) && v.type === "scopeblind.repository.workspace-member-claim.v1" && [v.workspace_id, v.member_id].every(id6) && [v.invitation_digest, v.member_key].every(key2) && at3(v.issued_at);
+  return obj3(v) && exact6(v, ["type", "workspace_id", "invitation_digest", "member_id", "member_key", "issued_at"]) && v.type === "scopeblind.repository.workspace-member-claim.v1" && [v.workspace_id, v.member_id].every(id6) && [v.invitation_digest, v.member_key].every(key2) && at4(v.issued_at);
 }
 function validWorkspaceMemberUpdate(v) {
-  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "member_id", "expected_revision", "role", "status", "issuer_key", "issued_at"]) && v.type === "scopeblind.repository.workspace-member-update.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && key2(v.issuer_key) && revision(v.expected_revision) && ["reviewer", "observer"].includes(String(v.role)) && ["active", "revoked"].includes(String(v.status)) && at3(v.issued_at);
+  return obj3(v) && exact6(v, ["type", "id", "workspace_id", "member_id", "expected_revision", "role", "status", "issuer_key", "issued_at"]) && v.type === "scopeblind.repository.workspace-member-update.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && key2(v.issuer_key) && revision(v.expected_revision) && ["reviewer", "observer"].includes(String(v.role)) && ["active", "revoked"].includes(String(v.status)) && at4(v.issued_at);
 }
 function validWorkspaceRecovery(v) {
-  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "member_id", "member_key", "recovery_key", "expected_revision", "issued_at", "expires_at"], ["previous_recovery_digest"]) && v.type === "scopeblind.repository.workspace-recovery.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && [v.member_key, v.recovery_key].every(key2) && v.member_key !== v.recovery_key && revision(v.expected_revision) && (v.previous_recovery_digest === void 0 || key2(v.previous_recovery_digest)) && period2(v, 365 * 864e5);
+  return obj3(v) && exact6(v, ["type", "id", "workspace_id", "member_id", "member_key", "recovery_key", "expected_revision", "issued_at", "expires_at"], ["previous_recovery_digest"]) && v.type === "scopeblind.repository.workspace-recovery.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && [v.member_key, v.recovery_key].every(key2) && v.member_key !== v.recovery_key && revision(v.expected_revision) && (v.previous_recovery_digest === void 0 || key2(v.previous_recovery_digest)) && period2(v, 365 * 864e5);
 }
 function validWorkspaceRotation(v) {
-  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "member_id", "previous_key", "new_key", "recovery_digest", "expected_revision", "issued_at"]) && v.type === "scopeblind.repository.workspace-key-rotation.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && [v.previous_key, v.new_key, v.recovery_digest].every(key2) && v.previous_key !== v.new_key && revision(v.expected_revision) && at3(v.issued_at);
+  return obj3(v) && exact6(v, ["type", "id", "workspace_id", "member_id", "previous_key", "new_key", "recovery_digest", "expected_revision", "issued_at"]) && v.type === "scopeblind.repository.workspace-key-rotation.v1" && [v.id, v.workspace_id, v.member_id].every(id6) && [v.previous_key, v.new_key, v.recovery_digest].every(key2) && v.previous_key !== v.new_key && revision(v.expected_revision) && at4(v.issued_at);
 }
 function validWorkspaceTaskAssignment(v) {
-  return obj2(v) && exact6(v, ["type", "workspace_id", "workspace_digest", "task_id", "task_digest", "owner_member_id", "owner_key", "owner_member_revision", "reviewer_member_id", "reviewer_key", "reviewer_member_revision", "review_brief_digest", "issued_at", "expires_at"], ["source_draft_digest"]) && v.type === "scopeblind.repository.workspace-task-assignment.v1" && [v.workspace_id, v.task_id, v.owner_member_id, v.reviewer_member_id].every(id6) && [v.workspace_digest, v.task_digest, v.owner_key, v.reviewer_key, v.review_brief_digest].every(key2) && v.owner_key !== v.reviewer_key && v.owner_member_id !== v.reviewer_member_id && revision(v.owner_member_revision) && revision(v.reviewer_member_revision) && (v.source_draft_digest === void 0 || key2(v.source_draft_digest)) && period2(v, 7 * 864e5);
+  return obj3(v) && exact6(v, ["type", "workspace_id", "workspace_digest", "task_id", "task_digest", "owner_member_id", "owner_key", "owner_member_revision", "reviewer_member_id", "reviewer_key", "reviewer_member_revision", "review_brief_digest", "issued_at", "expires_at"], ["source_draft_digest"]) && v.type === "scopeblind.repository.workspace-task-assignment.v1" && [v.workspace_id, v.task_id, v.owner_member_id, v.reviewer_member_id].every(id6) && [v.workspace_digest, v.task_digest, v.owner_key, v.reviewer_key, v.review_brief_digest].every(key2) && v.owner_key !== v.reviewer_key && v.owner_member_id !== v.reviewer_member_id && revision(v.owner_member_revision) && revision(v.reviewer_member_revision) && (v.source_draft_digest === void 0 || key2(v.source_draft_digest)) && period2(v, 7 * 864e5);
 }
 function validWorkspacePreparationMandate(v) {
-  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "workspace_digest", "mode", "owner_member_id", "owner_key", "owner_member_revision", "reviewer_member_id", "reviewer_key", "reviewer_member_revision", "agent_key", "repository", "base_branch", "allowed_paths", "required_checks", "permissions", "max_requests", "max_open_requests", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.preparation-mandate.v1" && v.mode === "prepare_review" && [v.id, v.workspace_id, v.owner_member_id, v.reviewer_member_id].every(id6) && [v.workspace_digest, v.owner_key, v.reviewer_key, v.agent_key].every(key2) && (/* @__PURE__ */ new Set([v.owner_key, v.reviewer_key, v.agent_key])).size === 3 && revision(v.owner_member_revision) && revision(v.reviewer_member_revision) && repo(v.repository) && repositoryBranch(v.base_branch) && paths(v.allowed_paths) && checks(v.required_checks) && Array.isArray(v.permissions) && v.permissions.includes("prepare_review") && v.permissions.length <= 4 && new Set(v.permissions).size === v.permissions.length && v.permissions.every((p) => ["prepare_review", "read_task", "report_criteria", "request_revision"].includes(String(p))) && Number.isSafeInteger(v.max_requests) && Number(v.max_requests) > 0 && Number(v.max_requests) <= 20 && Number.isSafeInteger(v.max_open_requests) && Number(v.max_open_requests) > 0 && Number(v.max_open_requests) <= 3 && Number(v.max_open_requests) <= Number(v.max_requests) && period2(v, 7 * 864e5);
+  return obj3(v) && exact6(v, ["type", "id", "workspace_id", "workspace_digest", "mode", "owner_member_id", "owner_key", "owner_member_revision", "reviewer_member_id", "reviewer_key", "reviewer_member_revision", "agent_key", "repository", "base_branch", "allowed_paths", "required_checks", "permissions", "max_requests", "max_open_requests", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.preparation-mandate.v1" && v.mode === "prepare_review" && [v.id, v.workspace_id, v.owner_member_id, v.reviewer_member_id].every(id6) && [v.workspace_digest, v.owner_key, v.reviewer_key, v.agent_key].every(key2) && (/* @__PURE__ */ new Set([v.owner_key, v.reviewer_key, v.agent_key])).size === 3 && revision(v.owner_member_revision) && revision(v.reviewer_member_revision) && repo(v.repository) && repositoryBranch(v.base_branch) && paths(v.allowed_paths) && checks(v.required_checks) && Array.isArray(v.permissions) && v.permissions.includes("prepare_review") && v.permissions.length <= 4 && new Set(v.permissions).size === v.permissions.length && v.permissions.every((p) => ["prepare_review", "read_task", "report_criteria", "request_revision"].includes(String(p))) && Number.isSafeInteger(v.max_requests) && Number(v.max_requests) > 0 && Number(v.max_requests) <= 20 && Number.isSafeInteger(v.max_open_requests) && Number(v.max_open_requests) > 0 && Number(v.max_open_requests) <= 3 && Number(v.max_open_requests) <= Number(v.max_requests) && period2(v, 7 * 864e5);
 }
 function validWorkspaceMandateRevocation(v) {
-  return obj2(v) && exact6(v, ["type", "mandate_id", "mandate_digest", "workspace_id", "principal_key", "issued_at"]) && v.type === "scopeblind.repository.preparation-revocation.v1" && [v.mandate_id, v.workspace_id].every(id6) && [v.mandate_digest, v.principal_key].every(key2) && at3(v.issued_at);
+  return obj3(v) && exact6(v, ["type", "mandate_id", "mandate_digest", "workspace_id", "principal_key", "issued_at"]) && v.type === "scopeblind.repository.preparation-revocation.v1" && [v.mandate_id, v.workspace_id].every(id6) && [v.mandate_digest, v.principal_key].every(key2) && at4(v.issued_at);
 }
 function validWorkspaceReviewDraft(v) {
-  return obj2(v) && exact6(v, ["type", "id", "workspace_id", "mandate_digest", "agent_key", "repository", "pull_number", "title", "content", "allowed_paths", "required_checks", "issued_at"], ["suggested_preview_url", "observed_head_sha", "source"]) && v.type === "scopeblind.repository.workspace-review-draft.v1" && [v.id, v.workspace_id].every(id6) && [v.mandate_digest, v.agent_key].every(key2) && repo(v.repository) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && text5(v.title, 140) && validRepositoryReviewContent(v.content) && paths(v.allowed_paths) && checks(v.required_checks) && at3(v.issued_at) && (v.source === void 0 || obj2(v.source) && exact6(v.source, ["task_id", "task_digest", "basis_digest", "packet_digest", "feedback_digest"]) && id6(v.source.task_id) && [v.source.task_digest, v.source.basis_digest, v.source.packet_digest, v.source.feedback_digest].every(key2)) && (v.observed_head_sha === void 0 || typeof v.observed_head_sha === "string" && /^[a-f0-9]{40}$/.test(v.observed_head_sha)) && (v.suggested_preview_url === void 0 || typeof v.suggested_preview_url === "string" && v.suggested_preview_url.length <= 2e3 && safeWorkspacePreview(v.suggested_preview_url));
+  return obj3(v) && exact6(v, ["type", "id", "workspace_id", "mandate_digest", "agent_key", "repository", "pull_number", "title", "content", "allowed_paths", "required_checks", "issued_at"], ["suggested_preview_url", "observed_head_sha", "source"]) && v.type === "scopeblind.repository.workspace-review-draft.v1" && [v.id, v.workspace_id].every(id6) && [v.mandate_digest, v.agent_key].every(key2) && repo(v.repository) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && text6(v.title, 140) && validRepositoryReviewContent(v.content) && paths(v.allowed_paths) && checks(v.required_checks) && at4(v.issued_at) && (v.source === void 0 || obj3(v.source) && exact6(v.source, ["task_id", "task_digest", "basis_digest", "packet_digest", "feedback_digest"]) && id6(v.source.task_id) && [v.source.task_digest, v.source.basis_digest, v.source.packet_digest, v.source.feedback_digest].every(key2)) && (v.observed_head_sha === void 0 || typeof v.observed_head_sha === "string" && /^[a-f0-9]{40}$/.test(v.observed_head_sha)) && (v.suggested_preview_url === void 0 || typeof v.suggested_preview_url === "string" && v.suggested_preview_url.length <= 2e3 && safeWorkspacePreview(v.suggested_preview_url));
 }
 function safeWorkspacePreview(value) {
   try {
@@ -46487,9 +46925,9 @@ function safeWorkspacePreview(value) {
   }
 }
 function validWorkspaceDraftDecision(v) {
-  return obj2(v) && exact6(v, ["type", "workspace_id", "draft_digest", "owner_key", "decision", "note", "issued_at"], ["task_id", "task_digest"]) && v.type === "scopeblind.repository.workspace-draft-decision.v1" && id6(v.workspace_id) && [v.draft_digest, v.owner_key].every(key2) && ["adopt", "reject"].includes(String(v.decision)) && typeof v.note === "string" && v.note.length <= 600 && at3(v.issued_at) && (v.decision === "adopt" ? id6(v.task_id) && key2(v.task_digest) : v.task_id === void 0 && v.task_digest === void 0);
+  return obj3(v) && exact6(v, ["type", "workspace_id", "draft_digest", "owner_key", "decision", "note", "issued_at"], ["task_id", "task_digest"]) && v.type === "scopeblind.repository.workspace-draft-decision.v1" && id6(v.workspace_id) && [v.draft_digest, v.owner_key].every(key2) && ["adopt", "reject"].includes(String(v.decision)) && typeof v.note === "string" && v.note.length <= 600 && at4(v.issued_at) && (v.decision === "adopt" ? id6(v.task_id) && key2(v.task_digest) : v.task_id === void 0 && v.task_digest === void 0);
 }
-var cleanEnvelope = (v) => obj2(v) && exact6(v, ["payload", "signer", "digest", "signature"]);
+var cleanEnvelope = (v) => obj3(v) && exact6(v, ["payload", "signer", "digest", "signature"]);
 var before = (time7, observation) => Date.parse(time7) <= Date.parse(observation);
 function memberAt(member, time7, workspace) {
   let current = member.claim?.payload.member_key ?? workspace.owner_key, role = member.invitation?.payload.role ?? "owner", status2 = "active", revision2 = 1;
@@ -46537,13 +46975,13 @@ function ownerKeyAt(owner, key5, time7, workspace) {
 }
 async function checkedMembers(workspace, members, observation) {
   const w = workspace.payload;
-  if (!cleanEnvelope(workspace) || !validRepositoryWorkspace(w) || !await verify(workspace, w.owner_key) || !at3(observation) || !before(w.issued_at, observation) || !Array.isArray(members) || !members.length || members.length > 20 || new Set(members.map((m) => m.member_id)).size !== members.length || new Set(members.map((m) => m.current_key)).size !== members.length) return false;
+  if (!cleanEnvelope(workspace) || !validRepositoryWorkspace(w) || !await verify(workspace, w.owner_key) || !at4(observation) || !before(w.issued_at, observation) || !Array.isArray(members) || !members.length || members.length > 20 || new Set(members.map((m) => m.member_id)).size !== members.length || new Set(members.map((m) => m.current_key)).size !== members.length) return false;
   const humans = members.flatMap((m) => historicalMemberKeys(m, w)), recoveries = members.flatMap(memberRecoveryKeys);
   if (new Set(humans).size !== humans.length || humans.some((k) => [w.authority_key, w.receiver_key].includes(k)) || recoveries.some((k) => [w.authority_key, w.receiver_key, ...humans].includes(k))) return false;
   const owner = members.find((m) => m.member_id === w.owner_member_id);
   if (!owner || owner.invitation || owner.claim || owner.role !== "owner" || owner.updates.length) return false;
   for (const m of [owner, ...members.filter((m2) => m2 !== owner)]) {
-    if (!exact6(m, ["member_id", "display_name", "role", "status", "current_key", "revision", "invitation", "claim", "recovery", "rotations", "updates"]) || !id6(m.member_id) || !text5(m.display_name, 60) || !key2(m.current_key) || !revision(m.revision) || !["owner", "reviewer", "observer"].includes(m.role) || !["active", "revoked"].includes(m.status) || !Array.isArray(m.rotations) || m.rotations.length > 12 || !Array.isArray(m.updates) || m.updates.length > 40) return false;
+    if (!exact6(m, ["member_id", "display_name", "role", "status", "current_key", "revision", "invitation", "claim", "recovery", "rotations", "updates"]) || !id6(m.member_id) || !text6(m.display_name, 60) || !key2(m.current_key) || !revision(m.revision) || !["owner", "reviewer", "observer"].includes(m.role) || !["active", "revoked"].includes(m.status) || !Array.isArray(m.rotations) || m.rotations.length > 12 || !Array.isArray(m.updates) || m.updates.length > 40) return false;
     let current = w.owner_key, previousAt = w.issued_at;
     if (m !== owner) {
       const invitation = m.invitation, claim = m.claim;
@@ -46579,7 +47017,7 @@ async function checkedMembers(workspace, members, observation) {
   return true;
 }
 async function checkedMandate(view, workspace, members, observation) {
-  if (!obj2(view) || !exact6(view, ["mandate", "adoption", "revocation", "status", "used_requests", "open_requests"]) || !cleanEnvelope(view.mandate) || !validWorkspacePreparationMandate(view.mandate.payload)) return false;
+  if (!obj3(view) || !exact6(view, ["mandate", "adoption", "revocation", "status", "used_requests", "open_requests"]) || !cleanEnvelope(view.mandate) || !validWorkspacePreparationMandate(view.mandate.payload)) return false;
   const p = view.mandate.payload, w = workspace.payload, o = members.find((m) => m.member_id === p.owner_member_id), r = members.find((m) => m.member_id === p.reviewer_member_id);
   if (!o || !r) return false;
   const owner = memberRevisionAt(o, p.owner_member_revision, p.issued_at, w), reviewer = memberRevisionAt(r, p.reviewer_member_revision, p.issued_at, w);
@@ -46593,7 +47031,7 @@ async function checkedMandate(view, workspace, members, observation) {
   return view.status === expected;
 }
 async function checkedDraft(view, workspace, members, mandates, observation) {
-  if (!obj2(view) || !exact6(view, ["draft", "decision"]) || !cleanEnvelope(view.draft) || !validWorkspaceReviewDraft(view.draft.payload)) return false;
+  if (!obj3(view) || !exact6(view, ["draft", "decision"]) || !cleanEnvelope(view.draft) || !validWorkspaceReviewDraft(view.draft.payload)) return false;
   const p = view.draft.payload, m = mandates.find((m2) => m2.mandate.digest === p.mandate_digest), g = m?.mandate.payload;
   if (!g || !m?.adoption || p.workspace_id !== workspace.payload.id || p.agent_key !== g.agent_key || p.repository !== g.repository || Date.parse(p.issued_at) < Date.parse(g.issued_at) || Date.parse(p.issued_at) >= Date.parse(g.expires_at) || !before(p.issued_at, observation) || !await verify(view.draft, g.agent_key) || !workspacePathsWithin(p.allowed_paths, g.allowed_paths) || !g.required_checks.every((c) => p.required_checks.some((r) => canonical(r) === canonical(c))) || p.required_checks.some((c) => g.required_checks.some((r) => r.name === c.name && r.app_id !== c.app_id))) return false;
   if (view.decision) {
@@ -46607,7 +47045,7 @@ async function verifyRepositoryWorkspaceState(value, authorityKey, viewerKey) {
     const e = value, s = e.payload;
     if (!cleanEnvelope(e) || !s || !exact6(s, ["type", "workspace", "members", "invitations", "assignments", "mandates", "drafts", "viewer", "observed_at"]) || s.type !== "scopeblind.repository.workspace-state.v1" || !await verify(e, authorityKey) || s.workspace.payload.authority_key !== authorityKey || viewerKey && s.viewer.key !== viewerKey || !await checkedMembers(s.workspace, s.members, s.observed_at) || !Array.isArray(s.invitations) || s.invitations.length > 40 || !Array.isArray(s.assignments) || s.assignments.length > 100 || !Array.isArray(s.mandates) || s.mandates.length > 40 || !Array.isArray(s.drafts) || s.drafts.length > 100) return false;
     const viewer = s.members.find((m) => m.current_key === s.viewer.key);
-    if (!obj2(s.viewer) || !exact6(s.viewer, ["key", "member_id", "role", "capabilities"]) || !viewer || viewer.status !== "active" || s.viewer.member_id !== viewer.member_id || s.viewer.role !== viewer.role || canonical(s.viewer.capabilities) !== canonical(viewer.role === "owner" ? ["read", "invite", "assign", "prepare_mandate", "review_draft", "recover"] : viewer.role === "reviewer" ? ["read", "review", "adopt_mandate", "recover"] : ["read", "recover"])) return false;
+    if (!obj3(s.viewer) || !exact6(s.viewer, ["key", "member_id", "role", "capabilities"]) || !viewer || viewer.status !== "active" || s.viewer.member_id !== viewer.member_id || s.viewer.role !== viewer.role || canonical(s.viewer.capabilities) !== canonical(viewer.role === "owner" ? ["read", "invite", "assign", "prepare_mandate", "review_draft", "recover"] : viewer.role === "reviewer" ? ["read", "review", "adopt_mandate", "recover"] : ["read", "recover"])) return false;
     const owner = s.members.find((m) => m.member_id === s.workspace.payload.owner_member_id);
     for (const i of s.invitations) if (!cleanEnvelope(i) || !validWorkspaceInvitation(i.payload) || i.payload.workspace_id !== s.workspace.payload.id || i.payload.workspace_digest !== s.workspace.digest || !ownerKeyAt(owner, i.payload.issuer_key, i.payload.issued_at, s.workspace.payload) || !before(i.payload.issued_at, s.observed_at) || !await verify(i, i.payload.issuer_key)) return false;
     for (const a of s.assignments) {
@@ -46640,7 +47078,7 @@ var exact7 = (v, required, optional = []) => required.every((k) => Object.hasOwn
 var key3 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
 var id7 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
 var number = (v, min, max) => Number.isSafeInteger(v) && Number(v) >= min && Number(v) <= max;
-var at4 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var at5 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
 var hex40 = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
 function validRepositoryCodingRefreshableConnections(v) {
   return Array.isArray(v) && v.length <= 20 && v.every((c) => object5(c) && exact7(c, ["setup_id", "worker_key"]) && id7(c.setup_id) && key3(c.worker_key)) && new Set(v.map((c) => c.setup_id)).size === v.length;
@@ -46656,28 +47094,40 @@ function validRepositoryCodingSource(v) {
 }
 function validRepositoryCodingMandate(v) {
   if (!object5(v) || !exact7(v, ["type", "id", "workspace_id", "workspace_digest", "mode", "owner_member_id", "owner_key", "owner_member_revision", "reviewer_member_id", "reviewer_key", "reviewer_member_revision", "worker_key", "repository", "base_branch", "allowed_paths", "required_checks", "runtime", "docker_image", "test_command", "build_command", "preview_directory", "max_jobs", "max_attempts", "max_model_calls", "max_tokens", "max_seconds", "max_changed_files", "max_changed_bytes", "permissions", "issued_at", "expires_at"])) return false;
-  return v.type === "scopeblind.repository.coding-mandate.v1" && v.mode === "edit_code" && [v.id, v.workspace_id, v.owner_member_id, v.reviewer_member_id].every(id7) && [v.workspace_digest, v.owner_key, v.reviewer_key, v.worker_key].every(key3) && (/* @__PURE__ */ new Set([v.owner_key, v.reviewer_key, v.worker_key])).size === 3 && v.owner_member_id !== v.reviewer_member_id && number(v.owner_member_revision, 1, 1e3) && number(v.reviewer_member_revision, 1, 1e3) && typeof v.repository === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v.repository) && repositoryBranch(v.base_branch) && Array.isArray(v.allowed_paths) && v.allowed_paths.length > 0 && v.allowed_paths.length <= 12 && new Set(v.allowed_paths).size === v.allowed_paths.length && v.allowed_paths.every((p) => typeof p === "string" && codingSafePath(p.endsWith("/**") ? p.slice(0, -3) : p)) && Array.isArray(v.required_checks) && v.required_checks.length > 0 && v.required_checks.length <= 12 && new Set(v.required_checks.map((c) => object5(c) ? c.name : null)).size === v.required_checks.length && v.required_checks.every((c) => object5(c) && exact7(c, ["name", "app_id"]) && typeof c.name === "string" && c.name.length > 0 && c.name.length <= 100 && number(c.app_id, 1, Number.MAX_SAFE_INTEGER)) && v.runtime === "node22-static-v1" && typeof v.docker_image === "string" && /^node@sha256:[a-f0-9]{64}$/.test(v.docker_image) && codingCommand(v.test_command) && codingCommand(v.build_command) && codingSafePath(v.preview_directory) && !pathAllowed(v.preview_directory, v.allowed_paths) && v.allowed_paths.every((p) => p !== v.preview_directory && !p.startsWith(String(v.preview_directory) + "/")) && v.test_command.slice(1).filter((p) => !p.startsWith("--")).every((p) => !pathAllowed(p, v.allowed_paths)) && v.build_command.slice(1).every((p) => !pathAllowed(p, v.allowed_paths)) && number(v.max_jobs, 1, 3) && number(v.max_attempts, 1, 2) && number(v.max_model_calls, 1, 12) && number(v.max_tokens, 4096, 524288) && number(v.max_seconds, 60, 900) && number(v.max_changed_files, 1, 20) && number(v.max_changed_bytes, 1, 262144) && JSON.stringify(v.permissions) === JSON.stringify(CODING_PERMISSIONS) && at4(v.issued_at) && at4(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 864e5;
+  return v.type === "scopeblind.repository.coding-mandate.v1" && v.mode === "edit_code" && [v.id, v.workspace_id, v.owner_member_id, v.reviewer_member_id].every(id7) && [v.workspace_digest, v.owner_key, v.reviewer_key, v.worker_key].every(key3) && (/* @__PURE__ */ new Set([v.owner_key, v.reviewer_key, v.worker_key])).size === 3 && v.owner_member_id !== v.reviewer_member_id && number(v.owner_member_revision, 1, 1e3) && number(v.reviewer_member_revision, 1, 1e3) && typeof v.repository === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v.repository) && repositoryBranch(v.base_branch) && Array.isArray(v.allowed_paths) && v.allowed_paths.length > 0 && v.allowed_paths.length <= 12 && new Set(v.allowed_paths).size === v.allowed_paths.length && v.allowed_paths.every((p) => typeof p === "string" && codingSafePath(p.endsWith("/**") ? p.slice(0, -3) : p)) && Array.isArray(v.required_checks) && v.required_checks.length > 0 && v.required_checks.length <= 12 && new Set(v.required_checks.map((c) => object5(c) ? c.name : null)).size === v.required_checks.length && v.required_checks.every((c) => object5(c) && exact7(c, ["name", "app_id"]) && typeof c.name === "string" && c.name.length > 0 && c.name.length <= 100 && number(c.app_id, 1, Number.MAX_SAFE_INTEGER)) && v.runtime === "node22-static-v1" && typeof v.docker_image === "string" && /^node@sha256:[a-f0-9]{64}$/.test(v.docker_image) && codingCommand(v.test_command) && codingCommand(v.build_command) && codingSafePath(v.preview_directory) && !pathAllowed(v.preview_directory, v.allowed_paths) && v.allowed_paths.every((p) => p !== v.preview_directory && !p.startsWith(String(v.preview_directory) + "/")) && v.test_command.slice(1).filter((p) => !p.startsWith("--")).every((p) => !pathAllowed(p, v.allowed_paths)) && v.build_command.slice(1).every((p) => !pathAllowed(p, v.allowed_paths)) && number(v.max_jobs, 1, 3) && number(v.max_attempts, 1, 2) && number(v.max_model_calls, 1, 12) && number(v.max_tokens, 4096, 524288) && number(v.max_seconds, 60, 900) && number(v.max_changed_files, 1, 20) && number(v.max_changed_bytes, 1, 262144) && JSON.stringify(v.permissions) === JSON.stringify(CODING_PERMISSIONS) && at5(v.issued_at) && at5(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 864e5;
 }
 function validRepositoryCodingRequest(v) {
-  return object5(v) && exact7(v, ["type", "id", "workspace_id", "mandate_digest", "source", "owner_key", "issued_at"]) && v.type === "scopeblind.repository.coding-request.v1" && [v.id, v.workspace_id].every(id7) && [v.mandate_digest, v.owner_key].every(key3) && validRepositoryCodingSource(v.source) && at4(v.issued_at);
+  return object5(v) && exact7(v, ["type", "id", "workspace_id", "mandate_digest", "source", "owner_key", "issued_at"]) && v.type === "scopeblind.repository.coding-request.v1" && [v.id, v.workspace_id].every(id7) && [v.mandate_digest, v.owner_key].every(key3) && validRepositoryCodingSource(v.source) && at5(v.issued_at);
 }
 function validRepositoryCodingStop(v) {
-  return object5(v) && exact7(v, ["type", "id", "workspace_id", "mandate_digest", "principal_key", "issued_at"], ["job_id"]) && v.type === "scopeblind.repository.coding-stop.v1" && [v.id, v.workspace_id].every(id7) && [v.mandate_digest, v.principal_key].every(key3) && (v.job_id === void 0 || id7(v.job_id)) && at4(v.issued_at);
+  return object5(v) && exact7(v, ["type", "id", "workspace_id", "mandate_digest", "principal_key", "issued_at"], ["job_id"]) && v.type === "scopeblind.repository.coding-stop.v1" && [v.id, v.workspace_id].every(id7) && [v.mandate_digest, v.principal_key].every(key3) && (v.job_id === void 0 || id7(v.job_id)) && at5(v.issued_at);
 }
 function validRepositoryCodingPlan(v, m) {
-  return object5(v) && exact7(v, ["type", "job_id", "request_digest", "mandate_digest", "source_head_sha", "source_base_sha", "branch", "commit_sha", "tree_sha", "files", "tests", "build", "preview_digest", "model_calls", "reserved_tokens", "issued_at"]) && v.type === "scopeblind.repository.coding-plan.v1" && id7(v.job_id) && [v.request_digest, v.mandate_digest, v.preview_digest].every(key3) && [v.source_head_sha, v.source_base_sha, v.commit_sha, v.tree_sha].every(hex40) && v.branch === "scopeblind/code/" + v.job_id && Array.isArray(v.files) && v.files.length > 0 && v.files.length <= m.max_changed_files && new Set(v.files.map((f) => object5(f) ? f.path : null)).size === v.files.length && v.files.every((f) => object5(f) && exact7(f, ["path", "before_sha", "after_sha", "bytes"]) && codingSafePath(f.path) && pathAllowed(f.path, m.allowed_paths) && (f.before_sha === null || hex40(f.before_sha)) && (f.after_sha === null || hex40(f.after_sha)) && f.before_sha !== f.after_sha && number(f.bytes, 0, m.max_changed_bytes)) && v.files.reduce((n, f) => n + Number(f.bytes), 0) <= m.max_changed_bytes && [v.tests, v.build].every((t) => object5(t) && exact7(t, ["command_digest", "exit_code", "output_sha256", "duration_ms"]) && key3(t.command_digest) && key3(t.output_sha256) && t.exit_code === 0 && number(t.duration_ms, 0, m.max_seconds * 1e3)) && number(v.model_calls, 1, m.max_model_calls) && number(v.reserved_tokens, 4096, m.max_tokens) && at4(v.issued_at);
+  return object5(v) && exact7(v, ["type", "job_id", "request_digest", "mandate_digest", "source_head_sha", "source_base_sha", "branch", "commit_sha", "tree_sha", "files", "tests", "build", "preview_digest", "model_calls", "reserved_tokens", "issued_at"]) && v.type === "scopeblind.repository.coding-plan.v1" && id7(v.job_id) && [v.request_digest, v.mandate_digest, v.preview_digest].every(key3) && [v.source_head_sha, v.source_base_sha, v.commit_sha, v.tree_sha].every(hex40) && v.branch === "scopeblind/code/" + v.job_id && Array.isArray(v.files) && v.files.length > 0 && v.files.length <= m.max_changed_files && new Set(v.files.map((f) => object5(f) ? f.path : null)).size === v.files.length && v.files.every((f) => object5(f) && exact7(f, ["path", "before_sha", "after_sha", "bytes"]) && codingSafePath(f.path) && pathAllowed(f.path, m.allowed_paths) && (f.before_sha === null || hex40(f.before_sha)) && (f.after_sha === null || hex40(f.after_sha)) && f.before_sha !== f.after_sha && number(f.bytes, 0, m.max_changed_bytes)) && v.files.reduce((n, f) => n + Number(f.bytes), 0) <= m.max_changed_bytes && [v.tests, v.build].every((t) => object5(t) && exact7(t, ["command_digest", "exit_code", "output_sha256", "duration_ms"]) && key3(t.command_digest) && key3(t.output_sha256) && t.exit_code === 0 && number(t.duration_ms, 0, m.max_seconds * 1e3)) && number(v.model_calls, 1, m.max_model_calls) && number(v.reserved_tokens, 4096, m.max_tokens) && at5(v.issued_at);
 }
 function codingScopeWithin(paths2, m) {
   return workspacePathsWithin(paths2, m.allowed_paths);
 }
+var WORKFLOW_FILE = /^[A-Za-z0-9_.-]+\.ya?ml$/;
+function validRepositoryCodingWorkflowRun(v, repository2) {
+  if (!object5(v) || !exact7(v, ["id", "attempt", "workflow_ref", "workflow_sha", "repository"]) || !number(v.id, 1, Number.MAX_SAFE_INTEGER) || !number(v.attempt, 1, 1e4) || !hex40(v.workflow_sha) || v.repository !== repository2 || typeof v.workflow_ref !== "string" || v.workflow_ref.length > 300) return false;
+  const at10 = v.workflow_ref.indexOf("@");
+  if (at10 < 0) return false;
+  const path = v.workflow_ref.slice(0, at10), ref = v.workflow_ref.slice(at10 + 1);
+  return path.startsWith(`${repository2}/.github/workflows/`) && WORKFLOW_FILE.test(path.slice(`${repository2}/.github/workflows/`.length)) && /^refs\/(heads|tags)\/[^\s]{1,200}$/.test(ref);
+}
+function workflowRunFromEnvironment(env, repository2) {
+  const id11 = Number(env.GITHUB_RUN_ID), attempt = Number(env.GITHUB_RUN_ATTEMPT), run = { id: id11, attempt, workflow_ref: env.GITHUB_WORKFLOW_REF ?? "", workflow_sha: env.GITHUB_WORKFLOW_SHA ?? "", repository: env.GITHUB_REPOSITORY ?? "" };
+  return validRepositoryCodingWorkflowRun(run, repository2) ? run : void 0;
+}
 function validRepositoryCodingResult(v) {
-  return object5(v) && exact7(v, ["type", "job_id", "plan_digest", "publication_digest", "repository", "branch", "head_sha", "pull_number", "pull_url", "preview_url", "preview_digest", "deployment_id", "deployment_status_id", "deployment_environment", "check", "observed_at"]) && v.type === "scopeblind.repository.coding-result.v1" && id7(v.job_id) && [v.plan_digest, v.publication_digest, v.preview_digest].every(key3) && hex40(v.head_sha) && typeof v.repository === "string" && typeof v.branch === "string" && number(v.pull_number, 1, Number.MAX_SAFE_INTEGER) && v.pull_url === `https://github.com/${v.repository}/pull/${v.pull_number}` && typeof v.preview_url === "string" && v.preview_url.startsWith("https://") && number(v.deployment_id, 1, Number.MAX_SAFE_INTEGER) && number(v.deployment_status_id, 1, Number.MAX_SAFE_INTEGER) && v.deployment_environment === "ScopeBlind coding preview" && object5(v.check) && exact7(v.check, ["id", "name", "app_id", "head_sha", "conclusion"]) && number(v.check.id, 1, Number.MAX_SAFE_INTEGER) && v.check.name === "ScopeBlind isolated coding checks" && v.check.app_id === 15368 && v.check.head_sha === v.head_sha && v.check.conclusion === "success" && at4(v.observed_at);
+  return object5(v) && exact7(v, ["type", "job_id", "plan_digest", "publication_digest", "repository", "branch", "head_sha", "pull_number", "pull_url", "preview_url", "preview_digest", "deployment_id", "deployment_status_id", "deployment_environment", "check", "observed_at"], ["workflow_run"]) && (v.workflow_run === void 0 || typeof v.repository === "string" && validRepositoryCodingWorkflowRun(v.workflow_run, v.repository)) && v.type === "scopeblind.repository.coding-result.v1" && id7(v.job_id) && [v.plan_digest, v.publication_digest, v.preview_digest].every(key3) && hex40(v.head_sha) && typeof v.repository === "string" && typeof v.branch === "string" && number(v.pull_number, 1, Number.MAX_SAFE_INTEGER) && v.pull_url === `https://github.com/${v.repository}/pull/${v.pull_number}` && typeof v.preview_url === "string" && v.preview_url.startsWith("https://") && number(v.deployment_id, 1, Number.MAX_SAFE_INTEGER) && number(v.deployment_status_id, 1, Number.MAX_SAFE_INTEGER) && v.deployment_environment === "ScopeBlind coding preview" && object5(v.check) && exact7(v.check, ["id", "name", "app_id", "head_sha", "conclusion"]) && number(v.check.id, 1, Number.MAX_SAFE_INTEGER) && v.check.name === "ScopeBlind isolated coding checks" && v.check.app_id === 15368 && v.check.head_sha === v.head_sha && v.check.conclusion === "success" && at5(v.observed_at);
 }
 
 // src/coordination-repository-coding-evidence.ts
 var object6 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 var shape4 = (v, keys2) => Object.keys(v).length === keys2.length && keys2.every((k) => Object.hasOwn(v, k));
-var at5 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var at6 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
 var before2 = (a, b) => Date.parse(a) <= Date.parse(b);
 var status = ["queued", "running", "testing", "publishing", "pr_ready", "failed", "cancelled", "unknown", "expired"];
 async function verifyRepositoryCodingEvidence(value, authorityKey) {
@@ -46689,7 +47139,7 @@ async function verifyRepositoryCodingEvidence(value, authorityKey) {
   try {
     check(object6(value) && shape4(value, ["type", "job"]) && value.type === "scopeblind.repository.coding-evidence.v1", "Unrecognized coding evidence");
     const e = value, j = e.job?.payload, m = j?.mandate?.payload, r = j?.request?.payload;
-    check(validRepositoryEnvelope(e.job) && object6(j) && shape4(j, ["type", "request", "mandate", "adoption", "workspace", "parent", "status", "attempts", "model_calls", "reserved_tokens", "lease_id", "lease_expires_at", "started_at", "plan", "publication", "result", "stop", "error", "observed_at"]) && j.type === "scopeblind.repository.coding-job.v1" && status.includes(j.status) && at5(j.observed_at), "Invalid coding state");
+    check(validRepositoryEnvelope(e.job) && object6(j) && shape4(j, ["type", "request", "mandate", "adoption", "workspace", "parent", "status", "attempts", "model_calls", "reserved_tokens", "lease_id", "lease_expires_at", "started_at", "plan", "publication", "result", "stop", "error", "observed_at"]) && j.type === "scopeblind.repository.coding-job.v1" && status.includes(j.status) && at6(j.observed_at), "Invalid coding state");
     const key5 = authorityKey || j.workspace?.signer;
     check(await verify(e.job, key5), "Coding service signature invalid");
     check(await verifyRepositoryWorkspaceState(j.workspace, key5), "Coding workspace proof invalid");
@@ -46705,7 +47155,7 @@ async function verifyRepositoryCodingEvidence(value, authorityKey) {
     const core = j.parent.repository.type === "scopeblind.repository.evidence.v1" ? j.parent.repository.state : j.parent.repository.repository.state, source = r.source, feedback = j.parent.review.payload.feedback.find((f) => f.digest === source.feedback_digest);
     check(core.payload.task.digest === source.task_digest && core.payload.task.payload.id === source.task_id && core.payload.task.payload.repository === m.repository && core.payload.task.payload.base_branch === m.base_branch && feedback && feedback.payload.basis_digest === source.basis_digest && feedback.payload.packet_digest === source.packet_digest && before2(feedback.payload.issued_at, r.issued_at) && core.payload.proposal, "Coding source feedback mismatch");
     check(Number.isSafeInteger(j.attempts) && j.attempts >= 0 && j.attempts <= m.max_attempts && Number.isSafeInteger(j.model_calls) && j.model_calls >= 0 && j.model_calls <= m.max_model_calls && Number.isSafeInteger(j.reserved_tokens) && j.reserved_tokens >= 0 && j.reserved_tokens <= m.max_tokens, "Coding work limits exceeded");
-    check((j.started_at === null || at5(j.started_at) && before2(r.issued_at, j.started_at) && before2(j.started_at, j.observed_at)) && (j.lease_id === null ? j.lease_expires_at === null : typeof j.lease_id === "string" && at5(j.lease_expires_at)) && (j.error === null || typeof j.error === "string" && /^[a-z0-9_]{3,80}$/.test(j.error)), "Invalid coding lifecycle");
+    check((j.started_at === null || at6(j.started_at) && before2(r.issued_at, j.started_at) && before2(j.started_at, j.observed_at)) && (j.lease_id === null ? j.lease_expires_at === null : typeof j.lease_id === "string" && at6(j.lease_expires_at)) && (j.error === null || typeof j.error === "string" && /^[a-z0-9_]{3,80}$/.test(j.error)), "Invalid coding lifecycle");
     if (j.stop) {
       check(validRepositoryEnvelope(j.stop) && validRepositoryCodingStop(j.stop.payload) && [m.owner_key, m.reviewer_key].includes(j.stop.payload.principal_key) && await verify(j.stop, j.stop.payload.principal_key) && j.stop.payload.job_id === r.id && j.stop.payload.mandate_digest === j.mandate.digest && j.stop.payload.workspace_id === m.workspace_id && before2(j.stop.payload.issued_at, j.observed_at), "Invalid coding cancellation");
     }
@@ -46715,11 +47165,11 @@ async function verifyRepositoryCodingEvidence(value, authorityKey) {
     }
     if (j.publication) {
       const p = j.publication.payload;
-      check(j.plan && validRepositoryEnvelope(j.publication) && object6(p) && shape4(p, ["type", "job_id", "plan_digest", "mandate_digest", "request_digest", "worker_key", "lease_id", "issued_at", "expires_at"]) && p.type === "scopeblind.repository.coding-publication.v1" && await verify(j.publication, key5) && p.job_id === r.id && p.plan_digest === j.plan.digest && p.mandate_digest === j.mandate.digest && p.request_digest === j.request.digest && p.worker_key === m.worker_key && at5(p.issued_at) && at5(p.expires_at) && before2(j.plan.payload.issued_at, p.issued_at) && Date.parse(p.expires_at) > Date.parse(p.issued_at) && Date.parse(p.expires_at) - Date.parse(p.issued_at) <= 12e4 && before2(p.expires_at, m.expires_at) && before2(p.issued_at, j.observed_at), "Invalid exact publication gate");
+      check(j.plan && validRepositoryEnvelope(j.publication) && object6(p) && shape4(p, ["type", "job_id", "plan_digest", "mandate_digest", "request_digest", "worker_key", "lease_id", "issued_at", "expires_at"]) && p.type === "scopeblind.repository.coding-publication.v1" && await verify(j.publication, key5) && p.job_id === r.id && p.plan_digest === j.plan.digest && p.mandate_digest === j.mandate.digest && p.request_digest === j.request.digest && p.worker_key === m.worker_key && at6(p.issued_at) && at6(p.expires_at) && before2(j.plan.payload.issued_at, p.issued_at) && Date.parse(p.expires_at) > Date.parse(p.issued_at) && Date.parse(p.expires_at) - Date.parse(p.issued_at) <= 12e4 && before2(p.expires_at, m.expires_at) && before2(p.issued_at, j.observed_at), "Invalid exact publication gate");
     }
     if (j.result) {
       const result = j.result.payload;
-      check(j.plan && j.publication && validRepositoryEnvelope(j.result) && validRepositoryCodingResult(result) && result.type === "scopeblind.repository.coding-result.v1" && await verify(j.result, m.worker_key) && result.job_id === r.id && result.plan_digest === j.plan.digest && result.publication_digest === j.publication.digest && result.repository === m.repository && result.branch === j.plan.payload.branch && result.head_sha === j.plan.payload.commit_sha && Number.isSafeInteger(result.pull_number) && result.pull_number > 0 && result.pull_url === `https://github.com/${m.repository}/pull/${result.pull_number}` && result.preview_digest === j.plan.payload.preview_digest && Number.isSafeInteger(result.deployment_id) && result.deployment_id > 0 && Number.isSafeInteger(result.deployment_status_id) && result.deployment_status_id > 0 && at5(result.observed_at) && before2(j.publication.payload.issued_at, result.observed_at) && before2(result.observed_at, j.observed_at), "Invalid coding publication readback");
+      check(j.plan && j.publication && validRepositoryEnvelope(j.result) && validRepositoryCodingResult(result) && result.type === "scopeblind.repository.coding-result.v1" && await verify(j.result, m.worker_key) && result.job_id === r.id && result.plan_digest === j.plan.digest && result.publication_digest === j.publication.digest && result.repository === m.repository && result.branch === j.plan.payload.branch && result.head_sha === j.plan.payload.commit_sha && Number.isSafeInteger(result.pull_number) && result.pull_number > 0 && result.pull_url === `https://github.com/${m.repository}/pull/${result.pull_number}` && result.preview_digest === j.plan.payload.preview_digest && Number.isSafeInteger(result.deployment_id) && result.deployment_id > 0 && Number.isSafeInteger(result.deployment_status_id) && result.deployment_status_id > 0 && at6(result.observed_at) && before2(j.publication.payload.issued_at, result.observed_at) && before2(result.observed_at, j.observed_at), "Invalid coding publication readback");
       const u = new URL(result.preview_url);
       check(u.protocol === "https:" && !u.username && !u.password && !u.search && !u.hash && u.pathname === `/v1/${r.id}/${result.head_sha}/${result.preview_digest}/index.html`, "Preview must identify the immutable content");
       published = true;
@@ -46728,12 +47178,13 @@ async function verifyRepositoryCodingEvidence(value, authorityKey) {
   } catch (error) {
     errors.push(error instanceof Error ? error.message : "Malformed coding evidence");
   }
-  return { valid: errors.length === 0, errors, published: errors.length === 0 && published, authorityPinned: !!authorityKey, limitations: ["Code-edit authority permits only bounded work and a new pull request; no merge or recipient acceptance is inherited.", "The service attests live membership, revocation, spending reservations and the publication gate. The worker attests model work, isolated test results and GitHub readbacks.", "A content-addressed preview identifies the published bundle; verification does not execute it or prove that the code satisfies the brief."] };
+  const unnamedRun = !!(object6(value) && object6(value.job) && object6(value.job.payload) && value.job.payload.result && !value.job.payload.result.payload.workflow_run);
+  return { valid: errors.length === 0, errors, published: errors.length === 0 && published, authorityPinned: !!authorityKey, limitations: [...unnamedRun ? ["The result does not name the workflow run and attempt that produced it; results from protect-mcp 0.29.0 onward do."] : [], "Code-edit authority permits only bounded work and a new pull request; no merge or recipient acceptance is inherited.", "The service attests live membership, revocation, spending reservations and the publication gate. The worker attests model work, isolated test results and GitHub readbacks.", "A content-addressed preview identifies the published bundle; verification does not execute it or prove that the code satisfies the brief."] };
 }
 
 // src/coordination-repository-review-evidence.ts
 var shape5 = (v, keys2, optional = []) => !!v && typeof v === "object" && !Array.isArray(v) && keys2.every((k) => Object.prototype.hasOwnProperty.call(v, k)) && Object.keys(v).every((k) => keys2.includes(k) || optional.includes(k));
-var at6 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var at7 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
 function repositoryReviewCore(e) {
   return e.repository.type === "scopeblind.repository.evidence.v1" ? e.repository : e.repository.repository;
 }
@@ -46749,7 +47200,7 @@ async function verifyRepositoryReviewEvidence(value, pins) {
     check(base.valid, "Underlying repository evidence is invalid");
     accepted = base.accepted;
     authorityPinned = base.authorityPinned;
-    check(validRepositoryEnvelope(e.review) && shape5(r, ["type", "task_id", "task_digest", "brief", "packet", "decisions", "feedback", "recommendations", "history", "agent_uses", "observed_at"], ["origin_digest", "coding_origin_digest"]) && r.type === "scopeblind.repository.review-state.v1" && r.task_id === t.id && r.task_digest === s.task.digest && at6(r.observed_at) && Date.parse(r.observed_at) >= Date.parse(s.observed_at) && await verify(e.review, key5), "Review service state is invalid");
+    check(validRepositoryEnvelope(e.review) && shape5(r, ["type", "task_id", "task_digest", "brief", "packet", "decisions", "feedback", "recommendations", "history", "agent_uses", "observed_at"], ["origin_digest", "coding_origin_digest"]) && r.type === "scopeblind.repository.review-state.v1" && r.task_id === t.id && r.task_digest === s.task.digest && at7(r.observed_at) && Date.parse(r.observed_at) >= Date.parse(s.observed_at) && await verify(e.review, key5), "Review service state is invalid");
     check(validRepositoryEnvelope(r.brief) && validRepositoryReviewBrief(r.brief.payload, t, s.task.digest) && Date.parse(r.brief.payload.issued_at) <= Date.parse(r.observed_at) && await verify(r.brief, t.owner_key), "Owner review brief is invalid");
     check(Array.isArray(r.decisions) && r.decisions.length <= 2 && new Set(r.decisions.map((d) => d.payload.role)).size === r.decisions.length && Array.isArray(r.feedback) && r.feedback.length <= 20 && new Set(r.feedback.map((f) => f.payload.id)).size === r.feedback.length && Array.isArray(r.recommendations) && r.recommendations.length <= 20 && new Set(r.recommendations.map((f) => f.payload.id)).size === r.recommendations.length && Array.isArray(r.history) && r.history.length <= 40 && new Set(r.history.map((h) => h.state.digest + ":" + h.packet.digest)).size === r.history.length, "Review record bounds are invalid");
     check(Array.isArray(r.agent_uses) && r.agent_uses.length <= 40 && new Set(r.agent_uses.map((u) => u.payload.record_digest)).size === r.agent_uses.length, "Agent-use record bounds are invalid");
@@ -46781,7 +47232,7 @@ async function verifyRepositoryReviewEvidence(value, pins) {
     const uses = /* @__PURE__ */ new Map();
     for (const use of r.agent_uses) {
       const u = use.payload, m = u.mandate?.payload, a = u.assignment?.payload, record = [...r.feedback, ...r.recommendations].find((x) => x.digest === u.record_digest), recordTime = record ? record.payload.issued_at ?? record.payload.observed_at : "";
-      check(validRepositoryEnvelope(use) && shape5(u, ["type", "task_id", "task_digest", "record_digest", "permission", "mandate", "adoption", "assignment", "checked_at"]) && u.type === "scopeblind.repository.review-agent-use.v1" && u.task_id === t.id && u.task_digest === s.task.digest && await verify(use, key5) && record && at6(u.checked_at) && Date.parse(u.checked_at) <= Date.parse(r.observed_at) && Date.parse(u.checked_at) >= Date.parse(recordTime), "Agent-use service attestation is invalid");
+      check(validRepositoryEnvelope(use) && shape5(u, ["type", "task_id", "task_digest", "record_digest", "permission", "mandate", "adoption", "assignment", "checked_at"]) && u.type === "scopeblind.repository.review-agent-use.v1" && u.task_id === t.id && u.task_digest === s.task.digest && await verify(use, key5) && record && at7(u.checked_at) && Date.parse(u.checked_at) <= Date.parse(r.observed_at) && Date.parse(u.checked_at) >= Date.parse(recordTime), "Agent-use service attestation is invalid");
       check(validRepositoryEnvelope(u.mandate) && validRepositoryEnvelope(u.adoption) && validWorkspacePreparationMandate(m) && m.owner_key === t.owner_key && m.reviewer_key === s.reviewer?.payload.reviewer_key && !["", t.owner_key, t.receiver_key, t.authority_key, s.reviewer?.payload.reviewer_key].includes(m.agent_key) && m.repository === t.repository && m.base_branch === t.base_branch && u.adoption.digest === u.mandate.digest && canonical(u.adoption.payload) === canonical(m) && await verify(u.mandate, t.owner_key) && await verify(u.adoption, m.reviewer_key) && m.permissions.includes(u.permission) && ["report_criteria", "request_revision"].includes(u.permission) && Date.parse(m.issued_at) <= Date.parse(recordTime) && Date.parse(m.expires_at) >= Date.parse(u.checked_at) && t.allowed_paths.every((p) => m.allowed_paths.includes(p) || m.allowed_paths.some((scope) => scope.endsWith("/**") && p.startsWith(scope.slice(0, -2)))) && m.required_checks.every((c) => t.required_checks.some((tc) => tc.name === c.name && tc.app_id === c.app_id)), "Dual-signed preparation mandate is invalid");
       check(validRepositoryEnvelope(u.assignment) && validWorkspaceTaskAssignment(a) && a.task_id === t.id && a.task_digest === s.task.digest && a.review_brief_digest === r.brief.digest && a.workspace_id === m.workspace_id && a.workspace_digest === m.workspace_digest && a.owner_key === t.owner_key && a.reviewer_key === s.reviewer?.payload.reviewer_key && a.owner_member_id === m.owner_member_id && a.reviewer_member_id === m.reviewer_member_id && a.owner_member_revision === m.owner_member_revision && a.reviewer_member_revision === m.reviewer_member_revision && Date.parse(a.issued_at) <= Date.parse(recordTime) && Date.parse(a.expires_at) >= Date.parse(u.checked_at) && await verify(u.assignment, t.owner_key), "Task assignment for the agent use is invalid");
       uses.set(u.record_digest, use);
@@ -46833,17 +47284,17 @@ var REPOSITORY_SETUP_ACTIONS = ["repository_setup_info", "repository_setup_creat
 var REPOSITORY_GUIDED_WORKFLOW = ".github/workflows/scopeblind-connection.yml";
 var REPOSITORY_SETUP_TTL = 30 * 6e4;
 var REPOSITORY_CODING_IMAGE = "node@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752";
-var obj3 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-var shape6 = (v, keys2, optional = []) => obj3(v) && keys2.every((k) => k in v) && Object.keys(v).every((k) => keys2.includes(k) || optional.includes(k));
+var obj4 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var shape6 = (v, keys2, optional = []) => obj4(v) && keys2.every((k) => k in v) && Object.keys(v).every((k) => keys2.includes(k) || optional.includes(k));
 var hex4 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
 var id8 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
 var sha3 = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
 var num2 = (v) => typeof v === "number" && Number.isSafeInteger(v) && v > 0;
-var at7 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
-var text6 = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);
-var line2 = (v, max) => text6(v, max) && !/[\r\n\t]/.test(v);
+var at8 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var text7 = (v, max) => typeof v === "string" && v.trim().length > 0 && v.length <= max && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);
+var line2 = (v, max) => text7(v, max) && !/[\r\n\t]/.test(v);
 var repo2 = (v) => typeof v === "string" && /^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(v) && !v.split("/").some((x) => x === "." || x === "..");
-var span3 = (a, b, max) => at7(a) && at7(b) && Date.parse(b) > Date.parse(a) && Date.parse(b) - Date.parse(a) <= max;
+var span3 = (a, b, max) => at8(a) && at8(b) && Date.parse(b) > Date.parse(a) && Date.parse(b) - Date.parse(a) <= max;
 function repositorySetupArtifactUrl(v) {
   return typeof v === "string" && /^https:\/\/scopeblind\.com\/releases\/repository-receiver-[0-9]+\.[0-9]+\.[0-9]+\.cjs$/.test(v);
 }
@@ -46862,7 +47313,7 @@ function validRepositorySetupRenewal(v) {
   return shape6(v, ["type", "id", "setup_id", "authorization_digest", "owner_key", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.setup-renewal.v1" && id8(v.id) && id8(v.setup_id) && hex4(v.authorization_digest) && hex4(v.owner_key) && span3(v.issued_at, v.expires_at, REPOSITORY_SETUP_TTL);
 }
 function validRepositoryCodingConnectionConfig(v) {
-  if (!obj3(v) || typeof v.endpoint !== "string") return false;
+  if (!obj4(v) || typeof v.endpoint !== "string") return false;
   let endpoint;
   try {
     endpoint = new URL(v.endpoint);
@@ -46876,16 +47327,16 @@ async function verifyRepositorySetupEnrollment(value, request, expectedEndpoint 
   try {
     if (!validRepositoryEnvelope(value)) return false;
     const e = value, v = e.payload, c = v.connection;
-    if (!shape6(v, ["type", "setup_id", "setup_digest", "receiver_key", "connection", "readiness", "inspection", "installation", "issued_at"], ["coding", "replaces"]) || v.type !== "scopeblind.repository.setup-enrollment.v1" || v.setup_id !== request.payload.id || v.setup_digest !== request.digest || !hex4(v.receiver_key) || [request.payload.owner_key, request.payload.authority_key].includes(v.receiver_key) || !at7(v.issued_at) || !validRepositoryConnection(c) || c.id !== request.payload.id || c.owner_key !== request.payload.owner_key || c.authority_key !== request.payload.authority_key || c.receiver_key !== v.receiver_key || c.repository !== request.payload.repository || c.endpoint !== expectedEndpoint) return false;
+    if (!shape6(v, ["type", "setup_id", "setup_digest", "receiver_key", "connection", "readiness", "inspection", "installation", "issued_at"], ["coding", "replaces"]) || v.type !== "scopeblind.repository.setup-enrollment.v1" || v.setup_id !== request.payload.id || v.setup_digest !== request.digest || !hex4(v.receiver_key) || [request.payload.owner_key, request.payload.authority_key].includes(v.receiver_key) || !at8(v.issued_at) || !validRepositoryConnection(c) || c.id !== request.payload.id || c.owner_key !== request.payload.owner_key || c.authority_key !== request.payload.authority_key || c.receiver_key !== v.receiver_key || c.repository !== request.payload.repository || c.endpoint !== expectedEndpoint) return false;
     const i = v.installation;
-    if (!shape6(i, ["workflow_path", "workflow", "workflow_sha256", "receiver_url", "receiver_sha256", "secret_name", "variable_name"]) || i.workflow_path !== REPOSITORY_GUIDED_WORKFLOW || !text6(i.workflow, 3e4) || !hex4(i.workflow_sha256) || await sha256(i.workflow) !== i.workflow_sha256 || !repositorySetupArtifactUrl(i.receiver_url) || !hex4(i.receiver_sha256) || i.secret_name !== "SCOPEBLIND_GUIDED_RECEIVER_KEY" || i.variable_name !== "SCOPEBLIND_GUIDED_CONNECTION") return false;
+    if (!shape6(i, ["workflow_path", "workflow", "workflow_sha256", "receiver_url", "receiver_sha256", "secret_name", "variable_name"]) || i.workflow_path !== REPOSITORY_GUIDED_WORKFLOW || !text7(i.workflow, 3e4) || !hex4(i.workflow_sha256) || await sha256(i.workflow) !== i.workflow_sha256 || !repositorySetupArtifactUrl(i.receiver_url) || !hex4(i.receiver_sha256) || i.secret_name !== "SCOPEBLIND_GUIDED_RECEIVER_KEY" || i.variable_name !== "SCOPEBLIND_GUIDED_CONNECTION") return false;
     if (!validRepositoryEnvelope(v.readiness) || !validRepositoryReadiness(v.readiness.payload) || v.readiness.payload.runtime !== "local" || v.readiness.payload.connection_digest !== await sha256(COORDINATION_DOMAIN + canonical(c)) || !validRepositoryEnvelope(v.inspection) || !validRepositorySetupInspection(v.inspection.payload, request, v.receiver_key)) return false;
     const r = v.readiness.payload, s = v.inspection.payload;
     if (Date.parse(v.issued_at) < Date.parse(request.payload.issued_at) - 1e3 || Date.parse(v.issued_at) > Date.parse(request.payload.expires_at) || Date.parse(c.issued_at) < Date.parse(request.payload.issued_at) - 1e3 || [r.observed_at, s.observed_at].some((t) => Date.parse(t) > Date.parse(v.issued_at) + 1e3 || Date.parse(v.issued_at) - Date.parse(t) > 3e5) || Date.parse(r.expires_at) > Date.parse(c.expires_at) || ["repository", "base_branch", "owner_key", "receiver_key", "authority_key"].some((k) => r[k] !== c[k]) || s.base_branch !== c.base_branch || r.base_sha !== s.base_sha || r.check_head_sha !== s.head_sha) return false;
     if (s.preview && (s.preview.payload.head_sha !== s.head_sha || !await verifyRepositoryPreviewDiscovery(s.preview, { owner_key: c.owner_key, receiver_key: c.receiver_key, authority_key: c.authority_key, repository: c.repository, pull_number: request.payload.pull_number }, Date.parse(s.observed_at)))) return false;
     if (v.coding) {
       const k = v.coding;
-      if (!shape6(k, ["config", "workflow", "workflow_sha256", "artifact_url", "artifact_sha256"]) || !validRepositoryCodingConnectionConfig(k.config) || k.config.endpoint !== c.endpoint || k.config.repository !== c.repository || k.config.base_branch !== c.base_branch || k.config.authority_key !== c.authority_key || [c.owner_key, c.receiver_key, c.authority_key].includes(k.config.worker_key) || !text6(k.workflow, 3e4) || !hex4(k.workflow_sha256) || await sha256(k.workflow) !== k.workflow_sha256 || !/^https:\/\/scopeblind\.com\/releases\/repository-coding-[0-9]+\.[0-9]+\.[0-9]+\.cjs$/.test(k.artifact_url) || !hex4(k.artifact_sha256)) return false;
+      if (!shape6(k, ["config", "workflow", "workflow_sha256", "artifact_url", "artifact_sha256"]) || !validRepositoryCodingConnectionConfig(k.config) || k.config.endpoint !== c.endpoint || k.config.repository !== c.repository || k.config.base_branch !== c.base_branch || k.config.authority_key !== c.authority_key || [c.owner_key, c.receiver_key, c.authority_key].includes(k.config.worker_key) || !text7(k.workflow, 3e4) || !hex4(k.workflow_sha256) || await sha256(k.workflow) !== k.workflow_sha256 || !/^https:\/\/scopeblind\.com\/releases\/repository-coding-[0-9]+\.[0-9]+\.[0-9]+\.cjs$/.test(k.artifact_url) || !hex4(k.artifact_sha256)) return false;
     }
     if (v.replaces && !await verifyRepositorySetupReplacement(v.replaces, c)) return false;
     return await verify(e, v.receiver_key) && await verify(v.readiness, v.receiver_key) && await verify(v.inspection, v.receiver_key);
@@ -46903,7 +47354,7 @@ async function verifyRepositorySetupReplacement(value, next) {
   }
 }
 function validWorkflowProof(proof, ready, repositoryId, workflowRef, observedAt) {
-  return shape6(proof, ["repository_id", "run_id", "run_attempt", "workflow_ref", "workflow_sha", "token_digest", "verified_at"]) && proof.repository_id === repositoryId && num2(proof.run_id) && num2(proof.run_attempt) && proof.run_id === ready.run_id && proof.run_attempt === ready.run_attempt && proof.workflow_ref === workflowRef && ready.workflow_ref === workflowRef && sha3(proof.workflow_sha) && proof.workflow_sha === ready.workflow_sha && hex4(proof.token_digest) && at7(proof.verified_at) && at7(ready.observed_at) && Date.parse(proof.verified_at) >= Date.parse(ready.observed_at) - 1e3 && Date.parse(proof.verified_at) - Date.parse(ready.observed_at) <= 3e5 && Date.parse(proof.verified_at) <= Date.parse(observedAt) + 1e3;
+  return shape6(proof, ["repository_id", "run_id", "run_attempt", "workflow_ref", "workflow_sha", "token_digest", "verified_at"]) && proof.repository_id === repositoryId && num2(proof.run_id) && num2(proof.run_attempt) && proof.run_id === ready.run_id && proof.run_attempt === ready.run_attempt && proof.workflow_ref === workflowRef && ready.workflow_ref === workflowRef && sha3(proof.workflow_sha) && proof.workflow_sha === ready.workflow_sha && hex4(proof.token_digest) && at8(proof.verified_at) && at8(ready.observed_at) && Date.parse(proof.verified_at) >= Date.parse(ready.observed_at) - 1e3 && Date.parse(proof.verified_at) - Date.parse(ready.observed_at) <= 3e5 && Date.parse(proof.verified_at) <= Date.parse(observedAt) + 1e3;
 }
 async function verifyRepositorySetupState(value, authorityKey, ownerKey, expectedEndpoint = "https://scopeblind.com/api/coordination") {
   try {
@@ -46911,12 +47362,12 @@ async function verifyRepositorySetupState(value, authorityKey, ownerKey, expecte
     const signed2 = value;
     if (!await verify(signed2, authorityKey)) return false;
     const s = signed2.payload, r = s.request;
-    if (!shape6(s, ["type", "request", "github", "enrollment", "connection", "authorization", "challenge", "ready", "workflow_proof", "status", "dispatch", "observed_at"], ["coding_ready", "superseded_by", "blocking_jobs", "initial_ready", "installation_renewal"]) || s.type !== "scopeblind.repository.setup-state.v1" || !validRepositoryEnvelope(r) || !validRepositorySetupRequest(r.payload) || r.payload.authority_key !== authorityKey || ownerKey && r.payload.owner_key !== ownerKey || !await verify(r, r.payload.owner_key) || !at7(s.observed_at) || Date.parse(s.observed_at) < Date.parse(r.payload.issued_at) - 1e3 || !["awaiting_github", "awaiting_receiver", "awaiting_confirmation", "awaiting_workflow", "ready", "expired", "revoked", "superseded", "replacement_pending", "installation_expired"].includes(s.status) || !["none", "requested", "unconfigured", "unavailable"].includes(s.dispatch)) return false;
+    if (!shape6(s, ["type", "request", "github", "enrollment", "connection", "authorization", "challenge", "ready", "workflow_proof", "status", "dispatch", "observed_at"], ["coding_ready", "superseded_by", "blocking_jobs", "initial_ready", "installation_renewal"]) || s.type !== "scopeblind.repository.setup-state.v1" || !validRepositoryEnvelope(r) || !validRepositorySetupRequest(r.payload) || r.payload.authority_key !== authorityKey || ownerKey && r.payload.owner_key !== ownerKey || !await verify(r, r.payload.owner_key) || !at8(s.observed_at) || Date.parse(s.observed_at) < Date.parse(r.payload.issued_at) - 1e3 || !["awaiting_github", "awaiting_receiver", "awaiting_confirmation", "awaiting_workflow", "ready", "expired", "revoked", "superseded", "replacement_pending", "installation_expired"].includes(s.status) || !["none", "requested", "unconfigured", "unavailable"].includes(s.dispatch)) return false;
     if (s.blocking_jobs !== void 0 && typeof s.blocking_jobs !== "boolean" || s.superseded_by !== void 0 && s.superseded_by !== null && (!id8(s.superseded_by) || s.superseded_by === r.payload.id)) return false;
     const observed = Date.parse(s.observed_at);
     if (s.github) {
       const g = s.github.payload;
-      if (!validRepositoryEnvelope(s.github) || !await verify(s.github, authorityKey) || !shape6(g, ["type", "setup_digest", "app_id", "installation_id", "user_id", "login", "repository_id", "repository", "default_branch", "permissions", "repository_selection", "observed_at"]) || g.type !== "scopeblind.repository.setup-github.v1" || g.setup_digest !== r.digest || g.repository !== r.payload.repository || g.repository_selection !== "selected" || ![g.app_id, g.installation_id, g.user_id, g.repository_id].every(num2) || !line2(g.login, 100) || !repositoryBranch(g.default_branch) || !shape6(g.permissions, ["admin", "push"]) || typeof g.permissions.admin !== "boolean" || g.permissions.push !== true || !at7(g.observed_at) || Date.parse(g.observed_at) > observed + 1e3 || Date.parse(g.observed_at) < Date.parse(r.payload.issued_at) - 1e3) return false;
+      if (!validRepositoryEnvelope(s.github) || !await verify(s.github, authorityKey) || !shape6(g, ["type", "setup_digest", "app_id", "installation_id", "user_id", "login", "repository_id", "repository", "default_branch", "permissions", "repository_selection", "observed_at"]) || g.type !== "scopeblind.repository.setup-github.v1" || g.setup_digest !== r.digest || g.repository !== r.payload.repository || g.repository_selection !== "selected" || ![g.app_id, g.installation_id, g.user_id, g.repository_id].every(num2) || !line2(g.login, 100) || !repositoryBranch(g.default_branch) || !shape6(g.permissions, ["admin", "push"]) || typeof g.permissions.admin !== "boolean" || g.permissions.push !== true || !at8(g.observed_at) || Date.parse(g.observed_at) > observed + 1e3 || Date.parse(g.observed_at) < Date.parse(r.payload.issued_at) - 1e3) return false;
     }
     if (s.enrollment) {
       if (!await verifyRepositorySetupEnrollment(s.enrollment, r, expectedEndpoint) || Date.parse(s.enrollment.payload.issued_at) > observed + 1e3) return false;
@@ -47162,11 +47613,14 @@ var RepositoryCodingRunner = class {
     this.githubToken = githubToken;
     this.fetcher = fetcher;
     this.sandboxFactory = sandboxFactory;
+    this.workflowRun = workflowRunFromEnvironment(process.env, config.repository);
     const u = new URL(config.endpoint);
     need2(u.protocol === "https:" && u.pathname === "/api/coordination" && !u.search && !u.hash && !u.username && !u.password && config.worker_key === identity.publicKey && githubToken, "coding_config_invalid");
   }
   publicationUntil = 0;
   stopped = false;
+  /** The Actions run this worker is inside, when it is inside one; bound into every result it signs. */
+  workflowRun;
   async rpc(action, id11, body = {}) {
     const request = await sign(makeRequest(action, id11, body), this.identity), r = await this.fetcher(this.config.endpoint, { method: "POST", headers: { "content-type": "application/json", "x-scopeblind-action": action }, body: JSON.stringify({ request }), redirect: "error", signal: AbortSignal.timeout(55e3) }), v = await bounded(r);
     need2(r.ok && v.ok === true, typeof v.error === "string" ? v.error : "coding_service_refused");
@@ -47200,7 +47654,7 @@ var RepositoryCodingRunner = class {
   }
   async result(j, pull, preview, deployment, status2, check) {
     need2(check.name === "ScopeBlind isolated coding checks" && check.app?.id === 15368 && check.head_sha === j.plan.payload.commit_sha && check.conclusion === "success", "coding_check_invalid");
-    const result = await sign({ type: "scopeblind.repository.coding-result.v1", job_id: j.request.payload.id, plan_digest: j.plan.digest, publication_digest: j.publication.digest, repository: this.config.repository, branch: j.plan.payload.branch, head_sha: j.plan.payload.commit_sha, pull_number: pull.number, pull_url: `https://github.com/${this.config.repository}/pull/${pull.number}`, preview_url: preview.url, preview_digest: preview.digest, deployment_id: deployment.id, deployment_status_id: status2.id, deployment_environment: "ScopeBlind coding preview", check: { id: check.id, name: "ScopeBlind isolated coding checks", app_id: 15368, head_sha: j.plan.payload.commit_sha, conclusion: "success" }, observed_at: (/* @__PURE__ */ new Date()).toISOString() }, this.identity);
+    const result = await sign({ type: "scopeblind.repository.coding-result.v1", job_id: j.request.payload.id, plan_digest: j.plan.digest, publication_digest: j.publication.digest, repository: this.config.repository, branch: j.plan.payload.branch, head_sha: j.plan.payload.commit_sha, pull_number: pull.number, pull_url: `https://github.com/${this.config.repository}/pull/${pull.number}`, preview_url: preview.url, preview_digest: preview.digest, deployment_id: deployment.id, deployment_status_id: status2.id, deployment_environment: "ScopeBlind coding preview", check: { id: check.id, name: "ScopeBlind isolated coding checks", app_id: 15368, head_sha: j.plan.payload.commit_sha, conclusion: "success" }, observed_at: (/* @__PURE__ */ new Date()).toISOString(), ...this.workflowRun ? { workflow_run: this.workflowRun } : {} }, this.identity);
     await this.rpc("repository_coding_complete", j.request.payload.workspace_id, { job_id: j.request.payload.id, lease_id: j.lease_id, result });
   }
   async runOne(jobIdFilter) {
@@ -47380,13 +47834,13 @@ var REPOSITORY_RECOVERY_CODES = [
   "inspection_needed",
   "job_expired"
 ];
-var obj4 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-var shape7 = (v, keys2, optional = []) => obj4(v) && keys2.every((k) => k in v) && Object.keys(v).every((k) => keys2.includes(k) || optional.includes(k));
+var obj5 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+var shape7 = (v, keys2, optional = []) => obj5(v) && keys2.every((k) => k in v) && Object.keys(v).every((k) => keys2.includes(k) || optional.includes(k));
 var id9 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
 var hex5 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
 var sha4 = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
 var integer4 = (v) => Number.isSafeInteger(v) && Number(v) > 0;
-var text7 = (v, max = 100) => typeof v === "string" && v.length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
+var text8 = (v, max = 100) => typeof v === "string" && v.length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v);
 var time6 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
 function validRepositoryRecoveryObservation(v) {
   if (!shape7(v, ["type", "setup_id", "setup_digest", "owner_key", "task_id", "task_digest", "job_id", "repository", "pull_number", "observed_at", "expires_at", "issues", "pull", "expected", "workflow", "checks"])) return false;
@@ -47394,9 +47848,9 @@ function validRepositoryRecoveryObservation(v) {
   if (p.type !== "scopeblind.repository.recovery-observation.v1" || !id9(p.setup_id) || !hex5(p.setup_digest) || !hex5(p.owner_key) || p.task_id !== null && !id9(p.task_id) || p.task_digest !== null && !hex5(p.task_digest) || p.task_id === null !== (p.task_digest === null) || p.job_id !== null && !id9(p.job_id) || typeof p.repository !== "string" || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9_.-]{1,100}$/.test(p.repository) || p.repository.split("/").some((x) => x === "." || x === "..") || !integer4(p.pull_number) || !time6(p.observed_at) || !time6(p.expires_at) || Date.parse(p.expires_at) - Date.parse(p.observed_at) !== 12e4) return false;
   if (!shape7(p.expected, ["base_sha", "head_sha"]) || [p.expected.base_sha, p.expected.head_sha].some((s) => s !== null && !sha4(s))) return false;
   if (p.pull && (!shape7(p.pull, ["state", "draft", "base_sha", "head_sha", "mergeable"]) || !["open", "closed"].includes(p.pull.state) || typeof p.pull.draft !== "boolean" || !sha4(p.pull.base_sha) || !sha4(p.pull.head_sha) || p.pull.mergeable !== null && typeof p.pull.mergeable !== "boolean")) return false;
-  if (p.workflow && (!shape7(p.workflow, ["run_id", "status", "conclusion", "url"]) || !integer4(p.workflow.run_id) || !text7(p.workflow.status, 40) || p.workflow.conclusion !== null && !text7(p.workflow.conclusion, 40) || p.workflow.url !== `https://github.com/${p.repository}/actions/runs/${p.workflow.run_id}`)) return false;
-  if (!Array.isArray(p.issues) || p.issues.length > 70 || !p.issues.every((i) => shape7(i, ["code", "actor"], ["check_name", "app_id"]) && REPOSITORY_RECOVERY_CODES.includes(i.code) && ["owner", "github_reviewer", "worker"].includes(i.actor) && (i.check_name === void 0 || text7(i.check_name)) && (i.app_id === void 0 || integer4(i.app_id)))) return false;
-  return Array.isArray(p.checks) && p.checks.length <= 50 && p.checks.every((c) => shape7(c, ["name", "app_id", "state", "run_id"]) && text7(c.name) && (c.app_id === null || integer4(c.app_id)) && ["missing", "pending", "failed", "passed"].includes(c.state) && (c.run_id === null || integer4(c.run_id)));
+  if (p.workflow && (!shape7(p.workflow, ["run_id", "status", "conclusion", "url"]) || !integer4(p.workflow.run_id) || !text8(p.workflow.status, 40) || p.workflow.conclusion !== null && !text8(p.workflow.conclusion, 40) || p.workflow.url !== `https://github.com/${p.repository}/actions/runs/${p.workflow.run_id}`)) return false;
+  if (!Array.isArray(p.issues) || p.issues.length > 70 || !p.issues.every((i) => shape7(i, ["code", "actor"], ["check_name", "app_id"]) && REPOSITORY_RECOVERY_CODES.includes(i.code) && ["owner", "github_reviewer", "worker"].includes(i.actor) && (i.check_name === void 0 || text8(i.check_name)) && (i.app_id === void 0 || integer4(i.app_id)))) return false;
+  return Array.isArray(p.checks) && p.checks.length <= 50 && p.checks.every((c) => shape7(c, ["name", "app_id", "state", "run_id"]) && text8(c.name) && (c.app_id === null || integer4(c.app_id)) && ["missing", "pending", "failed", "passed"].includes(c.state) && (c.run_id === null || integer4(c.run_id)));
 }
 async function verifyRepositoryRecoveryObservation(value, authorityKey, scope, now = Date.now()) {
   try {
@@ -47467,18 +47921,18 @@ var exact9 = (v, keys2) => Object.keys(v).length === keys2.length && keys2.every
 var key4 = (v) => typeof v === "string" && REPOSITORY_HEX.test(v);
 var id10 = (v) => typeof v === "string" && REPOSITORY_ID.test(v);
 var sha5 = (v) => typeof v === "string" && REPOSITORY_SHA.test(v);
-var at8 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+var at9 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
 function validRepositoryTrialRequest(v) {
-  return object7(v) && exact9(v, ["type", "id", "owner_key", "authority_key", "title", "template", "reviewer_secret_hash", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.trial-request.v1" && id10(v.id) && key4(v.owner_key) && key4(v.authority_key) && v.owner_key !== v.authority_key && key4(v.reviewer_secret_hash) && v.template === TRIAL_TEMPLATE && typeof v.title === "string" && v.title.trim().length > 0 && v.title.length <= 100 && !/[\u0000-\u001f\u007f]/.test(v.title) && at8(v.issued_at) && at8(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 864e5;
+  return object7(v) && exact9(v, ["type", "id", "owner_key", "authority_key", "title", "template", "reviewer_secret_hash", "issued_at", "expires_at"]) && v.type === "scopeblind.repository.trial-request.v1" && id10(v.id) && key4(v.owner_key) && key4(v.authority_key) && v.owner_key !== v.authority_key && key4(v.reviewer_secret_hash) && v.template === TRIAL_TEMPLATE && typeof v.title === "string" && v.title.trim().length > 0 && v.title.length <= 100 && !/[\u0000-\u001f\u007f]/.test(v.title) && at9(v.issued_at) && at9(v.expires_at) && Date.parse(String(v.expires_at)) > Date.parse(String(v.issued_at)) && Date.parse(String(v.expires_at)) - Date.parse(String(v.issued_at)) <= 864e5;
 }
 function validRepositoryTrialProvision(v) {
-  return object7(v) && exact9(v, ["type", "trial_id", "request_digest", "receiver_key", "repository", "template_sha", "base_branch", "source_branch", "base_sha", "source_sha", "pull_number", "before", "source", "source_check", "observed_at"]) && v.type === "scopeblind.repository.trial-provision.v1" && id10(v.trial_id) && [v.request_digest, v.receiver_key].every(key4) && v.repository === TRIAL_REPOSITORY && [v.template_sha, v.base_sha, v.source_sha].every(sha5) && v.base_branch === trialBase(String(v.trial_id)) && v.source_branch === trialSource(String(v.trial_id)) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && [v.before, v.source].every((h) => object7(h) && exact9(h, ["html", "sha256", "blob_sha"]) && typeof h.html === "string" && new TextEncoder().encode(h.html).length <= 32768 && key4(h.sha256) && sha5(h.blob_sha)) && object7(v.source_check) && exact9(v.source_check, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(v.source_check.id) && Number(v.source_check.id) > 0 && v.source_check.name === TRIAL_SOURCE_CHECK.name && v.source_check.app_id === 15368 && v.source_check.head_sha === v.source_sha && v.source_check.conclusion === "success" && at8(v.observed_at);
+  return object7(v) && exact9(v, ["type", "trial_id", "request_digest", "receiver_key", "repository", "template_sha", "base_branch", "source_branch", "base_sha", "source_sha", "pull_number", "before", "source", "source_check", "observed_at"]) && v.type === "scopeblind.repository.trial-provision.v1" && id10(v.trial_id) && [v.request_digest, v.receiver_key].every(key4) && v.repository === TRIAL_REPOSITORY && [v.template_sha, v.base_sha, v.source_sha].every(sha5) && v.base_branch === trialBase(String(v.trial_id)) && v.source_branch === trialSource(String(v.trial_id)) && Number.isSafeInteger(v.pull_number) && Number(v.pull_number) > 0 && [v.before, v.source].every((h) => object7(h) && exact9(h, ["html", "sha256", "blob_sha"]) && typeof h.html === "string" && new TextEncoder().encode(h.html).length <= 32768 && key4(h.sha256) && sha5(h.blob_sha)) && object7(v.source_check) && exact9(v.source_check, ["id", "name", "app_id", "head_sha", "conclusion"]) && Number.isSafeInteger(v.source_check.id) && Number(v.source_check.id) > 0 && v.source_check.name === TRIAL_SOURCE_CHECK.name && v.source_check.app_id === 15368 && v.source_check.head_sha === v.source_sha && v.source_check.conclusion === "success" && at9(v.observed_at);
 }
 async function verifyRepositoryTrialState(value, authority) {
   try {
     if (!validRepositoryEnvelope(value)) return false;
     const signed2 = value, s = signed2.payload, r = s?.request;
-    if (!object7(s) || !exact9(s, ["type", "request", "provision", "workspace", "invitation", "config", "receiver_key", "readiness", "status", "dispatch_status", "jobs", "observed_at"]) || s.type !== "scopeblind.repository.trial-state.v1" || !validRepositoryTrialRequest(r?.payload) || r.payload.authority_key !== authority || !await verify(r, r.payload.owner_key) || !await verify(signed2, authority) || !at8(s.observed_at) || !key4(s.config.worker_key) || !key4(s.receiver_key) || (/* @__PURE__ */ new Set([authority, r.payload.owner_key, s.receiver_key, s.config.worker_key])).size !== 4 || canonical(s.config) !== canonical(trialCodingConfig(r.payload.id, s.config.endpoint, authority, s.config.worker_key))) return false;
+    if (!object7(s) || !exact9(s, ["type", "request", "provision", "workspace", "invitation", "config", "receiver_key", "readiness", "status", "dispatch_status", "jobs", "observed_at"]) || s.type !== "scopeblind.repository.trial-state.v1" || !validRepositoryTrialRequest(r?.payload) || r.payload.authority_key !== authority || !await verify(r, r.payload.owner_key) || !await verify(signed2, authority) || !at9(s.observed_at) || !key4(s.config.worker_key) || !key4(s.receiver_key) || (/* @__PURE__ */ new Set([authority, r.payload.owner_key, s.receiver_key, s.config.worker_key])).size !== 4 || canonical(s.config) !== canonical(trialCodingConfig(r.payload.id, s.config.endpoint, authority, s.config.worker_key))) return false;
     const endpoint = new URL(s.config.endpoint);
     if (endpoint.protocol !== "https:" || endpoint.pathname !== "/api/coordination" || endpoint.username || endpoint.password || endpoint.hash || endpoint.search) return false;
     if (s.provision) {
@@ -47503,7 +47957,7 @@ async function verifyRepositoryTrialState(value, authority) {
       if (!s.workspace || !validWorkspaceInvitation(i) || i.workspace_id !== s.workspace.payload.id || i.workspace_digest !== s.workspace.digest || i.role !== "reviewer" || i.issuer_key !== r.payload.owner_key || i.secret_hash !== r.payload.reviewer_secret_hash || !await verify(s.invitation, r.payload.owner_key)) return false;
     }
     if (s.readiness && (!validRepositoryEnvelope(s.readiness) || !validTrialReadiness(s.readiness.payload) || !await verify(s.readiness, authority) || s.readiness.payload.worker_key !== s.config.worker_key || s.readiness.payload.receiver_key !== s.receiver_key || Date.parse(s.readiness.payload.observed_at) > Date.parse(s.observed_at))) return false;
-    return Array.isArray(s.jobs) && s.jobs.length <= 30 && new Set(s.jobs.map((j) => j.id)).size === s.jobs.length && s.jobs.every((j) => object7(j) && exact9(j, ["id", "kind", "target_id", "status", "attempts", "error", "updated_at"]) && id10(j.id) && ["provision", "inspect", "execute", "reconcile", "coding", "coding_reconcile", "coding_ready"].includes(j.kind) && (j.kind === "provision" ? j.target_id === null : id10(j.target_id)) && ["queued", "leased", "complete", "failed", "unknown"].includes(j.status) && Number.isInteger(j.attempts) && j.attempts >= 0 && j.attempts <= 3 && (j.error === null || typeof j.error === "string" && /^[a-z0-9_]{3,100}$/.test(j.error)) && at8(j.updated_at) && Date.parse(j.updated_at) <= Date.parse(s.observed_at)) && ["queued", "provisioning", "ready", "active", "expired", "failed", "unknown"].includes(s.status) && ["requested", "unconfigured", "unavailable"].includes(s.dispatch_status);
+    return Array.isArray(s.jobs) && s.jobs.length <= 30 && new Set(s.jobs.map((j) => j.id)).size === s.jobs.length && s.jobs.every((j) => object7(j) && exact9(j, ["id", "kind", "target_id", "status", "attempts", "error", "updated_at"]) && id10(j.id) && ["provision", "inspect", "execute", "reconcile", "coding", "coding_reconcile", "coding_ready"].includes(j.kind) && (j.kind === "provision" ? j.target_id === null : id10(j.target_id)) && ["queued", "leased", "complete", "failed", "unknown"].includes(j.status) && Number.isInteger(j.attempts) && j.attempts >= 0 && j.attempts <= 3 && (j.error === null || typeof j.error === "string" && /^[a-z0-9_]{3,100}$/.test(j.error)) && at9(j.updated_at) && Date.parse(j.updated_at) <= Date.parse(s.observed_at)) && ["queued", "provisioning", "ready", "active", "expired", "failed", "unknown"].includes(s.status) && ["requested", "unconfigured", "unavailable"].includes(s.dispatch_status);
   } catch {
     return false;
   }
@@ -47514,14 +47968,14 @@ function trialCodingConfig(id11, endpoint, authority, worker) {
 function validTrialReadiness(value) {
   if (!object7(value) || !exact9(value, ["type", "receiver_key", "worker_key", "repository", "proof", "observed_at", "expires_at"])) return false;
   const r = value, p = r.proof;
-  return r.type === "scopeblind.repository.trial-readiness.v1" && r.repository === TRIAL_REPOSITORY && key4(r.receiver_key) && key4(r.worker_key) && r.receiver_key !== r.worker_key && at8(r.observed_at) && at8(r.expires_at) && Date.parse(String(r.expires_at)) > Date.parse(String(r.observed_at)) && Date.parse(String(r.expires_at)) - Date.parse(String(r.observed_at)) <= 864e5 && object7(p) && exact9(p, ["repository_id", "run_id", "run_attempt", "workflow_ref", "workflow_sha", "token_digest", "verified_at"]) && p.workflow_ref === `${TRIAL_REPOSITORY}/${TRIAL_WORKFLOW}@refs/heads/main` && sha5(p.workflow_sha) && key4(p.token_digest) && [p.repository_id, p.run_id, p.run_attempt].every((n) => Number.isSafeInteger(n) && Number(n) > 0) && at8(p.verified_at) && Date.parse(String(p.verified_at)) <= Date.parse(String(r.observed_at));
+  return r.type === "scopeblind.repository.trial-readiness.v1" && r.repository === TRIAL_REPOSITORY && key4(r.receiver_key) && key4(r.worker_key) && r.receiver_key !== r.worker_key && at9(r.observed_at) && at9(r.expires_at) && Date.parse(String(r.expires_at)) > Date.parse(String(r.observed_at)) && Date.parse(String(r.expires_at)) - Date.parse(String(r.observed_at)) <= 864e5 && object7(p) && exact9(p, ["repository_id", "run_id", "run_attempt", "workflow_ref", "workflow_sha", "token_digest", "verified_at"]) && p.workflow_ref === `${TRIAL_REPOSITORY}/${TRIAL_WORKFLOW}@refs/heads/main` && sha5(p.workflow_sha) && key4(p.token_digest) && [p.repository_id, p.run_id, p.run_attempt].every((n) => Number.isSafeInteger(n) && Number(n) > 0) && at9(p.verified_at) && Date.parse(String(p.verified_at)) <= Date.parse(String(r.observed_at));
 }
 async function verifyRepositoryTrialConnection(value, authority) {
   try {
     const c = value, r = c?.readiness?.payload;
-    if (!c || c.kind !== "managed_trial" || !id10(c.setup_id) || !r || !validTrialReadiness(r) || r.type !== "scopeblind.repository.trial-readiness.v1" || r.repository !== TRIAL_REPOSITORY || !key4(r.receiver_key) || r.worker_key !== c.config.worker_key || r.receiver_key === r.worker_key || canonical(c.config) !== canonical(trialCodingConfig(c.setup_id, c.config.endpoint, authority, r.worker_key)) || !await verify(c.readiness, authority) || !at8(r.observed_at) || !at8(r.expires_at) || Date.parse(r.expires_at) <= Date.now() || Date.parse(r.expires_at) - Date.parse(r.observed_at) > 864e5 || Date.parse(r.observed_at) > Date.now() + 1e3) return false;
+    if (!c || c.kind !== "managed_trial" || !id10(c.setup_id) || !r || !validTrialReadiness(r) || r.type !== "scopeblind.repository.trial-readiness.v1" || r.repository !== TRIAL_REPOSITORY || !key4(r.receiver_key) || r.worker_key !== c.config.worker_key || r.receiver_key === r.worker_key || canonical(c.config) !== canonical(trialCodingConfig(c.setup_id, c.config.endpoint, authority, r.worker_key)) || !await verify(c.readiness, authority) || !at9(r.observed_at) || !at9(r.expires_at) || Date.parse(r.expires_at) <= Date.now() || Date.parse(r.expires_at) - Date.parse(r.observed_at) > 864e5 || Date.parse(r.observed_at) > Date.now() + 1e3) return false;
     const u = new URL(c.config.endpoint), p = r.proof;
-    return u.protocol === "https:" && u.pathname === "/api/coordination" && !u.search && !u.hash && !u.username && !u.password && p.workflow_ref === `${TRIAL_REPOSITORY}/${TRIAL_WORKFLOW}@refs/heads/main` && sha5(p.workflow_sha) && key4(p.token_digest) && Number.isSafeInteger(p.repository_id) && p.repository_id > 0 && Number.isSafeInteger(p.run_id) && p.run_id > 0 && Number.isSafeInteger(p.run_attempt) && p.run_attempt > 0 && at8(p.verified_at);
+    return u.protocol === "https:" && u.pathname === "/api/coordination" && !u.search && !u.hash && !u.username && !u.password && p.workflow_ref === `${TRIAL_REPOSITORY}/${TRIAL_WORKFLOW}@refs/heads/main` && sha5(p.workflow_sha) && key4(p.token_digest) && Number.isSafeInteger(p.repository_id) && p.repository_id > 0 && Number.isSafeInteger(p.run_id) && p.run_id > 0 && Number.isSafeInteger(p.run_attempt) && p.run_attempt > 0 && at9(p.verified_at);
   } catch {
     return false;
   }
@@ -47781,9 +48235,9 @@ var RepositoryReceiver = class {
     requireValue(state.payload.status === "approved" && state.payload.proposal && Date.parse(state.payload.task.payload.expires_at) > Date.now(), "repository_joint_approval_required");
     const reviewed = await this.review(taskId);
     if (reviewed.review) {
-      requireValue(reviewed.repository_task.payload.proposal?.digest === state.payload.proposal.digest && reviewed.review.payload.decisions.length === 2 && reviewed.review.payload.packet && Date.parse(reviewed.review.payload.packet.payload.expires_at) > Date.now(), "repository_review_joint_decision_required");
+      requireValue(reviewed.repository_task.payload.proposal?.digest === state.payload.proposal.digest && reviewed.review.payload.decisions.length === 2 && !!reviewed.review.payload.packet, "repository_review_joint_decision_required");
     }
-    if (reviewed.review) await this.checkReviewObservation(reviewed.review, state.payload.proposal);
+    if (reviewed.review) await this.checkReviewObservation(reviewed.review, state.payload.proposal, false);
     const approved = state.payload.proposal, observed = await this.snapshot(state.payload.task);
     requireValue(await repositorySnapshotDigest(approved.payload) === await repositorySnapshotDigest(observed), "repository_approval_stale");
     const operationId = `repo-${taskId}`, attemptId = crypto.randomUUID();
@@ -47793,7 +48247,7 @@ var RepositoryReceiver = class {
     requireValue(Date.parse(execution.payload.expires_at) > Date.now(), "repository_execution_expired");
     let sent = false, requestId = "", note = "";
     try {
-      if (reviewed.review) await this.checkReviewObservation(reviewed.review, approved);
+      if (reviewed.review) await this.checkReviewObservation(reviewed.review, approved, false);
       const final = await this.snapshot(state.payload.task);
       requireValue(await repositorySnapshotDigest(final) === await repositorySnapshotDigest(approved.payload), "repository_approval_stale");
       requireValue(Date.parse(execution.payload.expires_at) > Date.now() && state.payload.approvals.every((a) => Date.parse(a.payload.expires_at) > Date.now()), "repository_execution_expired");
@@ -47809,8 +48263,8 @@ var RepositoryReceiver = class {
     }
     return this.reconcileState(state, note, requestId);
   }
-  async checkReviewObservation(review, proposal) {
-    requireValue(review.payload.packet && Date.parse(review.payload.packet.payload.expires_at) > Date.now(), "repository_review_packet_expired");
+  async checkReviewObservation(review, proposal, requireFresh = true) {
+    requireValue(review.payload.packet && (!requireFresh || Date.parse(review.payload.packet.payload.expires_at) > Date.now()), "repository_review_packet_expired");
     const observed = await observeRepositoryReviewPreview((path) => this.github(path), this.config.repository, review.payload.brief, proposal);
     requireValue(canonical(observed) === canonical(review.payload.packet.payload.preview), "repository_review_preview_changed");
   }
@@ -48038,6 +48492,7 @@ var RepositoryTrialRunner = class {
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   BUILTIN_PATTERNS,
+  BUILTIN_POLICY_PREFIX,
   CODING_PERMISSIONS,
   CONNECTOR_PILOTS,
   ConfidentialGate,
@@ -48065,6 +48520,10 @@ var RepositoryTrialRunner = class {
   ReceiptPropagator,
   RepositoryCodingRunner,
   RepositoryTrialRunner,
+  STARTER_CONTAIN_TEMPLATE,
+  STARTER_POLICY,
+  STARTER_POLICY_FILE,
+  STARTER_POLICY_VERSION,
   ScopeBlindBridge,
   TRIAL_CODING_CHECK,
   TRIAL_DOCKER_IMAGE,
@@ -48074,10 +48533,16 @@ var RepositoryTrialRunner = class {
   TRIAL_TEMPLATE,
   TRIAL_WORKFLOW,
   anchorToRekor,
+  annotatedRules,
   approvePolicyProposalWithDirectSignature,
   approvePolicyProposalWithWebAuthn,
   assertEgressSafe,
   buildDecisionContext,
+  builtinPolicyNames,
+  cedarLikeLiteral,
+  cedarSafeContext,
+  cedarSafeValue,
+  checkCedarPolicyText,
   checkRateLimit,
   codingCommand,
   codingSafePath,
@@ -48140,6 +48605,7 @@ var RepositoryTrialRunner = class {
   initializeMandateRegistry,
   inspectEgress,
   isAgentId,
+  isBuiltinPolicySpec,
   isCedarAvailable,
   isDisclosureMode,
   isEvidenceType,
@@ -48167,6 +48633,7 @@ var RepositoryTrialRunner = class {
   receiptsToHFRows,
   redactFields,
   refreshManagedMandate,
+  renderContainRules,
   repositoryDevicePermission,
   repositoryDevicePreimage,
   repositoryHumanPermission,
@@ -48174,6 +48641,7 @@ var RepositoryTrialRunner = class {
   repositoryPreviewPath,
   repositorySetupArtifactUrl,
   repositorySnapshotDigest,
+  resolveBuiltinPolicy,
   resolveCredential,
   revealField,
   runEgressSelfCheck,
@@ -48186,6 +48654,7 @@ var RepositoryTrialRunner = class {
   simulate,
   snapshotFromDirectory,
   startHookServer,
+  starterRules,
   toCredentialRequestOptions,
   toEgressSummary,
   toManifoldFormat,
@@ -48201,6 +48670,7 @@ var RepositoryTrialRunner = class {
   validRepositoryCodingResult,
   validRepositoryCodingSource,
   validRepositoryCodingStop,
+  validRepositoryCodingWorkflowRun,
   validRepositoryDeviceAuthorization,
   validRepositoryDeviceConfirmation,
   validRepositoryDeviceLink,
@@ -48249,6 +48719,7 @@ var RepositoryTrialRunner = class {
   verifyRepositoryWorkspaceAgentState,
   verifyRepositoryWorkspaceState,
   verifySelectiveDisclosurePackage,
+  workflowRunFromEnvironment,
   writeConnectorPilots
 });
 /**

@@ -1,0 +1,1139 @@
+{
+  "type": "scopeblind.standard-decision-vectors.v1",
+  "compiler": "legate-standard-compiler.v1",
+  "generated_by": "packages/scopeblind-pm/web/scripts/gen-standard-vectors.mjs",
+  "semantics": [
+    "A run standard admits exactly the tools it lists, matched as exact strings; a listed tool's call that names an amount (amount_minor or amount) must carry an integer amount_minor in the standard's currency, spelled exactly, at most the limit (inclusive); a call naming no amount passes on the list alone.",
+    "A payment standard (a limit, no run block) admits only the one tool its enforcement block names, and every call to it must carry an integer amount_minor in the standard's currency within the limit.",
+    "A standard that states neither tools nor a limit admits nothing at the gate.",
+    "A call the gate admits whose amount is above the named person's threshold is held for that person, never refused and never passed."
+  ],
+  "decisions": {
+    "allow": "the gate signs an allow receipt",
+    "deny": "the gate refuses before the call runs",
+    "hold": "the gate holds the call for the named person on the standard's page"
+  },
+  "standards": [
+    {
+      "id": "payment_desk",
+      "title": "A payments desk: submit_payment at most USD 250,000 per instruction; a named person approves above USD 50,000",
+      "draft": {
+        "operator": null,
+        "decision": {
+          "kind": "dispatch_admission",
+          "owner": "The vectors",
+          "statement": "Admit only what this standard states.",
+          "purpose": "Decision vectors"
+        },
+        "boundary": {
+          "workflow": "vectors",
+          "action_class": "payment",
+          "resources": [],
+          "destinations": [],
+          "period": {
+            "starts_at": "2026-09-19T00:00:00.000Z",
+            "ends_at": "2027-09-19T00:00:00.000Z"
+          }
+        },
+        "requirements": {
+          "environment_class_min": "production",
+          "approver_assurance_min": "platform_credential_user_verified",
+          "human_approval": {
+            "required_above": {
+              "amount": 50000,
+              "currency": "USD"
+            },
+            "distinct_approvers": 1
+          },
+          "authority_max_age_seconds": 900,
+          "coverage": "governed_route",
+          "effect_evidence": "authoritative_readback",
+          "anchoring": "self_attested",
+          "partial_settlement_permitted": false,
+          "action_limits": {
+            "amount_max": {
+              "amount": 250000,
+              "currency": "USD"
+            },
+            "per_instruction": true
+          }
+        },
+        "trust": {
+          "accepted_gate_keys": [],
+          "accepted_approver_keys": [],
+          "accepted_readback_sources": [],
+          "accepted_anchor_witnesses": []
+        },
+        "disclosure": {
+          "required_fields": [
+            "amount",
+            "destination",
+            "readback"
+          ],
+          "inspection": "on_request"
+        },
+        "limitations_permitted": [],
+        "rejection_criteria": [],
+        "hold_criteria": [],
+        "deadline": {
+          "respond_by": "2026-10-19T00:00:00.000Z",
+          "evidence_max_age_seconds": 259200
+        },
+        "consequence": {
+          "if_met": "",
+          "if_not_met": "",
+          "not_a_promise": true
+        },
+        "claim_contract_digest": null,
+        "expires_at": "2027-09-19T00:00:00.000Z"
+      },
+      "options": {
+        "tool": "submit_payment",
+        "action_model": "mcp"
+      },
+      "tool": "submit_payment",
+      "action_model": "mcp",
+      "policy": "// Compiled by legate-standard-compiler.v1 from the signed standard's structured requirements.\n// The standard carries this file's digest (acta-policy-digest-v1). Edit the standard, not this file.\n// Tool: submit_payment. Amounts are integer minor units of USD. The limit $250,000.00 is inclusive and per instruction.\n// Everything else in the standard (who approved, how fresh, what the bank read back) is checked on the signed records, not here.\n\npermit (\n  principal,\n  action == Action::\"MCP::Tool::call\",\n  resource == Tool::\"submit_payment\"\n) when {\n  context has input &&\n  context.input has amount_minor &&\n  context.input has currency &&\n  context.input.currency == \"USD\" &&\n  context.input.amount_minor <= 25000000\n};\n\nforbid (\n  principal,\n  action == Action::\"MCP::Tool::call\",\n  resource == Tool::\"submit_payment\"\n) unless {\n  context has input &&\n  context.input has amount_minor &&\n  context.input has currency &&\n  context.input.currency == \"USD\" &&\n  context.input.amount_minor <= 25000000\n};\n",
+      "policy_digest": "sha256:0eccae77cd7c1d76c1745799ef18463db1f0966fdf20a588a0f9264910ab179d",
+      "gate_enforced": [
+        "limit_amount",
+        "limit_currency"
+      ],
+      "counterexamples": 7
+    },
+    {
+      "id": "payment_cap_only",
+      "title": "A supplier payment tool: pay_supplier at most AUD 10,000 per instruction; no person",
+      "draft": {
+        "operator": null,
+        "decision": {
+          "kind": "dispatch_admission",
+          "owner": "The vectors",
+          "statement": "Admit only what this standard states.",
+          "purpose": "Decision vectors"
+        },
+        "boundary": {
+          "workflow": "vectors",
+          "action_class": "payment",
+          "resources": [],
+          "destinations": [],
+          "period": {
+            "starts_at": "2026-09-19T00:00:00.000Z",
+            "ends_at": "2027-09-19T00:00:00.000Z"
+          }
+        },
+        "requirements": {
+          "environment_class_min": "production",
+          "approver_assurance_min": "platform_credential_user_verified",
+          "human_approval": {
+            "required_above": null,
+            "distinct_approvers": 1
+          },
+          "authority_max_age_seconds": 900,
+          "coverage": "governed_route",
+          "effect_evidence": "authoritative_readback",
+          "anchoring": "self_attested",
+          "partial_settlement_permitted": false,
+          "action_limits": {
+            "amount_max": {
+              "amount": 10000,
+              "currency": "AUD"
+            },
+            "per_instruction": true
+          }
+        },
+        "trust": {
+          "accepted_gate_keys": [],
+          "accepted_approver_keys": [],
+          "accepted_readback_sources": [],
+          "accepted_anchor_witnesses": []
+        },
+        "disclosure": {
+          "required_fields": [
+            "amount",
+            "destination",
+            "readback"
+          ],
+          "inspection": "on_request"
+        },
+        "limitations_permitted": [],
+        "rejection_criteria": [],
+        "hold_criteria": [],
+        "deadline": {
+          "respond_by": "2026-10-19T00:00:00.000Z",
+          "evidence_max_age_seconds": 259200
+        },
+        "consequence": {
+          "if_met": "",
+          "if_not_met": "",
+          "not_a_promise": true
+        },
+        "claim_contract_digest": null,
+        "expires_at": "2027-09-19T00:00:00.000Z"
+      },
+      "options": {
+        "tool": "pay_supplier",
+        "action_model": "mcp"
+      },
+      "tool": "pay_supplier",
+      "action_model": "mcp",
+      "policy": "// Compiled by legate-standard-compiler.v1 from the signed standard's structured requirements.\n// The standard carries this file's digest (acta-policy-digest-v1). Edit the standard, not this file.\n// Tool: pay_supplier. Amounts are integer minor units of AUD. The limit AUD 10,000.00 is inclusive and per instruction.\n// Everything else in the standard (who approved, how fresh, what the bank read back) is checked on the signed records, not here.\n\npermit (\n  principal,\n  action == Action::\"MCP::Tool::call\",\n  resource == Tool::\"pay_supplier\"\n) when {\n  context has input &&\n  context.input has amount_minor &&\n  context.input has currency &&\n  context.input.currency == \"AUD\" &&\n  context.input.amount_minor <= 1000000\n};\n\nforbid (\n  principal,\n  action == Action::\"MCP::Tool::call\",\n  resource == Tool::\"pay_supplier\"\n) unless {\n  context has input &&\n  context.input has amount_minor &&\n  context.input has currency &&\n  context.input.currency == \"AUD\" &&\n  context.input.amount_minor <= 1000000\n};\n",
+      "policy_digest": "sha256:4201973ae9bd23d398d0af4eefa2258b71eb2b4a478f0f2141593ff531c10531",
+      "gate_enforced": [
+        "limit_amount",
+        "limit_currency"
+      ],
+      "counterexamples": 7
+    },
+    {
+      "id": "agent_job",
+      "title": "An agent job: Bash, Read, Write, Edit; nothing else; no payments",
+      "draft": {
+        "operator": null,
+        "decision": {
+          "kind": "dispatch_admission",
+          "owner": "The vectors",
+          "statement": "Admit only what this standard states.",
+          "purpose": "Decision vectors"
+        },
+        "boundary": {
+          "workflow": "vectors",
+          "action_class": "payment",
+          "resources": [],
+          "destinations": [],
+          "period": {
+            "starts_at": "2026-09-19T00:00:00.000Z",
+            "ends_at": "2027-09-19T00:00:00.000Z"
+          }
+        },
+        "requirements": {
+          "environment_class_min": "production",
+          "approver_assurance_min": "platform_credential_user_verified",
+          "human_approval": {
+            "required_above": null,
+            "distinct_approvers": 1
+          },
+          "authority_max_age_seconds": 900,
+          "coverage": "governed_route",
+          "effect_evidence": "authoritative_readback",
+          "anchoring": "self_attested",
+          "partial_settlement_permitted": false,
+          "run": {
+            "egress_allowlist": [],
+            "model_route": "api.openai.com",
+            "attempts_per_task": 1,
+            "time_limit_seconds": 1800,
+            "dataset": {
+              "name": "example/tasks",
+              "revision": "v1",
+              "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+            },
+            "harness": {
+              "name": "example-harness",
+              "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+            },
+            "allowed_tools": [
+              "Bash",
+              "Read",
+              "Write",
+              "Edit"
+            ]
+          }
+        },
+        "trust": {
+          "accepted_gate_keys": [],
+          "accepted_approver_keys": [],
+          "accepted_readback_sources": [],
+          "accepted_anchor_witnesses": []
+        },
+        "disclosure": {
+          "required_fields": [
+            "amount",
+            "destination",
+            "readback"
+          ],
+          "inspection": "on_request"
+        },
+        "limitations_permitted": [],
+        "rejection_criteria": [],
+        "hold_criteria": [],
+        "deadline": {
+          "respond_by": "2026-10-19T00:00:00.000Z",
+          "evidence_max_age_seconds": 259200
+        },
+        "consequence": {
+          "if_met": "",
+          "if_not_met": "",
+          "not_a_promise": true
+        },
+        "claim_contract_digest": null,
+        "expires_at": "2027-09-19T00:00:00.000Z"
+      },
+      "options": {
+        "action_model": "mcp"
+      },
+      "tool": "Bash, Read, Write, Edit",
+      "action_model": "mcp",
+      "policy": "// Compiled by legate-standard-compiler.v1 from the signed standard's structured requirements.\n// The standard carries this file's digest (acta-policy-digest-v1). Edit the standard, not this file.\n// Allowed tools: Bash, Read, Write, Edit. The name must match exactly. The gate does not read the tool's input.\n// Network, model route, attempts, time, and the task set are not visible here; the environment enforces the first two and the manifest carries the rest.\n\npermit (\n  principal,\n  action == Action::\"MCP::Tool::call\",\n  resource\n) when {\n  resource in [Tool::\"Bash\", Tool::\"Read\", Tool::\"Write\", Tool::\"Edit\"]\n};\n\nforbid (\n  principal,\n  action == Action::\"MCP::Tool::call\",\n  resource\n) unless {\n  resource in [Tool::\"Bash\", Tool::\"Read\", Tool::\"Write\", Tool::\"Edit\"]\n};\n",
+      "policy_digest": "sha256:f66814a5fd94d740bec9e5c16ace13968a91da224fa49706dc8da2fb651ca89b",
+      "gate_enforced": [
+        "run_tools"
+      ],
+      "counterexamples": 6
+    },
+    {
+      "id": "agent_job_hook",
+      "title": "The same agent job seen by a hook host (tool action model)",
+      "draft": {
+        "operator": null,
+        "decision": {
+          "kind": "dispatch_admission",
+          "owner": "The vectors",
+          "statement": "Admit only what this standard states.",
+          "purpose": "Decision vectors"
+        },
+        "boundary": {
+          "workflow": "vectors",
+          "action_class": "payment",
+          "resources": [],
+          "destinations": [],
+          "period": {
+            "starts_at": "2026-09-19T00:00:00.000Z",
+            "ends_at": "2027-09-19T00:00:00.000Z"
+          }
+        },
+        "requirements": {
+          "environment_class_min": "production",
+          "approver_assurance_min": "platform_credential_user_verified",
+          "human_approval": {
+            "required_above": null,
+            "distinct_approvers": 1
+          },
+          "authority_max_age_seconds": 900,
+          "coverage": "governed_route",
+          "effect_evidence": "authoritative_readback",
+          "anchoring": "self_attested",
+          "partial_settlement_permitted": false,
+          "run": {
+            "egress_allowlist": [],
+            "model_route": "api.openai.com",
+            "attempts_per_task": 1,
+            "time_limit_seconds": 1800,
+            "dataset": {
+              "name": "example/tasks",
+              "revision": "v1",
+              "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+            },
+            "harness": {
+              "name": "example-harness",
+              "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+            },
+            "allowed_tools": [
+              "Bash",
+              "Read",
+              "Write",
+              "Edit"
+            ]
+          }
+        },
+        "trust": {
+          "accepted_gate_keys": [],
+          "accepted_approver_keys": [],
+          "accepted_readback_sources": [],
+          "accepted_anchor_witnesses": []
+        },
+        "disclosure": {
+          "required_fields": [
+            "amount",
+            "destination",
+            "readback"
+          ],
+          "inspection": "on_request"
+        },
+        "limitations_permitted": [],
+        "rejection_criteria": [],
+        "hold_criteria": [],
+        "deadline": {
+          "respond_by": "2026-10-19T00:00:00.000Z",
+          "evidence_max_age_seconds": 259200
+        },
+        "consequence": {
+          "if_met": "",
+          "if_not_met": "",
+          "not_a_promise": true
+        },
+        "claim_contract_digest": null,
+        "expires_at": "2027-09-19T00:00:00.000Z"
+      },
+      "options": {
+        "action_model": "tool"
+      },
+      "tool": "Bash, Read, Write, Edit",
+      "action_model": "tool",
+      "policy": "// Compiled by legate-standard-compiler.v1 from the signed standard's structured requirements.\n// The standard carries this file's digest (acta-policy-digest-v1). Edit the standard, not this file.\n// Allowed tools: Bash, Read, Write, Edit. The name must match exactly. The gate does not read the tool's input.\n// Network, model route, attempts, time, and the task set are not visible here; the environment enforces the first two and the manifest carries the rest.\n\npermit (\n  principal,\n  action,\n  resource\n) when {\n  action in [Action::\"Bash\", Action::\"Read\", Action::\"Write\", Action::\"Edit\"]\n};\n\nforbid (\n  principal,\n  action,\n  resource\n) unless {\n  action in [Action::\"Bash\", Action::\"Read\", Action::\"Write\", Action::\"Edit\"]\n};\n",
+      "policy_digest": "sha256:6e0a18bffb422687cb9753d8634578d4da37ff286445beb893a82a16c588bc21",
+      "gate_enforced": [
+        "run_tools"
+      ],
+      "counterexamples": 6
+    },
+    {
+      "id": "bookkeeping_agent",
+      "title": "A bookkeeping agent: pay_invoice and send_email; at most USD 2,000 per instruction; a named person approves above USD 500",
+      "draft": {
+        "operator": null,
+        "decision": {
+          "kind": "dispatch_admission",
+          "owner": "The vectors",
+          "statement": "Admit only what this standard states.",
+          "purpose": "Decision vectors"
+        },
+        "boundary": {
+          "workflow": "vectors",
+          "action_class": "payment",
+          "resources": [],
+          "destinations": [],
+          "period": {
+            "starts_at": "2026-09-19T00:00:00.000Z",
+            "ends_at": "2027-09-19T00:00:00.000Z"
+          }
+        },
+        "requirements": {
+          "environment_class_min": "production",
+          "approver_assurance_min": "platform_credential_user_verified",
+          "human_approval": {
+            "required_above": {
+              "amount": 500,
+              "currency": "USD"
+            },
+            "distinct_approvers": 1
+          },
+          "authority_max_age_seconds": 900,
+          "coverage": "governed_route",
+          "effect_evidence": "authoritative_readback",
+          "anchoring": "self_attested",
+          "partial_settlement_permitted": false,
+          "run": {
+            "egress_allowlist": [],
+            "model_route": "api.openai.com",
+            "attempts_per_task": 1,
+            "time_limit_seconds": 1800,
+            "dataset": {
+              "name": "example/tasks",
+              "revision": "v1",
+              "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+            },
+            "harness": {
+              "name": "example-harness",
+              "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+            },
+            "allowed_tools": [
+              "pay_invoice",
+              "send_email"
+            ]
+          },
+          "action_limits": {
+            "amount_max": {
+              "amount": 2000,
+              "currency": "USD"
+            },
+            "per_instruction": true
+          }
+        },
+        "trust": {
+          "accepted_gate_keys": [],
+          "accepted_approver_keys": [],
+          "accepted_readback_sources": [],
+          "accepted_anchor_witnesses": []
+        },
+        "disclosure": {
+          "required_fields": [
+            "amount",
+            "destination",
+            "readback"
+          ],
+          "inspection": "on_request"
+        },
+        "limitations_permitted": [],
+        "rejection_criteria": [],
+        "hold_criteria": [],
+        "deadline": {
+          "respond_by": "2026-10-19T00:00:00.000Z",
+          "evidence_max_age_seconds": 259200
+        },
+        "consequence": {
+          "if_met": "",
+          "if_not_met": "",
+          "not_a_promise": true
+        },
+        "claim_contract_digest": null,
+        "expires_at": "2027-09-19T00:00:00.000Z"
+      },
+      "options": {
+        "action_model": "mcp"
+      },
+      "tool": "pay_invoice, send_email",
+      "action_model": "mcp",
+      "policy": "// Compiled by legate-standard-compiler.v1 from the signed standard's structured requirements.\n// The standard carries this file's digest (acta-policy-digest-v1). Edit the standard, not this file.\n// Allowed tools: pay_invoice, send_email. The name must match exactly. A call that names an amount is a payment: integer minor units of USD, at most $2,000.00 per instruction, inclusive.\n// Network, model route, attempts, time, and the task set are not visible here; the environment enforces the first two and the manifest carries the rest.\n\npermit (\n  principal,\n  action == Action::\"MCP::Tool::call\",\n  resource\n) when {\n  resource in [Tool::\"pay_invoice\", Tool::\"send_email\"] &&\n  (!(context has input && (context.input has amount_minor || context.input has amount)) ||\n   (context.input has amount_minor &&\n    context.input has currency &&\n    context.input.currency == \"USD\" &&\n    context.input.amount_minor <= 200000))\n};\n\nforbid (\n  principal,\n  action == Action::\"MCP::Tool::call\",\n  resource\n) unless {\n  resource in [Tool::\"pay_invoice\", Tool::\"send_email\"] &&\n  (!(context has input && (context.input has amount_minor || context.input has amount)) ||\n   (context.input has amount_minor &&\n    context.input has currency &&\n    context.input.currency == \"USD\" &&\n    context.input.amount_minor <= 200000))\n};\n",
+      "policy_digest": "sha256:3164128e0359b92179dcefb890ff25c2b7e975d8399e3fc02c1f295c7456e69b",
+      "gate_enforced": [
+        "run_tools",
+        "limit_amount",
+        "limit_currency"
+      ],
+      "counterexamples": 9
+    },
+    {
+      "id": "no_gate_policy",
+      "title": "A standard that states neither tools nor a limit, only a person above USD 500",
+      "draft": {
+        "operator": null,
+        "decision": {
+          "kind": "dispatch_admission",
+          "owner": "The vectors",
+          "statement": "Admit only what this standard states.",
+          "purpose": "Decision vectors"
+        },
+        "boundary": {
+          "workflow": "vectors",
+          "action_class": "payment",
+          "resources": [],
+          "destinations": [],
+          "period": {
+            "starts_at": "2026-09-19T00:00:00.000Z",
+            "ends_at": "2027-09-19T00:00:00.000Z"
+          }
+        },
+        "requirements": {
+          "environment_class_min": "production",
+          "approver_assurance_min": "platform_credential_user_verified",
+          "human_approval": {
+            "required_above": {
+              "amount": 500,
+              "currency": "USD"
+            },
+            "distinct_approvers": 1
+          },
+          "authority_max_age_seconds": 900,
+          "coverage": "governed_route",
+          "effect_evidence": "authoritative_readback",
+          "anchoring": "self_attested",
+          "partial_settlement_permitted": false
+        },
+        "trust": {
+          "accepted_gate_keys": [],
+          "accepted_approver_keys": [],
+          "accepted_readback_sources": [],
+          "accepted_anchor_witnesses": []
+        },
+        "disclosure": {
+          "required_fields": [
+            "amount",
+            "destination",
+            "readback"
+          ],
+          "inspection": "on_request"
+        },
+        "limitations_permitted": [],
+        "rejection_criteria": [],
+        "hold_criteria": [],
+        "deadline": {
+          "respond_by": "2026-10-19T00:00:00.000Z",
+          "evidence_max_age_seconds": 259200
+        },
+        "consequence": {
+          "if_met": "",
+          "if_not_met": "",
+          "not_a_promise": true
+        },
+        "claim_contract_digest": null,
+        "expires_at": "2027-09-19T00:00:00.000Z"
+      },
+      "options": {
+        "action_model": "mcp"
+      },
+      "tool": "submit_payment",
+      "action_model": "mcp",
+      "policy": null,
+      "policy_digest": null,
+      "gate_enforced": [],
+      "counterexamples": 0
+    }
+  ],
+  "cases": [
+    {
+      "id": "payment_desk:under_threshold",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 1000000,
+        "currency": "USD"
+      },
+      "decision": "allow",
+      "clause": "limit_amount",
+      "note": "USD 10,000: inside the limit and not above the threshold"
+    },
+    {
+      "id": "payment_desk:at_threshold",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 5000000,
+        "currency": "USD"
+      },
+      "decision": "allow",
+      "clause": "human_approval",
+      "note": "exactly USD 50,000: the person is needed only above the threshold"
+    },
+    {
+      "id": "payment_desk:above_threshold",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 5000001,
+        "currency": "USD"
+      },
+      "decision": "hold",
+      "clause": "human_approval",
+      "note": "one cent above the threshold: held for the named person"
+    },
+    {
+      "id": "payment_desk:sample_amount",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 18500000,
+        "currency": "USD"
+      },
+      "decision": "hold",
+      "clause": "human_approval",
+      "note": "USD 185,000: inside the limit, above the threshold"
+    },
+    {
+      "id": "payment_desk:at_limit",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 25000000,
+        "currency": "USD"
+      },
+      "decision": "hold",
+      "clause": "limit_amount",
+      "note": "exactly the limit passes the gate, then the person decides"
+    },
+    {
+      "id": "payment_desk:one_cent_over",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 25000001,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "one cent over the limit is refused before any person is asked"
+    },
+    {
+      "id": "payment_desk:tenfold",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 185000000,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "ten times the sample amount"
+    },
+    {
+      "id": "payment_desk:other_currency",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 100,
+        "currency": "AUD"
+      },
+      "decision": "deny",
+      "clause": "limit_currency",
+      "note": "the standard permits USD only"
+    },
+    {
+      "id": "payment_desk:lowercase_currency",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 100,
+        "currency": "usd"
+      },
+      "decision": "deny",
+      "clause": "limit_currency",
+      "note": "the currency is matched as an exact string"
+    },
+    {
+      "id": "payment_desk:missing_amount",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "a payment that names no amount cannot be checked"
+    },
+    {
+      "id": "payment_desk:major_units_only",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount": 100,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "the gate reads integer minor units; amount alone is not checked, so it is refused"
+    },
+    {
+      "id": "payment_desk:fractional_minor",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 1000.5,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "amount_minor must be an integer"
+    },
+    {
+      "id": "payment_desk:no_input",
+      "standard": "payment_desk",
+      "tool": "submit_payment",
+      "input": {},
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "no input at all"
+    },
+    {
+      "id": "payment_desk:other_tool",
+      "standard": "payment_desk",
+      "tool": "delete_file",
+      "input": {
+        "path": "/ledger"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "a payment standard admits its one named tool and nothing else"
+    },
+    {
+      "id": "payment_desk:tool_case",
+      "standard": "payment_desk",
+      "tool": "Submit_Payment",
+      "input": {
+        "amount_minor": 100,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "the tool name must match exactly"
+    },
+    {
+      "id": "payment_desk:tool_prefix",
+      "standard": "payment_desk",
+      "tool": "submit_payment_v2",
+      "input": {
+        "amount_minor": 100,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "a longer name that starts with the named tool is another tool"
+    },
+    {
+      "id": "payment_cap_only:within",
+      "standard": "payment_cap_only",
+      "tool": "pay_supplier",
+      "input": {
+        "amount_minor": 999999,
+        "currency": "AUD"
+      },
+      "decision": "allow",
+      "clause": "limit_amount",
+      "note": "inside the limit; no person is named"
+    },
+    {
+      "id": "payment_cap_only:at_limit",
+      "standard": "payment_cap_only",
+      "tool": "pay_supplier",
+      "input": {
+        "amount_minor": 1000000,
+        "currency": "AUD"
+      },
+      "decision": "allow",
+      "clause": "limit_amount",
+      "note": "exactly the limit, inclusive"
+    },
+    {
+      "id": "payment_cap_only:over",
+      "standard": "payment_cap_only",
+      "tool": "pay_supplier",
+      "input": {
+        "amount_minor": 1000001,
+        "currency": "AUD"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "one cent over"
+    },
+    {
+      "id": "payment_cap_only:usd",
+      "standard": "payment_cap_only",
+      "tool": "pay_supplier",
+      "input": {
+        "amount_minor": 100,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "limit_currency",
+      "note": "AUD only"
+    },
+    {
+      "id": "payment_cap_only:other_tool",
+      "standard": "payment_cap_only",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 100,
+        "currency": "AUD"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "the standard names pay_supplier, not submit_payment"
+    },
+    {
+      "id": "agent_job:listed",
+      "standard": "agent_job",
+      "tool": "Read",
+      "input": {
+        "file_path": "/app/notes.txt"
+      },
+      "decision": "allow",
+      "clause": "run_tools",
+      "note": "on the list"
+    },
+    {
+      "id": "agent_job:shell",
+      "standard": "agent_job",
+      "tool": "Bash",
+      "input": {
+        "command": "curl https://example.com"
+      },
+      "decision": "allow",
+      "clause": "run_egress",
+      "note": "the gate does not read the command; only the sandbox stops the network"
+    },
+    {
+      "id": "agent_job:no_input",
+      "standard": "agent_job",
+      "tool": "Edit",
+      "input": {},
+      "decision": "allow",
+      "clause": "run_tools",
+      "note": "the gate checks the tool, not the input"
+    },
+    {
+      "id": "agent_job:not_listed",
+      "standard": "agent_job",
+      "tool": "WebFetch",
+      "input": {
+        "url": "https://example.com"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "not on the list"
+    },
+    {
+      "id": "agent_job:payment",
+      "standard": "agent_job",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 1,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "not on the list, however small"
+    },
+    {
+      "id": "agent_job:case",
+      "standard": "agent_job",
+      "tool": "read",
+      "input": {
+        "file_path": "/app/notes.txt"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "the name must match exactly"
+    },
+    {
+      "id": "agent_job:prefix",
+      "standard": "agent_job",
+      "tool": "ReadExtra",
+      "input": {},
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "a longer name that starts with an allowed one"
+    },
+    {
+      "id": "agent_job:amount_on_listed_tool",
+      "standard": "agent_job",
+      "tool": "Write",
+      "input": {
+        "amount_minor": 999999999,
+        "currency": "USD"
+      },
+      "decision": "allow",
+      "clause": "run_tools",
+      "note": "no limit is stated, so an amount on a listed tool is not read"
+    },
+    {
+      "id": "agent_job_hook:listed",
+      "standard": "agent_job_hook",
+      "tool": "Read",
+      "input": {
+        "file_path": "/app/notes.txt"
+      },
+      "decision": "allow",
+      "clause": "run_tools",
+      "note": "on the list"
+    },
+    {
+      "id": "agent_job_hook:shell",
+      "standard": "agent_job_hook",
+      "tool": "Bash",
+      "input": {
+        "command": "curl https://example.com"
+      },
+      "decision": "allow",
+      "clause": "run_egress",
+      "note": "the gate does not read the command; only the sandbox stops the network"
+    },
+    {
+      "id": "agent_job_hook:no_input",
+      "standard": "agent_job_hook",
+      "tool": "Edit",
+      "input": {},
+      "decision": "allow",
+      "clause": "run_tools",
+      "note": "the gate checks the tool, not the input"
+    },
+    {
+      "id": "agent_job_hook:not_listed",
+      "standard": "agent_job_hook",
+      "tool": "WebFetch",
+      "input": {
+        "url": "https://example.com"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "not on the list"
+    },
+    {
+      "id": "agent_job_hook:payment",
+      "standard": "agent_job_hook",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 1,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "not on the list, however small"
+    },
+    {
+      "id": "agent_job_hook:case",
+      "standard": "agent_job_hook",
+      "tool": "read",
+      "input": {
+        "file_path": "/app/notes.txt"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "the name must match exactly"
+    },
+    {
+      "id": "agent_job_hook:prefix",
+      "standard": "agent_job_hook",
+      "tool": "ReadExtra",
+      "input": {},
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "a longer name that starts with an allowed one"
+    },
+    {
+      "id": "agent_job_hook:amount_on_listed_tool",
+      "standard": "agent_job_hook",
+      "tool": "Write",
+      "input": {
+        "amount_minor": 999999999,
+        "currency": "USD"
+      },
+      "decision": "allow",
+      "clause": "run_tools",
+      "note": "no limit is stated, so an amount on a listed tool is not read"
+    },
+    {
+      "id": "bookkeeping_agent:email",
+      "standard": "bookkeeping_agent",
+      "tool": "send_email",
+      "input": {
+        "to": "client@example.com",
+        "subject": "Invoice"
+      },
+      "decision": "allow",
+      "clause": "run_tools",
+      "note": "a listed tool naming no amount passes on the list alone"
+    },
+    {
+      "id": "bookkeeping_agent:small_invoice",
+      "standard": "bookkeeping_agent",
+      "tool": "pay_invoice",
+      "input": {
+        "amount_minor": 40000,
+        "currency": "USD"
+      },
+      "decision": "allow",
+      "clause": "limit_amount",
+      "note": "USD 400: inside the limit, not above the threshold"
+    },
+    {
+      "id": "bookkeeping_agent:at_threshold",
+      "standard": "bookkeeping_agent",
+      "tool": "pay_invoice",
+      "input": {
+        "amount_minor": 50000,
+        "currency": "USD"
+      },
+      "decision": "allow",
+      "clause": "human_approval",
+      "note": "exactly USD 500 is not above the threshold"
+    },
+    {
+      "id": "bookkeeping_agent:above_threshold",
+      "standard": "bookkeeping_agent",
+      "tool": "pay_invoice",
+      "input": {
+        "amount_minor": 60000,
+        "currency": "USD"
+      },
+      "decision": "hold",
+      "clause": "human_approval",
+      "note": "USD 600: held for the named person"
+    },
+    {
+      "id": "bookkeeping_agent:at_limit",
+      "standard": "bookkeeping_agent",
+      "tool": "pay_invoice",
+      "input": {
+        "amount_minor": 200000,
+        "currency": "USD"
+      },
+      "decision": "hold",
+      "clause": "limit_amount",
+      "note": "exactly the limit passes the gate, then the person decides"
+    },
+    {
+      "id": "bookkeeping_agent:over_limit",
+      "standard": "bookkeeping_agent",
+      "tool": "pay_invoice",
+      "input": {
+        "amount_minor": 200001,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "one cent over the limit"
+    },
+    {
+      "id": "bookkeeping_agent:email_with_amount",
+      "standard": "bookkeeping_agent",
+      "tool": "send_email",
+      "input": {
+        "to": "client@example.com",
+        "amount_minor": 300000,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "any listed tool naming an amount over the limit is refused"
+    },
+    {
+      "id": "bookkeeping_agent:major_units",
+      "standard": "bookkeeping_agent",
+      "tool": "pay_invoice",
+      "input": {
+        "amount": 20,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "an amount named in major units only cannot be checked"
+    },
+    {
+      "id": "bookkeeping_agent:other_currency",
+      "standard": "bookkeeping_agent",
+      "tool": "pay_invoice",
+      "input": {
+        "amount_minor": 100,
+        "currency": "AUD"
+      },
+      "decision": "deny",
+      "clause": "limit_currency",
+      "note": "USD only"
+    },
+    {
+      "id": "bookkeeping_agent:not_listed",
+      "standard": "bookkeeping_agent",
+      "tool": "delete_file",
+      "input": {
+        "path": "/ledger"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "not on the list"
+    },
+    {
+      "id": "bookkeeping_agent:prefix",
+      "standard": "bookkeeping_agent",
+      "tool": "pay_invoice_now",
+      "input": {
+        "amount_minor": 100,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "run_tools",
+      "note": "a longer name is another tool"
+    },
+    {
+      "id": "no_gate_policy:payment",
+      "standard": "no_gate_policy",
+      "tool": "submit_payment",
+      "input": {
+        "amount_minor": 100,
+        "currency": "USD"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "no gate policy: the gate admits nothing under this standard"
+    },
+    {
+      "id": "no_gate_policy:read",
+      "standard": "no_gate_policy",
+      "tool": "Read",
+      "input": {
+        "file_path": "/app/notes.txt"
+      },
+      "decision": "deny",
+      "clause": "limit_amount",
+      "note": "no gate policy, whatever the tool"
+    }
+  ]
+}

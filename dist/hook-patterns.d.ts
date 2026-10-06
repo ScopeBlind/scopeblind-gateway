@@ -30,7 +30,7 @@ declare const BUILTIN_PATTERNS: HookPattern[];
  */
 declare function generateHookSettings(hookUrl: string, patterns?: HookPattern[]): Record<string, unknown>;
 /**
- * Generate a sample Cedar policy from the built-in patterns.
+ * The Cedar policy init-hooks writes: the starter policy (see starter-policy.ts).
  */
 declare function generateSampleCedarPolicy(): string;
 /**

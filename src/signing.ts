@@ -211,6 +211,8 @@ export function signDecision(entry: DecisionLog, prevReceiptHash?: string): {
     // The signed standard in force, and a named person's decision on its page (0.14.0)
     if (entry.standard) payload.standard = entry.standard;
     if (entry.approval) payload.approval = entry.approval;
+    // The connector-action profile: the grant a platform presented, what the gate checked, the call digest.
+    if (entry.connector) payload.connector = entry.connector;
 
     const result = createReceiptEnvelope(
       payload as Record<string, unknown> & { type: string },

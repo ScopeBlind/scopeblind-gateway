@@ -16,7 +16,7 @@ import {
   verifyRepositorySetupEnrollment,
   verifyRepositorySetupReplacement,
   verifyRepositorySetupState
-} from "./chunk-P4PK3PF6.mjs";
+} from "./chunk-RU7XRL6M.mjs";
 import {
   CoordinationClient,
   CoordinationError,
@@ -51,7 +51,7 @@ import {
   validTrialReadiness,
   verifyRepositoryTrialConnection,
   verifyRepositoryTrialState
-} from "./chunk-ZKXG4JJB.mjs";
+} from "./chunk-Y77UXWY3.mjs";
 import {
   collectSignedReceipts,
   createAuditBundle
@@ -73,12 +73,12 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-TAOHHOM3.mjs";
+} from "./chunk-2CLG27IZ.mjs";
 import {
   POLICY_PACKS,
   getPolicyPack,
   policyPackIds
-} from "./chunk-CIQDC3FN.mjs";
+} from "./chunk-HBK47UIZ.mjs";
 import {
   ProtectGateway,
   buildDecisionContext,
@@ -90,22 +90,36 @@ import {
   resolveCredential,
   sendApprovalNotification,
   validateCredentials
-} from "./chunk-BQK6J5FY.mjs";
+} from "./chunk-PXYYGA4G.mjs";
 import {
   createSandboxServer
-} from "./chunk-QRLQZXTO.mjs";
+} from "./chunk-OWJH6JNA.mjs";
 import {
   BUILTIN_PATTERNS,
   generateHookSettings,
   generateSampleCedarPolicy,
   generateVerifyReceiptSkill
-} from "./chunk-NMZPXXL3.mjs";
+} from "./chunk-66AX3DHG.mjs";
+import {
+  BUILTIN_POLICY_PREFIX,
+  STARTER_CONTAIN_TEMPLATE,
+  STARTER_POLICY,
+  STARTER_POLICY_FILE,
+  STARTER_POLICY_VERSION,
+  annotatedRules,
+  builtinPolicyNames,
+  cedarLikeLiteral,
+  isBuiltinPolicySpec,
+  renderContainRules,
+  resolveBuiltinPolicy,
+  starterRules
+} from "./chunk-WE2AYP6X.mjs";
 import {
   ScopeBlindBridge,
   forwardReceipt,
   getScopeBlindBridge,
   startHookServer
-} from "./chunk-N7NOARS7.mjs";
+} from "./chunk-LCX7KGRG.mjs";
 import "./chunk-KRKZ2YX7.mjs";
 import {
   EGRESS_SUMMARY_FIELDS,
@@ -135,27 +149,30 @@ import {
   verifyApprovalAssertion,
   verifyMandateLifecycleExport,
   verifyMandateRegistry
-} from "./chunk-66IKCPUU.mjs";
-import "./chunk-MZOD6A6U.mjs";
+} from "./chunk-S2D67RLW.mjs";
+import "./chunk-7NEKA6GE.mjs";
 import {
   checkRateLimit,
   getToolPolicy,
   loadPolicy,
   parseRateLimit
-} from "./chunk-5MQK42SD.mjs";
+} from "./chunk-EB7LESYM.mjs";
 import {
   getSignerInfo,
   initSigning,
   isSigningEnabled,
   signDecision
-} from "./chunk-GLPAPBKX.mjs";
+} from "./chunk-LXAQG3UR.mjs";
 import {
+  cedarSafeContext,
+  cedarSafeValue,
+  checkCedarPolicyText,
   evaluateCedar,
   isCedarAvailable,
   loadCedarPolicies,
   policySetFromSource,
   runEvaluatorSelfTest
-} from "./chunk-YNNVGCWP.mjs";
+} from "./chunk-P2YFFXF2.mjs";
 import {
   computeSbIssuerKid,
   createReceiptEnvelope,
@@ -166,8 +183,8 @@ import {
 import {
   DockerCodingSandbox,
   RepositoryCodingRunner
-} from "./chunk-N5HNIKFM.mjs";
-import "./chunk-JRJSKQFR.mjs";
+} from "./chunk-EZJRRWCW.mjs";
+import "./chunk-KS5QKUVX.mjs";
 import {
   CODING_PERMISSIONS,
   REPOSITORY_CODING_ACTIONS,
@@ -195,6 +212,7 @@ import {
   validRepositoryCodingResult,
   validRepositoryCodingSource,
   validRepositoryCodingStop,
+  validRepositoryCodingWorkflowRun,
   validRepositoryDeviceAuthorization,
   validRepositoryDeviceConfirmation,
   validRepositoryDeviceLink,
@@ -207,8 +225,9 @@ import {
   verifyRepositoryHuman,
   verifyRepositoryReviewEvidence,
   verifyRepositoryWorkspaceAgentState,
-  verifyRepositoryWorkspaceState
-} from "./chunk-S2VKIQZF.mjs";
+  verifyRepositoryWorkspaceState,
+  workflowRunFromEnvironment
+} from "./chunk-3ZDDS2TV.mjs";
 import {
   bytesToHex,
   canonical,
@@ -1894,6 +1913,7 @@ async function verifyRepositoryRecoveryObservation(value, authorityKey, scope, n
 }
 export {
   BUILTIN_PATTERNS,
+  BUILTIN_POLICY_PREFIX,
   CODING_PERMISSIONS,
   CONNECTOR_PILOTS,
   ConfidentialGate,
@@ -1921,6 +1941,10 @@ export {
   ReceiptPropagator,
   RepositoryCodingRunner,
   RepositoryTrialRunner,
+  STARTER_CONTAIN_TEMPLATE,
+  STARTER_POLICY,
+  STARTER_POLICY_FILE,
+  STARTER_POLICY_VERSION,
   ScopeBlindBridge,
   TRIAL_CODING_CHECK,
   TRIAL_DOCKER_IMAGE,
@@ -1930,10 +1954,16 @@ export {
   TRIAL_TEMPLATE,
   TRIAL_WORKFLOW,
   anchorToRekor,
+  annotatedRules,
   approvePolicyProposalWithDirectSignature,
   approvePolicyProposalWithWebAuthn,
   assertEgressSafe,
   buildDecisionContext,
+  builtinPolicyNames,
+  cedarLikeLiteral,
+  cedarSafeContext,
+  cedarSafeValue,
+  checkCedarPolicyText,
   checkRateLimit,
   codingCommand,
   codingSafePath,
@@ -1996,6 +2026,7 @@ export {
   initializeMandateRegistry,
   inspectEgress,
   isAgentId,
+  isBuiltinPolicySpec,
   isCedarAvailable,
   isDisclosureMode,
   isEvidenceType,
@@ -2023,6 +2054,7 @@ export {
   receiptsToHFRows,
   redactFields,
   refreshManagedMandate,
+  renderContainRules,
   repositoryDevicePermission,
   repositoryDevicePreimage,
   repositoryHumanPermission,
@@ -2030,6 +2062,7 @@ export {
   repositoryPreviewPath,
   repositorySetupArtifactUrl,
   repositorySnapshotDigest,
+  resolveBuiltinPolicy,
   resolveCredential,
   revealField,
   runEgressSelfCheck,
@@ -2042,6 +2075,7 @@ export {
   simulate,
   snapshotFromDirectory,
   startHookServer,
+  starterRules,
   toCredentialRequestOptions,
   toEgressSummary,
   toManifoldFormat,
@@ -2057,6 +2091,7 @@ export {
   validRepositoryCodingResult,
   validRepositoryCodingSource,
   validRepositoryCodingStop,
+  validRepositoryCodingWorkflowRun,
   validRepositoryDeviceAuthorization,
   validRepositoryDeviceConfirmation,
   validRepositoryDeviceLink,
@@ -2105,5 +2140,6 @@ export {
   verifyRepositoryWorkspaceAgentState,
   verifyRepositoryWorkspaceState,
   verifySelectiveDisclosurePackage,
+  workflowRunFromEnvironment,
   writeConnectorPilots
 };

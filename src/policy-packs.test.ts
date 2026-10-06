@@ -5,6 +5,7 @@ import { evaluateCedar, policySetFromSource } from './cedar-evaluator.js';
 describe('policy packs', () => {
   it('ships the expected starter packs', () => {
     expect(policyPackIds()).toEqual([
+      'coding-starter',
       'research-safe',
       'filesystem-safe',
       'git-safe',

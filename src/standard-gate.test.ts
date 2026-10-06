@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseStandard, readAmount, checkAmount, personRequired, heldIdFor, sidFromReportUrl, RecordReporter } from './standard-gate.js';
+import { parseStandard, readAmount, checkAmount, personRequired, standardDecision, heldIdFor, sidFromReportUrl, RecordReporter } from './standard-gate.js';
 
 const KEY = 'a'.repeat(64);
 const standard = (over: Record<string, unknown> = {}) => ({
@@ -23,11 +23,20 @@ describe('parseStandard', () => {
     expect(gate.required_above).toEqual({ minor: 50000, currency: 'USD' });
     expect(gate.signer_key).toBe(KEY);
     expect(gate.policy_digest).toBe('p'.repeat(64));
+    expect(gate.payment_tool).toBeNull(); expect(gate.gate_policy).toBe(true);
     expect(gate.summary).toBe('2 tools, at most USD 2,000.00 per instruction, a person approves above USD 500.00');
   });
-  it('accepts a standard with no limits and no run block', () => {
+  it('a payment standard (a limit, no run block) admits only the tool its enforcement block names', () => {
+    const gate = parseStandard(standard({ requirements: { human_approval: { required_above: null, distinct_approvers: 1 }, action_limits: { amount_max: { amount: 2000, currency: 'USD' }, per_instruction: true } }, enforcement: { policy_digest: 'p'.repeat(64), tool: 'submit_payment' } }));
+    expect(gate.tools).toEqual(['submit_payment']); expect(gate.payment_tool).toBe('submit_payment'); expect(gate.gate_policy).toBe(true);
+    const unnamed = parseStandard(standard({ requirements: { human_approval: { required_above: null, distinct_approvers: 1 }, action_limits: { amount_max: { amount: 2000, currency: 'USD' }, per_instruction: true } }, enforcement: undefined }));
+    expect(unnamed.payment_tool).toBe('submit_payment');
+  });
+  it('accepts a standard with no limits and no run block, and says the gate admits nothing under it', () => {
     const gate = parseStandard(standard({ requirements: { human_approval: { required_above: null, distinct_approvers: 1 } } }));
     expect(gate.tools).toBeNull(); expect(gate.amount_max).toBeNull(); expect(gate.required_above).toBeNull();
+    expect(gate.gate_policy).toBe(false); expect(gate.summary).toMatch(/admits nothing/);
+    expect(standardDecision(gate, 'pay_invoice', { amount_minor: 1, currency: 'USD' })).toMatchObject({ decision: 'deny', reason: 'standard_no_gate_policy' });
   });
   it('refuses anything that is not a signed standard', () => {
     expect(() => parseStandard({ type: 'other' })).toThrow(/not a signed standard/);
@@ -44,10 +53,32 @@ describe('amounts', () => {
     expect(readAmount({ command: 'ls' })).toBeNull();
   });
   it('refuses over the limit or in another currency, passes at the limit and with no amount', () => {
-    expect(checkAmount(gate, { amount_minor: 200000, currency: 'USD' })).toEqual({ ok: true });
-    expect(checkAmount(gate, { amount_minor: 200001, currency: 'USD' })).toMatchObject({ ok: false, reason: 'standard_amount_over_limit' });
-    expect(checkAmount(gate, { amount_minor: 100, currency: 'AUD' })).toMatchObject({ ok: false, reason: 'standard_currency_not_permitted' });
-    expect(checkAmount(gate, { path: '/etc/hosts' })).toEqual({ ok: true });
+    expect(checkAmount(gate, 'pay_invoice', { amount_minor: 200000, currency: 'USD' })).toEqual({ ok: true });
+    expect(checkAmount(gate, 'pay_invoice', { amount_minor: 200001, currency: 'USD' })).toMatchObject({ ok: false, reason: 'standard_amount_over_limit' });
+    expect(checkAmount(gate, 'pay_invoice', { amount_minor: 100, currency: 'AUD' })).toMatchObject({ ok: false, reason: 'standard_currency_not_permitted' });
+    expect(checkAmount(gate, 'send_email', { path: '/etc/hosts' })).toEqual({ ok: true });
+  });
+  it('reads amounts the way the compiled policy does: integer minor units and the exact currency, or the call is refused', () => {
+    expect(checkAmount(gate, 'pay_invoice', { amount: 20, currency: 'USD' })).toMatchObject({ ok: false, reason: 'standard_amount_missing' });
+    expect(checkAmount(gate, 'pay_invoice', { amount_minor: 20.5, currency: 'USD' })).toMatchObject({ ok: false, reason: 'standard_amount_missing' });
+    expect(checkAmount(gate, 'pay_invoice', { amount_minor: 100, currency: 'usd' })).toMatchObject({ ok: false, reason: 'standard_currency_not_permitted' });
+    expect(checkAmount(gate, 'pay_invoice', { amount_minor: 100 })).toMatchObject({ ok: false, reason: 'standard_currency_not_permitted' });
+  });
+  it('a payment standard requires an amount on its tool and ignores the limit for nothing else', () => {
+    const pay = parseStandard(standard({ requirements: { human_approval: { required_above: { amount: 500, currency: 'USD' }, distinct_approvers: 1 }, action_limits: { amount_max: { amount: 2000, currency: 'USD' }, per_instruction: true } }, enforcement: { policy_digest: 'p'.repeat(64), tool: 'submit_payment' } }));
+    expect(checkAmount(pay, 'submit_payment', { to: 'x' })).toMatchObject({ ok: false, reason: 'standard_amount_missing' });
+    expect(standardDecision(pay, 'submit_payment', { amount_minor: 40000, currency: 'USD' })).toMatchObject({ decision: 'allow' });
+    expect(standardDecision(pay, 'submit_payment', { amount_minor: 60000, currency: 'USD' })).toMatchObject({ decision: 'hold', reason: 'standard_requires_person' });
+    expect(standardDecision(pay, 'submit_payment', { amount_minor: 200001, currency: 'USD' })).toMatchObject({ decision: 'deny', reason: 'standard_amount_over_limit' });
+    expect(standardDecision(pay, 'delete_file', { path: '/ledger' })).toMatchObject({ decision: 'deny', reason: 'standard_tool_not_allowed' });
+    expect(standardDecision(pay, 'Submit_Payment', { amount_minor: 1, currency: 'USD' })).toMatchObject({ decision: 'deny', reason: 'standard_tool_not_allowed' });
+  });
+  it('gives one answer per call, in order: tool list, limit, then the person', () => {
+    expect(standardDecision(gate, 'rm_rf', {})).toMatchObject({ decision: 'deny', reason: 'standard_tool_not_allowed' });
+    expect(standardDecision(gate, 'send_email', { to: 'a@b.c' })).toMatchObject({ decision: 'allow', reason: 'standard_tool_allowed' });
+    expect(standardDecision(gate, 'pay_invoice', { amount_minor: 40000, currency: 'USD' })).toMatchObject({ decision: 'allow' });
+    expect(standardDecision(gate, 'pay_invoice', { amount_minor: 60000, currency: 'USD' })).toMatchObject({ decision: 'hold' });
+    expect(standardDecision(gate, 'pay_invoice', { amount_minor: 300000, currency: 'USD' })).toMatchObject({ decision: 'deny', reason: 'standard_amount_over_limit' });
   });
   it('hands a call above the threshold to a person, and one it cannot compare', () => {
     expect(personRequired(gate, { amount_minor: 50000, currency: 'USD' })).toEqual({ required: false });

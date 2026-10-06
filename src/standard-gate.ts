@@ -30,6 +30,10 @@ export interface StandardGate {
   required_above: Money | null;
   /** The gate policy digest the standard was signed with, when it carries one. */
   policy_digest: string | null;
+  /** The one tool the per-instruction limit applies to (a payment standard names it in its enforcement block); null for a run standard. */
+  payment_tool: string | null;
+  /** Whether the standard states anything the gate can enforce (a tool list or a limit). Without one the gate admits nothing under it. */
+  gate_policy: boolean;
   /** Plain words for the log line at startup. */
   summary: string;
 }
@@ -51,19 +55,31 @@ export function parseStandard(value: unknown): StandardGate {
   if (!isObj(value.signature) || typeof value.signature.value !== 'string') throw new Error('the standard is not signed');
   const q = isObj(value.requirements) ? value.requirements : {};
   const run = isObj(q.run) ? q.run : null;
-  const tools = run && Array.isArray(run.allowed_tools) ? run.allowed_tools.filter((t): t is string => typeof t === 'string') : null;
+  const runTools = run && Array.isArray(run.allowed_tools) ? run.allowed_tools.filter((t): t is string => typeof t === 'string') : null;
   const limits = isObj(q.action_limits) ? q.action_limits : null;
   const amount_max = limits ? moneyFrom(limits.amount_max) : null;
   const approval = isObj(q.human_approval) ? q.human_approval : null;
   const required_above = approval ? moneyFrom(approval.required_above) : null;
   const enforcement = isObj(value.enforcement) ? value.enforcement : null;
   const policy_digest = enforcement && typeof enforcement.policy_digest === 'string' ? enforcement.policy_digest : null;
+  // One answer with the compiled policy the standard carries: a run standard's gate policy is its tool list (a limit it
+  // also states is checked on the records, not here); a payment standard's gate policy admits its one named tool within
+  // the limit and nothing else; a standard that states neither admits nothing at the gate.
+  const enforcementTool = enforcement && typeof enforcement.tool === 'string' && enforcement.tool ? enforcement.tool : null;
+  const payment_tool = !run && amount_max ? enforcementTool ?? 'submit_payment' : null;
+  const tools = run ? runTools : payment_tool ? [payment_tool] : null;
+  const gate_policy = !!run || !!payment_tool;
   const parts = [tools ? `${tools.length} tool${tools.length === 1 ? '' : 's'}` : 'no tool list', amount_max ? `at most ${fmt(amount_max)} per instruction` : 'no amount limit', required_above ? `a person approves above ${fmt(required_above)}` : 'no approval threshold'];
-  return { request_id: value.request_id, digest: value.digest, signer_key: recipient.verification_key.toLowerCase(), tools, amount_max, required_above, policy_digest, summary: parts.join(', ') };
+  return { request_id: value.request_id, digest: value.digest, signer_key: recipient.verification_key.toLowerCase(), tools, amount_max, required_above, policy_digest, payment_tool, gate_policy, summary: gate_policy ? parts.join(', ') : `${parts.join(', ')}; the gate admits nothing until the standard states tools or a limit` };
 }
 
 export function loadStandardFile(path: string): StandardGate {
   return parseStandard(JSON.parse(readFileSync(path, 'utf-8')));
+}
+
+/** Whether a call names an amount at all, in either spelling; only integer amount_minor is accepted by the limit. */
+export function carriesAmount(input: unknown): boolean {
+  return isObj(input) && ('amount_minor' in input || 'amount' in input);
 }
 
 /** The amount a call carries, in minor units: amount_minor (integer) or amount (major units), with a currency. Null when the call carries no amount. */
@@ -75,13 +91,22 @@ export function readAmount(input: unknown): Money | null {
   return null;
 }
 
-/** The per-instruction limit, checked before the call runs. A call with no amount is not a payment and passes; a call in another currency is refused. */
-export function checkAmount(gate: StandardGate, input: unknown): { ok: true } | { ok: false; reason: string; detail: string } {
+/**
+ * The per-instruction limit, checked before the call runs, with the same reading as the compiled Cedar policy: the named
+ * payment tool must carry an integer amount_minor and the standard's currency, spelled exactly; the limit is inclusive.
+ * A call to any other tool is not a payment and passes this check (the tool list decides it).
+ */
+export function checkAmount(gate: StandardGate, tool: string, input: unknown): { ok: true } | { ok: false; reason: string; detail: string } {
   if (!gate.amount_max) return { ok: true };
-  const amount = readAmount(input);
-  if (!amount) return { ok: true };
-  if (amount.currency !== gate.amount_max.currency) return { ok: false, reason: 'standard_currency_not_permitted', detail: `the standard permits ${gate.amount_max.currency} only; this call is in ${amount.currency || 'no named currency'}` };
-  if (amount.minor > gate.amount_max.minor) return { ok: false, reason: 'standard_amount_over_limit', detail: `${fmt(amount)} is over the standard's limit of ${fmt(gate.amount_max)} per instruction` };
+  // A payment standard's limit binds its one named tool, which must always carry an amount. A run standard's limit
+  // binds any listed tool whose call carries an amount (amount_minor or amount); a call carrying neither is not a payment.
+  if (gate.payment_tool ? tool !== gate.payment_tool : !carriesAmount(input)) return { ok: true };
+  const cap = gate.amount_max;
+  const minor = isObj(input) && typeof input.amount_minor === 'number' && Number.isInteger(input.amount_minor) ? input.amount_minor : null;
+  const currency = isObj(input) && typeof input.currency === 'string' ? input.currency : null;
+  if (minor === null) return { ok: false, reason: 'standard_amount_missing', detail: `the standard limits each ${tool} instruction to ${fmt(cap)}, and this call carries no integer amount_minor to check` };
+  if (currency !== cap.currency) return { ok: false, reason: 'standard_currency_not_permitted', detail: `the standard permits ${cap.currency} only; this call is in ${currency ?? 'no currency'}` };
+  if (minor > cap.minor) return { ok: false, reason: 'standard_amount_over_limit', detail: `${fmt({ minor, currency })} is over the standard's limit of ${fmt(cap)} per instruction` };
   return { ok: true };
 }
 
@@ -93,6 +118,22 @@ export function personRequired(gate: StandardGate, input: unknown): { required: 
   if (amount.currency !== gate.required_above.currency) return { required: true, detail: `${fmt(amount)} cannot be compared with the standard's threshold of ${fmt(gate.required_above)}` };
   if (amount.minor > gate.required_above.minor) return { required: true, detail: `${fmt(amount)} is above ${fmt(gate.required_above)}, so a named person approves it` };
   return { required: false };
+}
+
+export type StandardDecision = { decision: 'allow' | 'deny' | 'hold'; reason: string; detail: string };
+
+/**
+ * The one answer the gate gives a call under a standard, in the order the hosted rehearsal and the compiled policy give it:
+ * nothing admitted without a gate policy; the tool list; the limit; then the named person's threshold, which holds rather than refuses.
+ */
+export function standardDecision(gate: StandardGate, tool: string, input: unknown): StandardDecision {
+  if (!gate.gate_policy) return { decision: 'deny', reason: 'standard_no_gate_policy', detail: 'the standard states neither tools nor a per-instruction limit, so the gate admits nothing under it; state one on its page and sign it again' };
+  if (gate.tools && !gate.tools.includes(tool)) return { decision: 'deny', reason: 'standard_tool_not_allowed', detail: `"${tool}" is not among the tools the standard permits (${gate.tools.join(', ')}); the name must match exactly` };
+  const amount = checkAmount(gate, tool, input);
+  if (!amount.ok) return { decision: 'deny', reason: amount.reason, detail: amount.detail };
+  const person = personRequired(gate, input);
+  if (person.required) return { decision: 'hold', reason: 'standard_requires_person', detail: person.detail };
+  return { decision: 'allow', reason: gate.payment_tool ? 'standard_within_limit' : 'standard_tool_allowed', detail: '' };
 }
 
 /** One id per exact action under one standard, so a retry finds the decision made for it. */

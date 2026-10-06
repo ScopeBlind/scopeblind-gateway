@@ -1,16 +1,60 @@
-## 0.25.0 — Shared managed coding trials
+## 0.31.0: A starter policy, numbers Cedar can hold, and denials that say why
+
+- **The starter policy.** `policies/starter.cedar` is starter.cedar v1: seven `@id`/`@reason` forbid rules over a default allow. They block a recursive delete of `/`, the home folder or the parent folder; a force-push to `main` or `master`, or one that names no branch; a Read of a credential file (`.env*`, `~/.ssh`, `~/.aws`, `.netrc`, `.npmrc`, docker, kube and gh credentials, `~/.gnupg`, the signing key; not `*.pub` or `*.example`); a Grep inside `.env*`, `~/.ssh` or `~/.aws`; a shell line that prints a credential file; a download piped into a shell; and writes to system folders, shell profiles, LaunchAgents, `~/.ssh`, `~/.aws`, credential files, Claude and Codex settings, `protect.cedar`, the signing key, or through `/../`. Shell rules match the raw command text, so they are a guardrail for an agent working in good faith, not a sandbox. A force-push that names no branch stays blocked; keychain and token lookups are not covered; every rule denies, none asks.
+- `--policy builtin:starter` evaluates the bundled text with no file (`evaluate --cedar builtin:starter` and `sign --cedar builtin:starter` too; `serve` and the MCP gateway still read a policy directory). Its policy digest is the one `--policy` gives a file holding the same bytes. An unknown built-in fails closed and names the ones there are. On 0.30.0 the name is a missing file and every call is denied, so anything that uses it must pin 0.31.0 or later.
+- `init --starter` writes `./protect.cedar` from the starter (never over an existing file without `--force`), creates `./protect-mcp.key`, the Ed25519 key the Claude Code plugin's sign hook reads (mode 0600; an existing key is never replaced, even with `--force`), lists it in `.gitignore`, and prints the rules in plain words. It replaces the plugin README's three shell lines. Plain `init` is unchanged.
+- `init --starter --contain` (or `init --contain`) adds two opt-in rules with the folder's absolute path, its `~/` form and the home folder filled in and escaped for Cedar: `starter.write-outside-project` blocks writes outside the folder, `/tmp`, `/var/folders` and Claude's memory and plans, and `starter.delete-outside-project` blocks an `rm -rf` whose first target is an absolute path outside them. It refuses `/` and the home folder as a project, and checks that the text parses before writing it.
+- The `coding-starter` policy pack, `init-hooks` (`policies/agent.cedar`) and `onboard` (a coding-starter scenario) hand out the same text. `generateSampleCedarPolicy()` returns it; the sample it replaced permitted six tools whole, Bash included, and denied every other tool.
+- **Numbers Cedar can hold.** Cedar has no null, no fractions and no integers beyond 64 bits, and the engine refuses the whole request when the context carries one, so 0.30.0 (and 0.7.4) denied any call whose input held `{"coordinate":[100.5,200]}`, `"zoom":1.5` or a null, under every policy, permit-all included. The gate now drops nulls (in records and lists), keeps whole numbers inside Cedar's Long range as numbers, turns any other number into the text JavaScript writes for it (`1.5` becomes `"1.5"`, `1e20` becomes `"100000000000000000000"`), and drops `__entity`, `__extn` and `__expr` keys, so tool input is never read as a Cedar entity reference or extension value. A policy matches a fraction as text (`context.input.zoom == "1.5"`), or with `decimal(...)` when it has at most four decimal places; a numeric comparison on it is a policy error, and the gate denies on any policy error. Inputs 0.30.0 could evaluate reach Cedar unchanged, apart from those three keys, and receipts still bind the input as the agent sent it.
+- **Deny reasons name the rule.** Each rule is evaluated under its `@id`, so a deny reads `cedar_deny: starter.read-secret-file: Reads a credential file such as .env, ~/.ssh or ~/.aws. Ask the person for the value you need.` where it read `cedar_deny: {"reason":["policy3"],"errors":[]}`. Several matching rules are listed in source order. A rule with no `@id`, or one whose `@id` repeats, looks positional or is `__proto__`, keeps Cedar's positional id, and a call no rule permitted reads `cedar_deny: no permit matched (default deny)`. Decision metadata carries `denied_by` (each rule's id and reason) and `default_deny`; `matched_policies` holds the same names. Policy digests are unchanged.
+- `evaluate` writes the reason to stderr on a deny in every mode: `protect-mcp denied: <reason>`, one line. In flag mode (`--policy ... --tool ... --input ...`, exit 2 on deny, the plugin's hook) it was written only to stdout, and Claude Code shows the agent a hook's stderr. Hermes keeps its verdict on stdout and now gets the line on stderr too. The hook server and the MCP gateway name the rule in the reason they return.
+- fast-uri 3.1.8 (moderate advisory GHSA-hrr3-gc8f-f4qj), bundled into `dist` through @modelcontextprotocol/sdk.
+- Adds `src/starter-policy.ts`, `vectors/starter-policy.v1.json` (the 59 calls the starter was designed against, 28 to allow and 31 to block with the rule each names; sixteen inputs with fractions, nulls, `1e20` and escape keys; the starter's digest) and `src/starter-policy.test.ts`, which holds the real engine to that file. `src/cli-format.test.ts` holds the built CLI to it. Exports `STARTER_POLICY`, `starterRules`, `renderContainRules`, `resolveBuiltinPolicy`, `cedarSafeValue`, `cedarSafeContext` and `checkCedarPolicyText`.
+
+## 0.30.0: The grant travels with the call
+
+- Connector-action profile (draft-farley-acta-connector-action-00): an agent platform can present, with a `tools/call`, the grant its agent is acting under, in `_meta["veritasacta.com/connector"]` as a bare or platform-signed context. The gateway records it on the decision receipt as `connector`: the context verbatim, what the gateway itself checked about the signature (`unsigned`, `unverifiable`, `valid`, `invalid`), the digest of the call as received, and, when a service reads its effect back, that readback's digest. A malformed context is never recorded.
+- `connector_platform_keys` in the policy file names the platform keys the gateway trusts, key identifier to hex Ed25519 public key. Without one, a signed context is recorded as unverifiable, never as valid.
+- Adds `src/connector-action.ts` (`readConnectorContext`, `recordConnectorAction`, `checkContextSignature`, `requestDigest`, `readbackDigest`, `withEffect`, `connectorRecordErrors`) and `vectors/connector-action.v1.json`, seven shared vectors including three a conformant verifier must refuse.
+- No record signature changes shape; receipts without the member are unchanged.
+
+## 0.29.0: The result you saw is the result delivered
+
+- A coding result may carry `workflow_run`: the GitHub Actions run id, attempt, workflow reference and workflow commit the worker was inside when it signed the result, read from the run's own environment (`workflowRunFromEnvironment`, validated by `validRepositoryCodingWorkflowRun`). The coding runner sets it whenever it runs inside Actions; results from older runners carry none, and the coding evidence verifier lists that as a limitation rather than an error.
+- No record signature changes shape. Older receivers, runners and verifiers continue to accept results without the field.
+
+## 0.28.0: One standard, two enforcers, one answer
+
+- The standard gate (`--standard`) decides every call with one function, `standardDecision`, in the order the compiled policy and the rehearsal on scopeblind.com decide it: nothing is admitted without a gate policy; then the tool list; then the per-instruction limit; then the named person's threshold, which holds the call. Four readings change so that the gate and the compiled Cedar policy give the same answer: a standard that states neither tools nor a limit now admits nothing at the gate (`standard_no_gate_policy`) where it admitted everything; a payment standard (a limit, no run block) admits only the tool its enforcement block names (`standard_tool_not_allowed` for any other) where it admitted any tool; the limit reads the call as the policy does, an integer `amount_minor` in the standard's currency spelled exactly, so `amount` in major units or a lowercase currency is refused (`standard_amount_missing`, `standard_currency_not_permitted`); and under a run standard the limit binds only calls that name an amount, on any listed tool.
+- `checkAmount(gate, tool, input)` now takes the tool. Adds `standardDecision`, `StandardDecision`, `carriesAmount`, and `payment_tool` / `gate_policy` on `StandardGate`.
+- Adds `vectors/standard-decisions.v1.json`, six standards and fifty calls with the decision each standard's own words require, and `src/standard-vectors.test.ts`, which holds the real Cedar engine and the standard gate to that file. scopeblind.com's release gate holds its compiler's JS mirror and its rehearsal to the same file, so the hosted answer and the gate's answer cannot drift apart unnoticed.
+- The agent setup command (`coordination agent setup`) names this version; it was pinned to 0.25.0.
+
+## 0.27.0: Criteria linked to evidence
+
+- A success criterion in a review brief may carry `evidence`: up to twelve links of the form `{kind:'file',path}`, `{kind:'check',name,app_id}` or `{kind:'preview'}`. Validators accept and bound them; a criterion without links is treated by presentation as relying on the whole change.
+- Adds `validCriterionLink` and the `RepositoryCriterionLink` type. No record signatures change shape; briefs written by older clients remain valid.
+
+## 0.26.0: Durable consent
+
+- An approval of one exact repository version now holds until the task's deadline (up to seven days) instead of fifteen minutes. The review decision made against a fresh packet holds as long as the approval; the packet only has to be fresh when the person decides.
+- Adds the signed `scopeblind.repository.revocation.v1` record: a person withdraws their own approval until delivery begins. The hosted service removes the approval from the current decisions, keeps the withdrawal in `RepositoryState.revocations`, and refuses to re-record a withdrawn approval. Verifiers check every withdrawal's signature and that it is never counted.
+- The receiver no longer requires the review packet to be unexpired at delivery. It re-observes the recorded preview and files, rereads both approvals and the destination, and applies only within its short-lived permission; if anything moved, it refuses.
+- Adds `repository_revoke` to the repository actions.
+
+## 0.25.0: Shared managed coding trials
 
 - Adds a fixed-repository managed trial controller with independently signed human coding permission, bounded model work, immutable previews, fresh exact review and destination acceptance. The controller runs only in the pinned ScopeBlind-owned workflow; trial visitors supply no repository credentials.
 - Enforces per-trial scope, job and token limits in the service database and retains uncertain operations for explicit reconciliation. Read-only publication reconciliation stays separate from explicitly finishing an existing PR’s readiness under current dual authority.
 - Adds dated read-only repository recovery observations and an owner-scoped status read for saved workflow jobs. Provider status never substitutes for human authority or signed receiver evidence.
 - Exposes the managed trial and recovery verification protocols and ships the standalone managed controller as `dist/repository-trial-cli.js`.
 
-## 0.24.1 — Stable guided connection expiry
+## 0.24.1: Stable guided connection expiry
 
 - Sample each guided inspection and coding-readiness timestamp once, then derive its expiry from that same instant. Crossing a millisecond boundary no longer creates a record just beyond the existing 24-hour validity limit.
 - Advancing-clock regressions cover the actual signed discovery and coding-readiness paths. Permissions, expiry limits, workflow scope, and existing evidence formats are unchanged.
 
-## 0.24.0 — Guided repositories and bounded coding work
+## 0.24.0: Guided repositories and bounded coding work
 
 - Guide repository/PR setup through an authenticated GitHub installation, owner-reviewed workflow changes, locally generated keys and a signed readiness callback. The connection app can read selected repositories and wake approved workflows; it has no code-write permission.
 - Add an independent, dual-signed `edit_code` mandate. A trusted Actions controller calls the model within durable limits, applies allowed edits, runs fixed tests/build in a credential-free, networkless Docker container, and may publish one exact new PR and static preview. Destination updates still require fresh exact human decisions.
@@ -18,28 +62,28 @@
 - Add project-scoped human-device signatures, explicit confirmation, revocation and recorded live-authority checks. A device does not replace the member's primary key or gain setup, agent-grant or execution authority.
 - Verify repository code-work and device evidence offline using the same bounded public core. Test/build results and GitHub readbacks remain worker/receiver attestations.
 
-## 0.23.0 — 2026-09-16
+## 0.23.0 (2026-09-16)
 
 - Add reusable client projects with signed membership, task assignments, decision inboxes and explicit recovery by membership-key rotation. Historical signatures retain their original identity.
 - Add real PR review briefs, stable success criteria and receiver-observed deployment preview packets. Exact human decisions bind the brief, packet and existing repository approval together.
 - Add dual-adopted, expiring agent preparation mandates with repository/path/check limits and atomic request allowances. Agents can prepare recurring reviews, report criterion evidence and request general revisions without receiving human approval or repository execution authority.
 - Preserve exact signed agent submissions across interrupted replies, and verify the authority used for recorded findings. Existing repository evidence and the disposable contact-page demo remain compatible.
 
-## 0.22.0 — 2026-09-16
+## 0.22.0 (2026-09-16)
 
 - Add a real shared contact-page demo with isolated repository branches, exact file previews, two-person approval, receiver readback and linked revisions. The trusted workflow never executes proposed code.
 - Add `repository setup` and `repository readiness`: discover actual check providers, generate a pinned receiver workflow and verify signed read-only setup observations. A saved connection grants no task approval.
 - Add agent-profile repository inspection and revision suggestions. Human-signed, expiring grants remain separate from invoice connections, human approvals and receiver execution; exact signed suggestions survive interrupted replies.
 - Verify portable previews, original revision feedback and scoped agent contributions while preserving repository evidence v1.
 
-## 0.21.0 — 2026-09-16
+## 0.21.0 (2026-09-16)
 
 - Add repository tasks with bounded paths, exact base/head commit approval by two distinct principals, pinned check providers and receiver-signed destination observations.
 - Add `repository keygen`, `inspect`, `execute` and read-only `reconcile` commands. The repository owner retains the write credential; execution uses GitHub atomic ref preconditions and never executes proposed code.
 - Separate authorization, observed effects and recipient acceptance in portable evidence. An uncertain execution is reconciled rather than sent again.
 - Align the hosted coordination client and standalone gateway on one version-pinned npm release.
 
-## 0.20.0 — 2026-09-15
+## 0.20.0 (2026-09-15)
 
 - Add a reusable private agent profile and agent-first draft preparation. People review and sign their own limits; draft links and profile setup grant no task authority.
 - Preserve separate negotiation and execution connections. An original organizer may explicitly authorize the same agent key for the exact jointly adopted task, with durable claim recovery and bounded reconnection.
@@ -47,7 +91,7 @@
 - Add an authenticated decision inbox and optional generic browser reminders. Reminders contain no task data, grant no authority and do not wake external agents.
 - Verify phone-signed agreement lineage when inspecting or exporting subsequent negotiation, rehearsal and completed-work records. Existing standalone gateway commands and earlier evidence formats remain available.
 
-## 0.19.0 — 2026-09-15
+## 0.19.0 (2026-09-15)
 
 - Add Claude Code, Codex CLI and generic MCP setup choices, connection-specific configuration paths and scoped resume instructions. Private pairing codes are entered through the terminal prompt.
 - Confirm readiness only after the authenticated adapter verifies and acknowledges the current signed context; preserve separate execution, rehearsal and negotiation scopes.
@@ -55,13 +99,13 @@
 - Compare explicitly requested alternatives through the actual isolated gate and bind both human approvals to one exact selected plan. Preserve earlier proposals, records and immutable public snapshots.
 - Link fresh recovery discussions to earlier discussions or an eligible exact blocked request without transferring old authority.
 
-## 0.18.0 — 2026-09-15
+## 0.18.0 (2026-09-15)
 
 - Verify exact public negotiation and result snapshots with `verifyPublicSnapshot`, including the person’s signed sharing request and the service’s historical receipt. View-only links confer no action or approval authority.
 - Keep public sharing and invitation rotation restricted to human principals; paired agent capabilities are unchanged.
 - Update versioned coordination setup commands.
 
-## 0.17.0 — 2026-09-15
+## 0.17.0 (2026-09-15)
 
 - Add principal-bound, version-3 pairing for two-person invoice agreement discussions.
 - Expose scoped inspection, proposal, response, comparison and bounded wait tools without payment or approval powers.

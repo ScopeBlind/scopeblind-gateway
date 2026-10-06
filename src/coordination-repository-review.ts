@@ -3,9 +3,11 @@ import {verify, type Signed} from './coordination-protocol.js';
 import {REPOSITORY_HEX, REPOSITORY_ID, REPOSITORY_SHA, validRepositoryEnvelope, type RepositoryTask, type RepositoryProposal, type RepositoryApproval, type RepositoryState} from './coordination-repository.js';
 export const REPOSITORY_REVIEW_ACTIONS=['repository_review_get','repository_review_packet','repository_review_feedback','repository_review_recommendation','repository_review_export'] as const;
 export type RepositoryReviewAction=typeof REPOSITORY_REVIEW_ACTIONS[number];
+/** What a criterion relies on. A revision that touches a linked file or replaces the preview invalidates the criterion conservatively; a criterion with no links is treated as relying on everything in the packet. */
+export type RepositoryCriterionLink={kind:'file';path:string}|{kind:'check';name:string;app_id:number}|{kind:'preview'};
 export interface RepositoryReviewContent {
  brief:string;
- success_criteria:Array<{id:string;text:string}>;
+ success_criteria:Array<{id:string;text:string;evidence?:RepositoryCriterionLink[]}>;
  preview_policy?:{environment:string;check:{name:string;app_id:number};allowed_origins:string[];required:boolean};
 }
 export interface RepositoryReviewBrief extends RepositoryReviewContent {
@@ -67,8 +69,15 @@ export function safeRepositoryPreviewUrl(value:unknown):value is string {
  if(typeof value!=='string'||value.length>2000||/[\s\u0000-\u001f\u007f]/.test(value))return false;
  try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&u.href===value&&!u.hash&&!u.search&&u.hostname!=='localhost'&&!u.hostname.endsWith('.localhost')&&u.hostname.includes('.')&&!/^\d+(?:\.\d+){3}$/.test(u.hostname)&&!u.hostname.includes(':');}catch{return false;}
 }
+export function validCriterionLink(e:unknown):e is RepositoryCriterionLink{
+ if(!e||typeof e!=='object')return false;const v=e as Record<string,unknown>;
+ if(v.kind==='preview')return shape(v,['kind']);
+ if(v.kind==='file')return shape(v,['kind','path'])&&typeof v.path==='string'&&v.path.length>=1&&v.path.length<=400&&!v.path.includes('..')&&!v.path.startsWith('/')&&!/[\u0000-\u001f]/.test(v.path);
+ if(v.kind==='check')return shape(v,['kind','name','app_id'])&&line(v.name,100)&&num(v.app_id);
+ return false;
+}
 function content(v:Record<string,unknown>){
- if(!text(v.brief,4000)||!Array.isArray(v.success_criteria)||v.success_criteria.length<1||v.success_criteria.length>20||!v.success_criteria.every(c=>shape(c,['id','text'])&&id(c.id)&&text(c.text,600))||new Set(v.success_criteria.map(c=>c.id)).size!==v.success_criteria.length)return false;
+ if(!text(v.brief,4000)||!Array.isArray(v.success_criteria)||v.success_criteria.length<1||v.success_criteria.length>20||!v.success_criteria.every(c=>shape(c,['id','text'],['evidence'])&&id(c.id)&&text(c.text,600)&&(c.evidence===undefined||Array.isArray(c.evidence)&&c.evidence.length<=12&&c.evidence.every(validCriterionLink)&&new Set(c.evidence.map(e=>JSON.stringify(e))).size===c.evidence.length))||new Set(v.success_criteria.map(c=>c.id)).size!==v.success_criteria.length)return false;
  const p=v.preview_policy;
  return p===undefined||shape(p,['environment','check','allowed_origins','required'])&&line(p.environment,100)&&shape(p.check,['name','app_id'])&&line(p.check.name,100)&&num(p.check.app_id)&&typeof p.required==='boolean'&&Array.isArray(p.allowed_origins)&&p.allowed_origins.length>0&&p.allowed_origins.length<=8&&new Set(p.allowed_origins).size===p.allowed_origins.length&&p.allowed_origins.every(origin=>typeof origin==='string'&&safeRepositoryPreviewUrl(origin+'/')&&new URL(origin).origin===origin);
 }
@@ -88,7 +97,7 @@ export function validRepositoryReviewPacket(v:unknown,brief:Signed<RepositoryRev
  return a===undefined||shape(a,['id','name','sha256','workflow_run_id','head_sha','expires_at'])&&num(a.id)&&line(a.name,200)&&hex(a.sha256)&&num(a.workflow_run_id)&&a.head_sha===v.head_sha&&at(a.expires_at)&&Date.parse(a.expires_at)>Date.parse(String(v.observed_at));
 }
 export function validRepositoryReviewDecision(v:unknown,brief:Signed<RepositoryReviewBrief>,packet:Signed<RepositoryReviewPacket>,approval:Signed<RepositoryApproval>):v is RepositoryReviewDecision {
- return shape(v,['type','task_id','task_digest','brief_digest','packet_digest','proposal_digest','approval_digest','principal_key','role','issued_at','expires_at'])&&v.type==='scopeblind.repository.review-decision.v1'&&v.task_id===brief.payload.task_id&&v.task_digest===brief.payload.task_digest&&v.brief_digest===brief.digest&&v.packet_digest===packet.digest&&v.proposal_digest===packet.payload.proposal_digest&&v.approval_digest===approval.digest&&v.principal_key===approval.payload.principal_key&&v.role===approval.payload.role&&v.issued_at===approval.payload.issued_at&&v.expires_at===approval.payload.expires_at&&at(v.issued_at)&&at(v.expires_at)&&Date.parse(v.issued_at)>=Date.parse(packet.payload.observed_at)&&Date.parse(v.expires_at)<=Date.parse(packet.payload.expires_at)&&(!brief.payload.preview_policy?.required||packet.payload.preview.status==='available'||approval.payload.decision==='reject');
+ return shape(v,['type','task_id','task_digest','brief_digest','packet_digest','proposal_digest','approval_digest','principal_key','role','issued_at','expires_at'])&&v.type==='scopeblind.repository.review-decision.v1'&&v.task_id===brief.payload.task_id&&v.task_digest===brief.payload.task_digest&&v.brief_digest===brief.digest&&v.packet_digest===packet.digest&&v.proposal_digest===packet.payload.proposal_digest&&v.approval_digest===approval.digest&&v.principal_key===approval.payload.principal_key&&v.role===approval.payload.role&&v.issued_at===approval.payload.issued_at&&v.expires_at===approval.payload.expires_at&&at(v.issued_at)&&at(v.expires_at)&&Date.parse(v.issued_at)>=Date.parse(packet.payload.observed_at)&&Date.parse(v.issued_at)<=Date.parse(packet.payload.expires_at)&&(!brief.payload.preview_policy?.required||packet.payload.preview.status==='available'||approval.payload.decision==='reject');
 }
 export function validRepositoryReviewFeedback(v:unknown,brief:Signed<RepositoryReviewBrief>,packet:Signed<RepositoryReviewPacket>):v is RepositoryReviewFeedback {
  return shape(v,['type','id','task_id','task_digest','basis_digest','packet_digest','requester_key','criterion_ids','message','requested_changes','issued_at'],['mandate_digest'])&&v.type==='scopeblind.repository.review-feedback.v1'&&id(v.id)&&v.task_id===brief.payload.task_id&&v.task_digest===brief.payload.task_digest&&hex(v.basis_digest)&&v.packet_digest===packet.digest&&hex(v.requester_key)&&(v.mandate_digest===undefined||hex(v.mandate_digest))&&Array.isArray(v.criterion_ids)&&v.criterion_ids.length<=20&&new Set(v.criterion_ids).size===v.criterion_ids.length&&v.criterion_ids.every(cid=>brief.payload.success_criteria.some(c=>c.id===cid))&&text(v.message,2000)&&text(v.requested_changes,4000,true)&&at(v.issued_at)&&Date.parse(v.issued_at)>=Date.parse(packet.payload.observed_at);
