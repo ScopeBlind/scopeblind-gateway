@@ -53,7 +53,7 @@ function decodePairingCode(value) {
 }
 
 // src/coordination-agent-setup.ts
-var AGENT_PACKAGE_URL = "protect-mcp@0.31.0";
+var AGENT_PACKAGE_URL = "protect-mcp@0.31.1";
 var AGENT_CLIENTS = [
   { id: "claude-code", label: "Claude Code" },
   { id: "codex", label: "Codex CLI" },

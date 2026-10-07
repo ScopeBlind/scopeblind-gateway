@@ -19480,16 +19480,32 @@ var require_zod_compat = __commonJS({
       }
       return void 0;
     }
+    function getDotPath(path) {
+      if (path.length === 0) {
+        return "object root";
+      }
+      return path.reduce((acc, seg, index) => {
+        if (index === 0) {
+          return String(seg);
+        }
+        if (typeof seg === "number") {
+          return `${acc}[${seg}]`;
+        }
+        return `${acc}.${seg}`;
+      }, "");
+    }
     function getParseErrorMessage(error) {
       if (error && typeof error === "object") {
+        if ("issues" in error && Array.isArray(error.issues) && error.issues.length > 0) {
+          return error.issues.map((i) => {
+            if (!i.path?.length) {
+              return i.message;
+            }
+            return `${i.message} at ${getDotPath(i.path)}`;
+          }).join("\n");
+        }
         if ("message" in error && typeof error.message === "string") {
           return error.message;
-        }
-        if ("issues" in error && Array.isArray(error.issues) && error.issues.length > 0) {
-          const firstIssue = error.issues[0];
-          if (firstIssue && typeof firstIssue === "object" && "message" in firstIssue) {
-            return String(firstIssue.message);
-          }
         }
         try {
           return JSON.stringify(error);
@@ -25358,6 +25374,9 @@ var require_protocol = __commonJS({
           this.setRequestHandler(types_js_1.GetTaskPayloadRequestSchema, async (request, extra) => {
             const handleTaskResult = async () => {
               const taskId = request.params.taskId;
+              if (!await this._taskStore.getTask(taskId, extra.sessionId)) {
+                throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Task not found: ${taskId}`);
+              }
               if (this._taskMessageQueue) {
                 let queuedMessage;
                 while (queuedMessage = await this._taskMessageQueue.dequeue(taskId, extra.sessionId)) {
@@ -25388,12 +25407,12 @@ var require_protocol = __commonJS({
                 throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Task not found: ${taskId}`);
               }
               if (!(0, interfaces_js_1.isTerminal)(task.status)) {
-                await this._waitForTaskUpdate(taskId, extra.signal);
+                await this._waitForTaskUpdate(taskId, extra.signal, extra.sessionId);
                 return await handleTaskResult();
               }
               if ((0, interfaces_js_1.isTerminal)(task.status)) {
                 const result = await this._taskStore.getTaskResult(taskId, extra.sessionId);
-                this._clearTaskQueue(taskId);
+                this._clearTaskQueue(taskId, extra.sessionId);
                 return {
                   ...result,
                   _meta: {
@@ -25430,7 +25449,7 @@ var require_protocol = __commonJS({
                 throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Cannot cancel task in terminal status: ${task.status}`);
               }
               await this._taskStore.updateTaskStatus(request.params.taskId, "cancelled", "Client cancelled task execution.", extra.sessionId);
-              this._clearTaskQueue(request.params.taskId);
+              this._clearTaskQueue(request.params.taskId, extra.sessionId);
               const cancelledTask = await this._taskStore.getTask(request.params.taskId, extra.sessionId);
               if (!cancelledTask) {
                 throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Task not found after cancellation: ${request.params.taskId}`);
@@ -25558,6 +25577,19 @@ var require_protocol = __commonJS({
         const handler = this._requestHandlers.get(request.method) ?? this.fallbackRequestHandler;
         const capturedTransport = this._transport;
         const relatedTaskId = request.params?._meta?.[types_js_1.RELATED_TASK_META_KEY]?.taskId;
+        const sessionId = capturedTransport?.sessionId;
+        const store = this._taskStore;
+        let relatedTaskFound = true;
+        let relatedTaskLookup;
+        if (relatedTaskId && store && this._taskMessageQueue && sessionId !== void 0) {
+          relatedTaskFound = false;
+          relatedTaskLookup = (async () => {
+            if (!await store.getTask(relatedTaskId, sessionId)) {
+              throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Task not found: ${relatedTaskId}`);
+            }
+            relatedTaskFound = true;
+          })();
+        }
         if (handler === void 0) {
           const errorResponse = {
             jsonrpc: "2.0",
@@ -25567,7 +25599,10 @@ var require_protocol = __commonJS({
               message: "Method not found"
             }
           };
-          if (relatedTaskId && this._taskMessageQueue) {
+          if (relatedTaskId && relatedTaskLookup) {
+            const queuedError = { type: "error", message: errorResponse, timestamp: Date.now() };
+            relatedTaskLookup.then(() => this._enqueueTaskMessage(relatedTaskId, queuedError, sessionId), () => capturedTransport?.send(errorResponse)).catch((error) => this._onerror(new Error(`Failed to send an error response: ${error}`)));
+          } else if (relatedTaskId && this._taskMessageQueue) {
             this._enqueueTaskMessage(relatedTaskId, {
               type: "error",
               message: errorResponse,
@@ -25618,7 +25653,10 @@ var require_protocol = __commonJS({
           closeSSEStream: extra?.closeSSEStream,
           closeStandaloneSSEStream: extra?.closeStandaloneSSEStream
         };
-        Promise.resolve().then(() => {
+        (relatedTaskLookup ?? Promise.resolve()).then(() => {
+          if (relatedTaskLookup && abortController.signal.aborted) {
+            throw new types_js_1.McpError(types_js_1.ErrorCode.ConnectionClosed, "Request was cancelled");
+          }
           if (taskCreationParams) {
             this.assertTaskHandlerCapability(request.method);
           }
@@ -25653,7 +25691,7 @@ var require_protocol = __commonJS({
               ...error["data"] !== void 0 && { data: error["data"] }
             }
           };
-          if (relatedTaskId && this._taskMessageQueue) {
+          if (relatedTaskId && this._taskMessageQueue && relatedTaskFound) {
             await this._enqueueTaskMessage(relatedTaskId, {
               type: "error",
               message: errorResponse,
@@ -26133,7 +26171,7 @@ var require_protocol = __commonJS({
           throw new Error("Cannot enqueue task message: taskStore and taskMessageQueue are not configured");
         }
         const maxQueueSize = this._options?.maxTaskQueueSize;
-        await this._taskMessageQueue.enqueue(taskId, message, sessionId, maxQueueSize);
+        await this._taskMessageQueue.enqueue(taskId, message, sessionId ?? this._transport?.sessionId, maxQueueSize);
       }
       /**
        * Clears the message queue for a task and rejects any pending request resolvers.
@@ -26162,12 +26200,13 @@ var require_protocol = __commonJS({
        * Uses polling to check for updates at the task's configured poll interval.
        * @param taskId The task ID to wait for
        * @param signal Abort signal to cancel the wait
+       * @param sessionId Session of the request that waits, passed to the task store
        * @returns Promise that resolves when an update occurs or rejects if aborted
        */
-      async _waitForTaskUpdate(taskId, signal) {
+      async _waitForTaskUpdate(taskId, signal, sessionId) {
         let interval = this._options?.defaultTaskPollInterval ?? 1e3;
         try {
-          const task = await this._taskStore?.getTask(taskId);
+          const task = await this._taskStore?.getTask(taskId, sessionId);
           if (task?.pollInterval) {
             interval = task.pollInterval;
           }
@@ -33861,16 +33900,7 @@ var require_server2 = __commonJS({
         if (!methodSchema) {
           throw new Error("Schema is missing a method literal");
         }
-        let methodValue;
-        if ((0, zod_compat_js_1.isZ4Schema)(methodSchema)) {
-          const v4Schema = methodSchema;
-          const v4Def = v4Schema._zod?.def;
-          methodValue = v4Def?.value ?? v4Schema.value;
-        } else {
-          const v3Schema = methodSchema;
-          const legacyDef = v3Schema._def;
-          methodValue = legacyDef?.value ?? v3Schema.value;
-        }
+        const methodValue = (0, zod_compat_js_1.getLiteralValue)(methodSchema);
         if (typeof methodValue !== "string") {
           throw new Error("Schema method literal must be a string");
         }
@@ -34593,6 +34623,42 @@ var require_mcp = __commonJS({
     var toolNameValidation_js_1 = require_toolNameValidation();
     var mcp_server_js_1 = require_mcp_server();
     var zod_1 = require_zod();
+    function toolInputElementCount(value, max) {
+      let count = 0;
+      const stack = [value];
+      while (stack.length > 0) {
+        const node = stack.pop();
+        if (node === null || typeof node !== "object")
+          continue;
+        if (Array.isArray(node)) {
+          for (const child of node) {
+            if (++count > max)
+              return count;
+            if (child !== null && typeof child === "object")
+              stack.push(child);
+          }
+        } else {
+          for (const key5 in node) {
+            if (!Object.prototype.hasOwnProperty.call(node, key5))
+              continue;
+            if (++count > max)
+              return count;
+            const child = node[key5];
+            if (child !== null && typeof child === "object")
+              stack.push(child);
+          }
+        }
+      }
+      return count;
+    }
+    function resolveMaxToolInputElements(value) {
+      if (value === void 0 || value === Infinity)
+        return void 0;
+      if (typeof value !== "number" || Number.isNaN(value) || value < 1) {
+        throw new RangeError(`maxToolInputElements must be a number of at least 1, or Infinity, got ${String(value)}`);
+      }
+      return value;
+    }
     var McpServer = class {
       constructor(serverInfo, options) {
         this._registeredResources = {};
@@ -34604,6 +34670,7 @@ var require_mcp = __commonJS({
         this._resourceHandlersInitialized = false;
         this._promptHandlersInitialized = false;
         this.server = new index_js_1.Server(serverInfo, options);
+        this._maxToolInputElements = resolveMaxToolInputElements(options?.maxToolInputElements);
       }
       /**
        * Access experimental features.
@@ -34734,12 +34801,15 @@ var require_mcp = __commonJS({
        * Validates tool input arguments against the tool's input schema.
        */
       async validateToolInput(tool, args, toolName) {
+        if (this._maxToolInputElements !== void 0 && toolInputElementCount(args, this._maxToolInputElements) > this._maxToolInputElements) {
+          throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Invalid arguments for tool ${toolName}: arguments contain more than the maximum of ${this._maxToolInputElements} elements`);
+        }
         if (!tool.inputSchema) {
           return void 0;
         }
         const inputObj = (0, zod_compat_js_1.normalizeObjectSchema)(tool.inputSchema);
         const schemaToParse = inputObj ?? tool.inputSchema;
-        const parseResult = await (0, zod_compat_js_1.safeParseAsync)(schemaToParse, args);
+        const parseResult = await (0, zod_compat_js_1.safeParseAsync)(schemaToParse, args ?? {});
         if (!parseResult.success) {
           const error = "error" in parseResult ? parseResult.error : "Unknown error";
           const errorMessage = (0, zod_compat_js_1.getParseErrorMessage)(error);
@@ -34977,7 +35047,7 @@ var require_mcp = __commonJS({
           }
           if (prompt.argsSchema) {
             const argsObj = (0, zod_compat_js_1.normalizeObjectSchema)(prompt.argsSchema);
-            const parseResult = await (0, zod_compat_js_1.safeParseAsync)(argsObj, request.params.arguments);
+            const parseResult = await (0, zod_compat_js_1.safeParseAsync)(argsObj, request.params.arguments ?? {});
             if (!parseResult.success) {
               const error = "error" in parseResult ? parseResult.error : "Unknown error";
               const errorMessage = (0, zod_compat_js_1.getParseErrorMessage)(error);

@@ -515,7 +515,7 @@ left alone. `init --starter` writes that policy to `./protect.cedar` and creates
 the signing key the Claude Code plugin's receipts use:
 
 ```bash
-npx protect-mcp@0.31.0 init --starter
+npx protect-mcp@0.31.1 init --starter
 ```
 
 It writes `protect.cedar` (never over an existing one without `--force`),
@@ -546,7 +546,7 @@ denies.
 To use it without a file, name it as a built-in:
 
 ```bash
-npx protect-mcp@0.31.0 evaluate --policy builtin:starter --tool Bash \
+npx protect-mcp@0.31.1 evaluate --policy builtin:starter --tool Bash \
   --input '{"command":"git push --force origin main"}'
 echo $?   # 2
 ```
@@ -563,7 +563,7 @@ writes, and an `onboard` scenario.
 ### Keep writes inside this folder (`--contain`)
 
 ```bash
-npx protect-mcp@0.31.0 init --starter --contain
+npx protect-mcp@0.31.1 init --starter --contain
 ```
 
 adds two opt-in rules with this folder's absolute path filled in and escaped

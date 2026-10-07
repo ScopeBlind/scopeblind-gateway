@@ -9353,7 +9353,7 @@ var AGENT_PACKAGE_URL, AGENT_CLIENTS, shellQuote;
 var init_coordination_agent_setup = __esm({
   "src/coordination-agent-setup.ts"() {
     "use strict";
-    AGENT_PACKAGE_URL = "protect-mcp@0.31.0";
+    AGENT_PACKAGE_URL = "protect-mcp@0.31.1";
     AGENT_CLIENTS = [
       { id: "claude-code", label: "Claude Code" },
       { id: "codex", label: "Codex CLI" },

@@ -1,3 +1,10 @@
+## 0.31.1: The MCP SDK past its OAuth advisory, and current pins
+
+- **@modelcontextprotocol/sdk 1.32.1.** GHSA-6qxp-vccf-f47h (high) is in the SDK's OAuth client before 1.31.0: an MCP server could point the client at an authorization server of its choosing and receive the client's credentials. protect-mcp bundles only the SDK's server code, for the demo server, and its dist holds none of the OAuth client, so 0.31.0 is not affected; the audit flagged the version in its lockfile. The bundled server code now comes from 1.32.1, and the optional dependency requires ^1.31.0.
+- `policies/claude-code-hooks.json` pins protect-mcp@0.31.1. It pinned 0.13.4.
+- The README's starter commands and the coding agent's setup package name 0.31.1.
+- The changelog headings for 0.17.0 to 0.30.0 use a colon or brackets in place of a dash, as the public mirror has since the 0.31.0 sync.
+
 ## 0.31.0: A starter policy, numbers Cedar can hold, and denials that say why
 
 - **The starter policy.** `policies/starter.cedar` is starter.cedar v1: seven `@id`/`@reason` forbid rules over a default allow. They block a recursive delete of `/`, the home folder or the parent folder; a force-push to `main` or `master`, or one that names no branch; a Read of a credential file (`.env*`, `~/.ssh`, `~/.aws`, `.netrc`, `.npmrc`, docker, kube and gh credentials, `~/.gnupg`, the signing key; not `*.pub` or `*.example`); a Grep inside `.env*`, `~/.ssh` or `~/.aws`; a shell line that prints a credential file; a download piped into a shell; and writes to system folders, shell profiles, LaunchAgents, `~/.ssh`, `~/.aws`, credential files, Claude and Codex settings, `protect.cedar`, the signing key, or through `/../`. Shell rules match the raw command text, so they are a guardrail for an agent working in good faith, not a sandbox. A force-push that names no branch stays blocked; keychain and token lookups are not covered; every rule denies, none asks.
