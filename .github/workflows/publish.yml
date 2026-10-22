@@ -41,5 +41,7 @@ jobs:
         run: npm pack --json > packed.json
       - name: Verify a clean installation
         run: node scripts/release-install-check.mjs
+      - name: Run the README example against the packed package
+        run: npm run test:readme
       - name: Publish with npm trusted publishing and provenance
         run: node -e "const {execFileSync}=require('node:child_process');const p=require('./packed.json')[0];execFileSync('npm',['publish',p.filename,'--access','public','--provenance','--ignore-scripts'],{stdio:'inherit'});"

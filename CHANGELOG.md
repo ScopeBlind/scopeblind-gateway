@@ -1,3 +1,10 @@
+## 0.31.2: Reproducible onboarding and public maintenance checks
+
+- Put a local, account-free Cedar and receipt example first in the README. The example explicitly supplies a trusted public key, verifies a two-receipt chain and rejects a tampered receipt; it is exercised verbatim against the packed gateway and a pinned published verifier. Correct the former unsupported `--format jsonl` command and the claim that every nonzero verifier exit proves tampering.
+- Run build, tests, Docker isolation, clean-package installation and the README example on ordinary pull requests and `main`, as well as release candidates. The trusted-publishing workflow runs the same README check before publication with provenance.
+- Move detailed local and hosted workflows into linked guides without removing the supported commands. Add contribution instructions, maintainer governance, issue/PR templates and a release runbook. Narrow support and completeness claims to what the release process and supplied evidence establish.
+- Include guides, the full existing MIT licence and unchanged patent notice in the npm package. No licence, policy-decision, receipt-format or authority changes. Replace internal sales terminology in the generated demonstration runbook.
+
 ## 0.31.1: The MCP SDK past its OAuth advisory, and current pins
 
 - **@modelcontextprotocol/sdk 1.32.1.** GHSA-6qxp-vccf-f47h (high) is in the SDK's OAuth client before 1.31.0: an MCP server could point the client at an authorization server of its choosing and receive the client's credentials. protect-mcp bundles only the SDK's server code, for the demo server, and its dist holds none of the OAuth client, so 0.31.0 is not affected; the audit flagged the version in its lockfile. The bundled server code now comes from 1.32.1, and the optional dependency requires ^1.31.0.
