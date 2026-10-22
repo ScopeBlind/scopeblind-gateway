@@ -32,7 +32,7 @@ Use Node.js 22 and npm in a new directory. Install the pinned gateway and verifi
 mkdir protect-mcp-demo
 cd protect-mcp-demo
 npm init -y
-npm install --save-exact protect-mcp@0.31.1 @veritasacta/verify@0.10.27
+npm install --save-exact protect-mcp@0.31.2 @veritasacta/verify@0.10.27
 ```
 
 This example evaluates two proposed calls and signs their decisions. It does not
@@ -90,8 +90,8 @@ For an existing MCP server, initialize its configuration in a separate directory
 from the example above, then run the wrapper with your server command:
 
 ```sh
-npx --yes protect-mcp@0.31.1 init
-npx --yes protect-mcp@0.31.1 --policy ./protect-mcp.json -- node your-mcp-server.js
+npx --yes protect-mcp@0.31.2 init
+npx --yes protect-mcp@0.31.2 --policy ./protect-mcp.json -- node your-mcp-server.js
 ```
 
 This starts in **shadow mode**. Review the observed calls and policy before
