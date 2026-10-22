@@ -1,0 +1,28 @@
+name: Bug report
+description: Report a reproducible behavior or compatibility problem.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For vulnerabilities use SECURITY.md, not this public form. Remove keys, tokens and customer data; synthetic inputs are enough.
+  - type: input
+    id: environment
+    attributes:
+      label: Versions and environment
+      description: protect-mcp, Node.js, OS and MCP or hook host.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Smallest reproduction
+      description: Commands, policy and synthetic input needed to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual result
+      description: Include the exit code and redacted output when relevant.
+    validations:
+      required: true

@@ -1,6 +1,6 @@
 {
   "name": "protect-mcp",
-  "version": "0.31.1",
+  "version": "0.31.2",
   "mcpName": "com.scopeblind/protect-mcp",
   "description": "Cedar policy enforcement and signed receipts for AI agent tool calls, guided repository review, bounded coding work and exact human approvals. Built by ScopeBlind.",
   "main": "dist/index.js",
@@ -22,14 +22,20 @@
     "pretest": "npm run build",
     "test": "vitest run",
     "test:docker": "node scripts/coding-docker-smoke.mjs",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test:readme": "node scripts/readme-smoke.mjs --packed"
   },
   "files": [
     "dist",
     "policies",
     "README.md",
     "CHANGELOG.md",
-    "SECURITY.md"
+    "SECURITY.md",
+    "docs",
+    "LICENSE",
+    "PATENTS.md",
+    "CONTRIBUTING.md",
+    "GOVERNANCE.md"
   ],
   "keywords": [
     "scopeblind",

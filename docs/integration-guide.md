@@ -217,11 +217,11 @@ In `external` mode, only the external PDP decision is used (built-in policy is s
 After running with signing enabled (`npx protect-mcp init`), verify receipts:
 
 ```bash
-# From the receipt JSON printed to stderr
-npx @veritasacta/verify receipt.json
+# Use a public key obtained independently from the configured gateway operator.
+npx --yes @veritasacta/verify@0.10.27 receipt.json --key EXPECTED_PUBLIC_KEY_HEX
 
 # Or paste at
-# https://scopeblind.com/verify
+# https://veritasacta.com/verify
 ```
 
 ## Monitoring with `status`

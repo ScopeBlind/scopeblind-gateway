@@ -1,0 +1,17 @@
+name: Documentation or improvement
+description: Suggest a focused improvement or discuss a feature before coding.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Link the relevant command, guide or integration and explain the obstacle.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested change
+      description: Include compatibility considerations or a smaller alternative if useful.
+    validations:
+      required: true

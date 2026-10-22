@@ -1,13 +1,16 @@
-name: Validate release candidate
+name: Validate package
 on:
+  pull_request:
+  workflow_dispatch:
   push:
     branches:
+      - main
       - 'codex/release-*'
 permissions:
   contents: read
 concurrency:
-  group: release-validation-${{ github.ref }}
-  cancel-in-progress: false
+  group: package-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -47,6 +50,11 @@ jobs:
         run: |
           set -o pipefail
           node scripts/release-install-check.mjs 2>&1 | tee release-validation/clean-install.log
+      - name: Run the README example against the packed package
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:readme 2>&1 | tee release-validation/readme-example.log
       - name: Preserve validation evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

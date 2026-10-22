@@ -5,6 +5,17 @@ import { join } from 'node:path';
 import { CoordinationClient } from './coordination-client.js';
 import { defaultAgreement, generateIdentity, sign, type RoomView } from './coordination-protocol.js';
 
+const realSetTimeout = globalThis.setTimeout, realClearTimeout = globalThis.clearTimeout;
+
+async function boundedTestWait<T>(pending: Promise<T>, stage: string, timeoutMs = 3000): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([pending, new Promise<never>((_resolve, reject) => {
+      timer = realSetTimeout(() => reject(new Error(`Test stalled waiting for ${stage}`)), timeoutMs);
+    })]);
+  } finally { if (timer) realClearTimeout(timer); }
+}
+
 async function fixture() {
   const authority = await generateIdentity(), owner = await generateIdentity();
   const agreement = await sign(defaultAgreement('wait-room-001', owner.publicKey, authority.publicKey), owner);
@@ -20,6 +31,23 @@ async function fixture() {
     return new Response(JSON.stringify(revoked ? { ok: false, error: 'executor_token_invalid' } : { ok: true, room }), { status: revoked ? 403 : 200, headers: { 'content-type': 'application/json' } });
   }) as typeof fetch;
   return { room, config, polls, fetchImpl, client: new CoordinationClient(config, fetchImpl), revoke: () => { revoked = true; } };
+}
+
+// Inspect verifies signatures with real asynchronous WebCrypto. A fixed number
+// of event-loop spins is not a completion barrier when CI's worker pool is busy.
+// Observe the actual scheduling event while leaving production timers under the
+// test's control (including an intentionally early wake).
+function observeScheduledTimer(count: number) {
+  let ready!: () => void;
+  const scheduled = new Promise<void>(resolve => { ready = resolve; });
+  const schedule = globalThis.setTimeout;
+  let seen = 0;
+  const timers = vi.spyOn(globalThis, 'setTimeout').mockImplementation((callback, delay, ...args) => {
+    const timer = schedule(callback, delay, ...args);
+    if (++seen === count) ready();
+    return timer;
+  });
+  return { timers, scheduled };
 }
 
 describe('bounded agent wait', () => {
@@ -50,37 +78,54 @@ describe('bounded agent wait', () => {
     const f = await fixture(), abort = new AbortController();
     let clock = 100.25;
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    const timers = vi.spyOn(globalThis, 'setTimeout');
+    const { timers, scheduled } = observeScheduledTimer(3);
     vi.spyOn(performance, 'now').mockImplementation(() => clock);
-    const client = new CoordinationClient(f.config, (async (...args: Parameters<typeof fetch>) => { const result = await f.fetchImpl(...args); clock += 0.5; return result; }) as typeof fetch);
+    let repeatedPoll!: () => void;
+    const polledAgain = new Promise<void>(resolve => { repeatedPoll = resolve; });
+    const client = new CoordinationClient(f.config, (async (...args: Parameters<typeof fetch>) => {
+      const response = await f.fetchImpl(...args);
+      if (f.polls.length > 1) repeatedPoll();
+      clock += 0.5;
+      return response;
+    }) as typeof fetch);
     let result: Record<string, unknown> | undefined, failure: unknown;
     const pending = client.wait({ after_cursor: 1, timeout_ms: 1000 }, abort.signal).then(value => { result = value; }, error => { failure = error; });
     try {
-      for (let i = 0; i < 1000 && timers.mock.calls.length < 3; i++) await new Promise<void>(resolve => setImmediate(resolve));
+      await boundedTestWait(Promise.race([scheduled, pending]), 'timer registration');
       expect(timers.mock.calls).toHaveLength(3); // Deadline, fetch timeout, then final sleep.
       const [wake, delay] = timers.mock.calls[2];
       expect(delay).toBe(1000); // 999.5ms must round up, never truncate.
       clock = 1100; // The deadline is 1100.25: deliberately fire a little early.
       (wake as () => void)();
-      for (let i = 0; i < 1000 && !result && !failure && f.polls.length === 1; i++) await new Promise<void>(resolve => setImmediate(resolve));
+      await boundedTestWait(Promise.race([pending, polledAgain]), 'final sleep completion');
       expect(f.polls).toHaveLength(1); expect(failure).toBeUndefined(); expect(result).toMatchObject({ status: 'waiting', cursor: 1 });
-    } finally { abort.abort(); await pending; vi.restoreAllMocks(); vi.useRealTimers(); }
+    } finally {
+      abort.abort();
+      try { await boundedTestWait(pending, 'cancelled wait cleanup', 1000); }
+      finally { vi.restoreAllMocks(); vi.useRealTimers(); }
+    }
   });
   it.each([true, false])('treats an early local deadline timer as timeout, not caller cancellation (room retrieved: %s)', async retrieved => {
     const f = await fixture(), abort = new AbortController();let clock = 100.25, started = false;
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
-    const timers = vi.spyOn(globalThis, 'setTimeout');vi.spyOn(performance, 'now').mockImplementation(() => clock);
+    const { timers, scheduled } = observeScheduledTimer(retrieved ? 3 : 2);
+    vi.spyOn(performance, 'now').mockImplementation(() => clock);
     const fetchImpl = retrieved ? f.fetchImpl : ((_url: unknown, init?: RequestInit) => new Promise<Response>((_resolve, reject) => { started = true; init?.signal?.addEventListener('abort', () => reject(new Error('aborted')), { once: true }); })) as typeof fetch;
     let result: Record<string, unknown> | undefined, failure: unknown;
     const pending = new CoordinationClient(f.config, fetchImpl).wait({ after_cursor: 1, timeout_ms: 1000 }, abort.signal).then(value => { result = value; }, error => { failure = error; });
     try {
-      for (let i = 0; i < 1000 && (retrieved ? timers.mock.calls.length < 3 : !started); i++) await new Promise<void>(resolve => setImmediate(resolve));
+      await boundedTestWait(Promise.race([scheduled, pending]), 'timer registration');
       expect(retrieved ? timers.mock.calls.length === 3 : started).toBe(true);
       clock = 1100; // Local timeout fired, although performance.now is still before its deadline.
-      (timers.mock.calls[0][0] as () => void)();await pending;
+      (timers.mock.calls[0][0] as () => void)();
+      await boundedTestWait(pending, 'deadline completion');
       if (retrieved) { expect(failure).toBeUndefined(); expect(result).toMatchObject({ status: 'waiting', cursor: 1 }); expect(f.polls).toHaveLength(1); }
       else { expect(result).toBeUndefined(); expect(failure).toMatchObject({ code: 'wait_timeout' }); }
-    } finally { abort.abort(); await pending; vi.restoreAllMocks(); vi.useRealTimers(); }
+    } finally {
+      abort.abort();
+      try { await boundedTestWait(pending, 'cancelled wait cleanup', 1000); }
+      finally { vi.restoreAllMocks(); vi.useRealTimers(); }
+    }
   });
   it('stops with a structured error when authority is revoked while waiting', async () => {
     const f = await fixture(), timer = setTimeout(f.revoke, 40);

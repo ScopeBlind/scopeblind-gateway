@@ -181,7 +181,7 @@ Examples:
   protect-mcp recommend --write                  # Draft a policy from observed calls
   protect-mcp registry anchor --hosted           # Upload only receipt digests for anchoring
   protect-mcp trial --dir ./scopeblind-trial     # Generate self-serve trial artifacts
-  protect-mcp killer-demo --dir ./scopeblind-demo # Generate sales-demo artifacts
+  protect-mcp killer-demo --dir ./scopeblind-demo # Generate demonstration artifacts
   protect-mcp connectors init all --force        # Install connector pilot configs
   protect-mcp connectors doctor                  # Check connector credentials safely
   protect-mcp verify-disclosure --receipt committed.json --disclosure tool-only.json
@@ -3359,7 +3359,7 @@ async function handleKillerDemo(argv: string[]): Promise<void> {
   });
 
   const runbook = [
-    '# ScopeBlind Killer Demo',
+    '# ScopeBlind gateway demonstration',
     '',
     'Three-minute flow, generated locally.',
     '',
@@ -3415,7 +3415,7 @@ async function handleKillerDemo(argv: string[]): Promise<void> {
     '',
     'This demonstrates hiding sensitive context while revealing the minimum needed proof. It is salted commitment disclosure, not full zero-knowledge.',
     '',
-    '## 8. Paid boundary MVP',
+    '## 8. Optional digest anchoring',
     '',
     `Registry: \`${registry.registryPath}\``,
     '',
