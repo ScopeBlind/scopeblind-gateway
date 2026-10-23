@@ -9,7 +9,8 @@
  * enforce path can deny rather than silently proceeding without evidence.
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, openSync, fchmodSync, writeFileSync, closeSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { createReceiptEnvelope, computeSbIssuerKid } from './acta-envelope.js';
 import type { DecisionLog, SigningConfig, TrustTier } from './types.js';
 
@@ -71,6 +72,15 @@ export async function initSigning(config: SigningConfig | undefined): Promise<st
     warnings.push(`signing: ${signingInitError} — run "protect-mcp init" to generate`);
     return warnings;
   }
+  // Anyone who can read the key can sign receipts that verify as this gate's.
+  if (process.platform !== 'win32') {
+    try {
+      const fileMode = statSync(config.key_path).mode & 0o777;
+      if (fileMode & 0o077) {
+        warnings.push(`signing: key file ${config.key_path} is open to other users (mode ${fileMode.toString(8).padStart(3, '0')}); run: chmod 600 ${config.key_path}`);
+      }
+    } catch { /* the read below reports a file it cannot open */ }
+  }
 
   let keyData: any;
   try {
@@ -101,6 +111,36 @@ export async function initSigning(config: SigningConfig | undefined): Promise<st
   }
 
   return warnings;
+}
+
+/**
+ * Write a private key file readable by its owner only (0600), whatever the
+ * umask. With `overwrite`, an existing file is truncated and narrowed to 0600
+ * before the key goes into it, so the new key is never open to other users;
+ * without it, an existing file is refused.
+ */
+export function writePrivateKeyFile(path: string, contents: string, options: { overwrite: boolean }): void {
+  const fd = openSync(path, options.overwrite ? 'w' : 'wx', 0o600);
+  try {
+    fchmodSync(fd, 0o600);
+    writeFileSync(fd, contents);
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/**
+ * Create the folder a key file goes in, owner-only (0700). Missing parent
+ * folders are created with the default mode; an existing key folder is left
+ * as it is.
+ */
+export function ensurePrivateKeyDir(dir: string): void {
+  mkdirSync(dirname(dir), { recursive: true });
+  try {
+    mkdirSync(dir, { mode: 0o700 });
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+  }
 }
 
 /**

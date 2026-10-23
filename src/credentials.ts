@@ -26,6 +26,7 @@
  */
 
 import type { CredentialConfig } from './types.js';
+import { ownEntry } from './policy.js';
 
 /**
  * Result of credential resolution.
@@ -62,7 +63,9 @@ export function resolveCredential(
   label: string,
   credentials: Record<string, CredentialConfig> | undefined,
 ): CredentialResolution {
-  if (!credentials || !credentials[label]) {
+  // Own entries only: a tool named like an Object.prototype member has no credential.
+  const config = ownEntry(credentials, label);
+  if (!config) {
     return {
       resolved: false,
       label,
@@ -70,7 +73,6 @@ export function resolveCredential(
     };
   }
 
-  const config = credentials[label];
   const value = process.env[config.value_env];
 
   if (!value) {

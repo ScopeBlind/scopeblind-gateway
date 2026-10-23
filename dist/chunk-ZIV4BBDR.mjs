@@ -5,16 +5,17 @@ import {
   readAmount,
   standardDecision,
   startStatusServer
-} from "./chunk-7NEKA6GE.mjs";
+} from "./chunk-MHA5X7DI.mjs";
 import {
   checkRateLimit,
   getToolPolicy,
+  ownEntry,
   parseRateLimit
-} from "./chunk-EB7LESYM.mjs";
+} from "./chunk-VJ743MCX.mjs";
 import {
   isSigningEnabled,
   signDecision
-} from "./chunk-LXAQG3UR.mjs";
+} from "./chunk-PNPJY37B.mjs";
 import {
   evaluateCedar
 } from "./chunk-P2YFFXF2.mjs";
@@ -209,14 +210,14 @@ function meetsMinTier(actual, required) {
 
 // src/credentials.ts
 function resolveCredential(label, credentials) {
-  if (!credentials || !credentials[label]) {
+  const config = ownEntry(credentials, label);
+  if (!config) {
     return {
       resolved: false,
       label,
       error: `credential "${label}" not configured`
     };
   }
-  const config = credentials[label];
   const value = process.env[config.value_env];
   if (!value) {
     return {
@@ -676,10 +677,12 @@ var ProtectGateway = class {
   lastReceiptHash = null;
   evidenceStore;
   receiptBuffer;
-  /** Approval grants keyed by request_id (scoped to the specific action that was requested) */
+  /** Approval grants: once grants keyed by `${tool}:${payload_hash}` (one exact action), always grants by `always:${tool}` */
   approvalStore = /* @__PURE__ */ new Map();
   /** Random nonce generated at startup — required for approval endpoint authentication */
   approvalNonce = randomBytes(16).toString("hex");
+  /** Port of the local status server that serves POST /approve, once started */
+  statusPort = null;
   currentTier = "unknown";
   admissionResult = null;
   /** Notification config for approval gates (SMS, webhook, email) */
@@ -721,6 +724,7 @@ var ProtectGateway = class {
   async start() {
     const { command, args, verbose } = this.config;
     const mode = this.config.enforce ? "enforce" : "shadow";
+    this.assertSigningReady();
     if (verbose) {
       this.log(`Starting gateway in ${mode} mode`);
       this.log(`Wrapping: ${command} ${args.join(" ")}`);
@@ -757,6 +761,7 @@ var ProtectGateway = class {
           this.approvalStore,
           this.approvalNonce
         );
+        this.statusPort = httpPort;
       } catch {
         if (verbose) this.log(`HTTP status server could not start on port ${httpPort}`);
       }
@@ -829,13 +834,31 @@ var ProtectGateway = class {
     this.sendToChild(trimmed);
   }
   async interceptToolCallAsync(request, raw) {
-    const result = await this.interceptToolCall(request);
-    if (result) {
-      this.sendToClient(JSON.stringify(result));
-    } else {
-      const modified = this.injectParamsCredentials(request);
-      this.sendToChild(JSON.stringify(modified));
+    try {
+      const result = await this.interceptToolCall(request);
+      if (result) {
+        this.sendToClient(JSON.stringify(result));
+      } else {
+        const modified = this.injectParamsCredentials(request);
+        this.sendToChild(JSON.stringify(modified));
+      }
+    } catch (err) {
+      this.sendToClient(JSON.stringify(this.refuseUnevaluable(request, err)));
     }
+  }
+  /**
+   * A call the gate could not evaluate (arguments nested too deep to hash, for
+   * one) is refused, in shadow mode too: it must neither crash the gateway nor
+   * reach the tool unexamined.
+   */
+  refuseUnevaluable(request, err) {
+    const toolName = typeof request.params?.name === "string" ? request.params.name : "unknown";
+    this.log(`Could not evaluate a call to ${JSON.stringify(toolName)}, refusing it: ${err instanceof Error ? err.message : String(err)}`);
+    try {
+      this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "gateway_evaluation_error", tier: this.currentTier });
+    } catch {
+    }
+    return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" refused: the gateway could not evaluate this call, so it fails closed`);
   }
   handleServerMessage(raw) {
     this.sendToClient(raw);
@@ -860,6 +883,8 @@ var ProtectGateway = class {
     const mode = this.config.enforce ? "enforce" : "shadow";
     const toolInput = request.params?.arguments && typeof request.params.arguments === "object" ? request.params.arguments : request.params || {};
     const actionReadback = buildActionReadback(toolName, toolInput);
+    const approvalKey = `${toolName}:${actionReadback.payload_hash}`;
+    let grantedAtGate = false;
     const connector = readConnectorContext(request.params, toolName, toolInput, this.config.policy?.connector_platform_keys);
     if (connector.record) this.connectorToRecord.set(requestId, connector.record);
     else if (connector.problem && this.config.verbose) this.log(`Connector context ignored for tool=${toolName}: ${connector.problem}`);
@@ -868,9 +893,10 @@ var ProtectGateway = class {
     if (this.config.multiAgent?.enabled) {
       const paramKid = request.params?._passport_kid;
       if (paramKid) resolvedAgentKid = paramKid;
-      const agentOverrides = resolvedAgentKid ? this.config.multiAgent.agentPolicies?.[resolvedAgentKid] : void 0;
-      if (agentOverrides && agentOverrides[toolName]) {
-        effectiveToolPolicy = { ...getToolPolicy(toolName, this.config.policy), ...agentOverrides[toolName] };
+      const agentOverrides = resolvedAgentKid ? ownEntry(this.config.multiAgent.agentPolicies, resolvedAgentKid) : void 0;
+      const agentToolPolicy = ownEntry(agentOverrides, toolName);
+      if (agentToolPolicy) {
+        effectiveToolPolicy = { ...getToolPolicy(toolName, this.config.policy), ...agentToolPolicy };
       } else if (!resolvedAgentKid && this.config.multiAgent.unknownAgentPolicy === "deny") {
         this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "unknown_agent_denied", request_id: requestId, tier: this.currentTier, action_readback: actionReadback });
         if (this.config.enforce) {
@@ -911,8 +937,8 @@ var ProtectGateway = class {
       if (person.required) {
         const hid = heldIdFor(this.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
         const page = this.reporter ? `${new URL(this.reporter.url).origin}/standard?s=${this.reporter.sid}#held-${hid}` : "";
-        const localGrant = this.approvalStore.get(`always:${toolName}`);
-        const verdict2 = localGrant && Date.now() < localGrant.expires_at ? { decision: "approve", approver_key_id: "gate", digest: "", note: "granted at the gate" } : this.reporter ? await this.reporter.decision(hid) : null;
+        grantedAtGate = this.takeGrant(toolName, approvalKey);
+        const verdict2 = grantedAtGate ? { decision: "approve", approver_key_id: "gate", digest: "", note: "granted at the gate" } : this.reporter ? await this.reporter.decision(hid) : null;
         if (verdict2 === "unreachable") {
           this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "standard_page_unreachable", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" needs a named person's approval and the standard's page could not be reached; retry the same call later`);
@@ -929,7 +955,8 @@ var ProtectGateway = class {
           }
           this.emitDecisionLog({ tool: toolName, decision: "require_approval", reason_code: "standard_requires_person", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) {
-            const where = page ? `The action is waiting for the named person at ${page}. Tell the user, and retry this exact call once they have decided there; a changed call is a new action.` : `No standard page is configured (--report), so it must be granted at the gate (approval nonce ${this.approvalNonce}, request ID ${requestId}) before a retry.`;
+            if (!page) this.logApprovalHint(toolName, approvalKey);
+            const where = page ? `The action is waiting for the named person at ${page}. Tell the user, and retry this exact call once they have decided there; a changed call is a new action.` : `No standard page is configured (--report), so it must be granted at the gate (request ID ${approvalKey}) before a retry.`;
             return {
               jsonrpc: "2.0",
               id: request.id,
@@ -942,6 +969,7 @@ var ProtectGateway = class {
         }
       }
     }
+    let cedarAllowed = false;
     if (this.config.policy?.policy_engine === "cedar" && this.cedarPolicySet) {
       try {
         const cedarDecision = await evaluateCedar(this.cedarPolicySet, {
@@ -961,10 +989,14 @@ var ProtectGateway = class {
           }
           return null;
         }
-        this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: "cedar_allow", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-        return null;
+        cedarAllowed = true;
       } catch (err) {
-        if (this.config.verbose) this.log(`Cedar evaluation error: ${err instanceof Error ? err.message : err}`);
+        this.log(`Cedar evaluation threw for "${toolName}", failing closed: ${err instanceof Error ? err.message : err}`);
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "cedar_eval_error", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) {
+          return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied: the Cedar policy engine errored, so the gate fails closed`);
+        }
+        return null;
       }
     }
     if (this.config.policy?.external && (this.config.policy.policy_engine === "external" || this.config.policy.policy_engine === "hybrid")) {
@@ -1006,17 +1038,14 @@ var ProtectGateway = class {
       return null;
     }
     if (toolPolicy.require_approval) {
-      const grant = this.approvalStore.get(requestId);
-      const alwaysGrant = this.approvalStore.get(`always:${toolName}`);
-      if (grant && Date.now() < grant.expires_at || alwaysGrant && Date.now() < alwaysGrant.expires_at) {
-        if (grant && grant.mode === "once") this.approvalStore.delete(requestId);
-        this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: "approval_granted", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-        return null;
+      if (grantedAtGate || this.takeGrant(toolName, approvalKey)) {
+        const emitted2 = this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: "approval_granted", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        return this.refuseUnsigned(emitted2, request.id, toolName);
       }
       this.emitDecisionLog({ tool: toolName, decision: "require_approval", reason_code: "requires_human_approval", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
       if (this.notificationConfig) {
         sendApprovalNotification(this.notificationConfig, {
-          requestId,
+          requestId: approvalKey,
           toolName,
           agentId: this.admissionResult?.agent_id,
           policyName: "default",
@@ -1029,6 +1058,7 @@ var ProtectGateway = class {
         });
       }
       if (this.config.enforce) {
+        this.logApprovalHint(toolName, approvalKey);
         return {
           jsonrpc: "2.0",
           id: request.id,
@@ -1036,7 +1066,7 @@ var ProtectGateway = class {
             content: [
               {
                 type: "text",
-                text: `REQUIRES_APPROVAL: The tool "${toolName}" requires human approval before execution. Exact action: ${actionReadback.summary}. Payload hash: ${actionReadback.payload_hash.slice(0, 16)}\u2026 Request ID: ${requestId}. Approval nonce: ${this.approvalNonce}. Tell the user you need their approval to use "${toolName}" and will retry when granted. Do NOT retry this tool call until the user explicitly approves it.`
+                text: `REQUIRES_APPROVAL: The tool "${toolName}" requires human approval before execution. Exact action: ${actionReadback.summary}. Payload hash: ${actionReadback.payload_hash.slice(0, 16)}\u2026 Request ID: ${approvalKey}. Tell the user you need their approval to use "${toolName}" and will retry when granted. Do NOT retry this tool call until the user explicitly approves it.`
               }
             ],
             isError: true
@@ -1046,27 +1076,49 @@ var ProtectGateway = class {
       return null;
     }
     const rateSpec = this.getTierRateLimit(toolPolicy, this.currentTier);
+    let emitted;
     if (rateSpec) {
+      let limit;
       try {
-        const limit = parseRateLimit(rateSpec);
-        const key = `tool:${toolName}:${this.currentTier}`;
-        const { allowed, remaining } = checkRateLimit(key, limit, this.rateLimitStore);
-        if (!allowed) {
-          this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "rate_limit_exceeded", request_id: requestId, rate_limit_remaining: 0, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-          if (this.config.enforce) {
-            return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" rate limit exceeded (${rateSpec})`);
-          }
-          return null;
-        }
-        this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: "policy_allow", request_id: requestId, rate_limit_remaining: remaining, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        limit = parseRateLimit(rateSpec);
       } catch {
-        this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: "default_allow", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "rate_limit_invalid", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) {
+          return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied: its rate limit ${JSON.stringify(rateSpec)} is not a valid spec (N/second, N/minute, N/hour or N/day), so the gate fails closed`);
+        }
+        return null;
       }
+      const key = `tool:${toolName}:${this.currentTier}`;
+      const { allowed, remaining } = checkRateLimit(key, limit, this.rateLimitStore);
+      if (!allowed) {
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "rate_limit_exceeded", request_id: requestId, rate_limit_remaining: 0, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) {
+          return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" rate limit exceeded (${rateSpec})`);
+        }
+        return null;
+      }
+      emitted = this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: cedarAllowed ? "cedar_allow" : "policy_allow", request_id: requestId, rate_limit_remaining: remaining, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
     } else {
-      const reasonCode = this.config.enforce ? "policy_allow" : "observe_mode";
-      this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: reasonCode, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+      const reasonCode = cedarAllowed ? "cedar_allow" : this.config.enforce ? "policy_allow" : "observe_mode";
+      emitted = this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: reasonCode, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
     }
-    return null;
+    return this.refuseUnsigned(emitted, request.id, toolName);
+  }
+  /**
+   * Whether a person granted this call at the gate (POST /approve). A once
+   * grant is keyed by the exact action (tool and payload hash), so an identical
+   * retry finds it and a changed call does not, and it is used up here. An
+   * always grant covers every call to the tool until it expires.
+   */
+  takeGrant(toolName, approvalKey) {
+    const now = Date.now();
+    const once = this.approvalStore.get(approvalKey);
+    if (once && once.mode === "once" && now < once.expires_at) {
+      this.approvalStore.delete(approvalKey);
+      return true;
+    }
+    const always = this.approvalStore.get(`always:${toolName}`);
+    return Boolean(always && always.mode === "always" && now < always.expires_at);
   }
   getTierRateLimit(policy, tier) {
     if (policy.rate_limits && policy.rate_limits[tier]) {
@@ -1156,9 +1208,41 @@ var ProtectGateway = class {
         }
         process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
 `);
+        return { signingFailed: true };
       }
     } else if (this.reporter) {
       this.reporter.record(void 0, callLine);
+    }
+    return { signingFailed: false };
+  }
+  /**
+   * An allow is only as good as its receipt. In enforce mode a call whose
+   * receipt could not be signed does not run, as in the hook server: a
+   * governed action that cannot be proven is not allowed.
+   */
+  refuseUnsigned(emitted, id, toolName) {
+    if (!emitted.signingFailed || !this.config.enforce) return null;
+    return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+  }
+  /**
+   * Refuse to arm enforce mode when signing is configured but cannot produce a
+   * receipt (a missing or unreadable key), as the hook server does: without it
+   * every allowed call would either run unsigned or be refused.
+   */
+  assertSigningReady() {
+    if (!this.config.enforce) return;
+    const probe = signDecision({
+      v: 2,
+      tool: "__protect_mcp_startup_selftest__",
+      decision: "deny",
+      reason_code: "startup_selftest",
+      policy_digest: this.config.policyDigest,
+      request_id: `selftest-${Date.now()}`,
+      mode: "enforce",
+      timestamp: Date.now()
+    });
+    if (probe.error) {
+      throw new Error(`enforce mode refused to start: signing is configured but a receipt could not be produced (${probe.error}). An enforcing gate that cannot evidence its decisions must not arm.`);
     }
   }
   makeErrorResponse(id, code, message) {
@@ -1201,6 +1285,7 @@ var ProtectGateway = class {
     this.httpMode = true;
     const { command, args, verbose } = this.config;
     const mode = this.config.enforce ? "enforce" : "shadow";
+    this.assertSigningReady();
     if (verbose) {
       this.log(`Starting gateway in ${mode} mode (HTTP transport)`);
       this.log(`Wrapping: ${command} ${args.join(" ")}`);
@@ -1253,7 +1338,12 @@ var ProtectGateway = class {
   async processRequest(jsonRpc) {
     const REQUEST_TIMEOUT_MS = 3e4;
     if (jsonRpc.method === "tools/call" && jsonRpc.id !== void 0) {
-      const blocked = await this.interceptToolCall(jsonRpc);
+      let blocked;
+      try {
+        blocked = await this.interceptToolCall(jsonRpc);
+      } catch (err) {
+        blocked = this.refuseUnevaluable(jsonRpc, err);
+      }
       if (blocked) {
         return JSON.stringify(blocked);
       }
@@ -1282,6 +1372,16 @@ var ProtectGateway = class {
   log(message) {
     process.stderr.write(`[PROTECT_MCP] ${message}
 `);
+  }
+  /**
+   * Tell the operator, on stderr only, how to grant one held call. The nonce
+   * that authenticates POST /approve never goes into a tool result: the model
+   * reads those, and an agent that has the nonce can approve its own calls.
+   */
+  logApprovalHint(toolName, requestId) {
+    const body = JSON.stringify({ request_id: requestId, tool: toolName, mode: "once", nonce: this.approvalNonce });
+    const where = this.statusPort ? `POST http://127.0.0.1:${this.statusPort}/approve` : "POST /approve on the status server (not running in this process)";
+    this.log(`Approval required for ${JSON.stringify(toolName)}: to run this exact call once, ${where} with ${body}`);
   }
   stop() {
     this.evidenceStore.save();

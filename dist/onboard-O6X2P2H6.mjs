@@ -6,9 +6,11 @@ import {
 } from "./chunk-HBK47UIZ.mjs";
 import "./chunk-WE2AYP6X.mjs";
 import {
+  ensurePrivateKeyDir,
   initSigning,
-  signDecision
-} from "./chunk-LXAQG3UR.mjs";
+  signDecision,
+  writePrivateKeyFile
+} from "./chunk-PNPJY37B.mjs";
 import {
   evaluateCedar,
   policySetFromSource
@@ -184,10 +186,10 @@ async function handleOnboard(argv) {
       }
     }
     mkdirSync(join(dir, "cedar"), { recursive: true });
-    mkdirSync(join(dir, "keys"), { recursive: true });
+    ensurePrivateKeyDir(join(dir, "keys"));
     const kp = keypair();
     const keyPath = join(dir, "keys", "gateway.json");
-    writeFileSync(keyPath, JSON.stringify({ ...kp, generated_at: (/* @__PURE__ */ new Date()).toISOString(), warning: "KEEP THIS FILE SECRET." }, null, 2) + "\n");
+    writePrivateKeyFile(keyPath, JSON.stringify({ ...kp, generated_at: (/* @__PURE__ */ new Date()).toISOString(), warning: "KEEP THIS FILE SECRET." }, null, 2) + "\n", { overwrite: true });
     writeFileSync(join(dir, "keys", ".gitignore"), "*.json\n");
     writeFileSync(join(dir, "cedar", pack.files[0].path), pack.files[0].contents);
     writeFileSync(join(dir, "protect-mcp.json"), JSON.stringify({

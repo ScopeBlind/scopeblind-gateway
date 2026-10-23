@@ -108,6 +108,18 @@ describe('getToolPolicy', () => {
     };
     expect(getToolPolicy('other_tool', noWildcard)).toEqual({ require: 'any' });
   });
+
+  it('reads only rules the policy itself defines: a tool named like an Object.prototype member gets the wildcard', () => {
+    const blockAll: ProtectPolicy = { tools: { '*': { block: true } } };
+    for (const name of ['constructor', 'toString', 'hasOwnProperty', '__proto__', 'valueOf']) {
+      expect(getToolPolicy(name, blockAll), name).toEqual({ block: true });
+    }
+    // A rule a policy file does give such a name is still found.
+    const named = JSON.parse('{"tools":{"__proto__":{"rate_limit":"1/hour"},"constructor":{"block":true}}}') as ProtectPolicy;
+    expect(getToolPolicy('__proto__', named)).toEqual({ rate_limit: '1/hour' });
+    expect(getToolPolicy('constructor', named)).toEqual({ block: true });
+    expect(getToolPolicy('toString', named)).toEqual({ require: 'any' });
+  });
 });
 
 // ============================================================

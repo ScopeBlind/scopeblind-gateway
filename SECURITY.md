@@ -29,6 +29,10 @@ the call. Before arming an
 enforcing gate, `serve --enforce` and `doctor` run a boot self-test that proves
 the gate denies a known-forbidden vector, and refuse to start if it cannot.
 Shadow/observe mode flags calls that would be blocked as `would_deny: true`.
+In enforcing mode the MCP wrapper also refuses to start when signing is
+configured but its key is missing or unreadable, and refuses an allowed call
+whose receipt cannot be signed. With both `--cedar` and `--policy`, a call needs
+a Cedar permit and must also pass the JSON policy's rules.
 
 ## Coverage and deployment
 
@@ -37,6 +41,15 @@ network access or shell execution may bypass that path. Starter shell policies
 match command text and are not a sandbox. Signatures establish integrity against
 a trusted key, not the truth of a result or completeness of a supplied record.
 Protect signing keys and pin expected issuer keys independently of receipts.
+Keys are written 0600, and the gateway warns about a key file other users can
+read.
+
+The HTTP gateway (`--http`) listens on 127.0.0.1 and requires a bearer token of
+at least 32 characters (`PROTECT_MCP_HTTP_TOKEN`, or one it generates and prints
+on stderr); `--host` exposes it beyond the machine. The local status server,
+hook server and dashboard answer only requests addressed to their loopback port
+and refuse requests from other sites. The dashboard also requires its page's
+per-launch token for any change.
 
 See [release validation and provenance](docs/releases.md) for what the release
 checks cover and which publication claims can be verified.

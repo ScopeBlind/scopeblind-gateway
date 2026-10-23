@@ -126,7 +126,7 @@ describe('signDecision emits chained draft-03 receipts', () => {
     const dir = mkdtempSync(join(tmpdir(), 'pmcp-acta-'));
     mkdirSync(join(dir, 'keys'), { recursive: true });
     const keyPath = join(dir, 'keys', 'gateway.json');
-    writeFileSync(keyPath, JSON.stringify({ privateKey: privHex, publicKey: pubHex }));
+    writeFileSync(keyPath, JSON.stringify({ privateKey: privHex, publicKey: pubHex }), { mode: 0o600 });
     const warnings = await initSigning({ enabled: true, key_path: keyPath } as never);
     expect(warnings).toEqual([]);
   });

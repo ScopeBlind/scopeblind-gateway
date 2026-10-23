@@ -32,7 +32,7 @@ Use Node.js 22 and npm in a new directory. Install the pinned gateway and verifi
 mkdir protect-mcp-demo
 cd protect-mcp-demo
 npm init -y
-npm install --save-exact protect-mcp@0.31.2 @veritasacta/verify@0.10.27
+npm install --save-exact protect-mcp@0.32.0 @veritasacta/verify@0.10.27
 ```
 
 This example evaluates two proposed calls and signs their decisions. It does not
@@ -90,8 +90,8 @@ For an existing MCP server, initialize its configuration in a separate directory
 from the example above, then run the wrapper with your server command:
 
 ```sh
-npx --yes protect-mcp@0.31.2 init
-npx --yes protect-mcp@0.31.2 --policy ./protect-mcp.json -- node your-mcp-server.js
+npx --yes protect-mcp@0.32.0 init
+npx --yes protect-mcp@0.32.0 --policy ./protect-mcp.json -- node your-mcp-server.js
 ```
 
 This starts in **shadow mode**. Review the observed calls and policy before
@@ -102,6 +102,30 @@ Starter shell rules inspect command text. They are useful guardrails, but can
 miss alternate command spellings and can match harmless quoted text. Review the
 [starter policy's coverage and limits](docs/local-gateway.md#start-with-the-starter-policy)
 before relying on it.
+
+## Upgrading from 0.31
+
+0.32.0 closes several ways around the gate. Some of them change how you start it:
+
+- `--http` listens on 127.0.0.1, and every request except `GET /health` needs
+  `Authorization: Bearer <token>`. Set the same `PROTECT_MCP_HTTP_TOKEN` (at
+  least 32 characters) for the gateway and for the client or ingress that calls
+  it. Use `--host` only when you mean to expose the port beyond this machine.
+- `--enforce` refuses to start when signing is configured but its key is
+  missing or unreadable, and refuses an allowed call whose receipt cannot be
+  signed.
+- `--cedar` with `--policy` applies both: a call needs a Cedar permit and must
+  also pass that file's `block`, `require_approval`, rate limits and `min_tier`.
+  Signing and credentials come from that file.
+- The dashboard accepts a change only from its own page, which carries a
+  per-launch token.
+- Signing keys are written 0600 in a 0700 folder. For a key made by an earlier
+  version, run `chmod 600 keys/gateway.json`; the gateway warns until you do.
+- A once approval at `POST /approve` names the exact action: the Request ID the
+  gateway prints, `tool:payload_hash`. The approval nonce is on the gateway's
+  stderr only.
+
+See the [changelog](CHANGELOG.md) for every change.
 
 ## Documentation
 

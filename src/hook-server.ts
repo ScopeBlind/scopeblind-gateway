@@ -43,7 +43,7 @@ import { loadStandardFile, standardDecision, readAmount, heldIdFor, RecordReport
 import { initSigning, signDecision, isSigningEnabled, getSignerInfo } from './signing.js';
 import { receiptHash } from './acta-envelope.js';
 import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
-import { ReceiptBuffer } from './http-server.js';
+import { ReceiptBuffer, isLoopbackHost } from './http-server.js';
 import { getScopeBlindBridge } from './scopeblind-bridge.js';
 import { buildActionReadback } from './action-readback.js';
 import { buildEnrichment, type ReceiptEnrichment } from './receipt-enrichment.js';
@@ -535,33 +535,57 @@ async function handlePreToolUse(
 
     // Rate limit check
     if (toolPolicy.rate_limit) {
+      let limit: ReturnType<typeof parseRateLimit>;
       try {
-        const limit = parseRateLimit(toolPolicy.rate_limit);
-        const key = `tool:${toolName}:hook`;
-        const { allowed, remaining } = checkRateLimit(key, limit, state.rateLimitStore);
-        if (!allowed) {
-          const hookLatency = Date.now() - hookStart;
-          emitDecisionLog(state, {
-            tool: toolName,
-            decision: 'deny',
-            reason_code: 'rate_limit_exceeded',
-            request_id: requestId,
-            hook_event: 'PreToolUse',
-            swarm: swarm.team_name ? swarm : undefined,
-            timing: { hook_latency_ms: hookLatency, started_at: hookStart },
-            sandbox_state: detectSandboxState(),
-          });
+        limit = parseRateLimit(toolPolicy.rate_limit);
+      } catch {
+        // A limit the gate cannot read is not one it can enforce: deny, naming
+        // the spec, rather than run the tool with no limit at all.
+        const hookLatency = Date.now() - hookStart;
+        emitDecisionLog(state, {
+          tool: toolName,
+          decision: 'deny',
+          reason_code: 'rate_limit_invalid',
+          request_id: requestId,
+          hook_event: 'PreToolUse',
+          swarm: swarm.team_name ? swarm : undefined,
+          timing: { hook_latency_ms: hookLatency, started_at: hookStart },
+          sandbox_state: detectSandboxState(),
+        });
+        return {
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason:
+              `[ScopeBlind] "${toolName}" denied: its rate limit ${JSON.stringify(toolPolicy.rate_limit)} is not a valid spec ` +
+              '(N/second, N/minute, N/hour or N/day), so the gate fails closed.',
+          },
+        };
+      }
+      const key = `tool:${toolName}:hook`;
+      const { allowed } = checkRateLimit(key, limit, state.rateLimitStore);
+      if (!allowed) {
+        const hookLatency = Date.now() - hookStart;
+        emitDecisionLog(state, {
+          tool: toolName,
+          decision: 'deny',
+          reason_code: 'rate_limit_exceeded',
+          request_id: requestId,
+          hook_event: 'PreToolUse',
+          swarm: swarm.team_name ? swarm : undefined,
+          timing: { hook_latency_ms: hookLatency, started_at: hookStart },
+          sandbox_state: detectSandboxState(),
+        });
 
-          return {
-            hookSpecificOutput: {
-              hookEventName: 'PreToolUse',
-              permissionDecision: 'deny',
-              permissionDecisionReason:
-                `[ScopeBlind] "${toolName}" rate limit exceeded (${toolPolicy.rate_limit}).`,
-            },
-          };
-        }
-      } catch { /* skip bad rate limit spec */ }
+        return {
+          hookSpecificOutput: {
+            hookEventName: 'PreToolUse',
+            permissionDecision: 'deny',
+            permissionDecisionReason:
+              `[ScopeBlind] "${toolName}" rate limit exceeded (${toolPolicy.rate_limit}).`,
+          },
+        };
+      }
     }
   }
 
@@ -1044,7 +1068,7 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
       if (!cedarAvailable) {
         process.stderr.write(
           '[PROTECT_MCP] Warning: @cedar-policy/cedar-wasm not installed. ' +
-          'Cedar policies loaded but evaluation fallback is allow-all.\n',
+          'Cedar policies loaded, but every call will be denied until @cedar-policy/cedar-wasm is installed.\n',
         );
       }
     } catch (err) {
@@ -1229,11 +1253,38 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
 
   // ── Create HTTP server ──
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-    // CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    // No CORS headers: hook hosts are local processes, not web pages. With
+    // Access-Control-Allow-Origin: * any page could read the receipts.
     res.setHeader('Content-Type', 'application/json');
+
+    // DNS rebinding: a page can point its own name at 127.0.0.1, but its
+    // requests still carry that name as Host. Serve only requests addressed to
+    // this loopback port.
+    const address = server.address();
+    if (!isLoopbackHost(req.headers.host, address && typeof address === 'object' ? address.port : port)) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'host_not_allowed' }));
+      return;
+    }
+
+    // A page on another site names itself in Origin; hook hosts send none, and
+    // the approval page served from here sends its own.
+    const origin = req.headers.origin;
+    if (origin !== undefined && origin.toLowerCase() !== `http://${String(req.headers.host).toLowerCase()}`) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'cross_site_request' }));
+      return;
+    }
+
+    // Every POST here writes, signs or approves, and every hook host sends JSON
+    // (Claude Code's http hooks, and the shipped curl hooks, set
+    // Content-Type: application/json). A text/plain or form POST, which a page
+    // can send without a preflight, once got a forged event signed.
+    if (req.method === 'POST' && String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase() !== 'application/json') {
+      res.writeHead(415);
+      res.end(JSON.stringify({ error: 'json_required', message: 'POST with Content-Type: application/json' }));
+      return;
+    }
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);

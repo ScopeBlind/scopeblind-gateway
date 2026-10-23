@@ -22,6 +22,11 @@ npx protect-mcp recommend --write
 npx protect-mcp --policy protect-mcp.recommended.json --enforce -- node your-mcp-server.js
 ```
 
+In enforce mode the wrapper refuses to start when the policy configures signing
+but `keys/gateway.json` is missing or unreadable, and refuses any allowed call
+whose receipt cannot be signed. `init` writes the key 0600; for a key made by an
+earlier version, run `chmod 600 keys/gateway.json`.
+
 For Claude Desktop, run a dry-run config patch first, then apply it:
 
 ```bash
@@ -112,6 +117,11 @@ npx protect-mcp dashboard --open \
 `Approve` forwards to the live local gateway when those flags are present.
 `Deny`, `Edit`, and `Take over` are recorded locally as approval-resolution
 records; use them as the operator instruction and rerun the tool when needed.
+
+The dashboard answers only requests addressed to 127.0.0.1 or localhost on its
+port, and accepts a change only from its own page: the same origin, a JSON body
+and the per-launch token the page carries. A script that posted to its API must
+send the same.
 ## Explore a labelled sample record
 
 [![Watch the two-minute demo film](https://scopeblind.com/media/scopeblind-demo-poster.jpg)](https://scopeblind.com/film)
@@ -138,7 +148,7 @@ left alone. `init --starter` writes that policy to `./protect.cedar` and creates
 the signing key the Claude Code plugin's receipts use:
 
 ```bash
-npx protect-mcp@0.31.1 init --starter
+npx protect-mcp@0.32.0 init --starter
 ```
 
 It writes `protect.cedar` (never over an existing one without `--force`),
@@ -169,7 +179,7 @@ denies.
 To use it without a file, name it as a built-in:
 
 ```bash
-npx protect-mcp@0.31.1 evaluate --policy builtin:starter --tool Bash \
+npx protect-mcp@0.32.0 evaluate --policy builtin:starter --tool Bash \
   --input '{"command":"git push --force origin main"}'
 echo $?   # 2
 ```
@@ -186,7 +196,7 @@ writes, and an `onboard` scenario.
 ### Keep writes inside this folder (`--contain`)
 
 ```bash
-npx protect-mcp@0.31.1 init --starter --contain
+npx protect-mcp@0.32.0 init --starter --contain
 ```
 
 adds two opt-in rules with this folder's absolute path filled in and escaped
@@ -292,7 +302,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.31.1 evaluate --cedar ./cedar --format claude"
+            "command": "npx protect-mcp@0.32.0 evaluate --cedar ./cedar --format claude"
           }
         ]
       }
@@ -303,7 +313,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.31.1 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx protect-mcp@0.32.0 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }
@@ -318,7 +328,7 @@ receipt instead of an unconditional allow. Pass the policy directory and the
 same input and context the hook would pass to `evaluate`:
 
 ```bash
-npx protect-mcp@0.31.1 sign --cedar ./cedar --tool Bash \
+npx protect-mcp@0.32.0 sign --cedar ./cedar --tool Bash \
   --input '{"command":"rm -rf /"}' --context '{"command_pattern":"rm -rf"}' \
   --receipts ./receipts --key ./keys/gateway.json
 ```
@@ -351,10 +361,10 @@ in its contract:
 
 ```bash
 # the PreToolUse / before-tool command for each host
-npx -y protect-mcp@0.31.1 evaluate --format codex  --cedar ./cedar   # OpenAI Codex
-npx -y protect-mcp@0.31.1 evaluate --format gemini --cedar ./cedar   # Gemini CLI BeforeTool
-npx -y protect-mcp@0.31.1 evaluate --format cursor --cedar ./cedar   # Cursor beforeShellExecution
-npx -y protect-mcp@0.31.1 evaluate --format hermes --cedar ./cedar   # Hermes pre_tool_call
+npx -y protect-mcp@0.32.0 evaluate --format codex  --cedar ./cedar   # OpenAI Codex
+npx -y protect-mcp@0.32.0 evaluate --format gemini --cedar ./cedar   # Gemini CLI BeforeTool
+npx -y protect-mcp@0.32.0 evaluate --format cursor --cedar ./cedar   # Cursor beforeShellExecution
+npx -y protect-mcp@0.32.0 evaluate --format hermes --cedar ./cedar   # Hermes pre_tool_call
 ```
 
 Pair each with `sign --format <host>` on the post-tool event for receipts. The

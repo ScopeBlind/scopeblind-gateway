@@ -11,14 +11,25 @@
  *
  * Usage:
  *   npx protect-mcp --http --port 3000 -- node your-server.js
+ *
+ * It listens on 127.0.0.1 unless another address is asked for (--host or
+ * PROTECT_MCP_HTTP_HOST), and every request except GET /health must carry
+ * Authorization: Bearer <token>, the token from PROTECT_MCP_HTTP_TOKEN or one
+ * generated at startup and printed on stderr. It sends no CORS headers.
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { ProtectGateway } from './gateway.js';
 import type { ProtectConfig, JsonRpcRequest } from './types.js';
 
+const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost']);
+const MIN_TOKEN_LENGTH = 32;
+
 interface HttpTransportOptions {
   port: number;
+  /** Listen address; default 127.0.0.1 (or PROTECT_MCP_HTTP_HOST) */
+  host?: string;
   config: ProtectConfig;
   serverCommand: string[];
   /** Loaded Cedar policy set; attached to the gateway before the child starts */
@@ -27,6 +38,22 @@ interface HttpTransportOptions {
 
 export async function startHttpTransport(options: HttpTransportOptions): Promise<void> {
   const { port, config, serverCommand } = options;
+  const host = options.host || process.env.PROTECT_MCP_HTTP_HOST || '127.0.0.1';
+
+  // Every request except GET /health must present this bearer token. The
+  // comparison runs over fixed-length digests, so it is constant-time. A token
+  // the operator sets must be at least 32 characters; a generated one is 64.
+  const configuredToken = process.env.PROTECT_MCP_HTTP_TOKEN;
+  const tokenFromEnv = configuredToken?.trim() ?? '';
+  if (configuredToken !== undefined && tokenFromEnv.length < MIN_TOKEN_LENGTH) {
+    throw new Error(`PROTECT_MCP_HTTP_TOKEN must be at least ${MIN_TOKEN_LENGTH} characters (it has ${tokenFromEnv.length}); set a random value, for example the output of: openssl rand -hex 32`);
+  }
+  const token = tokenFromEnv || randomBytes(32).toString('hex');
+  const tokenDigest = createHash('sha256').update(token).digest();
+  const authorized = (req: IncomingMessage): boolean => {
+    const match = /^Bearer +(.+)$/i.exec(req.headers.authorization || '');
+    return match !== null && timingSafeEqual(createHash('sha256').update(match[1].trim()).digest(), tokenDigest);
+  };
 
   // Track SSE connections
   const sseClients = new Set<ServerResponse>();
@@ -51,15 +78,11 @@ export async function startHttpTransport(options: HttpTransportOptions): Promise
   await gateway.startForHttp();
 
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-    // CORS headers
-    const origin = req.headers.origin || '*';
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id');
-    res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // No CORS headers: this serves MCP clients, not web pages. Reflecting the
+    // caller's Origin with credentials let any page a browser opened drive the
+    // wrapped tools.
 
-    // Preflight
+    // Preflight (answered without CORS headers, so a browser refuses it)
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       res.end();
@@ -77,7 +100,16 @@ export async function startHttpTransport(options: HttpTransportOptions): Promise
         version: process.env.PROTECT_MCP_VERSION || 'unknown',
         transport: 'streamable-http',
         mode: config.policy ? (config.enforce ? 'enforce' : 'shadow') : 'shadow',
-        wrapping: serverCommand.join(' '),
+      }));
+      return;
+    }
+
+    if (!authorized(req)) {
+      res.writeHead(401, { 'Content-Type': 'application/json', 'WWW-Authenticate': 'Bearer' });
+      res.end(JSON.stringify({
+        jsonrpc: '2.0',
+        error: { code: -32001, message: 'Unauthorized: send Authorization: Bearer <token>, the token the gateway printed at startup or PROTECT_MCP_HTTP_TOKEN' },
+        id: null,
       }));
       return;
     }
@@ -171,14 +203,22 @@ export async function startHttpTransport(options: HttpTransportOptions): Promise
     }));
   });
 
-  server.listen(port, () => {
-    process.stderr.write(`\n[PROTECT_MCP] HTTP transport listening on http://0.0.0.0:${port}\n`);
+  server.listen(port, host, () => {
+    const address = server.address();
+    const boundPort = address && typeof address === 'object' ? address.port : port;
+    process.stderr.write(`\n[PROTECT_MCP] HTTP transport listening on http://${host.includes(':') ? `[${host}]` : host}:${boundPort}\n`);
     process.stderr.write(`  POST   /mcp        — JSON-RPC (Streamable HTTP)\n`);
     process.stderr.write(`  GET    /mcp/sse    — Server-Sent Events\n`);
     process.stderr.write(`  GET    /health     — Health check\n`);
     process.stderr.write(`  DELETE /mcp        — Close session\n`);
     process.stderr.write(`\n  Wrapping: ${serverCommand.join(' ')}\n`);
-    process.stderr.write(`  Mode: ${config.enforce ? 'enforce' : 'shadow'}\n\n`);
+    process.stderr.write(`  Mode: ${config.enforce ? 'enforce' : 'shadow'}\n`);
+    process.stderr.write(`  Bearer token: ${tokenFromEnv ? 'from PROTECT_MCP_HTTP_TOKEN' : token}\n`);
+    process.stderr.write(`  Every request except GET /health needs the header Authorization: Bearer <token>\n`);
+    if (!LOOPBACK.has(host) && !host.startsWith('127.')) {
+      process.stderr.write(`  Warning: ${host} is not a loopback address, so anything that can reach this port can try the token. Put TLS and authentication in front of it.\n`);
+    }
+    process.stderr.write('\n');
   });
 
   // Graceful shutdown

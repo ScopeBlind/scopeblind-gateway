@@ -27,15 +27,23 @@ function loadPolicy(path) {
 function computePolicyDigest(policy) {
   return digestBuiltinPolicy(policy).policy_digest;
 }
+function ownEntry(table, key) {
+  return table && Object.prototype.hasOwnProperty.call(table, key) ? table[key] : void 0;
+}
+function setOwnEntry(table, key, value) {
+  Object.defineProperty(table, key, { value, enumerable: true, writable: true, configurable: true });
+}
 function getToolPolicy(toolName, policy) {
   if (!policy) {
     return { require: "any" };
   }
-  if (policy.tools[toolName]) {
-    return policy.tools[toolName];
+  const exact = ownEntry(policy.tools, toolName);
+  if (exact) {
+    return exact;
   }
-  if (policy.tools["*"]) {
-    return policy.tools["*"];
+  const wildcard = ownEntry(policy.tools, "*");
+  if (wildcard) {
+    return wildcard;
   }
   return { require: "any" };
 }
@@ -69,6 +77,8 @@ function checkRateLimit(key, limit, store) {
 
 export {
   loadPolicy,
+  ownEntry,
+  setOwnEntry,
   getToolPolicy,
   parseRateLimit,
   checkRateLimit

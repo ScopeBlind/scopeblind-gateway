@@ -18,7 +18,7 @@ import { randomBytes } from 'node:crypto';
 import { ed25519 } from '@noble/curves/ed25519';
 import { bytesToHex } from '@noble/hashes/utils';
 import { policySetFromSource, evaluateCedar } from './cedar-evaluator.js';
-import { initSigning, signDecision } from './signing.js';
+import { initSigning, signDecision, writePrivateKeyFile, ensurePrivateKeyDir } from './signing.js';
 import { verifyReceipt } from './acta-envelope.js';
 import { createAuditBundle } from './bundle.js';
 import { POLICY_PACKS, getPolicyPack, type PolicyPack } from './policy-packs.js';
@@ -188,10 +188,10 @@ export async function handleOnboard(argv: string[]): Promise<void> {
       if (go !== 'y' && go !== 'yes') { out(dim('  Cancelled. Pass --dir <path> to use a fresh folder.')); return; }
     }
     mkdirSync(join(dir, 'cedar'), { recursive: true });
-    mkdirSync(join(dir, 'keys'), { recursive: true });
+    ensurePrivateKeyDir(join(dir, 'keys'));
     const kp = keypair();
     const keyPath = join(dir, 'keys', 'gateway.json');
-    writeFileSync(keyPath, JSON.stringify({ ...kp, generated_at: new Date().toISOString(), warning: 'KEEP THIS FILE SECRET.' }, null, 2) + '\n');
+    writePrivateKeyFile(keyPath, JSON.stringify({ ...kp, generated_at: new Date().toISOString(), warning: 'KEEP THIS FILE SECRET.' }, null, 2) + '\n', { overwrite: true });
     writeFileSync(join(dir, 'keys', '.gitignore'), '*.json\n');
     writeFileSync(join(dir, 'cedar', pack.files[0].path), pack.files[0].contents);
     writeFileSync(join(dir, 'protect-mcp.json'), JSON.stringify({

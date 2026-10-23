@@ -905,10 +905,12 @@ declare class ProtectGateway {
     private lastReceiptHash;
     private evidenceStore;
     private receiptBuffer;
-    /** Approval grants keyed by request_id (scoped to the specific action that was requested) */
+    /** Approval grants: once grants keyed by `${tool}:${payload_hash}` (one exact action), always grants by `always:${tool}` */
     private approvalStore;
     /** Random nonce generated at startup — required for approval endpoint authentication */
     private readonly approvalNonce;
+    /** Port of the local status server that serves POST /approve, once started */
+    private statusPort;
     private currentTier;
     private admissionResult;
     /** Notification config for approval gates (SMS, webhook, email) */
@@ -935,9 +937,22 @@ declare class ProtectGateway {
     setManifest(manifest: ManifestPresentation | null): AdmissionResult;
     private handleClientMessage;
     private interceptToolCallAsync;
+    /**
+     * A call the gate could not evaluate (arguments nested too deep to hash, for
+     * one) is refused, in shadow mode too: it must neither crash the gateway nor
+     * reach the tool unexamined.
+     */
+    private refuseUnevaluable;
     private handleServerMessage;
     private injectParamsCredentials;
     private interceptToolCall;
+    /**
+     * Whether a person granted this call at the gate (POST /approve). A once
+     * grant is keyed by the exact action (tool and payload hash), so an identical
+     * retry finds it and a changed call does not, and it is used up here. An
+     * always grant covers every call to the tool until it expires.
+     */
+    private takeGrant;
     private getTierRateLimit;
     /**
      * Emit a decision log entry with OTel-compatible trace IDs and optional
@@ -949,6 +964,18 @@ declare class ProtectGateway {
      * @see {@link https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/}
      */
     private emitDecisionLog;
+    /**
+     * An allow is only as good as its receipt. In enforce mode a call whose
+     * receipt could not be signed does not run, as in the hook server: a
+     * governed action that cannot be proven is not allowed.
+     */
+    private refuseUnsigned;
+    /**
+     * Refuse to arm enforce mode when signing is configured but cannot produce a
+     * receipt (a missing or unreadable key), as the hook server does: without it
+     * every allowed call would either run unsigned or be refused.
+     */
+    private assertSigningReady;
     private makeErrorResponse;
     private sendToChild;
     private sendToClient;
@@ -969,6 +996,12 @@ declare class ProtectGateway {
      */
     processRequest(jsonRpc: JsonRpcRequest): Promise<string>;
     private log;
+    /**
+     * Tell the operator, on stderr only, how to grant one held call. The nonce
+     * that authenticates POST /approve never goes into a tool result: the model
+     * reads those, and an agent that has the nonce can approve its own calls.
+     */
+    private logApprovalHint;
     stop(): void;
 }
 
@@ -3298,12 +3331,6 @@ declare function loadPolicy(path: string): {
     credentials?: Record<string, CredentialConfig>;
     signing?: SigningConfig;
 };
-/**
- * Get the policy for a specific tool. Falls back to "*" wildcard, then default-allow.
- *
- * Backwards compatible: old policies with just { block, rate_limit, require }
- * still work. New policies can add { min_tier, rate_limits }.
- */
 declare function getToolPolicy(toolName: string, policy: ProtectPolicy | null): ToolPolicy;
 /**
  * Parse a rate limit spec like "5/hour", "100/day", "10/minute".

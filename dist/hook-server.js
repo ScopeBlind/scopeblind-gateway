@@ -26,7 +26,7 @@ module.exports = __toCommonJS(hook_server_exports);
 var import_node_http2 = require("http");
 var import_node_crypto8 = require("crypto");
 var import_node_fs9 = require("fs");
-var import_node_path6 = require("path");
+var import_node_path7 = require("path");
 
 // src/cedar-evaluator.ts
 var import_node_fs2 = require("fs");
@@ -730,6 +730,7 @@ var RecordReporter = class {
 
 // src/signing.ts
 var import_node_fs4 = require("fs");
+var import_node_path3 = require("path");
 var signerState = null;
 var signingConfigured = false;
 var signingInitError = null;
@@ -750,6 +751,15 @@ async function initSigning(config) {
     signingInitError = `key file not found at ${config.key_path}`;
     warnings.push(`signing: ${signingInitError} \u2014 run "protect-mcp init" to generate`);
     return warnings;
+  }
+  if (process.platform !== "win32") {
+    try {
+      const fileMode = (0, import_node_fs4.statSync)(config.key_path).mode & 511;
+      if (fileMode & 63) {
+        warnings.push(`signing: key file ${config.key_path} is open to other users (mode ${fileMode.toString(8).padStart(3, "0")}); run: chmod 600 ${config.key_path}`);
+      }
+    } catch {
+    }
   }
   let keyData;
   try {
@@ -939,15 +949,20 @@ function loadPolicy(path) {
 function computePolicyDigest(policy) {
   return digestBuiltinPolicy(policy).policy_digest;
 }
+function ownEntry(table, key) {
+  return table && Object.prototype.hasOwnProperty.call(table, key) ? table[key] : void 0;
+}
 function getToolPolicy(toolName, policy) {
   if (!policy) {
     return { require: "any" };
   }
-  if (policy.tools[toolName]) {
-    return policy.tools[toolName];
+  const exact = ownEntry(policy.tools, toolName);
+  if (exact) {
+    return exact;
   }
-  if (policy.tools["*"]) {
-    return policy.tools["*"];
+  const wildcard = ownEntry(policy.tools, "*");
+  if (wildcard) {
+    return wildcard;
   }
   return { require: "any" };
 }
@@ -982,7 +997,7 @@ function checkRateLimit(key, limit, store) {
 // src/http-server.ts
 var import_node_http = require("http");
 var import_node_fs6 = require("fs");
-var import_node_path3 = require("path");
+var import_node_path4 = require("path");
 var MAX_RECEIPTS = 100;
 var ReceiptBuffer = class {
   receipts = [];
@@ -1009,12 +1024,16 @@ var ReceiptBuffer = class {
     return this.receipts.length > 0 ? this.receipts[this.receipts.length - 1] : void 0;
   }
 };
+function isLoopbackHost(host, port) {
+  const name = (host || "").toLowerCase();
+  return name === `127.0.0.1:${port}` || name === `localhost:${port}` || name === `[::1]:${port}`;
+}
 
 // src/scopeblind-bridge.ts
 var import_node_crypto4 = require("crypto");
 var import_node_fs7 = require("fs");
 var import_node_os = require("os");
-var import_node_path4 = require("path");
+var import_node_path5 = require("path");
 
 // src/egress-guard.ts
 var import_node_crypto3 = require("crypto");
@@ -1354,9 +1373,9 @@ function parseConfiguredPseudonymKey(value) {
   return key;
 }
 function loadOrCreatePseudonymKey(env, base, slug) {
-  const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path4.join)((0, import_node_os.homedir)(), ".protect-mcp", "egress-keys");
+  const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path5.join)((0, import_node_os.homedir)(), ".protect-mcp", "egress-keys");
   const scopeDigest = (0, import_node_crypto4.createHash)("sha256").update(`${base}\0${slug}`).digest("hex");
-  const path = (0, import_node_path4.join)(dir, `${scopeDigest}.key`);
+  const path = (0, import_node_path5.join)(dir, `${scopeDigest}.key`);
   (0, import_node_fs7.mkdirSync)(dir, { recursive: true, mode: 448 });
   (0, import_node_fs7.chmodSync)(dir, 448);
   try {
@@ -1416,12 +1435,20 @@ function stableStringify(value) {
   const obj = value;
   return `{${Object.keys(obj).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(obj[key])}`).join(",")}}`;
 }
+function wellFormed(text) {
+  return text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "\uFFFD");
+}
+function previewKey(key) {
+  const escaped = key.replace(/[^\x20-\x7E]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  return escaped === "__proto__" ? "\\u005f_proto__" : escaped;
+}
 function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   if (depth > 4) return "[truncated-depth]";
   if (value === null || value === void 0) return value;
   if (typeof value !== "object") {
     if (path.length > 0) disclosed.push(path.join("."));
-    if (typeof value === "string" && value.length > 240) return `${value.slice(0, 240)}...`;
+    if (typeof value === "string") return wellFormed(value.length > 240 ? `${value.slice(0, 240)}...` : value);
+    if (typeof value === "number" && !Number.isFinite(value)) return null;
     return value;
   }
   if (Array.isArray(value)) {
@@ -1429,27 +1456,29 @@ function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   }
   const out = {};
   for (const [key, child] of Object.entries(value)) {
-    const childPath = [...path, key];
+    let shown = previewKey(key);
+    while (Object.prototype.hasOwnProperty.call(out, shown)) shown += "~";
+    const childPath = [...path, shown];
     if (SECRET_KEY_RE.test(key)) {
       redacted.push(childPath.join("."));
-      out[key] = "[redacted]";
+      out[shown] = "[redacted]";
       continue;
     }
-    out[key] = redact(child, childPath, redacted, disclosed, depth + 1);
+    out[shown] = redact(child, childPath, redacted, disclosed, depth + 1);
   }
   return out;
 }
 function firstStringValue(input, keys) {
   for (const key of keys) {
     const value = input[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "string" && value.trim()) return wellFormed(value.trim());
     if (typeof value === "number" || typeof value === "boolean") return String(value);
   }
   return void 0;
 }
 function actionFor(tool, input) {
   const explicit = firstStringValue(input, ["action", "operation", "method", "verb", "command"]);
-  if (explicit) return explicit.length > 90 ? `${explicit.slice(0, 90)}...` : explicit;
+  if (explicit) return explicit.length > 90 ? wellFormed(`${explicit.slice(0, 90)}...`) : explicit;
   return tool;
 }
 function buildActionReadback(tool, input) {
@@ -1458,13 +1487,15 @@ function buildActionReadback(tool, input) {
   const redactedFields = [];
   const disclosedFields = [];
   const payloadPreview = redact(normalized, [], redactedFields, disclosedFields);
-  const action = actionFor(tool, normalized);
+  const shownTool = typeof tool === "string" ? wellFormed(tool) : tool;
+  const action = actionFor(shownTool, normalized);
   const destination = firstStringValue(normalized, DESTINATION_KEYS);
-  const summary = destination ? `${tool} -> ${destination}` : `${tool} request`;
+  const summary = destination ? `${shownTool} -> ${destination}` : `${shownTool} request`;
   return {
-    tool,
+    tool: shownTool,
     action,
-    destination,
+    // Absent rather than undefined: a receipt cannot carry an undefined member.
+    ...destination !== void 0 ? { destination } : {},
     payload_preview: payloadPreview,
     payload_hash: (0, import_node_crypto5.createHash)("sha256").update(canonical2).digest("hex"),
     payload_bytes: Buffer.byteLength(canonical2, "utf-8"),
@@ -1595,7 +1626,7 @@ function buildEnrichment(tool, input) {
 // src/mandate-lifecycle.ts
 var import_node_crypto7 = require("crypto");
 var import_node_fs8 = require("fs");
-var import_node_path5 = require("path");
+var import_node_path6 = require("path");
 
 // src/webauthn-approval.ts
 var import_node_crypto6 = require("crypto");
@@ -1747,13 +1778,13 @@ function policyApprovalChallenge(proposal, controllerId) {
   }), "utf-8")).digest("base64url");
 }
 function mandatePaths(cedarDir) {
-  const absolute = (0, import_node_path5.resolve)(cedarDir);
-  const parent = (0, import_node_path5.dirname)(absolute);
-  const base = (0, import_node_path5.basename)(absolute);
+  const absolute = (0, import_node_path6.resolve)(cedarDir);
+  const parent = (0, import_node_path6.dirname)(absolute);
+  const base = (0, import_node_path6.basename)(absolute);
   return {
-    registry: (0, import_node_path5.join)(parent, `.${base}.scopeblind-mandate-registry.json`),
-    snapshots: (0, import_node_path5.join)(parent, `.${base}.scopeblind-mandate-snapshots`),
-    auditLog: (0, import_node_path5.join)(parent, `.${base}.scopeblind-mandate-history.jsonl`)
+    registry: (0, import_node_path6.join)(parent, `.${base}.scopeblind-mandate-registry.json`),
+    snapshots: (0, import_node_path6.join)(parent, `.${base}.scopeblind-mandate-snapshots`),
+    auditLog: (0, import_node_path6.join)(parent, `.${base}.scopeblind-mandate-history.jsonl`)
   };
 }
 function loadGateSigner(keyPath) {
@@ -1779,7 +1810,7 @@ function snapshotFromDirectory(cedarDir, compiledAt) {
   if (entries.length === 0) throw new Error(`no Cedar policy files found in ${cedarDir}`);
   const files = entries.map((name) => {
     if (!safePolicyFileName(name)) throw new Error(`unsafe Cedar policy filename: ${name}`);
-    const content = (0, import_node_fs8.readFileSync)((0, import_node_path5.join)(cedarDir, name), "utf-8");
+    const content = (0, import_node_fs8.readFileSync)((0, import_node_path6.join)(cedarDir, name), "utf-8");
     return { name, content, sha256: SHA256(Buffer.from(content, "utf-8")) };
   });
   const digest = digestPolicyFiles("cedar", files).policy_digest;
@@ -1813,9 +1844,9 @@ function verifyGateEnvelope(envelope, gate) {
   return payload.issuer_id === gate.kid && payload.gate_public_key === gate.public_key;
 }
 function writeAtomic(path, contents) {
-  const parent = (0, import_node_path5.dirname)(path);
+  const parent = (0, import_node_path6.dirname)(path);
   (0, import_node_fs8.mkdirSync)(parent, { recursive: true });
-  const temp = (0, import_node_path5.join)(parent, `.${(0, import_node_path5.basename)(path)}.${process.pid}.${(0, import_node_crypto7.randomUUID)()}.tmp`);
+  const temp = (0, import_node_path6.join)(parent, `.${(0, import_node_path6.basename)(path)}.${process.pid}.${(0, import_node_crypto7.randomUUID)()}.tmp`);
   try {
     (0, import_node_fs8.writeFileSync)(temp, contents, { encoding: "utf-8", mode: 384 });
     (0, import_node_fs8.renameSync)(temp, path);
@@ -2066,15 +2097,15 @@ function verifyMandateRegistry(registry, now = /* @__PURE__ */ new Date()) {
 }
 function installSnapshotAtomically(cedarDir, snapshot) {
   assertSnapshot(snapshot);
-  const target = (0, import_node_path5.resolve)(cedarDir);
-  const parent = (0, import_node_path5.dirname)(target);
-  const base = (0, import_node_path5.basename)(target);
+  const target = (0, import_node_path6.resolve)(cedarDir);
+  const parent = (0, import_node_path6.dirname)(target);
+  const base = (0, import_node_path6.basename)(target);
   if (!(0, import_node_fs8.existsSync)(target) || !(0, import_node_fs8.statSync)(target).isDirectory()) throw new Error(`managed Cedar directory is missing: ${target}`);
-  const stage = (0, import_node_path5.join)(parent, `.${base}.scopeblind-stage-${process.pid}-${(0, import_node_crypto7.randomUUID)()}`);
-  const backup = (0, import_node_path5.join)(parent, `.${base}.scopeblind-backup-${process.pid}-${(0, import_node_crypto7.randomUUID)()}`);
+  const stage = (0, import_node_path6.join)(parent, `.${base}.scopeblind-stage-${process.pid}-${(0, import_node_crypto7.randomUUID)()}`);
+  const backup = (0, import_node_path6.join)(parent, `.${base}.scopeblind-backup-${process.pid}-${(0, import_node_crypto7.randomUUID)()}`);
   (0, import_node_fs8.mkdirSync)(stage, { recursive: true, mode: 448 });
   try {
-    for (const file of snapshot.files) (0, import_node_fs8.writeFileSync)((0, import_node_path5.join)(stage, file.name), file.content, { encoding: "utf-8", mode: 384 });
+    for (const file of snapshot.files) (0, import_node_fs8.writeFileSync)((0, import_node_path6.join)(stage, file.name), file.content, { encoding: "utf-8", mode: 384 });
     (0, import_node_fs8.renameSync)(target, backup);
     try {
       (0, import_node_fs8.renameSync)(stage, target);
@@ -2590,31 +2621,50 @@ async function handlePreToolUse(input, state) {
       };
     }
     if (toolPolicy.rate_limit) {
+      let limit;
       try {
-        const limit = parseRateLimit(toolPolicy.rate_limit);
-        const key = `tool:${toolName}:hook`;
-        const { allowed, remaining } = checkRateLimit(key, limit, state.rateLimitStore);
-        if (!allowed) {
-          const hookLatency2 = Date.now() - hookStart;
-          emitDecisionLog(state, {
-            tool: toolName,
-            decision: "deny",
-            reason_code: "rate_limit_exceeded",
-            request_id: requestId,
-            hook_event: "PreToolUse",
-            swarm: swarm.team_name ? swarm : void 0,
-            timing: { hook_latency_ms: hookLatency2, started_at: hookStart },
-            sandbox_state: detectSandboxState()
-          });
-          return {
-            hookSpecificOutput: {
-              hookEventName: "PreToolUse",
-              permissionDecision: "deny",
-              permissionDecisionReason: `[ScopeBlind] "${toolName}" rate limit exceeded (${toolPolicy.rate_limit}).`
-            }
-          };
-        }
+        limit = parseRateLimit(toolPolicy.rate_limit);
       } catch {
+        const hookLatency2 = Date.now() - hookStart;
+        emitDecisionLog(state, {
+          tool: toolName,
+          decision: "deny",
+          reason_code: "rate_limit_invalid",
+          request_id: requestId,
+          hook_event: "PreToolUse",
+          swarm: swarm.team_name ? swarm : void 0,
+          timing: { hook_latency_ms: hookLatency2, started_at: hookStart },
+          sandbox_state: detectSandboxState()
+        });
+        return {
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: `[ScopeBlind] "${toolName}" denied: its rate limit ${JSON.stringify(toolPolicy.rate_limit)} is not a valid spec (N/second, N/minute, N/hour or N/day), so the gate fails closed.`
+          }
+        };
+      }
+      const key = `tool:${toolName}:hook`;
+      const { allowed } = checkRateLimit(key, limit, state.rateLimitStore);
+      if (!allowed) {
+        const hookLatency2 = Date.now() - hookStart;
+        emitDecisionLog(state, {
+          tool: toolName,
+          decision: "deny",
+          reason_code: "rate_limit_exceeded",
+          request_id: requestId,
+          hook_event: "PreToolUse",
+          swarm: swarm.team_name ? swarm : void 0,
+          timing: { hook_latency_ms: hookLatency2, started_at: hookStart },
+          sandbox_state: detectSandboxState()
+        });
+        return {
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: `[ScopeBlind] "${toolName}" rate limit exceeded (${toolPolicy.rate_limit}).`
+          }
+        };
       }
     }
   }
@@ -2997,7 +3047,7 @@ async function startHookServer(options = {}) {
       const cedarAvailable = await isCedarAvailable();
       if (!cedarAvailable) {
         process.stderr.write(
-          "[PROTECT_MCP] Warning: @cedar-policy/cedar-wasm not installed. Cedar policies loaded but evaluation fallback is allow-all.\n"
+          "[PROTECT_MCP] Warning: @cedar-policy/cedar-wasm not installed. Cedar policies loaded, but every call will be denied until @cedar-policy/cedar-wasm is installed.\n"
         );
       }
     } catch (err) {
@@ -3025,7 +3075,7 @@ async function startHookServer(options = {}) {
     }
   }
   if (!jsonPolicy?.signing) {
-    const keyPath = (0, import_node_path6.join)(dataDir, "keys", "gateway.json");
+    const keyPath = (0, import_node_path7.join)(dataDir, "keys", "gateway.json");
     if ((0, import_node_fs9.existsSync)(keyPath)) {
       gateKeyPath = keyPath;
       const warnings = await initSigning({ key_path: keyPath, issuer: "protect-mcp", enabled: true });
@@ -3153,9 +3203,9 @@ async function startHookServer(options = {}) {
     verbose,
     enforce,
     policyDigest,
-    logFilePath: (0, import_node_path6.join)(dataDir, LOG_FILE),
-    receiptFilePath: (0, import_node_path6.join)(dataDir, RECEIPTS_FILE),
-    lastReceiptHash: resumeReceiptChain((0, import_node_path6.join)(dataDir, RECEIPTS_FILE)),
+    logFilePath: (0, import_node_path7.join)(dataDir, LOG_FILE),
+    receiptFilePath: (0, import_node_path7.join)(dataDir, RECEIPTS_FILE),
+    lastReceiptHash: resumeReceiptChain((0, import_node_path7.join)(dataDir, RECEIPTS_FILE)),
     permissionSuggestions: /* @__PURE__ */ new Map(),
     configAlerts: [],
     managedMandate,
@@ -3164,10 +3214,24 @@ async function startHookServer(options = {}) {
     approvalsToRecord: /* @__PURE__ */ new Map()
   };
   const server = (0, import_node_http2.createServer)(async (req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
     res.setHeader("Content-Type", "application/json");
+    const address = server.address();
+    if (!isLoopbackHost(req.headers.host, address && typeof address === "object" ? address.port : port)) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: "host_not_allowed" }));
+      return;
+    }
+    const origin = req.headers.origin;
+    if (origin !== void 0 && origin.toLowerCase() !== `http://${String(req.headers.host).toLowerCase()}`) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: "cross_site_request" }));
+      return;
+    }
+    if (req.method === "POST" && String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase() !== "application/json") {
+      res.writeHead(415);
+      res.end(JSON.stringify({ error: "json_required", message: "POST with Content-Type: application/json" }));
+      return;
+    }
     if (req.method === "OPTIONS") {
       res.writeHead(204);
       res.end();
@@ -3436,7 +3500,7 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs9.existsSync)((0, import_node_path6.join)(dataDir, ".scopeblind"));
+    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs9.existsSync)((0, import_node_path7.join)(dataDir, ".scopeblind"));
     if (!hasSlug) {
       w(`  Dashboard  npx protect-mcp connect
 `);
@@ -3469,7 +3533,7 @@ function newestCedarMtime(dir) {
     let newest = 0;
     for (const f of (0, import_node_fs9.readdirSync)(dir)) {
       if (!f.endsWith(".cedar")) continue;
-      const m = (0, import_node_fs9.statSync)((0, import_node_path6.join)(dir, f)).mtimeMs;
+      const m = (0, import_node_fs9.statSync)((0, import_node_path7.join)(dir, f)).mtimeMs;
       if (m > newest) newest = m;
     }
     return newest;

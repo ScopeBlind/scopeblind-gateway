@@ -8,7 +8,7 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-2CLG27IZ.mjs";
+} from "./chunk-XLZW7YHQ.mjs";
 import {
   POLICY_PACKS,
   getPolicyPack,
@@ -17,7 +17,7 @@ import {
 import {
   ProtectGateway,
   validateCredentials
-} from "./chunk-PXYYGA4G.mjs";
+} from "./chunk-ZIV4BBDR.mjs";
 import {
   STARTER_POLICY,
   STARTER_POLICY_VERSION,
@@ -43,15 +43,21 @@ import {
 import {
   RecordReporter,
   buildActionReadback,
+  isLoopbackHost,
   loadStandardFile
-} from "./chunk-7NEKA6GE.mjs";
+} from "./chunk-MHA5X7DI.mjs";
 import {
-  loadPolicy
-} from "./chunk-EB7LESYM.mjs";
+  loadPolicy,
+  ownEntry,
+  setOwnEntry
+} from "./chunk-VJ743MCX.mjs";
 import {
+  ensurePrivateKeyDir,
   initSigning,
-  signDecision
-} from "./chunk-LXAQG3UR.mjs";
+  isSigningEnabled,
+  signDecision,
+  writePrivateKeyFile
+} from "./chunk-PNPJY37B.mjs";
 import {
   buildPolicyBundle,
   checkCedarPolicyText,
@@ -73,7 +79,7 @@ import "./chunk-O3K3FPBT.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/cli.ts
-import { createHash as createHashCli } from "crypto";
+import { createHash as createHashCli, randomBytes as randomBytesCli, timingSafeEqual as timingSafeEqualCli } from "crypto";
 import { readFileSync as readFileSyncCli, existsSync as existsSyncCli, appendFileSync as appendFileSyncCli, mkdirSync as mkdirSyncCli, readdirSync as readdirSyncCli, writeFileSync as writeFileSyncCli, statSync as statSyncCli, rmSync as rmSyncCli } from "fs";
 import { basename as basenameCli, dirname as dirnameCli, join as joinCli, resolve as resolveCli } from "path";
 import { homedir as homedirCli } from "os";
@@ -126,15 +132,21 @@ Usage:
 
 Options:
   --policy <path>   Policy/config JSON file (default: allow-all)
-  --cedar <dir>     Cedar policy directory (alternative to --policy, evaluates locally via WASM)
+  --cedar <dir>     Cedar policy directory, evaluated locally via WASM; with --policy, that file's tool rules
+                    (block, require_approval, rate limits, min_tier) also apply after a Cedar allow, and its
+                    signing and credentials are used
   --slug <slug>     ScopeBlind tenant slug (optional)
   --enforce         Enable enforcement mode (default: shadow mode)
   --standard <file> The signed standard in force (standard.json from scopeblind.com/write): its tool list and per-instruction limit are refused at the gate; an amount above its approval threshold is held for the named person
   --report <url>    The standard page's report URL; every receipt lands there after it is chained locally, and held actions wait there for a signed decision
   --report-token <t> The page's write token (or PROTECT_MCP_REPORT_TOKEN)
   --run <id>        A name for this run on the page (default: a timestamp)
-  --http            Start HTTP/SSE server instead of stdio proxy
+  --http            Start HTTP/SSE server instead of stdio proxy; every request except GET /health needs
+                    Authorization: Bearer <token>, from PROTECT_MCP_HTTP_TOKEN (at least 32 characters) or printed
+                    on stderr at startup
   --port <port>     HTTP server port (default: 3000 for --http, 9377 for serve)
+  --host <addr>     Listen address for --http (default: 127.0.0.1, or PROTECT_MCP_HTTP_HOST); another
+                    address opens the port beyond this machine
   --verbose         Enable debug logging to stderr
   --help            Show this help
   --version         Print the installed version
@@ -226,6 +238,9 @@ function parseArgs(argv) {
   let reportUrl;
   let reportToken;
   let runId;
+  let host;
+  let http = false;
+  let port;
   const separatorIndex = argv.indexOf("--");
   if (separatorIndex === -1) {
     process.stderr.write(
@@ -262,19 +277,25 @@ function parseArgs(argv) {
       reportToken = options[++i];
     } else if (arg === "--run" && i + 1 < options.length) {
       runId = options[++i];
+    } else if (arg === "--host" && i + 1 < options.length) {
+      host = options[++i];
+    } else if (arg === "--http") {
+      http = true;
+    } else if (arg === "--port" && i + 1 < options.length) {
+      port = parseInt(options[++i], 10);
     } else {
       process.stderr.write(`[PROTECT_MCP] Warning: Unknown option "${arg}"
 `);
     }
   }
-  return { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId };
+  return { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port };
 }
 async function handleInit(argv) {
   if (argv.includes("--starter") || argv.includes("--contain")) {
     await handleInitStarter(argv);
     return;
   }
-  const { writeFileSync, existsSync, mkdirSync } = await import("fs");
+  const { writeFileSync, existsSync } = await import("fs");
   const { join } = await import("path");
   let dir = process.cwd();
   const dirIdx = argv.indexOf("--dir");
@@ -303,16 +324,14 @@ async function handleInit(argv) {
       kid: "generated"
     };
   }
-  if (!existsSync(keysDir)) {
-    mkdirSync(keysDir, { recursive: true });
-  }
-  writeFileSync(keyPath, JSON.stringify({
+  ensurePrivateKeyDir(keysDir);
+  writePrivateKeyFile(keyPath, JSON.stringify({
     privateKey: keypair.privateKey,
     publicKey: keypair.publicKey,
     kid: keypair.kid,
     generated_at: (/* @__PURE__ */ new Date()).toISOString(),
     warning: "KEEP THIS FILE SECRET. Never commit to version control."
-  }, null, 2) + "\n");
+  }, null, 2) + "\n", { overwrite: true });
   const gitignorePath = join(keysDir, ".gitignore");
   if (!existsSync(gitignorePath)) {
     writeFileSync(gitignorePath, "# Never commit signing keys\n*.json\n");
@@ -473,7 +492,7 @@ ${renderContainRules(dir, homedirCli())}`;
   if (!contain) out(`  Keep writes inside this folder too:  ${dim(`npx protect-mcp@${version} init --starter --contain --force`)} (rewrites protect.cedar)`);
   out();
 }
-async function handleDemo() {
+async function handleDemo(configFile) {
   const { existsSync } = await import("fs");
   const { join, dirname, resolve } = await import("path");
   const { realpathSync } = await import("fs");
@@ -485,7 +504,7 @@ async function handleDemo() {
     cliDir = dirname(cliPath);
   }
   const demoServerPath = join(cliDir, "demo-server.js");
-  const configPath = join(process.cwd(), "protect-mcp.json");
+  const configPath = configFile ?? join(process.cwd(), "protect-mcp.json");
   const hasConfig = existsSync(configPath);
   if (!hasConfig) {
     process.stderr.write(`
@@ -786,11 +805,13 @@ function loadPolicyJson(policyPath) {
 }
 function policyCoverageForTool(tool, policy) {
   const tools = policy?.tools && typeof policy.tools === "object" ? policy.tools : {};
-  if (tools[tool]) {
-    return { status: "exact", label: "Exact rule", policy: tools[tool] };
+  const exact = ownEntry(tools, tool);
+  if (exact) {
+    return { status: "exact", label: "Exact rule", policy: exact };
   }
-  if (tools["*"]) {
-    return { status: "wildcard", label: "Wildcard fallback", policy: tools["*"] };
+  const wildcard = ownEntry(tools, "*");
+  if (wildcard) {
+    return { status: "wildcard", label: "Wildcard fallback", policy: wildcard };
   }
   return { status: "none", label: "No rule" };
 }
@@ -1056,7 +1077,7 @@ function buildDashboardSummary(dir, policyPath = joinCli(dir, "protect-mcp.json"
     ].filter(Boolean)
   };
 }
-function dashboardHtml() {
+function dashboardHtml(token) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -1201,6 +1222,7 @@ npx protect-mcp --policy protect-mcp.json --enforce -- node your-server.js</pre>
 <div class="toast" id="toast"></div>
 <script>
 var state = null;
+var DASHBOARD_TOKEN = '${token}';
 async function refresh(){
   state = await fetch('/api/summary').then(function(r){ return r.json(); });
   render(state);
@@ -1311,7 +1333,7 @@ function renderRegistry(reg){
     '<small style="display:block;margin-top:8px">Hosted mode uploads digest metadata only: receipt hash, byte count, receipt type, request id, local issuer/kid, org id, billing account, and public keys. It does not upload prompts, tool payloads, outputs, raw receipts, or private keys.</small>';
 }
 async function setPolicy(tool, action){
-  var res = await fetch('/api/tool-policy', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ tool: tool, action: action }) });
+  var res = await fetch('/api/tool-policy', { method:'POST', headers:{'content-type':'application/json','x-dashboard-token':DASHBOARD_TOKEN}, body: JSON.stringify({ tool: tool, action: action }) });
   if(!res.ok){ toast('Policy update failed'); return; }
   toast('Policy updated: '+tool+' -> '+action+'. Restart the wrapper to apply.');
   await refresh();
@@ -1324,19 +1346,19 @@ async function resolveApproval(requestId, tool, resolution){
     var raw = prompt('Paste edited JSON payload. This records the edit instruction; rerun the tool with the edited payload.');
     if(raw){ try { edited = JSON.parse(raw); } catch(e){ toast('Edit payload is not valid JSON'); return; } }
   }
-  var res = await fetch('/api/approval/resolve', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ request_id: requestId, tool: tool, resolution: resolution, reason: reason, edited_payload: edited }) });
+  var res = await fetch('/api/approval/resolve', { method:'POST', headers:{'content-type':'application/json','x-dashboard-token':DASHBOARD_TOKEN}, body: JSON.stringify({ request_id: requestId, tool: tool, resolution: resolution, reason: reason, edited_payload: edited }) });
   var body = await res.json().catch(function(){ return {}; });
   toast(resolution+' recorded'+(body.forwarded && body.forwarded.ok ? ' and forwarded to live gateway' : ' locally'));
 }
 async function installPack(pack){
-  var res = await fetch('/api/policy-packs/install', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ pack: pack, force: true }) });
+  var res = await fetch('/api/policy-packs/install', { method:'POST', headers:{'content-type':'application/json','x-dashboard-token':DASHBOARD_TOKEN}, body: JSON.stringify({ pack: pack, force: true }) });
   var body = await res.json().catch(function(){ return {}; });
   if(!res.ok){ toast(body.error || 'Policy pack install failed'); return; }
   toast('Installed '+pack+' into '+body.dir);
   await refresh();
 }
 async function installConnector(pilot){
-  var res = await fetch('/api/connectors/install', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ pilot: pilot, force: true }) });
+  var res = await fetch('/api/connectors/install', { method:'POST', headers:{'content-type':'application/json','x-dashboard-token':DASHBOARD_TOKEN}, body: JSON.stringify({ pilot: pilot, force: true }) });
   var body = await res.json().catch(function(){ return {}; });
   if(!res.ok){ toast(body.error || 'Connector install failed'); return; }
   toast('Installed '+pilot+' into '+body.dir);
@@ -1350,7 +1372,7 @@ async function anchorRegistry(mode){
   var org = document.getElementById('registry-org') ? document.getElementById('registry-org').value : '';
   var token = document.getElementById('registry-token') ? document.getElementById('registry-token').value : '';
   var body = { org_name: org, hosted: mode === 'hosted', token: token };
-  var res = await fetch('/api/registry/anchor', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(body) });
+  var res = await fetch('/api/registry/anchor', { method:'POST', headers:{'content-type':'application/json','x-dashboard-token':DASHBOARD_TOKEN}, body: JSON.stringify(body) });
   var out = await res.json().catch(function(){ return {}; });
   if(!res.ok){ toast(out.error || 'Registry anchor failed'); return; }
   toast((out.uploaded ? 'Hosted anchor complete' : 'Local registry preview written') + ': ' + out.records + ' digest(s)');
@@ -1413,9 +1435,25 @@ async function handleDashboard(argv) {
   const approvalEndpoint = flagValue(argv, "--approval-endpoint");
   const approvalNonce = flagValue(argv, "--approval-nonce");
   const open = argv.includes("--open");
+  const dashboardToken = randomBytesCli(32).toString("hex");
+  const tokenDigest = createHashCli("sha256").update(dashboardToken).digest();
   const server = createServer((req, res) => {
     void (async () => {
       try {
+        const address = server.address();
+        if (!isLoopbackHost(req.headers.host, address && typeof address === "object" ? address.port : port)) {
+          res.writeHead(403, { "content-type": "application/json" });
+          res.end(JSON.stringify({ error: "host_not_allowed" }));
+          return;
+        }
+        if (req.method !== "GET" && req.method !== "HEAD") {
+          const refusal = dashboardRequestRefusal(req, tokenDigest);
+          if (refusal) {
+            res.writeHead(refusal.status, { "content-type": "application/json" });
+            res.end(JSON.stringify({ error: refusal.error }));
+            return;
+          }
+        }
         const url2 = new URL(req.url || "/", "http://127.0.0.1");
         if (url2.pathname === "/api/summary") {
           const body = JSON.stringify(buildDashboardSummary(dir, policyPath), null, 2);
@@ -1541,7 +1579,7 @@ async function handleDashboard(argv) {
           "cache-control": "no-store",
           "content-security-policy": "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'"
         });
-        res.end(dashboardHtml());
+        res.end(dashboardHtml(dashboardToken));
       } catch (err) {
         res.writeHead(500, { "content-type": "application/json" });
         res.end(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }));
@@ -1573,6 +1611,19 @@ ${bold("protect-mcp dashboard")}
     });
   }
 }
+function dashboardRequestRefusal(req, tokenDigest) {
+  const origin = req.headers.origin;
+  if (origin !== void 0 && origin.toLowerCase() !== `http://${String(req.headers.host).toLowerCase()}`) {
+    return { status: 403, error: "cross_site_request" };
+  }
+  const mediaType = String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
+  if (mediaType !== "application/json") return { status: 415, error: "json_required" };
+  const presented = req.headers["x-dashboard-token"];
+  if (typeof presented !== "string" || !timingSafeEqualCli(createHashCli("sha256").update(presented).digest(), tokenDigest)) {
+    return { status: 403, error: "dashboard_token_required" };
+  }
+  return null;
+}
 function draftPolicyFromSummary(summary) {
   const files = summary.files || {};
   const rows = Array.isArray(summary.tools) ? summary.tools : [];
@@ -1582,7 +1633,7 @@ function draftPolicyFromSummary(summary) {
   for (const row of rows) {
     if (!row.tool || row.tool === "unknown") continue;
     const suggestion = row.suggestion || suggestedGuardrailFor(row.tool, row.risk || "low", row.reasons || []);
-    tools[row.tool] = suggestion.policy;
+    setOwnEntry(tools, row.tool, suggestion.policy);
   }
   return {
     tools,
@@ -1603,11 +1654,11 @@ function writeToolPolicy(policyPath, tool, action) {
   const existing = loadPolicyJson(policyPath) || { tools: {}, default_tier: "unknown" };
   const tools = existing.tools && typeof existing.tools === "object" ? { ...existing.tools } : {};
   if (action === "require_approval") {
-    tools[tool] = { require_approval: true, min_tier: "signed-known", rate_limit: "10/hour" };
+    setOwnEntry(tools, tool, { require_approval: true, min_tier: "signed-known", rate_limit: "10/hour" });
   } else if (action === "block") {
-    tools[tool] = { block: true, min_tier: "privileged" };
+    setOwnEntry(tools, tool, { block: true, min_tier: "privileged" });
   } else {
-    tools[tool] = { rate_limit: "100/hour" };
+    setOwnEntry(tools, tool, { rate_limit: "100/hour" });
   }
   const next = {
     ...existing,
@@ -1771,11 +1822,13 @@ async function recordApprovalResolution(opts) {
   let forwarded = null;
   if (resolution === "approve" && opts.approvalEndpoint && opts.approvalNonce) {
     const endpoint = opts.approvalEndpoint.replace(/\/$/, "") + "/approve";
+    const logged = parseJsonlFile(joinCli(opts.dir, ".protect-mcp-log.jsonl")).find((entry) => entry.request_id === requestId && entry.tool === tool && entry.decision === "require_approval");
+    const payloadHash = logged?.action_readback?.payload_hash;
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        request_id: requestId,
+        request_id: payloadHash ? `${tool}:${payloadHash}` : requestId,
         tool,
         mode: "once",
         nonce: opts.approvalNonce
@@ -3019,32 +3072,22 @@ ${bold("protect-mcp quickstart")}
 
 `);
   const keysDir = join(dir, "keys");
-  mkdirSync(keysDir, { recursive: true });
+  ensurePrivateKeyDir(keysDir);
   const { randomBytes } = await import("crypto");
-  let keypair;
-  try {
-    const { ed25519 } = await import("@noble/curves/ed25519");
-    const { bytesToHex } = await import("@noble/hashes/utils");
-    const privateKey = randomBytes(32);
-    const publicKey = ed25519.getPublicKey(privateKey);
-    keypair = {
-      privateKey: bytesToHex(privateKey),
-      publicKey: bytesToHex(publicKey),
-      kid: `quickstart-${Date.now()}`
-    };
-  } catch {
-    keypair = {
-      privateKey: randomBytes(32).toString("hex"),
-      publicKey: randomBytes(32).toString("hex"),
-      kid: `quickstart-${Date.now()}`
-    };
-  }
-  writeFileSync(join(keysDir, "gateway.json"), JSON.stringify({
+  const { ed25519 } = await import("@noble/curves/ed25519");
+  const { bytesToHex } = await import("@noble/hashes/utils");
+  const privateKey = randomBytes(32);
+  const keypair = {
+    privateKey: bytesToHex(privateKey),
+    publicKey: bytesToHex(ed25519.getPublicKey(privateKey)),
+    kid: `quickstart-${Date.now()}`
+  };
+  writePrivateKeyFile(join(keysDir, "gateway.json"), JSON.stringify({
     privateKey: keypair.privateKey,
     publicKey: keypair.publicKey,
     kid: keypair.kid,
     generated_at: (/* @__PURE__ */ new Date()).toISOString()
-  }, null, 2) + "\n");
+  }, null, 2) + "\n", { overwrite: true });
   const configPath = join(dir, "protect-mcp.json");
   const config = {
     tools: {
@@ -3059,11 +3102,14 @@ ${bold("protect-mcp quickstart")}
     }
   };
   writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
+  const signingWarnings = await initSigning(config.signing);
   process.stdout.write(`  \u2713 Keypair generated (kid: ${keypair.kid})
 `);
   process.stdout.write(`  \u2713 Policy created (shadow mode, all tools logged)
 `);
-  process.stdout.write(`  \u2713 Signing enabled (Ed25519)
+  process.stdout.write(isSigningEnabled() ? `  \u2713 Signing enabled (Ed25519)
+
+` : `  \u2717 Signing is off: ${signingWarnings.join("; ") || "no signer is ready"}
 
 `);
   if (connectFlag) {
@@ -3087,7 +3133,7 @@ ${bold("protect-mcp quickstart")}
   process.stdout.write(`${bold("Starting demo server...")}
 
 `);
-  process.stdout.write(`  Every tool call will produce a signed receipt.
+  if (isSigningEnabled()) process.stdout.write(`  Every tool call will produce a signed receipt.
 `);
   process.stdout.write(`  Try it with Claude Desktop or any MCP client.
 
@@ -3104,8 +3150,7 @@ ${bold("protect-mcp quickstart")}
   process.stdout.write(`${"\u2500".repeat(50)}
 
 `);
-  process.env.PROTECT_MCP_CONFIG = configPath;
-  await handleDemo();
+  await handleDemo(configPath);
 }
 async function handleRegistry(argv) {
   const subcommand = argv[0] || "status";
@@ -3250,7 +3295,7 @@ async function handleKillerDemo(argv) {
   const registryMod = await import("./receipt-registry-HRTOUKVJ.mjs");
   const dir = resolveCli(flagValue(argv, "--dir") || mkdtempSync(joinCli(tmpdir(), "scopeblind-killer-demo-")));
   mkdirSyncCli(dir, { recursive: true });
-  mkdirSyncCli(joinCli(dir, "keys"), { recursive: true });
+  ensurePrivateKeyDir(joinCli(dir, "keys"));
   mkdirSyncCli(joinCli(dir, "receipts"), { recursive: true });
   const privateKeyBytes = randomBytes(32);
   const publicKeyBytes = ed25519.getPublicKey(privateKeyBytes);
@@ -3261,11 +3306,11 @@ async function handleKillerDemo(argv) {
     issuer: "scopeblind-killer-demo"
   };
   const keyPath = joinCli(dir, "keys", "gateway.json");
-  writeFileSyncCli(keyPath, JSON.stringify({
+  writePrivateKeyFile(keyPath, JSON.stringify({
     ...keypair,
     generated_at: (/* @__PURE__ */ new Date()).toISOString(),
     warning: "Demo key only. Do not use for production."
-  }, null, 2) + "\n");
+  }, null, 2) + "\n", { overwrite: true });
   const shadowConfigPath = joinCli(dir, "protect-mcp.shadow.json");
   const policyPackPath = joinCli(dir, "protect-mcp.policy-pack.json");
   const config = {
@@ -4008,20 +4053,20 @@ ${bold("protect-mcp init-hooks")}
   const keysDir = join(dir, "keys");
   const keyPath = join(keysDir, "gateway.json");
   if (!existsSync(keyPath)) {
-    if (!existsSync(keysDir)) mkdirSync(keysDir, { recursive: true });
+    ensurePrivateKeyDir(keysDir);
     const { randomBytes: rb } = await import("crypto");
     try {
       const { ed25519 } = await import("@noble/curves/ed25519");
       const { bytesToHex } = await import("@noble/hashes/utils");
       const privateKey = rb(32);
       const publicKey = ed25519.getPublicKey(privateKey);
-      writeFileSync(keyPath, JSON.stringify({
+      writePrivateKeyFile(keyPath, JSON.stringify({
         privateKey: bytesToHex(privateKey),
         publicKey: bytesToHex(publicKey),
         kid: `hook-${Date.now()}`,
         generated_at: (/* @__PURE__ */ new Date()).toISOString(),
         warning: "KEEP THIS FILE SECRET. Never commit to version control."
-      }, null, 2) + "\n");
+      }, null, 2) + "\n", { overwrite: false });
       const gitignorePath = join(keysDir, ".gitignore");
       if (!existsSync(gitignorePath)) {
         writeFileSync(gitignorePath, "# Never commit signing keys\n*.json\n");
@@ -4451,7 +4496,7 @@ function acquireReceiptLogLock(dir) {
 }
 async function handleSample(argv) {
   const dir = flagValue(argv, "--dir") || process.cwd();
-  const { buildSampleKit } = await import("./sample-O3KYZWOX.mjs");
+  const { buildSampleKit } = await import("./sample-SQ5BK3WE.mjs");
   let kit;
   try {
     kit = buildSampleKit(dir, { force: argv.includes("--force") });
@@ -5030,25 +5075,25 @@ async function main() {
     return;
   }
   if (args[0] === "coordination" && args[1] === "agent") {
-    await (await import("./coordination-agent-server-TKO4QG7R.mjs")).runCoordinationAgent(args.slice(2));
+    await (await import("./coordination-agent-server-VGFWY56T.mjs")).runCoordinationAgent(args.slice(2));
     return;
   }
   if (args[0] === "coordination" && args[1] === "pair") {
-    await (await import("./coordination-pair-cli-3EHX4363.mjs")).runCoordinationPair(args.slice(2));
+    await (await import("./coordination-pair-cli-3T2UJB7J.mjs")).runCoordinationPair(args.slice(2));
     return;
   }
   if (args[0] === "coordination" && args[1] === "setup") {
-    (await import("./coordination-pair-cli-3EHX4363.mjs")).runCoordinationSetup(args.slice(2));
+    (await import("./coordination-pair-cli-3T2UJB7J.mjs")).runCoordinationSetup(args.slice(2));
     return;
   }
   if (args[0] === "coordination") {
-    await (await import("./coordination-server-EUEBL4OX.mjs")).runCoordinationServer(args.slice(1));
+    await (await import("./coordination-server-CSL6J3ID.mjs")).runCoordinationServer(args.slice(1));
     return;
   }
   if (args[0] === "serve") {
     const { startHookServer } = await import("./hook-server.mjs");
     const portIdx = args.indexOf("--port");
-    const port = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 9377;
+    const port2 = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 9377;
     const policyIdx = args.indexOf("--policy");
     const policyPath2 = policyIdx >= 0 && args[policyIdx + 1] ? args[policyIdx + 1] : void 0;
     const cedarIdx = args.indexOf("--cedar");
@@ -5073,7 +5118,7 @@ async function main() {
 `);
     }
     try {
-      await startHookServer({ port, policyPath: policyPath2, cedarDir: cedarDir2, enforce: enforce2, verbose: verbose2, standardPath: standardPath2, reportUrl: reportUrl2, reportToken: reportToken2, runId: runId2 });
+      await startHookServer({ port: port2, policyPath: policyPath2, cedarDir: cedarDir2, enforce: enforce2, verbose: verbose2, standardPath: standardPath2, reportUrl: reportUrl2, reportToken: reportToken2, runId: runId2 });
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error: ${err instanceof Error ? err.message : err}
 `);
@@ -5118,12 +5163,12 @@ async function main() {
     return;
   }
   if (args[0] === "onboard") {
-    const { handleOnboard } = await import("./onboard-7LG76ADN.mjs");
+    const { handleOnboard } = await import("./onboard-O6X2P2H6.mjs");
     await handleOnboard(args.slice(1));
     return;
   }
   if (args[0] === "offboard") {
-    const { handleOffboard } = await import("./onboard-7LG76ADN.mjs");
+    const { handleOffboard } = await import("./onboard-O6X2P2H6.mjs");
     await handleOffboard(args.slice(1));
     return;
   }
@@ -5184,7 +5229,7 @@ async function main() {
     return;
   }
   if (args[0] === "coverage") {
-    const { handleCoverage } = await import("./coverage-UWDTGHAM.mjs");
+    const { handleCoverage } = await import("./coverage-TQ3POKIZ.mjs");
     await handleCoverage(args.slice(1));
     process.exit(process.exitCode || 0);
   }
@@ -5224,7 +5269,7 @@ async function main() {
     await handleDoctor();
     process.exit(0);
   }
-  const { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId } = parseArgs(args);
+  const { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port } = parseArgs(args);
   let policy = null;
   let policyDigest = "none";
   let credentials;
@@ -5250,7 +5295,8 @@ async function main() {
       const cedarAvailable = await isCedarAvailable();
       if (!cedarAvailable) {
         process.stderr.write("[PROTECT_MCP] Warning: @cedar-policy/cedar-wasm not installed. Install with: npm install @cedar-policy/cedar-wasm\n");
-        process.stderr.write("[PROTECT_MCP] Cedar policies will be loaded but evaluated with fallback (allow-all).\n");
+        process.stderr.write(`[PROTECT_MCP] Cedar policies will be loaded, but every call will be denied until @cedar-policy/cedar-wasm is installed${enforce ? "" : " (shadow mode records the denials and lets the calls run)"}.
+`);
       }
       cedarPolicySet = loadCedarPolicies(effectiveCedarDir);
       policyDigest = cedarPolicySet.digest;
@@ -5266,7 +5312,7 @@ async function main() {
 `);
       }
       const { existsSync: cfgExists } = await import("fs");
-      if (cfgExists("protect-mcp.json")) {
+      if (!policyPath && cfgExists("protect-mcp.json")) {
         try {
           const cfg = loadPolicy("protect-mcp.json");
           signing = cfg.signing;
@@ -5281,6 +5327,20 @@ async function main() {
       process.stderr.write(`[PROTECT_MCP] Error loading Cedar policies: ${err instanceof Error ? err.message : err}
 `);
       process.exit(1);
+    }
+    if (policyPath) {
+      try {
+        const loaded = loadPolicy(policyPath);
+        policy = { ...loaded.policy, policy_engine: "cedar", cedar_dir: effectiveCedarDir };
+        credentials = loaded.credentials;
+        signing = loaded.signing;
+        process.stderr.write(`[PROTECT_MCP] JSON policy loaded from ${policyPath}: its tool rules apply after a Cedar allow
+`);
+      } catch (err) {
+        process.stderr.write(`[PROTECT_MCP] Error loading policy: ${err instanceof Error ? err.message : err}
+`);
+        process.exit(1);
+      }
     }
   } else if (policyPath) {
     try {
@@ -5355,12 +5415,10 @@ async function main() {
     standard,
     reporter
   };
-  const useHttp = args.includes("--http");
-  if (useHttp) {
-    const portIdx = args.indexOf("--port");
-    const httpPort = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 3e3;
-    const { startHttpTransport } = await import("./http-transport-QBVNCWBE.mjs");
-    startHttpTransport({ port: httpPort, config, serverCommand: childCommand, cedarPolicySet: cedarPolicySet ?? void 0 });
+  if (http) {
+    const httpPort = port ?? 3e3;
+    const { startHttpTransport } = await import("./http-transport-LZU3YW43.mjs");
+    await startHttpTransport({ port: httpPort, host, config, serverCommand: childCommand, cedarPolicySet: cedarPolicySet ?? void 0 });
     return;
   }
   const gateway = new ProtectGateway(config);

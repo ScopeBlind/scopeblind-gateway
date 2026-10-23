@@ -5,11 +5,11 @@
 | Command | Description |
 |---------|-------------|
 | `serve` | Start the HTTP hook server for Claude Code (port 9377). `--enforce` runs the restraint self-test first; `--cedar <dir>` and `--policy <path>` select the policy. |
-| `init` | Generate an Ed25519 keypair (`keys/gateway.json`), a config template, and a sample policy. `init --starter` instead writes `./protect.cedar` from the starter policy and creates `./protect-mcp.key`; `--contain` adds the only-inside-this-folder rules. |
+| `init` | Generate an Ed25519 keypair (`keys/gateway.json`, mode 0600 in a 0700 folder), a config template, and a sample policy. `init --starter` instead writes `./protect.cedar` from the starter policy and creates `./protect-mcp.key`; `--contain` adds the only-inside-this-folder rules. |
 | `sample` | Seed a clearly-labeled sample record (8 decisions: one blocked call, two payments; kid `sample-demo`) plus a tampered copy, so `record`, `claim`, `verify-claim`, and `anchor-record` are replayable from scratch before wiring an agent. Refuses to touch an existing record; `--force` overrides. |
 | `policy` | See and change the Cedar policy from the terminal: `policy list` (permit / forbid / default-deny per tool, with how often the gate allowed or denied it), `policy show`, `policy allow <tool>`, `policy deny <tool>`, `policy path`. A running `serve` hot-reloads on the change. |
 | `wrap` | Print a protected MCP command or patch Claude Desktop MCP servers. Dry-run by default; use `--write` to update Claude Desktop config. |
-| `dashboard` | Start a local-only dashboard on `127.0.0.1` showing tool inventory, risk, policy coverage, exact-action approvals, receipt chains, and audit export. |
+| `dashboard` | Start a local-only dashboard on `127.0.0.1` showing tool inventory, risk, policy coverage, exact-action approvals, receipt chains, and audit export. It accepts a change only from its own page: the same origin, a JSON body and the page's per-launch token. |
 | `recommend` | Draft a reviewable JSON policy from observed local calls. Dry-run by default; use `--write` to create `protect-mcp.recommended.json`. |
 | `registry` | Create an org identity, anchor receipt digests, and write a static verifier page. Hosted mode sends digests plus identifiers and public-key/billing metadata. |
 | `record` | Open a local, searchable viewer over your receipts (`--live` streams as the agent runs): Ed25519 signatures verified in your browser against your gateway key, capability tags, a provenance tree, and one-click signed export. All local, nothing uploaded. |
@@ -26,5 +26,12 @@
 | `doctor` | Check your setup (keys, policies, Cedar engine, verifier) and run the restraint self-test. |
 | `bundle` | Export an offline-verifiable audit bundle of receipts plus the public key. |
 | `report` | Generate a compliance report (Markdown or JSON) from the decision log and receipts. |
+
+The wrapper itself, `protect-mcp [options] -- <command>`: `--enforce` refuses to
+start when signing is configured but its key cannot be loaded, and refuses an
+allowed call whose receipt cannot be signed. `--http` listens on 127.0.0.1 and
+needs `Authorization: Bearer <token>`, with the token from
+`PROTECT_MCP_HTTP_TOKEN` (at least 32 characters) or the one it prints; `--host`
+exposes it beyond this machine. `--cedar` with `--policy` applies both.
 
 Run `npx protect-mcp --help` for the full flag reference.

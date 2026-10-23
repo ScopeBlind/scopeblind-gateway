@@ -1,10 +1,16 @@
 import {
   canonicalJson
 } from "./chunk-KRKZ2YX7.mjs";
+import {
+  ensurePrivateKeyDir,
+  writePrivateKeyFile
+} from "./chunk-PNPJY37B.mjs";
+import "./chunk-SRLE63GU.mjs";
+import "./chunk-O3K3FPBT.mjs";
 import "./chunk-PQJP2ZCI.mjs";
 
 // src/sample.ts
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync, writeFileSync } from "fs";
 import { join } from "path";
 import { sha256 } from "@noble/hashes/sha256";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils";
@@ -25,11 +31,11 @@ function buildSampleKit(dir, opts) {
       { code: "SAMPLE_EXISTS" }
     );
   }
-  mkdirSync(join(dir, "keys"), { recursive: true });
+  ensurePrivateKeyDir(join(dir, "keys"));
   const priv = ed25519.utils.randomPrivateKey();
   const privHex = bytesToHex(priv);
   const pub = bytesToHex(ed25519.getPublicKey(priv));
-  writeFileSync(keyPath, JSON.stringify({ privateKey: privHex, publicKey: pub, kid: SAMPLE_KID }, null, 2));
+  writePrivateKeyFile(keyPath, JSON.stringify({ privateKey: privHex, publicKey: pub, kid: SAMPLE_KID }, null, 2), { overwrite: true });
   writeFileSync(join(dir, "keys", ".gitignore"), "# Never commit signing keys\n*.json\n");
   const now = opts?.now ?? /* @__PURE__ */ new Date();
   const stamp = (i) => new Date(now.getTime() - (7 - i) * 5 * 6e4).toISOString();

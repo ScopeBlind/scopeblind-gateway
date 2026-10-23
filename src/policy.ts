@@ -71,19 +71,35 @@ function sortKeysDeep(obj: unknown): unknown {
  * Backwards compatible: old policies with just { block, rate_limit, require }
  * still work. New policies can add { min_tier, rate_limits }.
  */
+/**
+ * A table's own entry for a key, never one inherited from Object.prototype:
+ * a tool named constructor, toString or __proto__ must not read the
+ * prototype in place of a rule and so skip the "*" rule.
+ */
+export function ownEntry<T>(table: Record<string, T> | null | undefined, key: string): T | undefined {
+  return table && Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+}
+
+/** Set a table's own entry, so a key such as __proto__ is stored as an entry rather than replacing the table's prototype. */
+export function setOwnEntry<T>(table: Record<string, T>, key: string, value: T): void {
+  Object.defineProperty(table, key, { value, enumerable: true, writable: true, configurable: true });
+}
+
 export function getToolPolicy(toolName: string, policy: ProtectPolicy | null): ToolPolicy {
   if (!policy) {
     return { require: 'any' };
   }
 
-  // Exact match first
-  if (policy.tools[toolName]) {
-    return policy.tools[toolName];
+  // Exact match first (own rules only)
+  const exact = ownEntry(policy.tools, toolName);
+  if (exact) {
+    return exact;
   }
 
   // Wildcard fallback
-  if (policy.tools['*']) {
-    return policy.tools['*'];
+  const wildcard = ownEntry(policy.tools, '*');
+  if (wildcard) {
+    return wildcard;
   }
 
   // Default: allow everything

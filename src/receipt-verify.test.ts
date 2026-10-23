@@ -66,7 +66,7 @@ describe('record viewer in-browser verification contract', () => {
     const priv = ed25519.utils.randomPrivateKey();
     publicKey = bytesToHex(ed25519.getPublicKey(priv));
     const keyPath = join(dir, 'keys', 'gateway.json');
-    writeFileSync(keyPath, JSON.stringify({ privateKey: bytesToHex(priv), publicKey, kid: 'viewer-test' }));
+    writeFileSync(keyPath, JSON.stringify({ privateKey: bytesToHex(priv), publicKey, kid: 'viewer-test' }), { mode: 0o600 });
     const warnings = await initSigning({ enabled: true, key_path: keyPath } as never);
     expect(warnings).toEqual([]);
     const entry = {

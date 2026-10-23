@@ -33,10 +33,13 @@ function startStatusServer(config, receiptBuffer, approvalStore, approvalNonce) 
   const startTime = Date.now();
   const logDir = process.cwd();
   const server = createServer((req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
     res.setHeader("Content-Type", "application/json");
+    const address = server.address();
+    if (!isLoopbackHost(req.headers.host, address && typeof address === "object" ? address.port : config.port)) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: "host_not_allowed" }));
+      return;
+    }
     if (req.method === "OPTIONS") {
       res.writeHead(204);
       res.end();
@@ -83,6 +86,10 @@ function startStatusServer(config, receiptBuffer, approvalStore, approvalNonce) 
   });
   server.unref();
   return server;
+}
+function isLoopbackHost(host, port) {
+  const name = (host || "").toLowerCase();
+  return name === `127.0.0.1:${port}` || name === `localhost:${port}` || name === `[::1]:${port}`;
 }
 function handleHealth(res, startTime, config) {
   res.writeHead(200);
@@ -179,18 +186,21 @@ function handleApprove(req, res, approvalStore, expectedNonce) {
       }
       if (!tool || typeof tool !== "string") {
         res.writeHead(400);
-        res.end(JSON.stringify({ error: "missing_tool", usage: '{"request_id":"abc123","tool":"send_email","mode":"once|always","nonce":"..."}' }));
+        res.end(JSON.stringify({ error: "missing_tool", usage: APPROVE_USAGE }));
         return;
       }
       const grantMode = mode === "always" ? "always" : "once";
+      if (grantMode === "once" && !isActionRequestId(request_id, tool)) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: "missing_request_id", message: "A once grant needs the request ID the gateway printed for the call: the tool name, a colon and the payload hash.", usage: APPROVE_USAGE }));
+        return;
+      }
       const ttlMs = grantMode === "once" ? 5 * 60 * 1e3 : 24 * 60 * 60 * 1e3;
       const grantEntry = { tool, mode: grantMode, expires_at: Date.now() + ttlMs };
       if (grantMode === "always") {
         approvalStore.set(`always:${tool}`, grantEntry);
-      } else if (request_id) {
-        approvalStore.set(request_id, grantEntry);
       } else {
-        approvalStore.set(tool, grantEntry);
+        approvalStore.set(request_id, grantEntry);
       }
       res.writeHead(200);
       res.end(JSON.stringify({
@@ -202,9 +212,13 @@ function handleApprove(req, res, approvalStore, expectedNonce) {
       }));
     } catch {
       res.writeHead(400);
-      res.end(JSON.stringify({ error: "invalid_json", usage: '{"request_id":"abc123","tool":"send_email","mode":"once","nonce":"..."}' }));
+      res.end(JSON.stringify({ error: "invalid_json", usage: APPROVE_USAGE }));
     }
   });
+}
+var APPROVE_USAGE = '{"request_id":"send_email:<payload hash>","tool":"send_email","mode":"once|always","nonce":"..."}';
+function isActionRequestId(requestId, tool) {
+  return typeof requestId === "string" && requestId.startsWith(`${tool}:`) && /^[0-9a-f]{64}$/.test(requestId.slice(tool.length + 1));
 }
 function handleListApprovals(res, approvalStore) {
   if (!approvalStore) {
@@ -254,12 +268,20 @@ function stableStringify(value) {
   const obj = value;
   return `{${Object.keys(obj).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(obj[key])}`).join(",")}}`;
 }
+function wellFormed(text) {
+  return text.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "\uFFFD");
+}
+function previewKey(key) {
+  const escaped = key.replace(/[^\x20-\x7E]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  return escaped === "__proto__" ? "\\u005f_proto__" : escaped;
+}
 function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   if (depth > 4) return "[truncated-depth]";
   if (value === null || value === void 0) return value;
   if (typeof value !== "object") {
     if (path.length > 0) disclosed.push(path.join("."));
-    if (typeof value === "string" && value.length > 240) return `${value.slice(0, 240)}...`;
+    if (typeof value === "string") return wellFormed(value.length > 240 ? `${value.slice(0, 240)}...` : value);
+    if (typeof value === "number" && !Number.isFinite(value)) return null;
     return value;
   }
   if (Array.isArray(value)) {
@@ -267,27 +289,29 @@ function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   }
   const out = {};
   for (const [key, child] of Object.entries(value)) {
-    const childPath = [...path, key];
+    let shown = previewKey(key);
+    while (Object.prototype.hasOwnProperty.call(out, shown)) shown += "~";
+    const childPath = [...path, shown];
     if (SECRET_KEY_RE.test(key)) {
       redacted.push(childPath.join("."));
-      out[key] = "[redacted]";
+      out[shown] = "[redacted]";
       continue;
     }
-    out[key] = redact(child, childPath, redacted, disclosed, depth + 1);
+    out[shown] = redact(child, childPath, redacted, disclosed, depth + 1);
   }
   return out;
 }
 function firstStringValue(input, keys) {
   for (const key of keys) {
     const value = input[key];
-    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "string" && value.trim()) return wellFormed(value.trim());
     if (typeof value === "number" || typeof value === "boolean") return String(value);
   }
   return void 0;
 }
 function actionFor(tool, input) {
   const explicit = firstStringValue(input, ["action", "operation", "method", "verb", "command"]);
-  if (explicit) return explicit.length > 90 ? `${explicit.slice(0, 90)}...` : explicit;
+  if (explicit) return explicit.length > 90 ? wellFormed(`${explicit.slice(0, 90)}...`) : explicit;
   return tool;
 }
 function buildActionReadback(tool, input) {
@@ -296,13 +320,15 @@ function buildActionReadback(tool, input) {
   const redactedFields = [];
   const disclosedFields = [];
   const payloadPreview = redact(normalized, [], redactedFields, disclosedFields);
-  const action = actionFor(tool, normalized);
+  const shownTool = typeof tool === "string" ? wellFormed(tool) : tool;
+  const action = actionFor(shownTool, normalized);
   const destination = firstStringValue(normalized, DESTINATION_KEYS);
-  const summary = destination ? `${tool} -> ${destination}` : `${tool} request`;
+  const summary = destination ? `${shownTool} -> ${destination}` : `${shownTool} request`;
   return {
-    tool,
+    tool: shownTool,
     action,
-    destination,
+    // Absent rather than undefined: a receipt cannot carry an undefined member.
+    ...destination !== void 0 ? { destination } : {},
     payload_preview: payloadPreview,
     payload_hash: createHash("sha256").update(canonical).digest("hex"),
     payload_bytes: Buffer.byteLength(canonical, "utf-8"),
@@ -486,6 +512,7 @@ var RecordReporter = class {
 export {
   ReceiptBuffer,
   startStatusServer,
+  isLoopbackHost,
   buildActionReadback,
   loadStandardFile,
   readAmount,

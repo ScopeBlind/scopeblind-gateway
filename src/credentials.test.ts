@@ -9,6 +9,15 @@ describe('resolveCredential', () => {
     process.env = { ...savedEnv };
   });
 
+  it('finds only credentials the config itself names: a tool named like an Object.prototype member has none', () => {
+    const creds: Record<string, CredentialConfig> = { github: { inject: 'env', name: 'GITHUB_TOKEN', value_env: 'PMCP_TEST_GITHUB' } };
+    for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'valueOf']) {
+      const r = resolveCredential(name, creds);
+      expect(r.resolved, name).toBe(false);
+      expect(r.error, name).toBe(`credential "${name}" not configured`);
+    }
+  });
+
   it('resolves credential from env var', () => {
     process.env.TEST_SECRET = 'sk_live_test123';
     const credentials: Record<string, CredentialConfig> = {

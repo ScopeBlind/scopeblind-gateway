@@ -4,7 +4,8 @@ import {
 } from "./chunk-SRLE63GU.mjs";
 
 // src/signing.ts
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, statSync, openSync, fchmodSync, writeFileSync, closeSync, mkdirSync } from "fs";
+import { dirname } from "path";
 var signerState = null;
 var signingConfigured = false;
 var signingInitError = null;
@@ -25,6 +26,15 @@ async function initSigning(config) {
     signingInitError = `key file not found at ${config.key_path}`;
     warnings.push(`signing: ${signingInitError} \u2014 run "protect-mcp init" to generate`);
     return warnings;
+  }
+  if (process.platform !== "win32") {
+    try {
+      const fileMode = statSync(config.key_path).mode & 511;
+      if (fileMode & 63) {
+        warnings.push(`signing: key file ${config.key_path} is open to other users (mode ${fileMode.toString(8).padStart(3, "0")}); run: chmod 600 ${config.key_path}`);
+      }
+    } catch {
+    }
   }
   let keyData;
   try {
@@ -53,6 +63,23 @@ async function initSigning(config) {
     warnings.push(`signing: ${signingInitError} \u2014 enforce mode will fail closed`);
   }
   return warnings;
+}
+function writePrivateKeyFile(path, contents, options) {
+  const fd = openSync(path, options.overwrite ? "w" : "wx", 384);
+  try {
+    fchmodSync(fd, 384);
+    writeFileSync(fd, contents);
+  } finally {
+    closeSync(fd);
+  }
+}
+function ensurePrivateKeyDir(dir) {
+  mkdirSync(dirname(dir), { recursive: true });
+  try {
+    mkdirSync(dir, { mode: 448 });
+  } catch (err) {
+    if (err.code !== "EEXIST") throw err;
+  }
 }
 function signDecision(entry, prevReceiptHash) {
   const artifactType = entry.decision === "deny" ? "gateway_restraint" : "decision_receipt";
@@ -191,6 +218,8 @@ function isSigningEnabled() {
 
 export {
   initSigning,
+  writePrivateKeyFile,
+  ensurePrivateKeyDir,
   signDecision,
   signGenericArtifact,
   getSignerInfo,

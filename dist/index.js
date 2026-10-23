@@ -36016,7 +36016,7 @@ function readConnectorContext(params, tool, input, keys2) {
 // src/gateway.ts
 var import_node_readline = require("readline");
 var import_node_fs8 = require("fs");
-var import_node_path5 = require("path");
+var import_node_path6 = require("path");
 
 // src/policy.ts
 var import_node_fs2 = require("fs");
@@ -36075,15 +36075,20 @@ function loadPolicy(path) {
 function computePolicyDigest(policy) {
   return digestBuiltinPolicy(policy).policy_digest;
 }
+function ownEntry(table, key5) {
+  return table && Object.prototype.hasOwnProperty.call(table, key5) ? table[key5] : void 0;
+}
 function getToolPolicy(toolName, policy) {
   if (!policy) {
     return { require: "any" };
   }
-  if (policy.tools[toolName]) {
-    return policy.tools[toolName];
+  const exact10 = ownEntry(policy.tools, toolName);
+  if (exact10) {
+    return exact10;
   }
-  if (policy.tools["*"]) {
-    return policy.tools["*"];
+  const wildcard = ownEntry(policy.tools, "*");
+  if (wildcard) {
+    return wildcard;
   }
   return { require: "any" };
 }
@@ -36301,14 +36306,14 @@ function meetsMinTier(actual, required) {
 
 // src/credentials.ts
 function resolveCredential(label, credentials) {
-  if (!credentials || !credentials[label]) {
+  const config = ownEntry(credentials, label);
+  if (!config) {
     return {
       resolved: false,
       label,
       error: `credential "${label}" not configured`
     };
   }
-  const config = credentials[label];
   const value = process.env[config.value_env];
   if (!value) {
     return {
@@ -36350,6 +36355,7 @@ function validateCredentials(credentials) {
 
 // src/signing.ts
 var import_node_fs4 = require("fs");
+var import_node_path3 = require("path");
 var signerState = null;
 var signingConfigured = false;
 var signingInitError = null;
@@ -36370,6 +36376,15 @@ async function initSigning(config) {
     signingInitError = `key file not found at ${config.key_path}`;
     warnings.push(`signing: ${signingInitError} \u2014 run "protect-mcp init" to generate`);
     return warnings;
+  }
+  if (process.platform !== "win32") {
+    try {
+      const fileMode = (0, import_node_fs4.statSync)(config.key_path).mode & 511;
+      if (fileMode & 63) {
+        warnings.push(`signing: key file ${config.key_path} is open to other users (mode ${fileMode.toString(8).padStart(3, "0")}); run: chmod 600 ${config.key_path}`);
+      }
+    } catch {
+    }
   }
   let keyData;
   try {
@@ -36696,7 +36711,7 @@ function buildDecisionContext(toolName, tier, opts) {
 
 // src/cedar-evaluator.ts
 var import_node_fs5 = require("fs");
-var import_node_path3 = require("path");
+var import_node_path4 = require("path");
 var cedarWasm = null;
 var loadAttempted = false;
 var cedarWasmSpecifier = null;
@@ -36733,13 +36748,13 @@ function loadCedarPolicies(dirPath) {
   if (!(0, import_node_fs5.existsSync)(dirPath)) {
     throw new Error(`Cedar policy directory not found: ${dirPath}`);
   }
-  const entries = (0, import_node_fs5.readdirSync)(dirPath).filter((f) => (0, import_node_path3.extname)(f) === ".cedar").sort();
+  const entries = (0, import_node_fs5.readdirSync)(dirPath).filter((f) => (0, import_node_path4.extname)(f) === ".cedar").sort();
   if (entries.length === 0) {
     throw new Error(`No .cedar files found in: ${dirPath}`);
   }
   const files = [];
   for (const file of entries) {
-    files.push({ name: file, content: (0, import_node_fs5.readFileSync)((0, import_node_path3.join)(dirPath, file), "utf-8") });
+    files.push({ name: file, content: (0, import_node_fs5.readFileSync)((0, import_node_path4.join)(dirPath, file), "utf-8") });
   }
   const concatenated = files.map((f) => f.content).join("\n\n");
   const digest = digestPolicyFiles("cedar", files).policy_digest;
@@ -37226,7 +37241,7 @@ function parseNotificationConfigFromEnv() {
 // src/http-server.ts
 var import_node_http = require("http");
 var import_node_fs6 = require("fs");
-var import_node_path4 = require("path");
+var import_node_path5 = require("path");
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var MAX_RECEIPTS = 100;
 var ReceiptBuffer = class {
@@ -37258,10 +37273,13 @@ function startStatusServer(config, receiptBuffer, approvalStore, approvalNonce) 
   const startTime = Date.now();
   const logDir = process.cwd();
   const server = (0, import_node_http.createServer)((req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
     res.setHeader("Content-Type", "application/json");
+    const address = server.address();
+    if (!isLoopbackHost(req.headers.host, address && typeof address === "object" ? address.port : config.port)) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: "host_not_allowed" }));
+      return;
+    }
     if (req.method === "OPTIONS") {
       res.writeHead(204);
       res.end();
@@ -37309,6 +37327,10 @@ function startStatusServer(config, receiptBuffer, approvalStore, approvalNonce) 
   server.unref();
   return server;
 }
+function isLoopbackHost(host, port) {
+  const name2 = (host || "").toLowerCase();
+  return name2 === `127.0.0.1:${port}` || name2 === `localhost:${port}` || name2 === `[::1]:${port}`;
+}
 function handleHealth(res, startTime, config) {
   res.writeHead(200);
   res.end(JSON.stringify({
@@ -37319,7 +37341,7 @@ function handleHealth(res, startTime, config) {
   }));
 }
 function handleStatus(res, logDir) {
-  const logPath = (0, import_node_path4.join)(logDir, LOG_FILE);
+  const logPath = (0, import_node_path5.join)(logDir, LOG_FILE);
   if (!(0, import_node_fs6.existsSync)(logPath)) {
     res.writeHead(200);
     res.end(JSON.stringify({ entries: 0, message: "no log file yet" }));
@@ -37404,18 +37426,21 @@ function handleApprove(req, res, approvalStore, expectedNonce) {
       }
       if (!tool || typeof tool !== "string") {
         res.writeHead(400);
-        res.end(JSON.stringify({ error: "missing_tool", usage: '{"request_id":"abc123","tool":"send_email","mode":"once|always","nonce":"..."}' }));
+        res.end(JSON.stringify({ error: "missing_tool", usage: APPROVE_USAGE }));
         return;
       }
       const grantMode = mode === "always" ? "always" : "once";
+      if (grantMode === "once" && !isActionRequestId(request_id, tool)) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: "missing_request_id", message: "A once grant needs the request ID the gateway printed for the call: the tool name, a colon and the payload hash.", usage: APPROVE_USAGE }));
+        return;
+      }
       const ttlMs = grantMode === "once" ? 5 * 60 * 1e3 : 24 * 60 * 60 * 1e3;
       const grantEntry = { tool, mode: grantMode, expires_at: Date.now() + ttlMs };
       if (grantMode === "always") {
         approvalStore.set(`always:${tool}`, grantEntry);
-      } else if (request_id) {
-        approvalStore.set(request_id, grantEntry);
       } else {
-        approvalStore.set(tool, grantEntry);
+        approvalStore.set(request_id, grantEntry);
       }
       res.writeHead(200);
       res.end(JSON.stringify({
@@ -37427,9 +37452,13 @@ function handleApprove(req, res, approvalStore, expectedNonce) {
       }));
     } catch {
       res.writeHead(400);
-      res.end(JSON.stringify({ error: "invalid_json", usage: '{"request_id":"abc123","tool":"send_email","mode":"once","nonce":"..."}' }));
+      res.end(JSON.stringify({ error: "invalid_json", usage: APPROVE_USAGE }));
     }
   });
+}
+var APPROVE_USAGE = '{"request_id":"send_email:<payload hash>","tool":"send_email","mode":"once|always","nonce":"..."}';
+function isActionRequestId(requestId, tool) {
+  return typeof requestId === "string" && requestId.startsWith(`${tool}:`) && /^[0-9a-f]{64}$/.test(requestId.slice(tool.length + 1));
 }
 function handleListApprovals(res, approvalStore) {
   if (!approvalStore) {
@@ -37479,12 +37508,20 @@ function stableStringify(value) {
   const obj6 = value;
   return `{${Object.keys(obj6).sort().map((key5) => `${JSON.stringify(key5)}:${stableStringify(obj6[key5])}`).join(",")}}`;
 }
+function wellFormed(text9) {
+  return text9.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "\uFFFD");
+}
+function previewKey(key5) {
+  const escaped = key5.replace(/[^\x20-\x7E]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  return escaped === "__proto__" ? "\\u005f_proto__" : escaped;
+}
 function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   if (depth > 4) return "[truncated-depth]";
   if (value === null || value === void 0) return value;
   if (typeof value !== "object") {
     if (path.length > 0) disclosed.push(path.join("."));
-    if (typeof value === "string" && value.length > 240) return `${value.slice(0, 240)}...`;
+    if (typeof value === "string") return wellFormed(value.length > 240 ? `${value.slice(0, 240)}...` : value);
+    if (typeof value === "number" && !Number.isFinite(value)) return null;
     return value;
   }
   if (Array.isArray(value)) {
@@ -37492,27 +37529,29 @@ function redact(value, path = [], redacted = [], disclosed = [], depth = 0) {
   }
   const out = {};
   for (const [key5, child] of Object.entries(value)) {
-    const childPath = [...path, key5];
+    let shown = previewKey(key5);
+    while (Object.prototype.hasOwnProperty.call(out, shown)) shown += "~";
+    const childPath = [...path, shown];
     if (SECRET_KEY_RE.test(key5)) {
       redacted.push(childPath.join("."));
-      out[key5] = "[redacted]";
+      out[shown] = "[redacted]";
       continue;
     }
-    out[key5] = redact(child, childPath, redacted, disclosed, depth + 1);
+    out[shown] = redact(child, childPath, redacted, disclosed, depth + 1);
   }
   return out;
 }
 function firstStringValue(input, keys2) {
   for (const key5 of keys2) {
     const value = input[key5];
-    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "string" && value.trim()) return wellFormed(value.trim());
     if (typeof value === "number" || typeof value === "boolean") return String(value);
   }
   return void 0;
 }
 function actionFor(tool, input) {
   const explicit = firstStringValue(input, ["action", "operation", "method", "verb", "command"]);
-  if (explicit) return explicit.length > 90 ? `${explicit.slice(0, 90)}...` : explicit;
+  if (explicit) return explicit.length > 90 ? wellFormed(`${explicit.slice(0, 90)}...`) : explicit;
   return tool;
 }
 function buildActionReadback(tool, input) {
@@ -37521,13 +37560,15 @@ function buildActionReadback(tool, input) {
   const redactedFields = [];
   const disclosedFields = [];
   const payloadPreview = redact(normalized, [], redactedFields, disclosedFields);
-  const action = actionFor(tool, normalized);
+  const shownTool = typeof tool === "string" ? wellFormed(tool) : tool;
+  const action = actionFor(shownTool, normalized);
   const destination = firstStringValue(normalized, DESTINATION_KEYS);
-  const summary = destination ? `${tool} -> ${destination}` : `${tool} request`;
+  const summary = destination ? `${shownTool} -> ${destination}` : `${shownTool} request`;
   return {
-    tool,
+    tool: shownTool,
     action,
-    destination,
+    // Absent rather than undefined: a receipt cannot carry an undefined member.
+    ...destination !== void 0 ? { destination } : {},
     payload_preview: payloadPreview,
     payload_hash: (0, import_node_crypto2.createHash)("sha256").update(canonical2).digest("hex"),
     payload_bytes: Buffer.byteLength(canonical2, "utf-8"),
@@ -37722,10 +37763,12 @@ var ProtectGateway = class {
   lastReceiptHash = null;
   evidenceStore;
   receiptBuffer;
-  /** Approval grants keyed by request_id (scoped to the specific action that was requested) */
+  /** Approval grants: once grants keyed by `${tool}:${payload_hash}` (one exact action), always grants by `always:${tool}` */
   approvalStore = /* @__PURE__ */ new Map();
   /** Random nonce generated at startup — required for approval endpoint authentication */
   approvalNonce = (0, import_node_crypto4.randomBytes)(16).toString("hex");
+  /** Port of the local status server that serves POST /approve, once started */
+  statusPort = null;
   currentTier = "unknown";
   admissionResult = null;
   /** Notification config for approval gates (SMS, webhook, email) */
@@ -37744,8 +37787,8 @@ var ProtectGateway = class {
   connectorToRecord = /* @__PURE__ */ new Map();
   constructor(config) {
     this.config = config;
-    this.logFilePath = (0, import_node_path5.join)(process.cwd(), LOG_FILE2);
-    this.receiptFilePath = (0, import_node_path5.join)(process.cwd(), RECEIPTS_FILE);
+    this.logFilePath = (0, import_node_path6.join)(process.cwd(), LOG_FILE2);
+    this.receiptFilePath = (0, import_node_path6.join)(process.cwd(), RECEIPTS_FILE);
     try {
       const existing = (0, import_node_fs8.readFileSync)(this.receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
       if (existing.length > 0) this.lastReceiptHash = chainLink(JSON.parse(existing[existing.length - 1]));
@@ -37767,6 +37810,7 @@ var ProtectGateway = class {
   async start() {
     const { command, args, verbose } = this.config;
     const mode = this.config.enforce ? "enforce" : "shadow";
+    this.assertSigningReady();
     if (verbose) {
       this.log(`Starting gateway in ${mode} mode`);
       this.log(`Wrapping: ${command} ${args.join(" ")}`);
@@ -37803,6 +37847,7 @@ var ProtectGateway = class {
           this.approvalStore,
           this.approvalNonce
         );
+        this.statusPort = httpPort;
       } catch {
         if (verbose) this.log(`HTTP status server could not start on port ${httpPort}`);
       }
@@ -37875,13 +37920,31 @@ var ProtectGateway = class {
     this.sendToChild(trimmed);
   }
   async interceptToolCallAsync(request, raw) {
-    const result = await this.interceptToolCall(request);
-    if (result) {
-      this.sendToClient(JSON.stringify(result));
-    } else {
-      const modified = this.injectParamsCredentials(request);
-      this.sendToChild(JSON.stringify(modified));
+    try {
+      const result = await this.interceptToolCall(request);
+      if (result) {
+        this.sendToClient(JSON.stringify(result));
+      } else {
+        const modified = this.injectParamsCredentials(request);
+        this.sendToChild(JSON.stringify(modified));
+      }
+    } catch (err) {
+      this.sendToClient(JSON.stringify(this.refuseUnevaluable(request, err)));
     }
+  }
+  /**
+   * A call the gate could not evaluate (arguments nested too deep to hash, for
+   * one) is refused, in shadow mode too: it must neither crash the gateway nor
+   * reach the tool unexamined.
+   */
+  refuseUnevaluable(request, err) {
+    const toolName = typeof request.params?.name === "string" ? request.params.name : "unknown";
+    this.log(`Could not evaluate a call to ${JSON.stringify(toolName)}, refusing it: ${err instanceof Error ? err.message : String(err)}`);
+    try {
+      this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "gateway_evaluation_error", tier: this.currentTier });
+    } catch {
+    }
+    return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" refused: the gateway could not evaluate this call, so it fails closed`);
   }
   handleServerMessage(raw) {
     this.sendToClient(raw);
@@ -37906,6 +37969,8 @@ var ProtectGateway = class {
     const mode = this.config.enforce ? "enforce" : "shadow";
     const toolInput = request.params?.arguments && typeof request.params.arguments === "object" ? request.params.arguments : request.params || {};
     const actionReadback = buildActionReadback(toolName, toolInput);
+    const approvalKey = `${toolName}:${actionReadback.payload_hash}`;
+    let grantedAtGate = false;
     const connector = readConnectorContext(request.params, toolName, toolInput, this.config.policy?.connector_platform_keys);
     if (connector.record) this.connectorToRecord.set(requestId, connector.record);
     else if (connector.problem && this.config.verbose) this.log(`Connector context ignored for tool=${toolName}: ${connector.problem}`);
@@ -37914,9 +37979,10 @@ var ProtectGateway = class {
     if (this.config.multiAgent?.enabled) {
       const paramKid = request.params?._passport_kid;
       if (paramKid) resolvedAgentKid = paramKid;
-      const agentOverrides = resolvedAgentKid ? this.config.multiAgent.agentPolicies?.[resolvedAgentKid] : void 0;
-      if (agentOverrides && agentOverrides[toolName]) {
-        effectiveToolPolicy = { ...getToolPolicy(toolName, this.config.policy), ...agentOverrides[toolName] };
+      const agentOverrides = resolvedAgentKid ? ownEntry(this.config.multiAgent.agentPolicies, resolvedAgentKid) : void 0;
+      const agentToolPolicy = ownEntry(agentOverrides, toolName);
+      if (agentToolPolicy) {
+        effectiveToolPolicy = { ...getToolPolicy(toolName, this.config.policy), ...agentToolPolicy };
       } else if (!resolvedAgentKid && this.config.multiAgent.unknownAgentPolicy === "deny") {
         this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "unknown_agent_denied", request_id: requestId, tier: this.currentTier, action_readback: actionReadback });
         if (this.config.enforce) {
@@ -37957,8 +38023,8 @@ var ProtectGateway = class {
       if (person.required) {
         const hid = heldIdFor(this.reporter?.sid ?? std.request_id, toolName, actionReadback.payload_hash);
         const page = this.reporter ? `${new URL(this.reporter.url).origin}/standard?s=${this.reporter.sid}#held-${hid}` : "";
-        const localGrant = this.approvalStore.get(`always:${toolName}`);
-        const verdict2 = localGrant && Date.now() < localGrant.expires_at ? { decision: "approve", approver_key_id: "gate", digest: "", note: "granted at the gate" } : this.reporter ? await this.reporter.decision(hid) : null;
+        grantedAtGate = this.takeGrant(toolName, approvalKey);
+        const verdict2 = grantedAtGate ? { decision: "approve", approver_key_id: "gate", digest: "", note: "granted at the gate" } : this.reporter ? await this.reporter.decision(hid) : null;
         if (verdict2 === "unreachable") {
           this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "standard_page_unreachable", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" needs a named person's approval and the standard's page could not be reached; retry the same call later`);
@@ -37975,7 +38041,8 @@ var ProtectGateway = class {
           }
           this.emitDecisionLog({ tool: toolName, decision: "require_approval", reason_code: "standard_requires_person", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
           if (this.config.enforce) {
-            const where = page ? `The action is waiting for the named person at ${page}. Tell the user, and retry this exact call once they have decided there; a changed call is a new action.` : `No standard page is configured (--report), so it must be granted at the gate (approval nonce ${this.approvalNonce}, request ID ${requestId}) before a retry.`;
+            if (!page) this.logApprovalHint(toolName, approvalKey);
+            const where = page ? `The action is waiting for the named person at ${page}. Tell the user, and retry this exact call once they have decided there; a changed call is a new action.` : `No standard page is configured (--report), so it must be granted at the gate (request ID ${approvalKey}) before a retry.`;
             return {
               jsonrpc: "2.0",
               id: request.id,
@@ -37988,6 +38055,7 @@ var ProtectGateway = class {
         }
       }
     }
+    let cedarAllowed = false;
     if (this.config.policy?.policy_engine === "cedar" && this.cedarPolicySet) {
       try {
         const cedarDecision = await evaluateCedar(this.cedarPolicySet, {
@@ -38007,10 +38075,14 @@ var ProtectGateway = class {
           }
           return null;
         }
-        this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: "cedar_allow", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-        return null;
+        cedarAllowed = true;
       } catch (err) {
-        if (this.config.verbose) this.log(`Cedar evaluation error: ${err instanceof Error ? err.message : err}`);
+        this.log(`Cedar evaluation threw for "${toolName}", failing closed: ${err instanceof Error ? err.message : err}`);
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "cedar_eval_error", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) {
+          return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied: the Cedar policy engine errored, so the gate fails closed`);
+        }
+        return null;
       }
     }
     if (this.config.policy?.external && (this.config.policy.policy_engine === "external" || this.config.policy.policy_engine === "hybrid")) {
@@ -38052,17 +38124,14 @@ var ProtectGateway = class {
       return null;
     }
     if (toolPolicy.require_approval) {
-      const grant = this.approvalStore.get(requestId);
-      const alwaysGrant = this.approvalStore.get(`always:${toolName}`);
-      if (grant && Date.now() < grant.expires_at || alwaysGrant && Date.now() < alwaysGrant.expires_at) {
-        if (grant && grant.mode === "once") this.approvalStore.delete(requestId);
-        this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: "approval_granted", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-        return null;
+      if (grantedAtGate || this.takeGrant(toolName, approvalKey)) {
+        const emitted2 = this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: "approval_granted", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        return this.refuseUnsigned(emitted2, request.id, toolName);
       }
       this.emitDecisionLog({ tool: toolName, decision: "require_approval", reason_code: "requires_human_approval", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
       if (this.notificationConfig) {
         sendApprovalNotification(this.notificationConfig, {
-          requestId,
+          requestId: approvalKey,
           toolName,
           agentId: this.admissionResult?.agent_id,
           policyName: "default",
@@ -38075,6 +38144,7 @@ var ProtectGateway = class {
         });
       }
       if (this.config.enforce) {
+        this.logApprovalHint(toolName, approvalKey);
         return {
           jsonrpc: "2.0",
           id: request.id,
@@ -38082,7 +38152,7 @@ var ProtectGateway = class {
             content: [
               {
                 type: "text",
-                text: `REQUIRES_APPROVAL: The tool "${toolName}" requires human approval before execution. Exact action: ${actionReadback.summary}. Payload hash: ${actionReadback.payload_hash.slice(0, 16)}\u2026 Request ID: ${requestId}. Approval nonce: ${this.approvalNonce}. Tell the user you need their approval to use "${toolName}" and will retry when granted. Do NOT retry this tool call until the user explicitly approves it.`
+                text: `REQUIRES_APPROVAL: The tool "${toolName}" requires human approval before execution. Exact action: ${actionReadback.summary}. Payload hash: ${actionReadback.payload_hash.slice(0, 16)}\u2026 Request ID: ${approvalKey}. Tell the user you need their approval to use "${toolName}" and will retry when granted. Do NOT retry this tool call until the user explicitly approves it.`
               }
             ],
             isError: true
@@ -38092,27 +38162,49 @@ var ProtectGateway = class {
       return null;
     }
     const rateSpec = this.getTierRateLimit(toolPolicy, this.currentTier);
+    let emitted;
     if (rateSpec) {
+      let limit;
       try {
-        const limit = parseRateLimit(rateSpec);
-        const key5 = `tool:${toolName}:${this.currentTier}`;
-        const { allowed, remaining } = checkRateLimit(key5, limit, this.rateLimitStore);
-        if (!allowed) {
-          this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "rate_limit_exceeded", request_id: requestId, rate_limit_remaining: 0, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
-          if (this.config.enforce) {
-            return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" rate limit exceeded (${rateSpec})`);
-          }
-          return null;
-        }
-        this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: "policy_allow", request_id: requestId, rate_limit_remaining: remaining, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        limit = parseRateLimit(rateSpec);
       } catch {
-        this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: "default_allow", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "rate_limit_invalid", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) {
+          return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied: its rate limit ${JSON.stringify(rateSpec)} is not a valid spec (N/second, N/minute, N/hour or N/day), so the gate fails closed`);
+        }
+        return null;
       }
+      const key5 = `tool:${toolName}:${this.currentTier}`;
+      const { allowed, remaining } = checkRateLimit(key5, limit, this.rateLimitStore);
+      if (!allowed) {
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "rate_limit_exceeded", request_id: requestId, rate_limit_remaining: 0, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) {
+          return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" rate limit exceeded (${rateSpec})`);
+        }
+        return null;
+      }
+      emitted = this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: cedarAllowed ? "cedar_allow" : "policy_allow", request_id: requestId, rate_limit_remaining: remaining, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
     } else {
-      const reasonCode = this.config.enforce ? "policy_allow" : "observe_mode";
-      this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: reasonCode, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+      const reasonCode = cedarAllowed ? "cedar_allow" : this.config.enforce ? "policy_allow" : "observe_mode";
+      emitted = this.emitDecisionLog({ tool: toolName, decision: "allow", reason_code: reasonCode, request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
     }
-    return null;
+    return this.refuseUnsigned(emitted, request.id, toolName);
+  }
+  /**
+   * Whether a person granted this call at the gate (POST /approve). A once
+   * grant is keyed by the exact action (tool and payload hash), so an identical
+   * retry finds it and a changed call does not, and it is used up here. An
+   * always grant covers every call to the tool until it expires.
+   */
+  takeGrant(toolName, approvalKey) {
+    const now = Date.now();
+    const once = this.approvalStore.get(approvalKey);
+    if (once && once.mode === "once" && now < once.expires_at) {
+      this.approvalStore.delete(approvalKey);
+      return true;
+    }
+    const always = this.approvalStore.get(`always:${toolName}`);
+    return Boolean(always && always.mode === "always" && now < always.expires_at);
   }
   getTierRateLimit(policy, tier) {
     if (policy.rate_limits && policy.rate_limits[tier]) {
@@ -38202,9 +38294,41 @@ var ProtectGateway = class {
         }
         process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
 `);
+        return { signingFailed: true };
       }
     } else if (this.reporter) {
       this.reporter.record(void 0, callLine);
+    }
+    return { signingFailed: false };
+  }
+  /**
+   * An allow is only as good as its receipt. In enforce mode a call whose
+   * receipt could not be signed does not run, as in the hook server: a
+   * governed action that cannot be proven is not allowed.
+   */
+  refuseUnsigned(emitted, id11, toolName) {
+    if (!emitted.signingFailed || !this.config.enforce) return null;
+    return this.makeErrorResponse(id11, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+  }
+  /**
+   * Refuse to arm enforce mode when signing is configured but cannot produce a
+   * receipt (a missing or unreadable key), as the hook server does: without it
+   * every allowed call would either run unsigned or be refused.
+   */
+  assertSigningReady() {
+    if (!this.config.enforce) return;
+    const probe = signDecision({
+      v: 2,
+      tool: "__protect_mcp_startup_selftest__",
+      decision: "deny",
+      reason_code: "startup_selftest",
+      policy_digest: this.config.policyDigest,
+      request_id: `selftest-${Date.now()}`,
+      mode: "enforce",
+      timestamp: Date.now()
+    });
+    if (probe.error) {
+      throw new Error(`enforce mode refused to start: signing is configured but a receipt could not be produced (${probe.error}). An enforcing gate that cannot evidence its decisions must not arm.`);
     }
   }
   makeErrorResponse(id11, code2, message) {
@@ -38247,6 +38371,7 @@ var ProtectGateway = class {
     this.httpMode = true;
     const { command, args, verbose } = this.config;
     const mode = this.config.enforce ? "enforce" : "shadow";
+    this.assertSigningReady();
     if (verbose) {
       this.log(`Starting gateway in ${mode} mode (HTTP transport)`);
       this.log(`Wrapping: ${command} ${args.join(" ")}`);
@@ -38299,7 +38424,12 @@ var ProtectGateway = class {
   async processRequest(jsonRpc) {
     const REQUEST_TIMEOUT_MS = 3e4;
     if (jsonRpc.method === "tools/call" && jsonRpc.id !== void 0) {
-      const blocked = await this.interceptToolCall(jsonRpc);
+      let blocked;
+      try {
+        blocked = await this.interceptToolCall(jsonRpc);
+      } catch (err) {
+        blocked = this.refuseUnevaluable(jsonRpc, err);
+      }
       if (blocked) {
         return JSON.stringify(blocked);
       }
@@ -38328,6 +38458,16 @@ var ProtectGateway = class {
   log(message) {
     process.stderr.write(`[PROTECT_MCP] ${message}
 `);
+  }
+  /**
+   * Tell the operator, on stderr only, how to grant one held call. The nonce
+   * that authenticates POST /approve never goes into a tool result: the model
+   * reads those, and an agent that has the nonce can approve its own calls.
+   */
+  logApprovalHint(toolName, requestId) {
+    const body = JSON.stringify({ request_id: requestId, tool: toolName, mode: "once", nonce: this.approvalNonce });
+    const where = this.statusPort ? `POST http://127.0.0.1:${this.statusPort}/approve` : "POST /approve on the status server (not running in this process)";
+    this.log(`Approval required for ${JSON.stringify(toolName)}: to run this exact call once, ${where} with ${body}`);
   }
   stop() {
     this.evidenceStore.save();
@@ -40538,13 +40678,13 @@ function validateEvidenceReceipt(receipt) {
 var import_node_http2 = require("http");
 var import_node_crypto10 = require("crypto");
 var import_node_fs13 = require("fs");
-var import_node_path8 = require("path");
+var import_node_path9 = require("path");
 
 // src/scopeblind-bridge.ts
 var import_node_crypto7 = require("crypto");
 var import_node_fs11 = require("fs");
 var import_node_os = require("os");
-var import_node_path6 = require("path");
+var import_node_path7 = require("path");
 
 // src/egress-guard.ts
 var import_node_crypto6 = require("crypto");
@@ -40921,9 +41061,9 @@ function parseConfiguredPseudonymKey(value) {
   return key5;
 }
 function loadOrCreatePseudonymKey(env, base, slug) {
-  const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path6.join)((0, import_node_os.homedir)(), ".protect-mcp", "egress-keys");
+  const dir = env.SCOPEBLIND_EGRESS_KEY_DIR || (0, import_node_path7.join)((0, import_node_os.homedir)(), ".protect-mcp", "egress-keys");
   const scopeDigest = (0, import_node_crypto7.createHash)("sha256").update(`${base}\0${slug}`).digest("hex");
-  const path = (0, import_node_path6.join)(dir, `${scopeDigest}.key`);
+  const path = (0, import_node_path7.join)(dir, `${scopeDigest}.key`);
   (0, import_node_fs11.mkdirSync)(dir, { recursive: true, mode: 448 });
   (0, import_node_fs11.chmodSync)(dir, 448);
   try {
@@ -41076,7 +41216,7 @@ function buildEnrichment(tool, input) {
 // src/mandate-lifecycle.ts
 var import_node_crypto9 = require("crypto");
 var import_node_fs12 = require("fs");
-var import_node_path7 = require("path");
+var import_node_path8 = require("path");
 
 // src/webauthn-approval.ts
 var import_node_crypto8 = require("crypto");
@@ -41265,13 +41405,13 @@ function policyApprovalChallenge(proposal, controllerId) {
   }), "utf-8")).digest("base64url");
 }
 function mandatePaths(cedarDir) {
-  const absolute = (0, import_node_path7.resolve)(cedarDir);
-  const parent = (0, import_node_path7.dirname)(absolute);
-  const base = (0, import_node_path7.basename)(absolute);
+  const absolute = (0, import_node_path8.resolve)(cedarDir);
+  const parent = (0, import_node_path8.dirname)(absolute);
+  const base = (0, import_node_path8.basename)(absolute);
   return {
-    registry: (0, import_node_path7.join)(parent, `.${base}.scopeblind-mandate-registry.json`),
-    snapshots: (0, import_node_path7.join)(parent, `.${base}.scopeblind-mandate-snapshots`),
-    auditLog: (0, import_node_path7.join)(parent, `.${base}.scopeblind-mandate-history.jsonl`)
+    registry: (0, import_node_path8.join)(parent, `.${base}.scopeblind-mandate-registry.json`),
+    snapshots: (0, import_node_path8.join)(parent, `.${base}.scopeblind-mandate-snapshots`),
+    auditLog: (0, import_node_path8.join)(parent, `.${base}.scopeblind-mandate-history.jsonl`)
   };
 }
 function loadGateSigner(keyPath) {
@@ -41297,7 +41437,7 @@ function snapshotFromDirectory(cedarDir, compiledAt) {
   if (entries.length === 0) throw new Error(`no Cedar policy files found in ${cedarDir}`);
   const files = entries.map((name2) => {
     if (!safePolicyFileName(name2)) throw new Error(`unsafe Cedar policy filename: ${name2}`);
-    const content2 = (0, import_node_fs12.readFileSync)((0, import_node_path7.join)(cedarDir, name2), "utf-8");
+    const content2 = (0, import_node_fs12.readFileSync)((0, import_node_path8.join)(cedarDir, name2), "utf-8");
     return { name: name2, content: content2, sha256: SHA256(Buffer.from(content2, "utf-8")) };
   });
   const digest = digestPolicyFiles("cedar", files).policy_digest;
@@ -41331,9 +41471,9 @@ function verifyGateEnvelope(envelope2, gate) {
   return payload.issuer_id === gate.kid && payload.gate_public_key === gate.public_key;
 }
 function writeAtomic(path, contents) {
-  const parent = (0, import_node_path7.dirname)(path);
+  const parent = (0, import_node_path8.dirname)(path);
   (0, import_node_fs12.mkdirSync)(parent, { recursive: true });
-  const temp = (0, import_node_path7.join)(parent, `.${(0, import_node_path7.basename)(path)}.${process.pid}.${(0, import_node_crypto9.randomUUID)()}.tmp`);
+  const temp = (0, import_node_path8.join)(parent, `.${(0, import_node_path8.basename)(path)}.${process.pid}.${(0, import_node_crypto9.randomUUID)()}.tmp`);
   try {
     (0, import_node_fs12.writeFileSync)(temp, contents, { encoding: "utf-8", mode: 384 });
     (0, import_node_fs12.renameSync)(temp, path);
@@ -41354,7 +41494,7 @@ function persistSnapshot(cedarDir, snapshot) {
   const paths2 = mandatePaths(cedarDir);
   (0, import_node_fs12.mkdirSync)(paths2.snapshots, { recursive: true, mode: 448 });
   const name2 = `${snapshot.policy_digest.replace(/^sha256:/, "")}.json`;
-  const output = (0, import_node_path7.join)(paths2.snapshots, name2);
+  const output = (0, import_node_path8.join)(paths2.snapshots, name2);
   if (!(0, import_node_fs12.existsSync)(output)) writeAtomic(output, JSON.stringify(snapshot, null, 2) + "\n");
 }
 function sourceStatements(snapshot) {
@@ -41674,15 +41814,15 @@ function verifyMandateRegistry(registry, now = /* @__PURE__ */ new Date()) {
 }
 function installSnapshotAtomically(cedarDir, snapshot) {
   assertSnapshot(snapshot);
-  const target = (0, import_node_path7.resolve)(cedarDir);
-  const parent = (0, import_node_path7.dirname)(target);
-  const base = (0, import_node_path7.basename)(target);
+  const target = (0, import_node_path8.resolve)(cedarDir);
+  const parent = (0, import_node_path8.dirname)(target);
+  const base = (0, import_node_path8.basename)(target);
   if (!(0, import_node_fs12.existsSync)(target) || !(0, import_node_fs12.statSync)(target).isDirectory()) throw new Error(`managed Cedar directory is missing: ${target}`);
-  const stage = (0, import_node_path7.join)(parent, `.${base}.scopeblind-stage-${process.pid}-${(0, import_node_crypto9.randomUUID)()}`);
-  const backup = (0, import_node_path7.join)(parent, `.${base}.scopeblind-backup-${process.pid}-${(0, import_node_crypto9.randomUUID)()}`);
+  const stage = (0, import_node_path8.join)(parent, `.${base}.scopeblind-stage-${process.pid}-${(0, import_node_crypto9.randomUUID)()}`);
+  const backup = (0, import_node_path8.join)(parent, `.${base}.scopeblind-backup-${process.pid}-${(0, import_node_crypto9.randomUUID)()}`);
   (0, import_node_fs12.mkdirSync)(stage, { recursive: true, mode: 448 });
   try {
-    for (const file of snapshot.files) (0, import_node_fs12.writeFileSync)((0, import_node_path7.join)(stage, file.name), file.content, { encoding: "utf-8", mode: 384 });
+    for (const file of snapshot.files) (0, import_node_fs12.writeFileSync)((0, import_node_path8.join)(stage, file.name), file.content, { encoding: "utf-8", mode: 384 });
     (0, import_node_fs12.renameSync)(target, backup);
     try {
       (0, import_node_fs12.renameSync)(stage, target);
@@ -42339,31 +42479,50 @@ async function handlePreToolUse(input, state) {
       };
     }
     if (toolPolicy.rate_limit) {
+      let limit;
       try {
-        const limit = parseRateLimit(toolPolicy.rate_limit);
-        const key5 = `tool:${toolName}:hook`;
-        const { allowed, remaining } = checkRateLimit(key5, limit, state.rateLimitStore);
-        if (!allowed) {
-          const hookLatency2 = Date.now() - hookStart;
-          emitDecisionLog(state, {
-            tool: toolName,
-            decision: "deny",
-            reason_code: "rate_limit_exceeded",
-            request_id: requestId,
-            hook_event: "PreToolUse",
-            swarm: swarm.team_name ? swarm : void 0,
-            timing: { hook_latency_ms: hookLatency2, started_at: hookStart },
-            sandbox_state: detectSandboxState()
-          });
-          return {
-            hookSpecificOutput: {
-              hookEventName: "PreToolUse",
-              permissionDecision: "deny",
-              permissionDecisionReason: `[ScopeBlind] "${toolName}" rate limit exceeded (${toolPolicy.rate_limit}).`
-            }
-          };
-        }
+        limit = parseRateLimit(toolPolicy.rate_limit);
       } catch {
+        const hookLatency2 = Date.now() - hookStart;
+        emitDecisionLog(state, {
+          tool: toolName,
+          decision: "deny",
+          reason_code: "rate_limit_invalid",
+          request_id: requestId,
+          hook_event: "PreToolUse",
+          swarm: swarm.team_name ? swarm : void 0,
+          timing: { hook_latency_ms: hookLatency2, started_at: hookStart },
+          sandbox_state: detectSandboxState()
+        });
+        return {
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: `[ScopeBlind] "${toolName}" denied: its rate limit ${JSON.stringify(toolPolicy.rate_limit)} is not a valid spec (N/second, N/minute, N/hour or N/day), so the gate fails closed.`
+          }
+        };
+      }
+      const key5 = `tool:${toolName}:hook`;
+      const { allowed } = checkRateLimit(key5, limit, state.rateLimitStore);
+      if (!allowed) {
+        const hookLatency2 = Date.now() - hookStart;
+        emitDecisionLog(state, {
+          tool: toolName,
+          decision: "deny",
+          reason_code: "rate_limit_exceeded",
+          request_id: requestId,
+          hook_event: "PreToolUse",
+          swarm: swarm.team_name ? swarm : void 0,
+          timing: { hook_latency_ms: hookLatency2, started_at: hookStart },
+          sandbox_state: detectSandboxState()
+        });
+        return {
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: `[ScopeBlind] "${toolName}" rate limit exceeded (${toolPolicy.rate_limit}).`
+          }
+        };
       }
     }
   }
@@ -42746,7 +42905,7 @@ async function startHookServer(options = {}) {
       const cedarAvailable = await isCedarAvailable();
       if (!cedarAvailable) {
         process.stderr.write(
-          "[PROTECT_MCP] Warning: @cedar-policy/cedar-wasm not installed. Cedar policies loaded but evaluation fallback is allow-all.\n"
+          "[PROTECT_MCP] Warning: @cedar-policy/cedar-wasm not installed. Cedar policies loaded, but every call will be denied until @cedar-policy/cedar-wasm is installed.\n"
         );
       }
     } catch (err) {
@@ -42774,7 +42933,7 @@ async function startHookServer(options = {}) {
     }
   }
   if (!jsonPolicy?.signing) {
-    const keyPath = (0, import_node_path8.join)(dataDir, "keys", "gateway.json");
+    const keyPath = (0, import_node_path9.join)(dataDir, "keys", "gateway.json");
     if ((0, import_node_fs13.existsSync)(keyPath)) {
       gateKeyPath = keyPath;
       const warnings = await initSigning({ key_path: keyPath, issuer: "protect-mcp", enabled: true });
@@ -42902,9 +43061,9 @@ async function startHookServer(options = {}) {
     verbose,
     enforce,
     policyDigest,
-    logFilePath: (0, import_node_path8.join)(dataDir, LOG_FILE3),
-    receiptFilePath: (0, import_node_path8.join)(dataDir, RECEIPTS_FILE2),
-    lastReceiptHash: resumeReceiptChain((0, import_node_path8.join)(dataDir, RECEIPTS_FILE2)),
+    logFilePath: (0, import_node_path9.join)(dataDir, LOG_FILE3),
+    receiptFilePath: (0, import_node_path9.join)(dataDir, RECEIPTS_FILE2),
+    lastReceiptHash: resumeReceiptChain((0, import_node_path9.join)(dataDir, RECEIPTS_FILE2)),
     permissionSuggestions: /* @__PURE__ */ new Map(),
     configAlerts: [],
     managedMandate,
@@ -42913,10 +43072,24 @@ async function startHookServer(options = {}) {
     approvalsToRecord: /* @__PURE__ */ new Map()
   };
   const server = (0, import_node_http2.createServer)(async (req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
     res.setHeader("Content-Type", "application/json");
+    const address = server.address();
+    if (!isLoopbackHost(req.headers.host, address && typeof address === "object" ? address.port : port)) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: "host_not_allowed" }));
+      return;
+    }
+    const origin = req.headers.origin;
+    if (origin !== void 0 && origin.toLowerCase() !== `http://${String(req.headers.host).toLowerCase()}`) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: "cross_site_request" }));
+      return;
+    }
+    if (req.method === "POST" && String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase() !== "application/json") {
+      res.writeHead(415);
+      res.end(JSON.stringify({ error: "json_required", message: "POST with Content-Type: application/json" }));
+      return;
+    }
     if (req.method === "OPTIONS") {
       res.writeHead(204);
       res.end();
@@ -43185,7 +43358,7 @@ async function startHookServer(options = {}) {
 `);
     w(`
 `);
-    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs13.existsSync)((0, import_node_path8.join)(dataDir, ".scopeblind"));
+    const hasSlug = process.env.SCOPEBLIND_SLUG || (0, import_node_fs13.existsSync)((0, import_node_path9.join)(dataDir, ".scopeblind"));
     if (!hasSlug) {
       w(`  Dashboard  npx protect-mcp connect
 `);
@@ -43218,7 +43391,7 @@ function newestCedarMtime(dir) {
     let newest = 0;
     for (const f of (0, import_node_fs13.readdirSync)(dir)) {
       if (!f.endsWith(".cedar")) continue;
-      const m = (0, import_node_fs13.statSync)((0, import_node_path8.join)(dir, f)).mtimeMs;
+      const m = (0, import_node_fs13.statSync)((0, import_node_path9.join)(dir, f)).mtimeMs;
       if (m > newest) newest = m;
     }
     return newest;
@@ -44403,7 +44576,7 @@ function policyPackIds() {
 
 // src/connector-pilots.ts
 var import_node_fs14 = require("fs");
-var import_node_path9 = require("path");
+var import_node_path10 = require("path");
 var defaultPermit2 = `
 // Default posture: observe all non-matching tools so the connector can be piloted in shadow mode.
 permit(principal, action == Action::"MCP::Tool::call", resource);
@@ -44994,7 +45167,7 @@ function getConnectorPilot(id11) {
   return CONNECTOR_PILOTS.find((pilot) => pilot.id === id11);
 }
 function connectorDirectory(dir) {
-  return (0, import_node_path9.join)(dir, ".protect-mcp", "connectors");
+  return (0, import_node_path10.join)(dir, ".protect-mcp", "connectors");
 }
 function writeConnectorPilots(opts) {
   const directory = connectorDirectory(opts.dir);
@@ -45006,8 +45179,8 @@ function writeConnectorPilots(opts) {
   }) : CONNECTOR_PILOTS;
   const written = [];
   for (const pilot of selected) {
-    const configPath = (0, import_node_path9.join)(directory, `${pilot.id}.json`);
-    const policyPath = (0, import_node_path9.join)(directory, `${pilot.id}.cedar`);
+    const configPath = (0, import_node_path10.join)(directory, `${pilot.id}.json`);
+    const policyPath = (0, import_node_path10.join)(directory, `${pilot.id}.cedar`);
     if (!opts.force && ((0, import_node_fs14.existsSync)(configPath) || (0, import_node_fs14.existsSync)(policyPath))) {
       throw new Error(`Refusing to overwrite ${pilot.id}. Re-run with --force if intentional.`);
     }
@@ -45017,29 +45190,29 @@ function writeConnectorPilots(opts) {
     written.push(configPath, policyPath);
     for (const artifact of pilot.artifacts || []) {
       const artifactPath = connectorArtifactPath(directory, artifact.path);
-      (0, import_node_fs14.mkdirSync)((0, import_node_path9.dirname)(artifactPath), { recursive: true });
+      (0, import_node_fs14.mkdirSync)((0, import_node_path10.dirname)(artifactPath), { recursive: true });
       (0, import_node_fs14.writeFileSync)(artifactPath, artifact.contents.endsWith("\n") ? artifact.contents : `${artifact.contents}
 `);
       if (artifact.executable) (0, import_node_fs14.chmodSync)(artifactPath, 493);
       written.push(artifactPath);
     }
   }
-  (0, import_node_fs14.writeFileSync)((0, import_node_path9.join)(directory, "README.md"), renderConnectorReadme(selected));
-  written.push((0, import_node_path9.join)(directory, "README.md"));
+  (0, import_node_fs14.writeFileSync)((0, import_node_path10.join)(directory, "README.md"), renderConnectorReadme(selected));
+  written.push((0, import_node_path10.join)(directory, "README.md"));
   return { written, pilots: selected, directory };
 }
 function connectorArtifactPath(directory, relativePath) {
-  const clean2 = (0, import_node_path9.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
+  const clean2 = (0, import_node_path10.normalize)(relativePath).replace(/^(\.\.(\/|\\|$))+/, "");
   if (clean2.startsWith("/") || clean2.includes("..")) {
     throw new Error(`Unsafe connector artifact path: ${relativePath}`);
   }
-  return (0, import_node_path9.join)(directory, clean2);
+  return (0, import_node_path10.join)(directory, clean2);
 }
 function readInstalledConnectorPilots(dir) {
   const directory = connectorDirectory(dir);
   if (!(0, import_node_fs14.existsSync)(directory)) return [];
   return (0, import_node_fs14.readdirSync)(directory).filter((name2) => name2.endsWith(".json")).map((name2) => {
-    const configPath = (0, import_node_path9.join)(directory, name2);
+    const configPath = (0, import_node_path10.join)(directory, name2);
     try {
       const parsed = JSON.parse((0, import_node_fs14.readFileSync)(configPath, "utf-8"));
       const id11 = String(parsed.id || name2.replace(/\.json$/, ""));
@@ -45050,7 +45223,7 @@ function readInstalledConnectorPilots(dir) {
         category: String(parsed.category || pilot?.category || "unknown"),
         status: String(parsed.status || parsed.type || "installed"),
         config_path: configPath,
-        policy_path: (0, import_node_path9.join)(directory, `${id11}.cedar`)
+        policy_path: (0, import_node_path10.join)(directory, `${id11}.cedar`)
       };
     } catch {
       return null;
@@ -47518,7 +47691,7 @@ async function validateRepositoryPreviewBundle(value) {
 // src/repository-coding-runner.ts
 var import_promises = require("fs/promises");
 var import_node_os2 = require("os");
-var import_node_path10 = require("path");
+var import_node_path11 = require("path");
 var import_node_child_process2 = require("child_process");
 var import_node_util = require("util");
 var import_node_crypto16 = require("crypto");
@@ -47593,7 +47766,7 @@ async function safeWrite(root, path, content2) {
   const parts = path.split("/");
   let current = root;
   for (const p of parts.slice(0, -1)) {
-    current = (0, import_node_path10.join)(current, p);
+    current = (0, import_node_path11.join)(current, p);
     try {
       const s = await (0, import_promises.lstat)(current);
       need2(s.isDirectory() && !s.isSymbolicLink(), "coding_symlink_forbidden");
@@ -47602,7 +47775,7 @@ async function safeWrite(root, path, content2) {
       await (0, import_promises.mkdir)(current);
     }
   }
-  const file = (0, import_node_path10.join)(root, path);
+  const file = (0, import_node_path11.join)(root, path);
   try {
     const s = await (0, import_promises.lstat)(file);
     need2(s.isFile() && !s.isSymbolicLink(), "coding_symlink_forbidden");
@@ -47619,7 +47792,7 @@ async function scanCodingWorkspace(root) {
     need2(depth <= 10, "coding_directory_depth_limit");
     for await (const entry of await (0, import_promises.opendir)(dir)) {
       need2(++nodes <= 1200, "coding_node_limit");
-      const path = (0, import_node_path10.join)(dir, entry.name), s = await (0, import_promises.lstat)(path), rel = (0, import_node_path10.relative)(root, path);
+      const path = (0, import_node_path11.join)(dir, entry.name), s = await (0, import_promises.lstat)(path), rel = (0, import_node_path11.relative)(root, path);
       need2(rel.length <= 200 && !s.isSymbolicLink(), "coding_symlink_forbidden");
       if (s.isDirectory()) await visit(path, depth + 1);
       else {
@@ -47768,7 +47941,7 @@ var RepositoryCodingRunner = class {
       need2(tree.truncated === false && Array.isArray(tree.tree) && tree.tree.length <= 1e3, "coding_source_tree_limit");
       const entries = tree.tree.filter((f) => f.type !== "tree");
       need2(entries.every((f) => f.type === "blob" && ["100644", "100755"].includes(f.mode) && typeof f.path === "string" && REPOSITORY_SHA.test(f.sha)), "coding_source_unsupported");
-      root = await (0, import_promises.mkdtemp)((0, import_node_path10.join)((0, import_node_os2.tmpdir)(), "scopeblind-code-"));
+      root = await (0, import_promises.mkdtemp)((0, import_node_path11.join)((0, import_node_os2.tmpdir)(), "scopeblind-code-"));
       const before3 = /* @__PURE__ */ new Map();
       let total = 0;
       for (const f of entries) {
@@ -47780,8 +47953,8 @@ var RepositoryCodingRunner = class {
         total += bytes.length;
         need2(total <= 524288 && bytes.length === blob.size && gitBlob(bytes) === f.sha, "coding_source_integrity");
         before3.set(f.path, bytes);
-        await (0, import_promises.mkdir)((0, import_node_path10.dirname)((0, import_node_path10.join)(root, f.path)), { recursive: true });
-        await (0, import_promises.writeFile)((0, import_node_path10.join)(root, f.path), bytes, { mode: 384 });
+        await (0, import_promises.mkdir)((0, import_node_path11.dirname)((0, import_node_path11.join)(root, f.path)), { recursive: true });
+        await (0, import_promises.writeFile)((0, import_node_path11.join)(root, f.path), bytes, { mode: 384 });
       }
       sandbox = this.sandboxFactory(root);
       const history = [];

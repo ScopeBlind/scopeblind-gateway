@@ -10,7 +10,7 @@
  *   GET  /receipts        → recent receipts as JSON array
  *   GET  /receipts/latest → most recent receipt
  *   GET  /receipts/:id    → single receipt by request_id
- *   POST /approve         → grant approval for a tool { tool, mode: "once"|"always" }
+ *   POST /approve         → grant one exact action { request_id, tool, mode: "once" } or a tool { tool, mode: "always" }
  *   GET  /approvals       → list current approval grants
  */
 
@@ -86,11 +86,20 @@ export function startStatusServer(
   const logDir = process.cwd();
 
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    // CORS headers for dashboard/observability tools
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    // No CORS headers: with Access-Control-Allow-Origin: * any web page the
+    // operator opened could read recent decisions and receipts from here.
+    // Local tools read it directly; the dashboard reads the files.
     res.setHeader('Content-Type', 'application/json');
+
+    // DNS rebinding: a page can point its own name at 127.0.0.1, but its
+    // requests still carry that name as Host. Serve only requests addressed to
+    // this loopback port.
+    const address = server.address();
+    if (!isLoopbackHost(req.headers.host, address && typeof address === 'object' ? address.port : config.port)) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'host_not_allowed' }));
+      return;
+    }
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
@@ -143,6 +152,12 @@ export function startStatusServer(
   server.unref();
 
   return server;
+}
+
+/** Whether a Host header names this loopback port: 127.0.0.1, localhost or [::1], with the port. */
+export function isLoopbackHost(host: string | undefined, port: number): boolean {
+  const name = (host || '').toLowerCase();
+  return name === `127.0.0.1:${port}` || name === `localhost:${port}` || name === `[::1]:${port}`;
 }
 
 function handleHealth(res: ServerResponse, startTime: number, config: StatusServerConfig): void {
@@ -258,11 +273,19 @@ function handleApprove(
 
       if (!tool || typeof tool !== 'string') {
         res.writeHead(400);
-        res.end(JSON.stringify({ error: 'missing_tool', usage: '{"request_id":"abc123","tool":"send_email","mode":"once|always","nonce":"..."}' }));
+        res.end(JSON.stringify({ error: 'missing_tool', usage: APPROVE_USAGE }));
         return;
       }
 
       const grantMode: 'once' | 'always' = mode === 'always' ? 'always' : 'once';
+      // A once grant approves one exact action: the request ID the gateway
+      // printed for it, the tool name and the payload hash. One that names no
+      // such action could never match a call, so it is refused, not stored.
+      if (grantMode === 'once' && !isActionRequestId(request_id, tool)) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'missing_request_id', message: 'A once grant needs the request ID the gateway printed for the call: the tool name, a colon and the payload hash.', usage: APPROVE_USAGE }));
+        return;
+      }
       // TTL: 'once' = 5 minutes (enough for retry), 'always' = 24 hours (session-scoped)
       const ttlMs = grantMode === 'once' ? 5 * 60 * 1000 : 24 * 60 * 60 * 1000;
       const grantEntry = { tool, mode: grantMode, expires_at: Date.now() + ttlMs };
@@ -270,12 +293,9 @@ function handleApprove(
       if (grantMode === 'always') {
         // 'always' grants keyed by tool name for session-wide approval
         approvalStore.set(`always:${tool}`, grantEntry);
-      } else if (request_id) {
-        // 'once' grants keyed by specific request_id
-        approvalStore.set(request_id, grantEntry);
       } else {
-        // Fallback: if no request_id, key by tool name (less secure but functional)
-        approvalStore.set(tool, grantEntry);
+        // 'once' grants keyed by the exact action, used up by the call they approve
+        approvalStore.set(request_id, grantEntry);
       }
 
       res.writeHead(200);
@@ -288,9 +308,18 @@ function handleApprove(
       }));
     } catch {
       res.writeHead(400);
-      res.end(JSON.stringify({ error: 'invalid_json', usage: '{"request_id":"abc123","tool":"send_email","mode":"once","nonce":"..."}' }));
+      res.end(JSON.stringify({ error: 'invalid_json', usage: APPROVE_USAGE }));
     }
   });
+}
+
+const APPROVE_USAGE = '{"request_id":"send_email:<payload hash>","tool":"send_email","mode":"once|always","nonce":"..."}';
+
+/** The request ID of one exact action: `${tool}:${payload_hash}`, with the 64-hex payload hash. */
+function isActionRequestId(requestId: unknown, tool: string): requestId is string {
+  return typeof requestId === 'string'
+    && requestId.startsWith(`${tool}:`)
+    && /^[0-9a-f]{64}$/.test(requestId.slice(tool.length + 1));
 }
 
 function handleListApprovals(

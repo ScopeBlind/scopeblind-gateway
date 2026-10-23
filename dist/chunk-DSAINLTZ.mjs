@@ -18,23 +18,24 @@ import {
   RecordReporter,
   buildActionReadback,
   heldIdFor,
+  isLoopbackHost,
   loadStandardFile,
   readAmount,
   standardDecision
-} from "./chunk-7NEKA6GE.mjs";
+} from "./chunk-MHA5X7DI.mjs";
 import {
   checkRateLimit,
   getToolPolicy,
   loadPolicy,
   parseRateLimit
-} from "./chunk-EB7LESYM.mjs";
+} from "./chunk-VJ743MCX.mjs";
 import {
   getSignerInfo,
   initSigning,
   isSigningEnabled,
   signDecision,
   signGenericArtifact
-} from "./chunk-LXAQG3UR.mjs";
+} from "./chunk-PNPJY37B.mjs";
 import {
   evaluateCedar,
   isCedarAvailable,
@@ -586,31 +587,50 @@ async function handlePreToolUse(input, state) {
       };
     }
     if (toolPolicy.rate_limit) {
+      let limit;
       try {
-        const limit = parseRateLimit(toolPolicy.rate_limit);
-        const key = `tool:${toolName}:hook`;
-        const { allowed, remaining } = checkRateLimit(key, limit, state.rateLimitStore);
-        if (!allowed) {
-          const hookLatency2 = Date.now() - hookStart;
-          emitDecisionLog(state, {
-            tool: toolName,
-            decision: "deny",
-            reason_code: "rate_limit_exceeded",
-            request_id: requestId,
-            hook_event: "PreToolUse",
-            swarm: swarm.team_name ? swarm : void 0,
-            timing: { hook_latency_ms: hookLatency2, started_at: hookStart },
-            sandbox_state: detectSandboxState()
-          });
-          return {
-            hookSpecificOutput: {
-              hookEventName: "PreToolUse",
-              permissionDecision: "deny",
-              permissionDecisionReason: `[ScopeBlind] "${toolName}" rate limit exceeded (${toolPolicy.rate_limit}).`
-            }
-          };
-        }
+        limit = parseRateLimit(toolPolicy.rate_limit);
       } catch {
+        const hookLatency2 = Date.now() - hookStart;
+        emitDecisionLog(state, {
+          tool: toolName,
+          decision: "deny",
+          reason_code: "rate_limit_invalid",
+          request_id: requestId,
+          hook_event: "PreToolUse",
+          swarm: swarm.team_name ? swarm : void 0,
+          timing: { hook_latency_ms: hookLatency2, started_at: hookStart },
+          sandbox_state: detectSandboxState()
+        });
+        return {
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: `[ScopeBlind] "${toolName}" denied: its rate limit ${JSON.stringify(toolPolicy.rate_limit)} is not a valid spec (N/second, N/minute, N/hour or N/day), so the gate fails closed.`
+          }
+        };
+      }
+      const key = `tool:${toolName}:hook`;
+      const { allowed } = checkRateLimit(key, limit, state.rateLimitStore);
+      if (!allowed) {
+        const hookLatency2 = Date.now() - hookStart;
+        emitDecisionLog(state, {
+          tool: toolName,
+          decision: "deny",
+          reason_code: "rate_limit_exceeded",
+          request_id: requestId,
+          hook_event: "PreToolUse",
+          swarm: swarm.team_name ? swarm : void 0,
+          timing: { hook_latency_ms: hookLatency2, started_at: hookStart },
+          sandbox_state: detectSandboxState()
+        });
+        return {
+          hookSpecificOutput: {
+            hookEventName: "PreToolUse",
+            permissionDecision: "deny",
+            permissionDecisionReason: `[ScopeBlind] "${toolName}" rate limit exceeded (${toolPolicy.rate_limit}).`
+          }
+        };
       }
     }
   }
@@ -993,7 +1013,7 @@ async function startHookServer(options = {}) {
       const cedarAvailable = await isCedarAvailable();
       if (!cedarAvailable) {
         process.stderr.write(
-          "[PROTECT_MCP] Warning: @cedar-policy/cedar-wasm not installed. Cedar policies loaded but evaluation fallback is allow-all.\n"
+          "[PROTECT_MCP] Warning: @cedar-policy/cedar-wasm not installed. Cedar policies loaded, but every call will be denied until @cedar-policy/cedar-wasm is installed.\n"
         );
       }
     } catch (err) {
@@ -1160,10 +1180,24 @@ async function startHookServer(options = {}) {
     approvalsToRecord: /* @__PURE__ */ new Map()
   };
   const server = createServer(async (req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
     res.setHeader("Content-Type", "application/json");
+    const address = server.address();
+    if (!isLoopbackHost(req.headers.host, address && typeof address === "object" ? address.port : port)) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: "host_not_allowed" }));
+      return;
+    }
+    const origin = req.headers.origin;
+    if (origin !== void 0 && origin.toLowerCase() !== `http://${String(req.headers.host).toLowerCase()}`) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: "cross_site_request" }));
+      return;
+    }
+    if (req.method === "POST" && String(req.headers["content-type"] || "").split(";")[0].trim().toLowerCase() !== "application/json") {
+      res.writeHead(415);
+      res.end(JSON.stringify({ error: "json_required", message: "POST with Content-Type: application/json" }));
+      return;
+    }
     if (req.method === "OPTIONS") {
       res.writeHead(204);
       res.end();

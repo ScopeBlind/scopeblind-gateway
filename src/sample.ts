@@ -15,12 +15,13 @@
  * payment and a $12.50 invoice) so `claim --payment-under 100` holds and
  * `claim --payment-under 10` honestly refuses.
  */
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { ed25519 } from '@noble/curves/ed25519';
 import { canonicalJson } from './receipt-enrichment.js';
+import { writePrivateKeyFile, ensurePrivateKeyDir } from './signing.js';
 
 export const SAMPLE_KID = 'sample-demo';
 
@@ -63,11 +64,11 @@ export function buildSampleKit(dir: string, opts?: { force?: boolean; now?: Date
     );
   }
 
-  mkdirSync(join(dir, 'keys'), { recursive: true });
+  ensurePrivateKeyDir(join(dir, 'keys'));
   const priv = ed25519.utils.randomPrivateKey();
   const privHex = bytesToHex(priv);
   const pub = bytesToHex(ed25519.getPublicKey(priv));
-  writeFileSync(keyPath, JSON.stringify({ privateKey: privHex, publicKey: pub, kid: SAMPLE_KID }, null, 2));
+  writePrivateKeyFile(keyPath, JSON.stringify({ privateKey: privHex, publicKey: pub, kid: SAMPLE_KID }, null, 2), { overwrite: true });
   writeFileSync(join(dir, 'keys', '.gitignore'), '# Never commit signing keys\n*.json\n');
 
   const now = opts?.now ?? new Date();
