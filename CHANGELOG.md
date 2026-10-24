@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Dependencies past their advisories.** Five packages that arrive through `@modelcontextprotocol/sdk` 1.32.1 move to fixed versions within the SDK's existing ranges: body-parser 2.4.0 (GHSA-27r3-jxmh-p828, high), zod 4.6.7 (GHSA-mrhx-c7xc-m3w5, high), fast-uri 3.1.9 (GHSA-w74x-v6f9-j3xg, GHSA-wjr9-j795-jxcr and two low), hono 4.13.13 (GHSA-5r4p-p66f-jhc7) and ip-address 10.7.4 (GHSA-rxp7-6hxx-x8q5). Only zod and fast-uri are bundled into `dist` (the demo server and index bundles), and only `createSandboxServer()`, the Smithery scan entry, runs that code; the gateway, the hook server and the demo server's own loop never load the SDK. `npm audit --omit=dev` reports no vulnerabilities.
+
 ## 0.32.0 (security release): the agent cannot approve itself, and every allowed call is signed
 
 **Upgrading from 0.31.**
