@@ -115,6 +115,24 @@ describe.skipIf(!haveCli)('sign --format hook adapter', () => {
     expect(r.code).toBe(0);
     expect(JSON.parse(r.out)).toEqual({});
   });
+
+  it('Claude Code PostToolUse output carries no decision member, which Claude Code would read as a hook verdict', () => {
+    const r = run(['sign', '--format', 'claude', '--receipts', join(dir, 'rc')], '{"hook_event_name":"PostToolUse","tool_name":"Read","tool_input":{"file_path":"/tmp/x"},"tool_response":{"ok":true}}');
+    expect(r.code).toBe(0);
+    const out = JSON.parse(r.out.trim().split('\n').pop()!);
+    expect(out).not.toHaveProperty('decision');
+    expect(out.receipt_decision).toBe('allow');
+    expect(typeof out.signed).toBe('boolean');
+    expect(out.log).toBe(join(dir, 'rc', 'receipts.jsonl'));
+  });
+
+  it('other formats keep the decision member', () => {
+    const r = run(['sign', '--format', 'codex', '--receipts', join(dir, 'rx')], '{"tool_name":"Bash","tool_input":{"command":"ls"},"tool_response":{"ok":true}}');
+    expect(r.code).toBe(0);
+    const out = JSON.parse(r.out.trim().split('\n').pop()!);
+    expect(out.decision).toBe('allow');
+    expect(out).not.toHaveProperty('receipt_decision');
+  });
 });
 
 // ============================================================

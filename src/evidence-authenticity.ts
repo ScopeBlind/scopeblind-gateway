@@ -125,8 +125,7 @@ export async function createEvidenceAttestation(
     statusCode: input.statusCode || 200,
     fetchedAt: input.timestamp || new Date().toISOString(),
     verified: false,
-    verificationNote: 'Self-reported attestation. No third-party verification. ' +
-      'TLSNotary integration planned for Q3 2026.',
+    verificationNote: 'Self-reported attestation. No third-party verification.',
   };
 }
 
@@ -136,8 +135,10 @@ export async function createEvidenceAttestation(
  * For self-reported attestations, this always returns { valid: false }
  * with a note explaining that self-reported data cannot be verified.
  *
- * For TLSNotary attestations, this will verify the notary's signature
- * over the TLS session transcript.
+ * TLSNotary, oracle and witness attestations are not verified here either:
+ * the notary's, oracle's or witness's signature has to be checked with that
+ * party's own verifier. Each returns { valid: false } with a note; the
+ * attestation's own `verified` flag is the producer's claim, not a check.
  *
  * @patent Patent-protected construction — evidence authenticity attestation with
  * TLSNotary/zkTLS integration. Covered by Apache 2.0 patent grant for users of
@@ -180,20 +181,18 @@ export async function verifyEvidenceAttestation(
 
     case 'oracle':
       return {
-        valid: attestation.verified,
+        valid: false,
         method: 'oracle',
-        note: attestation.verified
-          ? 'Attestation verified by oracle service.'
-          : 'Oracle verification pending or failed.',
+        note: 'Oracle attestation not verified here: check the oracle\'s signature with its own verifier. ' +
+          `The attestation's verified flag (${attestation.verified === true}) is the producer's claim.`,
       };
 
     case 'witness':
       return {
-        valid: attestation.verified,
+        valid: false,
         method: 'witness',
-        note: attestation.verified
-          ? 'Attestation witnessed by independent third party.'
-          : 'Witness verification pending.',
+        note: 'Witness attestation not verified here: check the witness\'s signature with its own verifier. ' +
+          `The attestation's verified flag (${attestation.verified === true}) is the producer's claim.`,
       };
 
     default:

@@ -14,19 +14,26 @@
  * - AMD SEV-SNP (via attestation reports)
  * - Generic COSE-signed attestations
  *
+ * protect-mcp does not verify attestation documents itself. The gate accepts a
+ * document only through the `verify` function its operator supplies, which must
+ * check the provider's signature chain over `attestation` and that
+ * `enclave_public_key` and `measurements` are the values inside it. Without
+ * `verify`, every document is refused.
+ *
  * @example
  * ```typescript
- * import { ConfidentialGate, verifyAttestation } from 'protect-mcp/confidential';
+ * import { ConfidentialGate } from 'protect-mcp';
  *
  * const gate = new ConfidentialGate({
  *   require_attestation: true,
  *   accepted_providers: ['nitro', 'tdx'],
  *   min_trust_tier: 'evidenced',
+ *   verify: (doc) => myProviderVerifier(doc), // your provider's verifier
  * });
  *
  * // Agent presents attestation during handshake
  * const result = gate.evaluateAttestation(attestationDoc);
- * // result: { accepted: true, tier: 'privileged', provider: 'nitro' }
+ * // result: { accepted: true, tier: 'privileged', provider: 'nitro' } only if verify(doc) returned true
  * ```
  */
 
@@ -73,6 +80,12 @@ export interface ConfidentialGateConfig {
   expected_measurements?: Record<string, string>;
   /** Maximum age of attestation document (seconds) */
   max_attestation_age?: number;
+  /**
+   * Verifies the document cryptographically: the provider's signature chain over
+   * `attestation`, and that `enclave_public_key` and `measurements` are the values
+   * inside it. protect-mcp does not do this itself. Without it, nothing is accepted.
+   */
+  verify?: (doc: AttestationDocument) => boolean;
 }
 
 // ── Confidential Gate ──────────────────────────────────────────
@@ -111,6 +124,28 @@ export class ConfidentialGate {
       }
     }
 
+    // The measurements are only meaningful once the attestation that carries them
+    // has been verified, and protect-mcp has no verifier of its own: refuse
+    // unless the operator supplied one and it accepts this document.
+    if (typeof this.config.verify !== 'function') {
+      return {
+        accepted: false,
+        tier: 'unknown',
+        provider: doc.provider,
+        reason: 'Attestation not verified: protect-mcp does not check attestation documents; configure verify with a verifier for this provider',
+      };
+    }
+    let verified = false;
+    try { verified = this.config.verify(doc) === true; } catch { verified = false; }
+    if (!verified) {
+      return {
+        accepted: false,
+        tier: 'unknown',
+        provider: doc.provider,
+        reason: 'Attestation refused by the configured verifier',
+      };
+    }
+
     // Verify measurements if expected values are provided
     if (this.config.expected_measurements) {
       for (const [key, expected] of Object.entries(this.config.expected_measurements)) {
@@ -131,7 +166,7 @@ export class ConfidentialGate {
       accepted: true,
       tier: 'privileged',
       provider: doc.provider,
-      reason: `Attestation verified: ${doc.provider} enclave with valid measurements`,
+      reason: `Attestation accepted by the configured verifier: ${doc.provider} enclave${this.config.expected_measurements ? ' with the expected measurements' : ''}`,
     };
   }
 
