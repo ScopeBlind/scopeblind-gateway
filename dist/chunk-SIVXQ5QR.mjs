@@ -21,8 +21,9 @@ import {
   isLoopbackHost,
   loadStandardFile,
   readAmount,
+  resumeReceiptLog,
   standardDecision
-} from "./chunk-MHA5X7DI.mjs";
+} from "./chunk-6U5IHP7S.mjs";
 import {
   checkRateLimit,
   getToolPolicy,
@@ -293,16 +294,6 @@ var DEFAULT_PORT = 9377;
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE = ".protect-mcp-receipts.jsonl";
 var PAYLOAD_HASH_THRESHOLD = 1024;
-function resumeReceiptChain(receiptFilePath) {
-  try {
-    if (!existsSync(receiptFilePath)) return null;
-    const lines = readFileSync2(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
-    if (lines.length === 0) return null;
-    return receiptHash(JSON.parse(lines[lines.length - 1]));
-  } catch {
-    return null;
-  }
-}
 function detectSwarmContext() {
   const teamName = process.env.CLAUDE_CODE_TEAM_NAME;
   const agentId = process.env.CLAUDE_CODE_AGENT_ID;
@@ -1171,7 +1162,14 @@ async function startHookServer(options = {}) {
     policyDigest,
     logFilePath: join2(dataDir, LOG_FILE),
     receiptFilePath: join2(dataDir, RECEIPTS_FILE),
-    lastReceiptHash: resumeReceiptChain(join2(dataDir, RECEIPTS_FILE)),
+    // A missing or empty log starts a new chain; one that cannot be continued
+    // stops an enforcing gate and is moved aside by an observing one.
+    lastReceiptHash: resumeReceiptLog(join2(dataDir, RECEIPTS_FILE), {
+      enforce,
+      link: receiptHash,
+      warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}
+`)
+    }),
     permissionSuggestions: /* @__PURE__ */ new Map(),
     configAlerts: [],
     managedMandate,

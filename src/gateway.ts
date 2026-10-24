@@ -2,8 +2,9 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { readConnectorContext, type ConnectorRecord } from './connector-action.js';
 import { createInterface, type Interface } from 'node:readline';
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import { chainLink } from './acta-envelope.js';
+import { resumeReceiptLog } from './receipt-log.js';
 import { join } from 'node:path';
 import type {
   ProtectConfig,
@@ -84,10 +85,11 @@ export class ProtectGateway {
     this.logFilePath = join(process.cwd(), LOG_FILE);
     this.receiptFilePath = join(process.cwd(), RECEIPTS_FILE);
     // Resume the s5.7 receipt chain across restarts from the existing log tail.
-    try {
-      const existing = readFileSync(this.receiptFilePath, 'utf-8').split('\n').filter((l) => l.trim());
-      if (existing.length > 0) this.lastReceiptHash = chainLink(JSON.parse(existing[existing.length - 1]));
-    } catch { /* missing or unparseable log starts a fresh chain */ }
+    // A missing or empty log starts a new chain; one that cannot be continued
+    // stops an enforcing gate and is moved aside by an observing one.
+    this.lastReceiptHash = resumeReceiptLog(this.receiptFilePath, {
+      enforce: Boolean(config.enforce), link: chainLink, warn: (message) => this.log(message),
+    });
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();
     this.notificationConfig = parseNotificationConfigFromEnv();

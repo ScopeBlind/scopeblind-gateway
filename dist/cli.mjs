@@ -8,7 +8,7 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-XLZW7YHQ.mjs";
+} from "./chunk-3IVS4TCG.mjs";
 import {
   POLICY_PACKS,
   getPolicyPack,
@@ -17,7 +17,7 @@ import {
 import {
   ProtectGateway,
   validateCredentials
-} from "./chunk-ZIV4BBDR.mjs";
+} from "./chunk-AUL2J7IA.mjs";
 import {
   STARTER_POLICY,
   STARTER_POLICY_VERSION,
@@ -45,7 +45,7 @@ import {
   buildActionReadback,
   isLoopbackHost,
   loadStandardFile
-} from "./chunk-MHA5X7DI.mjs";
+} from "./chunk-6U5IHP7S.mjs";
 import {
   loadPolicy,
   ownEntry,
@@ -5417,7 +5417,7 @@ async function main() {
   };
   if (http) {
     const httpPort = port ?? 3e3;
-    const { startHttpTransport } = await import("./http-transport-LZU3YW43.mjs");
+    const { startHttpTransport } = await import("./http-transport-YPJQOULL.mjs");
     await startHttpTransport({ port: httpPort, host, config, serverCommand: childCommand, cedarPolicySet: cedarPolicySet ?? void 0 });
     return;
   }

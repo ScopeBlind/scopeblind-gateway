@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { ed25519 } from '@noble/curves/ed25519';
 import { bytesToHex } from '@noble/hashes/utils';
 import { buildActionReadback } from './action-readback.js';
-import { verifyReceipt } from './acta-envelope.js';
+import { verifyReceipt, chainLink } from './acta-envelope.js';
 
 const CLI = join(__dirname, '..', 'dist', 'cli.js');
 const d = existsSync(CLI) ? describe : describe.skip;
@@ -722,3 +722,106 @@ d('the hook server refuses web pages', () => {
     expect(signed.map((r) => r.payload.tool_name)).toEqual(['Read', 'Read']);
   }, 30_000);
 });
+
+// Two tails a receipt log can end in that cannot be continued: a cut-off line, and JSON that cannot be hashed (invalid Unicode).
+const CORRUPT_TAILS = ['{"payload":{"type":"protectmcp:decision","tool_name":"pay"', '{"payload":{"note":"\\ud800"}}'];
+const RECEIPTS = '.protect-mcp-receipts.jsonl';
+const asideFiles = (dir: string) => readdirSync(dir).filter((n) => /^\.protect-mcp-receipts\.jsonl\.corrupt-\d{8}T\d{6}Z(-\d+)?$/.test(n));
+const exitOrRunning = (proc: { exited: Promise<number | null> }) =>
+  Promise.race([proc.exited, new Promise<string>((resolve) => setTimeout(() => resolve('still running'), 6000))]);
+
+d('a receipt log whose chain cannot be continued', () => {
+  it('the gateway under --enforce refuses to start, names the file and leaves it as it was', async () => {
+    for (const tail of CORRUPT_TAILS) {
+      const dir = workspace({ 'protect-mcp.json': SIGNING_CONFIG });
+      writeKey(dir);
+      writeFileSync(join(dir, RECEIPTS), `{"type":"earlier"}\n${tail}\n`);
+      const before = readFileSync(join(dir, RECEIPTS), 'utf-8');
+      const g = new Gateway(dir, ['--enforce', '--policy', './protect-mcp.json']);
+      try {
+        expect(await exitOrRunning(g), tail).toBe(1);
+        expect(g.stderr).toContain('refused to start');
+        expect(g.stderr).toContain(join(dir, RECEIPTS));
+        expect(readFileSync(join(dir, RECEIPTS), 'utf-8')).toBe(before);
+        expect(asideFiles(dir)).toEqual([]);
+        expect(executed(dir)).toEqual([]);
+      } finally {
+        await g.stop();
+      }
+    }
+  }, 30_000);
+
+  it('the gateway in shadow mode moves the file aside, warns, and starts a new chain in a fresh file', async () => {
+    for (const tail of CORRUPT_TAILS) {
+      const dir = workspace({ 'protect-mcp.json': SIGNING_CONFIG });
+      writeKey(dir);
+      writeFileSync(join(dir, RECEIPTS), `{"type":"earlier"}\n${tail}\n`);
+      const before = readFileSync(join(dir, RECEIPTS), 'utf-8');
+      const g = new Gateway(dir, ['--policy', './protect-mcp.json']);
+      try {
+        expect(text(await g.call(1, 'pay', { to: 'acct-1' }))).toBe('CHILD EXECUTED pay');
+      } finally {
+        await g.stop();
+      }
+      const aside = asideFiles(dir);
+      expect(aside.length, tail).toBe(1);
+      expect(readFileSync(join(dir, aside[0]), 'utf-8')).toBe(before);
+      expect(g.stderr).toContain(aside[0]);
+      const fresh = receiptLines(dir);
+      expect(fresh.length).toBe(1);
+      expect(fresh[0].payload.previousReceiptHash).toBeUndefined();
+    }
+  }, 30_000);
+
+  it('the gateway starts a new chain for a missing or empty log, and continues a readable one', async () => {
+    const dir = workspace({ 'protect-mcp.json': SIGNING_CONFIG });
+    writeKey(dir);
+    writeFileSync(join(dir, RECEIPTS), '');
+    for (const id of [1, 2]) {
+      const g = new Gateway(dir, ['--enforce', '--policy', './protect-mcp.json']);
+      try {
+        expect(text(await g.call(id, 'pay', { to: 'acct-1' }))).toBe('CHILD EXECUTED pay');
+      } finally {
+        await g.stop();
+      }
+    }
+    const [first, second] = receiptLines(dir);
+    expect(first.payload.previousReceiptHash).toBeUndefined();
+    expect(second.payload.previousReceiptHash).toBe(chainLink(first));
+  }, 30_000);
+
+  it('the hook server under --enforce refuses to start, and in shadow mode moves the file aside', async () => {
+    const enforced = workspace();
+    writeFileSync(join(enforced, RECEIPTS), `${CORRUPT_TAILS[0]}\n`);
+    const port = await freePort();
+    const proc = spawn(process.execPath, [CLI, 'serve', '--enforce', '--port', String(port)], {
+      cwd: enforced, env: { ...process.env, PROTECT_MCP_HTTP_PORT: '0' }, stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    let stderr = '';
+    proc.stderr!.on('data', (b: Buffer) => { stderr += b.toString(); });
+    const exited = new Promise<number | null>((resolve) => proc.on('exit', (code) => resolve(code)));
+    try {
+      expect(await exitOrRunning({ exited })).not.toBe('still running');
+      expect(stderr).toContain(join(enforced, RECEIPTS));
+      expect(asideFiles(enforced)).toEqual([]);
+    } finally {
+      proc.kill('SIGTERM');
+    }
+
+    const shadow = workspace();
+    mkdirSync(join(shadow, 'keys'));
+    writeKey(shadow, join('keys', 'gateway.json'));
+    writeFileSync(join(shadow, RECEIPTS), `${CORRUPT_TAILS[1]}\n`);
+    const hs = await hookServer(shadow, []);
+    try {
+      expect((await hs.pre('Read', { file_path: '/tmp/x' })).decision).toBe('allow');
+    } finally {
+      hs.stop();
+    }
+    expect(asideFiles(shadow).length).toBe(1);
+    const fresh = receiptLines(shadow);
+    expect(fresh.length).toBe(1);
+    expect(fresh[0].payload.previousReceiptHash).toBeUndefined();
+  }, 30_000);
+});
+

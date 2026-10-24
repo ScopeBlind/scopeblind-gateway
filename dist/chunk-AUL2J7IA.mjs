@@ -3,9 +3,10 @@ import {
   buildActionReadback,
   heldIdFor,
   readAmount,
+  resumeReceiptLog,
   standardDecision,
   startStatusServer
-} from "./chunk-MHA5X7DI.mjs";
+} from "./chunk-6U5IHP7S.mjs";
 import {
   checkRateLimit,
   getToolPolicy,
@@ -662,7 +663,7 @@ function readConnectorContext(params, tool, input, keys) {
 
 // src/gateway.ts
 import { createInterface } from "readline";
-import { appendFileSync, readFileSync as readFileSync2 } from "fs";
+import { appendFileSync } from "fs";
 import { join as join2 } from "path";
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE = ".protect-mcp-receipts.jsonl";
@@ -703,11 +704,11 @@ var ProtectGateway = class {
     this.config = config;
     this.logFilePath = join2(process.cwd(), LOG_FILE);
     this.receiptFilePath = join2(process.cwd(), RECEIPTS_FILE);
-    try {
-      const existing = readFileSync2(this.receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
-      if (existing.length > 0) this.lastReceiptHash = chainLink(JSON.parse(existing[existing.length - 1]));
-    } catch {
-    }
+    this.lastReceiptHash = resumeReceiptLog(this.receiptFilePath, {
+      enforce: Boolean(config.enforce),
+      link: chainLink,
+      warn: (message) => this.log(message)
+    });
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();
     this.notificationConfig = parseNotificationConfigFromEnv();

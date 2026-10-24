@@ -1,6 +1,43 @@
+// src/receipt-log.ts
+import { existsSync, readFileSync, renameSync } from "fs";
+function resumeReceiptLog(path, options) {
+  let lines;
+  try {
+    lines = readFileSync(path, "utf-8").split("\n").filter((line) => line.trim());
+  } catch (err) {
+    if (err.code === "ENOENT") return null;
+    return cannotContinue(path, "cannot be read", options);
+  }
+  if (lines.length === 0) return null;
+  let last;
+  try {
+    last = JSON.parse(lines[lines.length - 1]);
+  } catch {
+    return cannotContinue(path, "ends in a line that is not JSON", options);
+  }
+  try {
+    return options.link(last);
+  } catch {
+    return cannotContinue(path, "ends in a line that cannot be hashed as a receipt", options);
+  }
+}
+function cannotContinue(path, problem, options) {
+  if (options.enforce) {
+    throw new Error(
+      `enforce mode refused to start: the receipt log ${path} ${problem}, so its chain cannot be continued. Inspect the file, and move it aside to start a new chain.`
+    );
+  }
+  const stamp = (/* @__PURE__ */ new Date()).toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
+  let aside = `${path}.corrupt-${stamp}`;
+  for (let n = 2; existsSync(aside); n++) aside = `${path}.corrupt-${stamp}-${n}`;
+  renameSync(path, aside);
+  options.warn(`Warning: the receipt log ${path} ${problem}. It was moved to ${aside}, and a new chain starts in a fresh file.`);
+  return null;
+}
+
 // src/http-server.ts
 import { createServer } from "http";
-import { readFileSync, existsSync } from "fs";
+import { readFileSync as readFileSync2, existsSync as existsSync2 } from "fs";
 import { join } from "path";
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var MAX_RECEIPTS = 100;
@@ -102,12 +139,12 @@ function handleHealth(res, startTime, config) {
 }
 function handleStatus(res, logDir) {
   const logPath = join(logDir, LOG_FILE);
-  if (!existsSync(logPath)) {
+  if (!existsSync2(logPath)) {
     res.writeHead(200);
     res.end(JSON.stringify({ entries: 0, message: "no log file yet" }));
     return;
   }
-  const raw = readFileSync(logPath, "utf-8");
+  const raw = readFileSync2(logPath, "utf-8");
   const lines = raw.trim().split("\n").filter(Boolean);
   const entries = [];
   for (const line of lines) {
@@ -340,7 +377,7 @@ function buildActionReadback(tool, input) {
 
 // src/standard-gate.ts
 import { createHash as createHash2 } from "crypto";
-import { readFileSync as readFileSync2 } from "fs";
+import { readFileSync as readFileSync3 } from "fs";
 var isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
 function moneyFrom(v) {
   if (!isObj(v) || typeof v.amount !== "number" || !(v.amount >= 0) || typeof v.currency !== "string" || !/^[A-Z]{3}$/.test(v.currency)) return null;
@@ -370,7 +407,7 @@ function parseStandard(value) {
   return { request_id: value.request_id, digest: value.digest, signer_key: recipient.verification_key.toLowerCase(), tools, amount_max, required_above, policy_digest, payment_tool, gate_policy, summary: gate_policy ? parts.join(", ") : `${parts.join(", ")}; the gate admits nothing until the standard states tools or a limit` };
 }
 function loadStandardFile(path) {
-  return parseStandard(JSON.parse(readFileSync2(path, "utf-8")));
+  return parseStandard(JSON.parse(readFileSync3(path, "utf-8")));
 }
 function carriesAmount(input) {
   return isObj(input) && ("amount_minor" in input || "amount" in input);
@@ -510,6 +547,7 @@ var RecordReporter = class {
 };
 
 export {
+  resumeReceiptLog,
   ReceiptBuffer,
   startStatusServer,
   isLoopbackHost,

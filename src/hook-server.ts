@@ -44,6 +44,7 @@ import { initSigning, signDecision, isSigningEnabled, getSignerInfo } from './si
 import { receiptHash } from './acta-envelope.js';
 import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
 import { ReceiptBuffer, isLoopbackHost } from './http-server.js';
+import { resumeReceiptLog } from './receipt-log.js';
 import { getScopeBlindBridge } from './scopeblind-bridge.js';
 import { buildActionReadback } from './action-readback.js';
 import { buildEnrichment, type ReceiptEnrichment } from './receipt-enrichment.js';
@@ -154,17 +155,6 @@ interface HookServerState {
  * envelope, or tombstone) so the next receipt links to it. Returns null for
  * a missing/empty/unparseable log, which starts a fresh chain.
  */
-function resumeReceiptChain(receiptFilePath: string): string | null {
-  try {
-    if (!existsSync(receiptFilePath)) return null;
-    const lines = readFileSync(receiptFilePath, 'utf-8').split('\n').filter((l) => l.trim());
-    if (lines.length === 0) return null;
-    return receiptHash(JSON.parse(lines[lines.length - 1]));
-  } catch {
-    return null;
-  }
-}
-
 function detectSwarmContext(): SwarmContext {
   const teamName = process.env.CLAUDE_CODE_TEAM_NAME;
   const agentId = process.env.CLAUDE_CODE_AGENT_ID;
@@ -1242,7 +1232,11 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
     policyDigest,
     logFilePath: join(dataDir, LOG_FILE),
     receiptFilePath: join(dataDir, RECEIPTS_FILE),
-    lastReceiptHash: resumeReceiptChain(join(dataDir, RECEIPTS_FILE)),
+    // A missing or empty log starts a new chain; one that cannot be continued
+    // stops an enforcing gate and is moved aside by an observing one.
+    lastReceiptHash: resumeReceiptLog(join(dataDir, RECEIPTS_FILE), {
+      enforce, link: receiptHash, warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}\n`),
+    }),
     permissionSuggestions: new Map(),
     configAlerts: [],
     managedMandate,
