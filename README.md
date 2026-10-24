@@ -32,7 +32,7 @@ Use Node.js 22 and npm in a new directory. Install the pinned gateway and verifi
 mkdir protect-mcp-demo
 cd protect-mcp-demo
 npm init -y
-npm install --save-exact protect-mcp@0.32.0 @veritasacta/verify@0.10.27
+npm install --save-exact protect-mcp@0.32.0 @veritasacta/verify@0.11.0
 ```
 
 This example evaluates two proposed calls and signs their decisions. It does not

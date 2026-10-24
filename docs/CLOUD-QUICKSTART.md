@@ -80,7 +80,7 @@ After signing is configured, receipts are appended to
 `.protect-mcp-receipts.jsonl`. In the gateway's directory:
 
 ```sh
-npx --yes @veritasacta/verify@0.10.27 --replay-chain .protect-mcp-receipts.jsonl \
+npx --yes @veritasacta/verify@0.11.0 --replay-chain .protect-mcp-receipts.jsonl \
   --key "$(node -p 'JSON.parse(require("fs").readFileSync("keys/gateway.json", "utf8")).publicKey')"
 ```
 

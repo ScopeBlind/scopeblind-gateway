@@ -218,7 +218,7 @@ After running with signing enabled (`npx protect-mcp init`), verify receipts:
 
 ```bash
 # Use a public key obtained independently from the configured gateway operator.
-npx --yes @veritasacta/verify@0.10.27 receipt.json --key EXPECTED_PUBLIC_KEY_HEX
+npx --yes @veritasacta/verify@0.11.0 receipt.json --key EXPECTED_PUBLIC_KEY_HEX
 
 # Or paste at
 # https://veritasacta.com/verify
