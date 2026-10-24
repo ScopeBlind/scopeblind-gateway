@@ -26,6 +26,9 @@ import { ReceiptBuffer, startStatusServer } from './http-server.js';
 import { buildActionReadback } from './action-readback.js';
 import { standardDecision, readAmount, heldIdFor, type StandardGate, type RecordReporter } from './standard-gate.js';
 
+/** What emitDecisionLog reports: the receipt could not be signed, or was signed but not appended to the receipt log. */
+type Emitted = { signingFailed: boolean; recordFailed: boolean };
+
 /** JSONL log file name written to cwd */
 const LOG_FILE = '.protect-mcp-log.jsonl';
 const RECEIPTS_FILE = '.protect-mcp-receipts.jsonl';
@@ -532,7 +535,7 @@ export class ProtectGateway {
 
     // Check rate limit
     const rateSpec = this.getTierRateLimit(toolPolicy, this.currentTier);
-    let emitted: { signingFailed: boolean };
+    let emitted: Emitted;
     if (rateSpec) {
       let limit: ReturnType<typeof parseRateLimit>;
       try {
@@ -598,7 +601,7 @@ export class ProtectGateway {
    * for users of this code. Clean-room reimplementation requires a patent license.
    * @see {@link https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/}
    */
-  private emitDecisionLog(entry: Partial<DecisionLog>): { signingFailed: boolean } {
+  private emitDecisionLog(entry: Partial<DecisionLog>): Emitted {
     const mode = this.config.enforce ? 'enforce' : 'shadow';
     // Generate OTel-compatible trace and span IDs
     const otelTraceId = entry.otel_trace_id || randomBytes(16).toString('hex'); // 32 hex chars
@@ -632,12 +635,18 @@ export class ProtectGateway {
 
     if (isSigningEnabled()) {
       const signed = signDecision(log, this.lastReceiptHash || undefined);
+      let recordFailed = false;
       if (signed.signed) {
         process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}\n`);
+        // Appended before the call is forwarded. Under --enforce an allow whose
+        // receipt did not land in the log is refused (refuseUnsigned).
         try {
           appendFileSync(this.receiptFilePath, signed.signed + '\n');
           if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
-        } catch { /* best-effort */ }
+        } catch (err) {
+          recordFailed = true;
+          process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}\n`);
+        }
         // Chained locally first; the page is where it lands, never a condition of the call.
         this.reporter?.record(signed.signed, callLine);
         // Feed to HTTP receipt buffer
@@ -660,22 +669,30 @@ export class ProtectGateway {
         });
         try { appendFileSync(this.receiptFilePath, tombstone + '\n'); } catch { /* best-effort */ }
         process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}\n`);
-        return { signingFailed: true };
+        return { signingFailed: true, recordFailed: false };
       }
+      return { signingFailed: false, recordFailed };
     } else if (this.reporter) {
       this.reporter.record(undefined, callLine);
     }
-    return { signingFailed: false };
+    return { signingFailed: false, recordFailed: false };
   }
 
   /**
    * An allow is only as good as its receipt. In enforce mode a call whose
-   * receipt could not be signed does not run, as in the hook server: a
-   * governed action that cannot be proven is not allowed.
+   * receipt could not be signed, or could not be recorded in the receipt log,
+   * does not run, as in the hook server: a governed action that cannot be
+   * proven is not allowed.
    */
-  private refuseUnsigned(emitted: { signingFailed: boolean }, id: string | number, toolName: string): JsonRpcResponse | null {
-    if (!emitted.signingFailed || !this.config.enforce) return null;
-    return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+  private refuseUnsigned(emitted: Emitted, id: string | number, toolName: string): JsonRpcResponse | null {
+    if (!this.config.enforce) return null;
+    if (emitted.signingFailed) {
+      return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+    }
+    if (emitted.recordFailed) {
+      return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its signed receipt could not be recorded in the receipt log. Failing closed: a governed action that cannot be proven is not allowed.`);
+    }
+    return null;
   }
 
   /**

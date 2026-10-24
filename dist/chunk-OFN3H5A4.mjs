@@ -1178,13 +1178,17 @@ var ProtectGateway = class {
     }
     if (isSigningEnabled()) {
       const signed = signDecision(log, this.lastReceiptHash || void 0);
+      let recordFailed = false;
       if (signed.signed) {
         process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}
 `);
         try {
           appendFileSync(this.receiptFilePath, signed.signed + "\n");
           if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
-        } catch {
+        } catch (err) {
+          recordFailed = true;
+          process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
+`);
         }
         this.reporter?.record(signed.signed, callLine);
         this.receiptBuffer.add(log.request_id, signed.signed);
@@ -1209,21 +1213,29 @@ var ProtectGateway = class {
         }
         process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
 `);
-        return { signingFailed: true };
+        return { signingFailed: true, recordFailed: false };
       }
+      return { signingFailed: false, recordFailed };
     } else if (this.reporter) {
       this.reporter.record(void 0, callLine);
     }
-    return { signingFailed: false };
+    return { signingFailed: false, recordFailed: false };
   }
   /**
    * An allow is only as good as its receipt. In enforce mode a call whose
-   * receipt could not be signed does not run, as in the hook server: a
-   * governed action that cannot be proven is not allowed.
+   * receipt could not be signed, or could not be recorded in the receipt log,
+   * does not run, as in the hook server: a governed action that cannot be
+   * proven is not allowed.
    */
   refuseUnsigned(emitted, id, toolName) {
-    if (!emitted.signingFailed || !this.config.enforce) return null;
-    return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+    if (!this.config.enforce) return null;
+    if (emitted.signingFailed) {
+      return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+    }
+    if (emitted.recordFailed) {
+      return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its signed receipt could not be recorded in the receipt log. Failing closed: a governed action that cannot be proven is not allowed.`);
+    }
+    return null;
   }
   /**
    * Refuse to arm enforce mode when signing is configured but cannot produce a

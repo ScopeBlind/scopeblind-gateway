@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createInterface } from 'node:readline';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { request } from 'node:http';
 import { createRequire } from 'node:module';
@@ -822,6 +822,58 @@ d('a receipt log whose chain cannot be continued', () => {
     const fresh = receiptLines(shadow);
     expect(fresh.length).toBe(1);
     expect(fresh[0].payload.previousReceiptHash).toBeUndefined();
+  }, 30_000);
+});
+
+// A receipt log the gate can read but not append to. Root ignores file modes, so these cases skip there.
+const asRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+function readOnlyReceiptLog(dir: string): void {
+  writeFileSync(join(dir, RECEIPTS), '');
+  chmodSync(join(dir, RECEIPTS), 0o444);
+}
+
+d('an allowed call whose receipt cannot be recorded', () => {
+  it.skipIf(asRoot)('the gateway under --enforce refuses it, and shadow mode runs it as before', async () => {
+    for (const enforce of [true, false]) {
+      const dir = workspace({ 'protect-mcp.json': SIGNING_CONFIG });
+      writeKey(dir);
+      readOnlyReceiptLog(dir);
+      const g = new Gateway(dir, [...(enforce ? ['--enforce'] : []), '--policy', './protect-mcp.json']);
+      try {
+        const r = await g.call(1, 'pay', { to: 'acct-1' });
+        if (enforce) {
+          expect(text(r)).toContain('receipt could not be recorded');
+          expect(executed(dir)).toEqual([]);
+        } else {
+          expect(text(r)).toBe('CHILD EXECUTED pay');
+        }
+      } finally {
+        await g.stop();
+      }
+      // The decision log still has the line, as before.
+      expect(readFileSync(join(dir, '.protect-mcp-log.jsonl'), 'utf-8')).toContain('"tool":"pay"');
+    }
+  }, 30_000);
+
+  it.skipIf(asRoot)('the hook server under --enforce refuses it, and shadow mode allows it as before', async () => {
+    for (const enforce of [true, false]) {
+      const dir = workspace();
+      mkdirSync(join(dir, 'keys'));
+      writeKey(dir, join('keys', 'gateway.json'));
+      readOnlyReceiptLog(dir);
+      const hs = await hookServer(dir, enforce ? ['--enforce'] : []);
+      try {
+        const r = await hs.pre('Read', { file_path: '/tmp/x' });
+        if (enforce) {
+          expect(r.decision).toBe('deny');
+          expect(r.reason).toContain('receipt could not be recorded');
+        } else {
+          expect(r.decision).toBe('allow');
+        }
+      } finally {
+        hs.stop();
+      }
+    }
   }, 30_000);
 });
 

@@ -615,6 +615,17 @@ async function handlePreToolUse(
       },
     };
   }
+  if (state.enforce && emit.recordFailed) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason:
+          `[ScopeBlind] "${toolName}" was blocked because its signed receipt could not be recorded in the receipt log. ` +
+          `Failing closed: a governed action that cannot be proven is not allowed.`,
+      },
+    };
+  }
 
   // No hookSpecificOutput → Claude Code treats as implicit allow
   return {};
@@ -873,7 +884,7 @@ function handleStop(input: HookInput, state: HookServerState): HookResponse {
 // Decision Log Emission
 // ============================================================
 
-function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): { signingFailed: boolean } {
+function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): { signingFailed: boolean; recordFailed: boolean } {
   const mode = state.enforce ? 'enforce' : 'shadow';
   const otelTraceId = randomBytes(16).toString('hex');
   const otelSpanId = randomBytes(8).toString('hex');
@@ -925,12 +936,18 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
 
   if (isSigningEnabled()) {
     const signed = signDecision(log, state.lastReceiptHash || undefined);
+    let recordFailed = false;
     if (signed.signed) {
+      // Appended before the hook answers, so before the host runs the tool.
+      // Under --enforce an allow whose receipt did not land in the log is refused.
       try {
         appendFileSync(state.receiptFilePath, signed.signed + '\n');
         // Advance the s5.7 chain only when the line actually landed on disk.
         if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
-      } catch { /* best-effort */ }
+      } catch (err) {
+        recordFailed = true;
+        process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}\n`);
+      }
       state.receiptBuffer.add(log.request_id, signed.signed);
       // Chained locally first; the standard's page is where it lands, never a condition of the call.
       state.reporter?.record(signed.signed, callLine);
@@ -966,10 +983,11 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
         state.lastReceiptHash = receiptHash(tombstoneObj);
       } catch { /* best-effort */ }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}\n`);
-      return { signingFailed: true };
+      return { signingFailed: true, recordFailed: false };
     }
+    return { signingFailed: false, recordFailed };
   }
-  return { signingFailed: false };
+  return { signingFailed: false, recordFailed: false };
 }
 
 // ============================================================

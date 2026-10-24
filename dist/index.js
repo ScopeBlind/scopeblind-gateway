@@ -46185,13 +46185,17 @@ var ProtectGateway = class {
     }
     if (isSigningEnabled()) {
       const signed2 = signDecision(log, this.lastReceiptHash || void 0);
+      let recordFailed = false;
       if (signed2.signed) {
         process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed2.signed}
 `);
         try {
           (0, import_node_fs9.appendFileSync)(this.receiptFilePath, signed2.signed + "\n");
           if (signed2.receipt_hash) this.lastReceiptHash = signed2.receipt_hash;
-        } catch {
+        } catch (err) {
+          recordFailed = true;
+          process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
+`);
         }
         this.reporter?.record(signed2.signed, callLine);
         this.receiptBuffer.add(log.request_id, signed2.signed);
@@ -46216,21 +46220,29 @@ var ProtectGateway = class {
         }
         process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
 `);
-        return { signingFailed: true };
+        return { signingFailed: true, recordFailed: false };
       }
+      return { signingFailed: false, recordFailed };
     } else if (this.reporter) {
       this.reporter.record(void 0, callLine);
     }
-    return { signingFailed: false };
+    return { signingFailed: false, recordFailed: false };
   }
   /**
    * An allow is only as good as its receipt. In enforce mode a call whose
-   * receipt could not be signed does not run, as in the hook server: a
-   * governed action that cannot be proven is not allowed.
+   * receipt could not be signed, or could not be recorded in the receipt log,
+   * does not run, as in the hook server: a governed action that cannot be
+   * proven is not allowed.
    */
   refuseUnsigned(emitted, id11, toolName) {
-    if (!emitted.signingFailed || !this.config.enforce) return null;
-    return this.makeErrorResponse(id11, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+    if (!this.config.enforce) return null;
+    if (emitted.signingFailed) {
+      return this.makeErrorResponse(id11, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+    }
+    if (emitted.recordFailed) {
+      return this.makeErrorResponse(id11, -32600, `Tool "${toolName}" was blocked because its signed receipt could not be recorded in the receipt log. Failing closed: a governed action that cannot be proven is not allowed.`);
+    }
+    return null;
   }
   /**
    * Refuse to arm enforce mode when signing is configured but cannot produce a
@@ -50463,6 +50475,15 @@ async function handlePreToolUse(input, state) {
       }
     };
   }
+  if (state.enforce && emit.recordFailed) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason: `[ScopeBlind] "${toolName}" was blocked because its signed receipt could not be recorded in the receipt log. Failing closed: a governed action that cannot be proven is not allowed.`
+      }
+    };
+  }
   return {};
 }
 async function handlePostToolUse(input, state) {
@@ -50722,11 +50743,15 @@ function emitDecisionLog(state, entry) {
   }
   if (isSigningEnabled()) {
     const signed2 = signDecision(log, state.lastReceiptHash || void 0);
+    let recordFailed = false;
     if (signed2.signed) {
       try {
         (0, import_node_fs14.appendFileSync)(state.receiptFilePath, signed2.signed + "\n");
         if (signed2.receipt_hash) state.lastReceiptHash = signed2.receipt_hash;
-      } catch {
+      } catch (err) {
+        recordFailed = true;
+        process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
+`);
       }
       state.receiptBuffer.add(log.request_id, signed2.signed);
       state.reporter?.record(signed2.signed, callLine);
@@ -50758,10 +50783,11 @@ function emitDecisionLog(state, entry) {
       }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
 `);
-      return { signingFailed: true };
+      return { signingFailed: true, recordFailed: false };
     }
+    return { signingFailed: false, recordFailed };
   }
-  return { signingFailed: false };
+  return { signingFailed: false, recordFailed: false };
 }
 async function routeHookEvent(input, state) {
   switch (input.hookEventName) {

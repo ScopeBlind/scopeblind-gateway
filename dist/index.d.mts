@@ -966,8 +966,9 @@ declare class ProtectGateway {
     private emitDecisionLog;
     /**
      * An allow is only as good as its receipt. In enforce mode a call whose
-     * receipt could not be signed does not run, as in the hook server: a
-     * governed action that cannot be proven is not allowed.
+     * receipt could not be signed, or could not be recorded in the receipt log,
+     * does not run, as in the hook server: a governed action that cannot be
+     * proven is not allowed.
      */
     private refuseUnsigned;
     /**

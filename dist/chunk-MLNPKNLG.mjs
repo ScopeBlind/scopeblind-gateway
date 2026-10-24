@@ -650,6 +650,15 @@ async function handlePreToolUse(input, state) {
       }
     };
   }
+  if (state.enforce && emit.recordFailed) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason: `[ScopeBlind] "${toolName}" was blocked because its signed receipt could not be recorded in the receipt log. Failing closed: a governed action that cannot be proven is not allowed.`
+      }
+    };
+  }
   return {};
 }
 async function handlePostToolUse(input, state) {
@@ -909,11 +918,15 @@ function emitDecisionLog(state, entry) {
   }
   if (isSigningEnabled()) {
     const signed = signDecision(log, state.lastReceiptHash || void 0);
+    let recordFailed = false;
     if (signed.signed) {
       try {
         appendFileSync(state.receiptFilePath, signed.signed + "\n");
         if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
-      } catch {
+      } catch (err) {
+        recordFailed = true;
+        process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
+`);
       }
       state.receiptBuffer.add(log.request_id, signed.signed);
       state.reporter?.record(signed.signed, callLine);
@@ -945,10 +958,11 @@ function emitDecisionLog(state, entry) {
       }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
 `);
-      return { signingFailed: true };
+      return { signingFailed: true, recordFailed: false };
     }
+    return { signingFailed: false, recordFailed };
   }
-  return { signingFailed: false };
+  return { signingFailed: false, recordFailed: false };
 }
 async function routeHookEvent(input, state) {
   switch (input.hookEventName) {
