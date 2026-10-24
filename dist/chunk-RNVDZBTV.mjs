@@ -1019,7 +1019,12 @@ var ProtectGateway = class {
           if (this.config.policy.policy_engine === "external") return null;
         }
       } catch (err) {
-        if (this.config.verbose) this.log(`External PDP error: ${err instanceof Error ? err.message : err}`);
+        this.log(`External PDP evaluation threw for "${toolName}", failing closed: ${err instanceof Error ? err.message : err}`);
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "external_pdp_error", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) {
+          return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied: the external policy engine errored, so the gate fails closed`);
+        }
+        return null;
       }
     }
     if (toolPolicy.min_tier) {

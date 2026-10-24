@@ -460,7 +460,16 @@ export class ProtectGateway {
           if (this.config.policy.policy_engine === 'external') return null;
         }
       } catch (err) {
-        if (this.config.verbose) this.log(`External PDP error: ${err instanceof Error ? err.message : err}`);
+        // queryExternalPDP turns network failures into its configured fallback
+        // (deny by default), so this only fires on an unexpected throw. A call
+        // the policy engine could not be asked about must not run: fail closed,
+        // as the Cedar catch does.
+        this.log(`External PDP evaluation threw for "${toolName}", failing closed: ${err instanceof Error ? err.message : err}`);
+        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'external_pdp_error', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) {
+          return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied: the external policy engine errored, so the gate fails closed`);
+        }
+        return null;
       }
     }
 
