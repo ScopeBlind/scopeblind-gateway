@@ -27,10 +27,10 @@ Adds two layers to every tool call:
 
 ```bash
 # One-time: configure Claude Code hooks
-npx protect-mcp@0.32.1 init-hooks
+npx protect-mcp@0.32.2 init-hooks
 
 # Start the hook server (runs on port 9377)
-npx protect-mcp@0.32.1 serve --enforce
+npx protect-mcp@0.32.2 serve --enforce
 ```
 
 This configures Claude Code to POST every tool call event to protect-mcp for

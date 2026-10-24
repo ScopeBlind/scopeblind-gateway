@@ -5598,8 +5598,10 @@ declare function createEvidenceAttestation(input: EvidenceAttestationInput): Pro
  * For self-reported attestations, this always returns { valid: false }
  * with a note explaining that self-reported data cannot be verified.
  *
- * For TLSNotary attestations, this will verify the notary's signature
- * over the TLS session transcript.
+ * TLSNotary, oracle and witness attestations are not verified here either:
+ * the notary's, oracle's or witness's signature has to be checked with that
+ * party's own verifier. Each returns { valid: false } with a note; the
+ * attestation's own `verified` flag is the producer's claim, not a check.
  *
  * @patent Patent-protected construction — evidence authenticity attestation with
  * TLSNotary/zkTLS integration. Covered by Apache 2.0 patent grant for users of
@@ -6026,19 +6028,26 @@ declare function createReceiptChannel(orchestratorId: string): {
  * - AMD SEV-SNP (via attestation reports)
  * - Generic COSE-signed attestations
  *
+ * protect-mcp does not verify attestation documents itself. The gate accepts a
+ * document only through the `verify` function its operator supplies, which must
+ * check the provider's signature chain over `attestation` and that
+ * `enclave_public_key` and `measurements` are the values inside it. Without
+ * `verify`, every document is refused.
+ *
  * @example
  * ```typescript
- * import { ConfidentialGate, verifyAttestation } from 'protect-mcp/confidential';
+ * import { ConfidentialGate } from 'protect-mcp';
  *
  * const gate = new ConfidentialGate({
  *   require_attestation: true,
  *   accepted_providers: ['nitro', 'tdx'],
  *   min_trust_tier: 'evidenced',
+ *   verify: (doc) => myProviderVerifier(doc), // your provider's verifier
  * });
  *
  * // Agent presents attestation during handshake
  * const result = gate.evaluateAttestation(attestationDoc);
- * // result: { accepted: true, tier: 'privileged', provider: 'nitro' }
+ * // result: { accepted: true, tier: 'privileged', provider: 'nitro' } only if verify(doc) returned true
  * ```
  */
 type AttestationProvider = 'nitro' | 'tdx' | 'sev_snp' | 'generic';
@@ -6079,6 +6088,12 @@ interface ConfidentialGateConfig {
     expected_measurements?: Record<string, string>;
     /** Maximum age of attestation document (seconds) */
     max_attestation_age?: number;
+    /**
+     * Verifies the document cryptographically: the provider's signature chain over
+     * `attestation`, and that `enclave_public_key` and `measurements` are the values
+     * inside it. protect-mcp does not do this itself. Without it, nothing is accepted.
+     */
+    verify?: (doc: AttestationDocument) => boolean;
 }
 declare class ConfidentialGate {
     private config;

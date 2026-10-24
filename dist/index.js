@@ -53802,7 +53802,7 @@ async function createEvidenceAttestation(input) {
     statusCode: input.statusCode || 200,
     fetchedAt: input.timestamp || (/* @__PURE__ */ new Date()).toISOString(),
     verified: false,
-    verificationNote: "Self-reported attestation. No third-party verification. TLSNotary integration planned for Q3 2026."
+    verificationNote: "Self-reported attestation. No third-party verification."
   };
 }
 async function verifyEvidenceAttestation(attestation) {
@@ -53828,15 +53828,15 @@ async function verifyEvidenceAttestation(attestation) {
       };
     case "oracle":
       return {
-        valid: attestation.verified,
+        valid: false,
         method: "oracle",
-        note: attestation.verified ? "Attestation verified by oracle service." : "Oracle verification pending or failed."
+        note: `Oracle attestation not verified here: check the oracle's signature with its own verifier. The attestation's verified flag (${attestation.verified === true}) is the producer's claim.`
       };
     case "witness":
       return {
-        valid: attestation.verified,
+        valid: false,
         method: "witness",
-        note: attestation.verified ? "Attestation witnessed by independent third party." : "Witness verification pending."
+        note: `Witness attestation not verified here: check the witness's signature with its own verifier. The attestation's verified flag (${attestation.verified === true}) is the producer's claim.`
       };
     default:
       return {
@@ -54307,6 +54307,28 @@ var ConfidentialGate = class {
         };
       }
     }
+    if (typeof this.config.verify !== "function") {
+      return {
+        accepted: false,
+        tier: "unknown",
+        provider: doc.provider,
+        reason: "Attestation not verified: protect-mcp does not check attestation documents; configure verify with a verifier for this provider"
+      };
+    }
+    let verified = false;
+    try {
+      verified = this.config.verify(doc) === true;
+    } catch {
+      verified = false;
+    }
+    if (!verified) {
+      return {
+        accepted: false,
+        tier: "unknown",
+        provider: doc.provider,
+        reason: "Attestation refused by the configured verifier"
+      };
+    }
     if (this.config.expected_measurements) {
       for (const [key5, expected] of Object.entries(this.config.expected_measurements)) {
         const actual = doc.measurements[key5];
@@ -54324,7 +54346,7 @@ var ConfidentialGate = class {
       accepted: true,
       tier: "privileged",
       provider: doc.provider,
-      reason: `Attestation verified: ${doc.provider} enclave with valid measurements`
+      reason: `Attestation accepted by the configured verifier: ${doc.provider} enclave${this.config.expected_measurements ? " with the expected measurements" : ""}`
     };
   }
   /**

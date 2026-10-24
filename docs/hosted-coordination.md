@@ -15,7 +15,7 @@ for the setup command with the service’s displayed authority key. Check that k
 against a trusted source before connecting. For example:
 
 ```bash
-npx --yes protect-mcp@0.32.1 coordination agent setup \
+npx --yes protect-mcp@0.32.2 coordination agent setup \
   --client claude-code \
   --profile ~/.scopeblind/agent.json \
   --endpoint https://scopeblind.com/api/coordination \
@@ -115,7 +115,7 @@ validation and provenance details. Run the room’s command in your terminal.
 For a single connection:
 
 ```bash
-npx --yes protect-mcp@0.32.1 coordination pair
+npx --yes protect-mcp@0.32.2 coordination pair
 ```
 
 Paste the private code when prompted. It is never a command-line argument or
@@ -134,7 +134,7 @@ Successful pairing prints the Claude Code registration command directly. To
 print it again:
 
 ```bash
-npx --yes protect-mcp@0.32.1 coordination setup --client claude-code
+npx --yes protect-mcp@0.32.2 coordination setup --client claude-code
 ```
 
 Run the command it prints in the project where you use Claude Code. It registers
@@ -183,7 +183,7 @@ that raced with revocation. It does not undo confirmed payments.
 For custom service operators, the original explicit connection remains:
 
 ```bash
-npx --yes protect-mcp@0.32.1 coordination \
+npx --yes protect-mcp@0.32.2 coordination \
   --endpoint https://YOUR-HOST/api/coordination \
   --room ROOM_ID \
   --authority-key PINNED_64_HEX_AUTHORITY_KEY \
@@ -259,8 +259,8 @@ to the Cedar policy compiled from it, and report to the standard's own page:
 
 ```bash
 # Initialize the signing key once, unless this directory already has one.
-npx protect-mcp@0.32.1 init
-npx protect-mcp@0.32.1 --enforce --cedar ./policy --standard ./standard.json \
+npx protect-mcp@0.32.2 init
+npx protect-mcp@0.32.2 --enforce --cedar ./policy --standard ./standard.json \
   --report 'https://scopeblind.com/api/standard?s=<standard id>' \
   -- <your MCP server command>
 ```
@@ -300,7 +300,7 @@ The hook server takes the same four flags, so a coding agent's calls through
 Claude Code hooks land on the page and are held under the standard the same way:
 
 ```bash
-npx protect-mcp@0.32.1 serve --enforce --cedar ./policy --standard ./standard.json \
+npx protect-mcp@0.32.2 serve --enforce --cedar ./policy --standard ./standard.json \
   --report 'https://scopeblind.com/api/standard?s=<standard id>'
 ```
 
@@ -350,7 +350,7 @@ people approve the exact reviewed commits before the trusted receiver applies th
 The recipient can accept the observed result or request a linked fresh revision.
 
 For your own repository, choose **Use your repository** and run the generated
-`protect-mcp@0.32.1 repository setup` command locally. It discovers actual check
+`protect-mcp@0.32.2 repository setup` command locally. It discovers actual check
 names/providers, saves a receiver key with owner-only permissions, and prepares a
 hash-pinned workflow for your review. The returned `connection.json` contains public
 keys and signed discovery evidence. Keep `receiver-key.json` private. Discovery,
@@ -364,7 +364,7 @@ or supply `GITHUB_TOKEN` through your local credential manager. Setup does not s
 or print that token.
 
 ```sh
-npx --yes protect-mcp@0.32.1 repository setup \
+npx --yes protect-mcp@0.32.2 repository setup \
   --repository OWNER/REPOSITORY \
   --owner-key YOUR_PUBLIC_OWNER_KEY \
   --authority-key REVIEWED_SERVICE_AUTHORITY_KEY \
@@ -378,7 +378,7 @@ the workflow or configuring Actions. Import only the public `connection.json`.
 To refresh local read-only readiness for this same connection, use a new output file:
 
 ```sh
-npx --yes protect-mcp@0.32.1 repository ready \
+npx --yes protect-mcp@0.32.2 repository ready \
   --connection ./repository-connection/connection-config.json \
   --key-file ./repository-connection/receiver-key.json \
   --output ./repository-readiness.json
@@ -447,7 +447,7 @@ before making further decisions on work assigned to a former key.
 Open [your projects](https://scopeblind.com/standard?trial=new&view=workspace) and connect a repository. The guided route identifies the selected repository and pull request, then supplies a version-pinned installer command. Paste its short-lived setup link into the prompt rather than a shell argument:
 
 ```sh
-npx --yes protect-mcp@0.32.1 repository connect --link-stdin --install
+npx --yes protect-mcp@0.32.2 repository connect --link-stdin --install
 ```
 
 Review the exact workflow, permissions and receiver key before authorizing installation. Keys are generated locally. A GitHub Actions identity proof and receiver signature establish which installed workflow answered the readiness challenge. Existing manual receiver setup remains available.
