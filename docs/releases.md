@@ -11,7 +11,7 @@ runs on pull requests, `main`, release-candidate branches and manual dispatch:
 2. Run the existing Docker isolation smoke test on a Linux runner.
 3. Pack the built package and check the installed entry points in an empty directory.
 4. Run the literal README first-example block against that tarball and
-   `@veritasacta/verify@0.10.27` from npm. Assert allow/deny decisions, a valid
+   `@veritasacta/verify@0.11.0` from npm. Assert allow/deny decisions, a valid
    signature chain, tamper rejection and refusal to treat an embedded key as trust.
 5. Preserve logs, the tarball and its SHA-256 digest as workflow artifacts.
 

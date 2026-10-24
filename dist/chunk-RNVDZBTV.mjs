@@ -3,9 +3,10 @@ import {
   buildActionReadback,
   heldIdFor,
   readAmount,
+  resumeReceiptLog,
   standardDecision,
   startStatusServer
-} from "./chunk-MHA5X7DI.mjs";
+} from "./chunk-6U5IHP7S.mjs";
 import {
   checkRateLimit,
   getToolPolicy,
@@ -662,7 +663,7 @@ function readConnectorContext(params, tool, input, keys) {
 
 // src/gateway.ts
 import { createInterface } from "readline";
-import { appendFileSync, readFileSync as readFileSync2 } from "fs";
+import { appendFileSync } from "fs";
 import { join as join2 } from "path";
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE = ".protect-mcp-receipts.jsonl";
@@ -703,11 +704,11 @@ var ProtectGateway = class {
     this.config = config;
     this.logFilePath = join2(process.cwd(), LOG_FILE);
     this.receiptFilePath = join2(process.cwd(), RECEIPTS_FILE);
-    try {
-      const existing = readFileSync2(this.receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
-      if (existing.length > 0) this.lastReceiptHash = chainLink(JSON.parse(existing[existing.length - 1]));
-    } catch {
-    }
+    this.lastReceiptHash = resumeReceiptLog(this.receiptFilePath, {
+      enforce: Boolean(config.enforce),
+      link: chainLink,
+      warn: (message) => this.log(message)
+    });
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();
     this.notificationConfig = parseNotificationConfigFromEnv();
@@ -1018,7 +1019,12 @@ var ProtectGateway = class {
           if (this.config.policy.policy_engine === "external") return null;
         }
       } catch (err) {
-        if (this.config.verbose) this.log(`External PDP error: ${err instanceof Error ? err.message : err}`);
+        this.log(`External PDP evaluation threw for "${toolName}", failing closed: ${err instanceof Error ? err.message : err}`);
+        this.emitDecisionLog({ tool: toolName, decision: "deny", reason_code: "external_pdp_error", request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) {
+          return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied: the external policy engine errored, so the gate fails closed`);
+        }
+        return null;
       }
     }
     if (toolPolicy.min_tier) {
@@ -1177,13 +1183,17 @@ var ProtectGateway = class {
     }
     if (isSigningEnabled()) {
       const signed = signDecision(log, this.lastReceiptHash || void 0);
+      let recordFailed = false;
       if (signed.signed) {
         process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}
 `);
         try {
           appendFileSync(this.receiptFilePath, signed.signed + "\n");
           if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
-        } catch {
+        } catch (err) {
+          recordFailed = true;
+          process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
+`);
         }
         this.reporter?.record(signed.signed, callLine);
         this.receiptBuffer.add(log.request_id, signed.signed);
@@ -1208,21 +1218,29 @@ var ProtectGateway = class {
         }
         process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
 `);
-        return { signingFailed: true };
+        return { signingFailed: true, recordFailed: false };
       }
+      return { signingFailed: false, recordFailed };
     } else if (this.reporter) {
       this.reporter.record(void 0, callLine);
     }
-    return { signingFailed: false };
+    return { signingFailed: false, recordFailed: false };
   }
   /**
    * An allow is only as good as its receipt. In enforce mode a call whose
-   * receipt could not be signed does not run, as in the hook server: a
-   * governed action that cannot be proven is not allowed.
+   * receipt could not be signed, or could not be recorded in the receipt log,
+   * does not run, as in the hook server: a governed action that cannot be
+   * proven is not allowed.
    */
   refuseUnsigned(emitted, id, toolName) {
-    if (!emitted.signingFailed || !this.config.enforce) return null;
-    return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+    if (!this.config.enforce) return null;
+    if (emitted.signingFailed) {
+      return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+    }
+    if (emitted.recordFailed) {
+      return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its signed receipt could not be recorded in the receipt log. Failing closed: a governed action that cannot be proven is not allowed.`);
+    }
+    return null;
   }
   /**
    * Refuse to arm enforce mode when signing is configured but cannot produce a

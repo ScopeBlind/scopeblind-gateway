@@ -42,7 +42,7 @@ The launch command has this shape; replace the child command with your reviewed
 MCP server and keep the port private:
 
 ```sh
-npx --yes protect-mcp@0.32.0 --http --port 3000 --enforce \
+npx --yes protect-mcp@0.32.1 --http --port 3000 --enforce \
   --policy ./protect-mcp.json --cedar ./cedar -- node your-mcp-server.js
 ```
 
@@ -80,7 +80,7 @@ After signing is configured, receipts are appended to
 `.protect-mcp-receipts.jsonl`. In the gateway's directory:
 
 ```sh
-npx --yes @veritasacta/verify@0.10.27 --replay-chain .protect-mcp-receipts.jsonl \
+npx --yes @veritasacta/verify@0.11.0 --replay-chain .protect-mcp-receipts.jsonl \
   --key "$(node -p 'JSON.parse(require("fs").readFileSync("keys/gateway.json", "utf8")).publicKey')"
 ```
 

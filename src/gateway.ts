@@ -2,8 +2,9 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { readConnectorContext, type ConnectorRecord } from './connector-action.js';
 import { createInterface, type Interface } from 'node:readline';
-import { appendFileSync, readFileSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import { chainLink } from './acta-envelope.js';
+import { resumeReceiptLog } from './receipt-log.js';
 import { join } from 'node:path';
 import type {
   ProtectConfig,
@@ -24,6 +25,9 @@ import { sendApprovalNotification, parseNotificationConfigFromEnv, type Notifica
 import { ReceiptBuffer, startStatusServer } from './http-server.js';
 import { buildActionReadback } from './action-readback.js';
 import { standardDecision, readAmount, heldIdFor, type StandardGate, type RecordReporter } from './standard-gate.js';
+
+/** What emitDecisionLog reports: the receipt could not be signed, or was signed but not appended to the receipt log. */
+type Emitted = { signingFailed: boolean; recordFailed: boolean };
 
 /** JSONL log file name written to cwd */
 const LOG_FILE = '.protect-mcp-log.jsonl';
@@ -84,10 +88,11 @@ export class ProtectGateway {
     this.logFilePath = join(process.cwd(), LOG_FILE);
     this.receiptFilePath = join(process.cwd(), RECEIPTS_FILE);
     // Resume the s5.7 receipt chain across restarts from the existing log tail.
-    try {
-      const existing = readFileSync(this.receiptFilePath, 'utf-8').split('\n').filter((l) => l.trim());
-      if (existing.length > 0) this.lastReceiptHash = chainLink(JSON.parse(existing[existing.length - 1]));
-    } catch { /* missing or unparseable log starts a fresh chain */ }
+    // A missing or empty log starts a new chain; one that cannot be continued
+    // stops an enforcing gate and is moved aside by an observing one.
+    this.lastReceiptHash = resumeReceiptLog(this.receiptFilePath, {
+      enforce: Boolean(config.enforce), link: chainLink, warn: (message) => this.log(message),
+    });
     this.evidenceStore = new EvidenceStore();
     this.receiptBuffer = new ReceiptBuffer();
     this.notificationConfig = parseNotificationConfigFromEnv();
@@ -455,7 +460,16 @@ export class ProtectGateway {
           if (this.config.policy.policy_engine === 'external') return null;
         }
       } catch (err) {
-        if (this.config.verbose) this.log(`External PDP error: ${err instanceof Error ? err.message : err}`);
+        // queryExternalPDP turns network failures into its configured fallback
+        // (deny by default), so this only fires on an unexpected throw. A call
+        // the policy engine could not be asked about must not run: fail closed,
+        // as the Cedar catch does.
+        this.log(`External PDP evaluation threw for "${toolName}", failing closed: ${err instanceof Error ? err.message : err}`);
+        this.emitDecisionLog({ tool: toolName, decision: 'deny', reason_code: 'external_pdp_error', request_id: requestId, tier: this.currentTier, credential_ref: credentialRef, action_readback: actionReadback });
+        if (this.config.enforce) {
+          return this.makeErrorResponse(request.id, -32600, `Tool "${toolName}" denied: the external policy engine errored, so the gate fails closed`);
+        }
+        return null;
       }
     }
 
@@ -530,7 +544,7 @@ export class ProtectGateway {
 
     // Check rate limit
     const rateSpec = this.getTierRateLimit(toolPolicy, this.currentTier);
-    let emitted: { signingFailed: boolean };
+    let emitted: Emitted;
     if (rateSpec) {
       let limit: ReturnType<typeof parseRateLimit>;
       try {
@@ -596,7 +610,7 @@ export class ProtectGateway {
    * for users of this code. Clean-room reimplementation requires a patent license.
    * @see {@link https://datatracker.ietf.org/doc/draft-farley-acta-signed-receipts/}
    */
-  private emitDecisionLog(entry: Partial<DecisionLog>): { signingFailed: boolean } {
+  private emitDecisionLog(entry: Partial<DecisionLog>): Emitted {
     const mode = this.config.enforce ? 'enforce' : 'shadow';
     // Generate OTel-compatible trace and span IDs
     const otelTraceId = entry.otel_trace_id || randomBytes(16).toString('hex'); // 32 hex chars
@@ -630,12 +644,18 @@ export class ProtectGateway {
 
     if (isSigningEnabled()) {
       const signed = signDecision(log, this.lastReceiptHash || undefined);
+      let recordFailed = false;
       if (signed.signed) {
         process.stderr.write(`[PROTECT_MCP_RECEIPT] ${signed.signed}\n`);
+        // Appended before the call is forwarded. Under --enforce an allow whose
+        // receipt did not land in the log is refused (refuseUnsigned).
         try {
           appendFileSync(this.receiptFilePath, signed.signed + '\n');
           if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
-        } catch { /* best-effort */ }
+        } catch (err) {
+          recordFailed = true;
+          process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}\n`);
+        }
         // Chained locally first; the page is where it lands, never a condition of the call.
         this.reporter?.record(signed.signed, callLine);
         // Feed to HTTP receipt buffer
@@ -658,22 +678,30 @@ export class ProtectGateway {
         });
         try { appendFileSync(this.receiptFilePath, tombstone + '\n'); } catch { /* best-effort */ }
         process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}\n`);
-        return { signingFailed: true };
+        return { signingFailed: true, recordFailed: false };
       }
+      return { signingFailed: false, recordFailed };
     } else if (this.reporter) {
       this.reporter.record(undefined, callLine);
     }
-    return { signingFailed: false };
+    return { signingFailed: false, recordFailed: false };
   }
 
   /**
    * An allow is only as good as its receipt. In enforce mode a call whose
-   * receipt could not be signed does not run, as in the hook server: a
-   * governed action that cannot be proven is not allowed.
+   * receipt could not be signed, or could not be recorded in the receipt log,
+   * does not run, as in the hook server: a governed action that cannot be
+   * proven is not allowed.
    */
-  private refuseUnsigned(emitted: { signingFailed: boolean }, id: string | number, toolName: string): JsonRpcResponse | null {
-    if (!emitted.signingFailed || !this.config.enforce) return null;
-    return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+  private refuseUnsigned(emitted: Emitted, id: string | number, toolName: string): JsonRpcResponse | null {
+    if (!this.config.enforce) return null;
+    if (emitted.signingFailed) {
+      return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its receipt could not be signed. Failing closed: a governed action that cannot be proven is not allowed.`);
+    }
+    if (emitted.recordFailed) {
+      return this.makeErrorResponse(id, -32600, `Tool "${toolName}" was blocked because its signed receipt could not be recorded in the receipt log. Failing closed: a governed action that cannot be proven is not allowed.`);
+    }
+    return null;
   }
 
   /**

@@ -21,8 +21,9 @@ import {
   isLoopbackHost,
   loadStandardFile,
   readAmount,
+  resumeReceiptLog,
   standardDecision
-} from "./chunk-MHA5X7DI.mjs";
+} from "./chunk-6U5IHP7S.mjs";
 import {
   checkRateLimit,
   getToolPolicy,
@@ -293,16 +294,6 @@ var DEFAULT_PORT = 9377;
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE = ".protect-mcp-receipts.jsonl";
 var PAYLOAD_HASH_THRESHOLD = 1024;
-function resumeReceiptChain(receiptFilePath) {
-  try {
-    if (!existsSync(receiptFilePath)) return null;
-    const lines = readFileSync2(receiptFilePath, "utf-8").split("\n").filter((l) => l.trim());
-    if (lines.length === 0) return null;
-    return receiptHash(JSON.parse(lines[lines.length - 1]));
-  } catch {
-    return null;
-  }
-}
 function detectSwarmContext() {
   const teamName = process.env.CLAUDE_CODE_TEAM_NAME;
   const agentId = process.env.CLAUDE_CODE_AGENT_ID;
@@ -659,6 +650,15 @@ async function handlePreToolUse(input, state) {
       }
     };
   }
+  if (state.enforce && emit.recordFailed) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason: `[ScopeBlind] "${toolName}" was blocked because its signed receipt could not be recorded in the receipt log. Failing closed: a governed action that cannot be proven is not allowed.`
+      }
+    };
+  }
   return {};
 }
 async function handlePostToolUse(input, state) {
@@ -918,11 +918,15 @@ function emitDecisionLog(state, entry) {
   }
   if (isSigningEnabled()) {
     const signed = signDecision(log, state.lastReceiptHash || void 0);
+    let recordFailed = false;
     if (signed.signed) {
       try {
         appendFileSync(state.receiptFilePath, signed.signed + "\n");
         if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
-      } catch {
+      } catch (err) {
+        recordFailed = true;
+        process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
+`);
       }
       state.receiptBuffer.add(log.request_id, signed.signed);
       state.reporter?.record(signed.signed, callLine);
@@ -954,10 +958,11 @@ function emitDecisionLog(state, entry) {
       }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
 `);
-      return { signingFailed: true };
+      return { signingFailed: true, recordFailed: false };
     }
+    return { signingFailed: false, recordFailed };
   }
-  return { signingFailed: false };
+  return { signingFailed: false, recordFailed: false };
 }
 async function routeHookEvent(input, state) {
   switch (input.hookEventName) {
@@ -1171,7 +1176,14 @@ async function startHookServer(options = {}) {
     policyDigest,
     logFilePath: join2(dataDir, LOG_FILE),
     receiptFilePath: join2(dataDir, RECEIPTS_FILE),
-    lastReceiptHash: resumeReceiptChain(join2(dataDir, RECEIPTS_FILE)),
+    // A missing or empty log starts a new chain; one that cannot be continued
+    // stops an enforcing gate and is moved aside by an observing one.
+    lastReceiptHash: resumeReceiptLog(join2(dataDir, RECEIPTS_FILE), {
+      enforce,
+      link: receiptHash,
+      warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}
+`)
+    }),
     permissionSuggestions: /* @__PURE__ */ new Map(),
     configAlerts: [],
     managedMandate,

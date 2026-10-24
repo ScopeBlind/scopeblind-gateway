@@ -44,6 +44,7 @@ import { initSigning, signDecision, isSigningEnabled, getSignerInfo } from './si
 import { receiptHash } from './acta-envelope.js';
 import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
 import { ReceiptBuffer, isLoopbackHost } from './http-server.js';
+import { resumeReceiptLog } from './receipt-log.js';
 import { getScopeBlindBridge } from './scopeblind-bridge.js';
 import { buildActionReadback } from './action-readback.js';
 import { buildEnrichment, type ReceiptEnrichment } from './receipt-enrichment.js';
@@ -154,17 +155,6 @@ interface HookServerState {
  * envelope, or tombstone) so the next receipt links to it. Returns null for
  * a missing/empty/unparseable log, which starts a fresh chain.
  */
-function resumeReceiptChain(receiptFilePath: string): string | null {
-  try {
-    if (!existsSync(receiptFilePath)) return null;
-    const lines = readFileSync(receiptFilePath, 'utf-8').split('\n').filter((l) => l.trim());
-    if (lines.length === 0) return null;
-    return receiptHash(JSON.parse(lines[lines.length - 1]));
-  } catch {
-    return null;
-  }
-}
-
 function detectSwarmContext(): SwarmContext {
   const teamName = process.env.CLAUDE_CODE_TEAM_NAME;
   const agentId = process.env.CLAUDE_CODE_AGENT_ID;
@@ -625,6 +615,17 @@ async function handlePreToolUse(
       },
     };
   }
+  if (state.enforce && emit.recordFailed) {
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason:
+          `[ScopeBlind] "${toolName}" was blocked because its signed receipt could not be recorded in the receipt log. ` +
+          `Failing closed: a governed action that cannot be proven is not allowed.`,
+      },
+    };
+  }
 
   // No hookSpecificOutput → Claude Code treats as implicit allow
   return {};
@@ -883,7 +884,7 @@ function handleStop(input: HookInput, state: HookServerState): HookResponse {
 // Decision Log Emission
 // ============================================================
 
-function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): { signingFailed: boolean } {
+function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): { signingFailed: boolean; recordFailed: boolean } {
   const mode = state.enforce ? 'enforce' : 'shadow';
   const otelTraceId = randomBytes(16).toString('hex');
   const otelSpanId = randomBytes(8).toString('hex');
@@ -935,12 +936,18 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
 
   if (isSigningEnabled()) {
     const signed = signDecision(log, state.lastReceiptHash || undefined);
+    let recordFailed = false;
     if (signed.signed) {
+      // Appended before the hook answers, so before the host runs the tool.
+      // Under --enforce an allow whose receipt did not land in the log is refused.
       try {
         appendFileSync(state.receiptFilePath, signed.signed + '\n');
         // Advance the s5.7 chain only when the line actually landed on disk.
         if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
-      } catch { /* best-effort */ }
+      } catch (err) {
+        recordFailed = true;
+        process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}\n`);
+      }
       state.receiptBuffer.add(log.request_id, signed.signed);
       // Chained locally first; the standard's page is where it lands, never a condition of the call.
       state.reporter?.record(signed.signed, callLine);
@@ -976,10 +983,11 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
         state.lastReceiptHash = receiptHash(tombstoneObj);
       } catch { /* best-effort */ }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}\n`);
-      return { signingFailed: true };
+      return { signingFailed: true, recordFailed: false };
     }
+    return { signingFailed: false, recordFailed };
   }
-  return { signingFailed: false };
+  return { signingFailed: false, recordFailed: false };
 }
 
 // ============================================================
@@ -1242,7 +1250,11 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
     policyDigest,
     logFilePath: join(dataDir, LOG_FILE),
     receiptFilePath: join(dataDir, RECEIPTS_FILE),
-    lastReceiptHash: resumeReceiptChain(join(dataDir, RECEIPTS_FILE)),
+    // A missing or empty log starts a new chain; one that cannot be continued
+    // stops an enforcing gate and is moved aside by an observing one.
+    lastReceiptHash: resumeReceiptLog(join(dataDir, RECEIPTS_FILE), {
+      enforce, link: receiptHash, warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}\n`),
+    }),
     permissionSuggestions: new Map(),
     configAlerts: [],
     managedMandate,

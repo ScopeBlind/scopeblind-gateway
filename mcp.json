@@ -2,7 +2,7 @@
   "mcpServers": {
     "protect-mcp": {
       "command": "npx",
-      "args": ["-y", "protect-mcp@0.32.0", "serve", "--enforce"],
+      "args": ["-y", "protect-mcp@0.32.1", "serve", "--enforce"],
       "description": "Ed25519 receipt signing + Cedar policy enforcement for tool calls"
     }
   }
