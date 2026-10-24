@@ -6,6 +6,7 @@
 - **An allowed call runs only once its receipt is recorded.** Receipt appends were best-effort, so under `--enforce` a call whose signed receipt could not be written to the receipt log (a full disk, a read-only file) still ran. The gateway and the hook server now refuse such an allow under `--enforce`, saying its receipt could not be recorded, and print a `[PROTECT_MCP_RECORD_FAILURE]` line on stderr; shadow mode is unchanged. The receipt is appended before the call is forwarded, or in the hook server before the hook answers. Appends are not fsynced, so a crash just after a call can still lose the last line.
 - An unexpected exception while asking the external policy decision point (`policy_engine` `external` or `hybrid`) now denies under `--enforce`, as the Cedar catch does, and records a deny with reason `external_pdp_error`. It fell through to the JSON rules and could allow. Network failures already took the configured fallback, deny by default.
 - The README example and the guides pin `@veritasacta/verify@0.11.0`, which the README check runs against the packed package.
+- The repository's own copy of the Homebrew formula, still at 0.7.1 and referenced nowhere, is removed. The formula lives in ScopeBlind/homebrew-tap: `brew install scopeblind/tap/protect-mcp`.
 
 ## 0.32.0 (security release): the agent cannot approve itself, and every allowed call is signed
 
