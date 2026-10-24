@@ -5076,19 +5076,19 @@ async function main() {
     return;
   }
   if (args[0] === "coordination" && args[1] === "agent") {
-    await (await import("./coordination-agent-server-VGFWY56T.mjs")).runCoordinationAgent(args.slice(2));
+    await (await import("./coordination-agent-server-22IND42T.mjs")).runCoordinationAgent(args.slice(2));
     return;
   }
   if (args[0] === "coordination" && args[1] === "pair") {
-    await (await import("./coordination-pair-cli-3T2UJB7J.mjs")).runCoordinationPair(args.slice(2));
+    await (await import("./coordination-pair-cli-VCTBLVIK.mjs")).runCoordinationPair(args.slice(2));
     return;
   }
   if (args[0] === "coordination" && args[1] === "setup") {
-    (await import("./coordination-pair-cli-3T2UJB7J.mjs")).runCoordinationSetup(args.slice(2));
+    (await import("./coordination-pair-cli-VCTBLVIK.mjs")).runCoordinationSetup(args.slice(2));
     return;
   }
   if (args[0] === "coordination") {
-    await (await import("./coordination-server-CSL6J3ID.mjs")).runCoordinationServer(args.slice(1));
+    await (await import("./coordination-server-7PTRTZ42.mjs")).runCoordinationServer(args.slice(1));
     return;
   }
   if (args[0] === "serve") {

@@ -148,7 +148,7 @@ left alone. `init --starter` writes that policy to `./protect.cedar` and creates
 the signing key the Claude Code plugin's receipts use:
 
 ```bash
-npx protect-mcp@0.32.0 init --starter
+npx protect-mcp@0.32.1 init --starter
 ```
 
 It writes `protect.cedar` (never over an existing one without `--force`),
@@ -179,7 +179,7 @@ denies.
 To use it without a file, name it as a built-in:
 
 ```bash
-npx protect-mcp@0.32.0 evaluate --policy builtin:starter --tool Bash \
+npx protect-mcp@0.32.1 evaluate --policy builtin:starter --tool Bash \
   --input '{"command":"git push --force origin main"}'
 echo $?   # 2
 ```
@@ -196,7 +196,7 @@ writes, and an `onboard` scenario.
 ### Keep writes inside this folder (`--contain`)
 
 ```bash
-npx protect-mcp@0.32.0 init --starter --contain
+npx protect-mcp@0.32.1 init --starter --contain
 ```
 
 adds two opt-in rules with this folder's absolute path filled in and escaped
@@ -302,7 +302,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.32.0 evaluate --cedar ./cedar --format claude"
+            "command": "npx protect-mcp@0.32.1 evaluate --cedar ./cedar --format claude"
           }
         ]
       }
@@ -313,7 +313,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.32.0 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx protect-mcp@0.32.1 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }
@@ -328,7 +328,7 @@ receipt instead of an unconditional allow. Pass the policy directory and the
 same input and context the hook would pass to `evaluate`:
 
 ```bash
-npx protect-mcp@0.32.0 sign --cedar ./cedar --tool Bash \
+npx protect-mcp@0.32.1 sign --cedar ./cedar --tool Bash \
   --input '{"command":"rm -rf /"}' --context '{"command_pattern":"rm -rf"}' \
   --receipts ./receipts --key ./keys/gateway.json
 ```
@@ -361,10 +361,10 @@ in its contract:
 
 ```bash
 # the PreToolUse / before-tool command for each host
-npx -y protect-mcp@0.32.0 evaluate --format codex  --cedar ./cedar   # OpenAI Codex
-npx -y protect-mcp@0.32.0 evaluate --format gemini --cedar ./cedar   # Gemini CLI BeforeTool
-npx -y protect-mcp@0.32.0 evaluate --format cursor --cedar ./cedar   # Cursor beforeShellExecution
-npx -y protect-mcp@0.32.0 evaluate --format hermes --cedar ./cedar   # Hermes pre_tool_call
+npx -y protect-mcp@0.32.1 evaluate --format codex  --cedar ./cedar   # OpenAI Codex
+npx -y protect-mcp@0.32.1 evaluate --format gemini --cedar ./cedar   # Gemini CLI BeforeTool
+npx -y protect-mcp@0.32.1 evaluate --format cursor --cedar ./cedar   # Cursor beforeShellExecution
+npx -y protect-mcp@0.32.1 evaluate --format hermes --cedar ./cedar   # Hermes pre_tool_call
 ```
 
 Pair each with `sign --format <host>` on the post-tool event for receipts. The
