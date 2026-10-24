@@ -9576,7 +9576,7 @@ var AGENT_PACKAGE_URL, AGENT_CLIENTS, shellQuote;
 var init_coordination_agent_setup = __esm({
   "src/coordination-agent-setup.ts"() {
     "use strict";
-    AGENT_PACKAGE_URL = "protect-mcp@0.32.1";
+    AGENT_PACKAGE_URL = "protect-mcp@0.32.2";
     AGENT_CLIENTS = [
       { id: "claude-code", label: "Claude Code" },
       { id: "codex", label: "Codex CLI" },
@@ -19721,7 +19721,8 @@ async function handleSign(argv) {
       process.stdout.write("{}\n");
       process.exit(0);
     }
-    process.stdout.write(JSON.stringify({ signed: Boolean(signed2.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed2.artifact_type, request_id: requestId, log: receiptLogPath }) + "\n");
+    const decisionKey = format === "claude" ? "receipt_decision" : "decision";
+    process.stdout.write(JSON.stringify({ signed: Boolean(signed2.signed), [decisionKey]: decisionValue, policy_digest: policyDigest, artifact_type: signed2.artifact_type, request_id: requestId, log: receiptLogPath }) + "\n");
     process.exit(0);
   } finally {
     releaseLogLock();

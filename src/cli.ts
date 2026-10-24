@@ -4412,7 +4412,11 @@ async function handleSign(argv: string[]): Promise<void> {
 
   // PostToolUse never blocks; Hermes reads stdout, so emit a no-op verdict there.
   if (format === 'hermes') { process.stdout.write('{}\n'); process.exit(0); }
-  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), decision: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId, log: receiptLogPath }) + '\n');
+  // Claude Code reads a PostToolUse hook's stdout as hook output, where `decision` may only be "block", so a
+  // `decision` member here could be reported as a hook error after every call. The receipt's own decision goes
+  // under a name Claude Code does not read; scripts that check `signed` see the same object otherwise.
+  const decisionKey = format === 'claude' ? 'receipt_decision' : 'decision';
+  process.stdout.write(JSON.stringify({ signed: Boolean(signed.signed), [decisionKey]: decisionValue, policy_digest: policyDigest, artifact_type: signed.artifact_type, request_id: requestId, log: receiptLogPath }) + '\n');
   process.exit(0);
   } finally {
     releaseLogLock();
