@@ -14489,6 +14489,7 @@ var init_report = __esm({
 // src/cli.ts
 init_gateway();
 init_policy();
+init_receipt_log();
 init_signing();
 init_acta_envelope();
 init_policy_digest();
@@ -19654,16 +19655,16 @@ async function handleSign(argv) {
   try {
     let prevReceiptHash;
     try {
-      const logPath = receiptLogPath;
-      if ((0, import_node_fs22.existsSync)(logPath)) {
-        const lines = (0, import_node_fs22.readFileSync)(logPath, "utf-8").trim().split("\n").filter(Boolean);
-        const last = lines.length ? lines[lines.length - 1] : null;
-        if (last) {
-          const parsed = JSON.parse(last);
-          if (parsed && parsed.signature) prevReceiptHash = chainLink(parsed);
-        }
-      }
-    } catch {
+      prevReceiptHash = resumeReceiptLog(receiptLogPath, {
+        enforce: false,
+        // Only chain to a receipt that was actually signed.
+        link: (last) => last && typeof last === "object" && last.signature ? chainLink(last) : null,
+        warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}
+`)
+      }) ?? void 0;
+    } catch (err) {
+      process.stderr.write(`[PROTECT_MCP] Warning: the receipt log ${receiptLogPath} could not be continued or moved aside (${err instanceof Error ? err.message : err}); this receipt starts a new chain.
+`);
     }
     let payloadDigest;
     if (toolInput) {

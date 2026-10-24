@@ -32,6 +32,7 @@
 
 import { ProtectGateway } from './gateway.js';
 import { loadPolicy, ownEntry, setOwnEntry } from './policy.js';
+import { resumeReceiptLog } from './receipt-log.js';
 import { initSigning, signDecision, isSigningEnabled, writePrivateKeyFile, ensurePrivateKeyDir } from './signing.js';
 import { chainLink, canonicalize as canonicalizeReceipt } from './acta-envelope.js';
 import { digestCedarDir, buildPolicyBundle, verifyPolicyBundle, shortPolicyLabel } from './policy-digest.js';
@@ -4346,19 +4347,20 @@ async function handleSign(argv: string[]): Promise<void> {
   // a standalone island: individually valid, but carrying no evidence of what
   // preceded it, so removing one left no trace. Genesis omits the member
   // entirely rather than carrying null, which would change the signed bytes.
+  // sign has no enforce mode and a hook host may treat a failed hook as
+  // non-blocking, so a log it cannot continue is moved aside with a warning
+  // and the new chain starts in a fresh file, never silently in the old one.
   let prevReceiptHash: string | undefined;
   try {
-    const logPath = receiptLogPath;
-    if (existsSyncCli(logPath)) {
-      const lines = readFileSyncCli(logPath, 'utf-8').trim().split('\n').filter(Boolean);
-      const last = lines.length ? lines[lines.length - 1] : null;
-      if (last) {
-        const parsed = JSON.parse(last);
-        // Only chain to a receipt that was actually signed.
-        if (parsed && parsed.signature) prevReceiptHash = chainLink(parsed);
-      }
-    }
-  } catch { /* an unreadable log starts a new chain rather than failing the call */ }
+    prevReceiptHash = resumeReceiptLog(receiptLogPath, {
+      enforce: false,
+      // Only chain to a receipt that was actually signed.
+      link: (last) => (last && typeof last === 'object' && (last as { signature?: unknown }).signature ? chainLink(last) : null),
+      warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}\n`),
+    }) ?? undefined;
+  } catch (err) {
+    process.stderr.write(`[PROTECT_MCP] Warning: the receipt log ${receiptLogPath} could not be continued or moved aside (${err instanceof Error ? err.message : err}); this receipt starts a new chain.\n`);
+  }
 
   // Bind the receipt to the call it describes. Without this a receipt said
   // "the gateway allowed submit_payment" and nothing about which payment, so a

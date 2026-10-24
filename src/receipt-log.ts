@@ -19,7 +19,7 @@ import { existsSync, readFileSync, renameSync } from 'node:fs';
  */
 export function resumeReceiptLog(
   path: string,
-  options: { enforce: boolean; link: (receipt: unknown) => string; warn: (message: string) => void },
+  options: { enforce: boolean; link: (receipt: unknown) => string | null; warn: (message: string) => void },
 ): string | null {
   let lines: string[];
   try {
