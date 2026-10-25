@@ -173,7 +173,7 @@ an `@reason`:
 | `starter.grep-secret-path` | Grep inside `.env*`, `~/.ssh` or `~/.aws` |
 | `starter.shell-reads-secret` | `cat`, `grep`, `head`, `tail` or six other readers, in a line that names `.env`, an SSH key or a credential file |
 | `starter.pipe-network-to-shell` | `curl` or `wget` into `sh`, `bash` or `zsh`, or `bash <(curl`, `sh -c "$(curl`, `eval "$(curl` |
-| `starter.write-sensitive-location` | writes to system folders, shell profiles, LaunchAgents, `~/.ssh`, `~/.aws`, credential files, Claude and Codex settings, `protect.cedar`, the signing key, or through `/../` |
+| `starter.write-sensitive-location` | writes to, or deletes, system folders, shell profiles, LaunchAgents, `~/.ssh`, `~/.aws`, credential files, Claude and Codex settings, the Cursor preview's hooks, gate configuration and relay, `protect.cedar`, the signing key, or through `/../` |
 
 The text ships as [`policies/starter.cedar`](../policies/starter.cedar) and is
 yours to edit. Shell rules match the raw command text with Cedar `like`, so they

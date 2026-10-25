@@ -1,7 +1,7 @@
 /**
  * The starter policy, held to its vectors.
  *
- * vectors/starter-policy.v1.json carries the 59 calls the starter was designed
+ * vectors/starter-policy.v1.json carries the 66 calls the starter was designed
  * against (28 it must allow, 31 it must block, each block naming its rule) and
  * the inputs Cedar cannot hold as they are: fractions, nulls, numbers beyond 64
  * bits and Cedar escape keys. Here the real Cedar engine decides every one, with
@@ -93,11 +93,11 @@ describe('every rule has an @id and every forbid an @reason', () => {
   });
 });
 
-describe('the 59 starter cases through the real engine', () => {
+describe('the 66 starter cases through the real engine', () => {
   it('carries 28 calls to allow and 31 to block, each block naming a rule', () => {
-    expect(vectors.cases).toHaveLength(59);
-    expect(vectors.cases.filter((c) => c.decision === 'allow')).toHaveLength(28);
-    expect(vectors.cases.filter((c) => c.decision === 'deny')).toHaveLength(31);
+    expect(vectors.cases).toHaveLength(66);
+    expect(vectors.cases.filter((c) => c.decision === 'allow')).toHaveLength(30);
+    expect(vectors.cases.filter((c) => c.decision === 'deny')).toHaveLength(36);
     for (const c of vectors.cases) expect(c.decision === 'deny' ? reasonOf.has(c.rule!) : c.rule === undefined, c.id).toBe(true);
     // Every one of the seven rules is exercised by at least one block.
     expect(new Set(vectors.cases.filter((c) => c.rule).map((c) => c.rule)).size).toBe(7);
