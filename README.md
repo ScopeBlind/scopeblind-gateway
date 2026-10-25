@@ -102,10 +102,9 @@ verifier. See [validation and releases](docs/releases.md).
 
 ## Connect your agent
 
-Choose the integration that matches your host. For Claude Code, the
-[hook setup guide](docs/local-gateway.md#claude-code-hook-quickstart) now includes
-an installation preview, local diagnostics and reversible removal. `doctor`
-checks configuration; confirm enforcement with a real call from your host.
+Choose the integration that matches your host and the coverage you need.
+Installing guidance skills does not enable enforcement. `doctor` checks local
+configuration; confirm the selected route with a real allowed and blocked call.
 
 For the Claude Code plugin, first [prepare and start the local gate](docs/claude-plugin.md),
 then install it in your project (Claude Code 2.1.295 or later):
@@ -120,11 +119,19 @@ plugin or standalone project hooks, so the same call is not recorded twice.
 | Use case | Start here |
 |---|---|
 | Wrap an existing MCP server | [MCP setup and shadow-to-enforce workflow](docs/local-gateway.md#connect-your-mcp-server) |
-| Claude Code plugin | [Plugin setup and local gate](docs/claude-plugin.md) |
+| Claude Code enforcement plugin | [Plugin setup and local gate](docs/claude-plugin.md) |
 | Claude Code project hooks | [Hook setup](docs/local-gateway.md#claude-code-hook-quickstart) |
-| Codex, Cursor, Gemini or Hermes hooks | [Host payload formats](docs/local-gateway.md#use-it-in-other-agents-codex-cursor-gemini-hermes) |
+| Cursor project preview | [Explicit setup, tool mapping and host checks](plugins/protect-mcp-cursor/README.md) |
+| ChatGPT / Codex assistant preview | [Setup guidance and a harmless verification demo](plugins/protect-mcp-assistant/README.md), with no hooks |
+| Existing Claude directory guidance plugin | [Published plugin source](https://github.com/tomjwxf/protect-mcp-plugin), separate from enforcement |
 | Call the policy evaluator as MCP tools | [The gate as an MCP server](docs/local-gateway.md#the-gate-as-an-mcp-server) |
 | Host an HTTP gateway | [HTTP deployment notes](docs/CLOUD-QUICKSTART.md) |
+
+[Host compatibility and release status](docs/host-compatibility.md) separates
+adapter tests from real-host validation. The Cursor and assistant packages are
+previews, not public directory listings. Current source fixes to standalone
+hook formats are **unreleased**; npm remains **0.32.3**. A format flag alone does
+not establish a working Codex, Gemini or Hermes integration.
 
 For an existing MCP server, initialize its configuration in a separate directory
 from the example above, then run the wrapper with your server command:
@@ -182,6 +189,8 @@ See the [changelog](CHANGELOG.md) for every change.
 
 - [Local gateway guide](docs/local-gateway.md): policies, hooks, dashboard,
   credentials and receipt compatibility.
+- [Host compatibility](docs/host-compatibility.md): enforcement versus guidance,
+  supported routes, test scope and release status.
 - [Receipt and disclosure guide](docs/receipts.md): local records, selective
   disclosure and optional hosted digest anchoring.
 - [Command reference](docs/commands.md).

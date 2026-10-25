@@ -23,7 +23,9 @@
     "test": "vitest run",
     "test:docker": "node scripts/coding-docker-smoke.mjs",
     "prepublishOnly": "npm run build",
-    "test:readme": "node scripts/readme-smoke.mjs --packed"
+    "test:readme": "node scripts/readme-smoke.mjs --packed",
+    "test:hosts": "node --test scripts/host-contract.test.mjs scripts/claude-plugin-hooks.test.mjs scripts/cursor-plugin.test.mjs scripts/assistant-plugin.test.mjs",
+    "test:assistant:smoke": "node scripts/assistant-plugin-smoke.mjs"
   },
   "files": [
     "dist",

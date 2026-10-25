@@ -1,0 +1,11 @@
+{
+  "name": "protect-mcp-cursor",
+  "version": "0.1.0",
+  "description": "Project-configured local policy checks for Cursor Agent tools, with signed decision receipts. Requires an enforcing protect-mcp gate.",
+  "author": { "name": "Tom Farley / ScopeBlind", "email": "tommy@scopeblind.com" },
+  "homepage": "https://scopeblind.com/protect-mcp",
+  "repository": "https://github.com/ScopeBlind/scopeblind-gateway",
+  "license": "MIT",
+  "keywords": ["mcp", "policy", "cedar", "receipts"],
+  "hooks": "./hooks/hooks.json"
+}

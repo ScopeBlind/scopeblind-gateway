@@ -1,0 +1,4 @@
+interface:
+  display_name: "Try protect-mcp"
+  short_description: "Run a harmless policy and receipt demonstration"
+  default_prompt: "Use $protect-mcp-demo to show an allowed decision, a denied decision, and receipt tamper detection."

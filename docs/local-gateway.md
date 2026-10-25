@@ -5,25 +5,27 @@
 **Using Claude Code?** Start with the [hook quickstart](#claude-code-hook-quickstart).
 It previews the project changes, checks the local setup and ends with a receipt
 from a real tool call. The MCP wrapper below is for an existing MCP server.
+For Cursor or assistant plugins, use the [host compatibility guide](host-compatibility.md)
+to choose between enforcement and guidance and check release status.
 
 ## Connect your MCP server
 
 ```bash
 # 1. Generate an Ed25519 keypair, config template, and sample policy.
-npx protect-mcp init
+npx --yes protect-mcp@0.32.3 init
 
 # 2. Print a shadow-mode client configuration, then apply it in your MCP host.
 #    This command prints configuration and exits; it does not launch the server.
-npx protect-mcp wrap -- node your-mcp-server.js
+npx --yes protect-mcp@0.32.3 wrap -- node your-mcp-server.js
 
 # 3. Reopen the host and use its tools, then inspect the local-only dashboard.
-npx protect-mcp dashboard --open
+npx --yes protect-mcp@0.32.3 dashboard --open
 
 # 4. Draft a reviewable policy from observed calls.
-npx protect-mcp recommend --write
+npx --yes protect-mcp@0.32.3 recommend --write
 
 # 5. When reviewed, restart the wrapper in enforce mode with that policy.
-npx protect-mcp --policy protect-mcp.recommended.json --enforce -- node your-mcp-server.js
+npx --yes protect-mcp@0.32.3 --policy protect-mcp.recommended.json --enforce -- node your-mcp-server.js
 ```
 
 In enforce mode the wrapper refuses to start when the policy configures signing
@@ -34,13 +36,13 @@ earlier version, run `chmod 600 keys/gateway.json`.
 For Claude Desktop, run a dry-run config patch first, then apply it:
 
 ```bash
-npx protect-mcp wrap --claude-desktop
-npx protect-mcp wrap --claude-desktop --write
-npx protect-mcp dashboard --open
+npx --yes protect-mcp@0.32.3 wrap --claude-desktop
+npx --yes protect-mcp@0.32.3 wrap --claude-desktop --write
+npx --yes protect-mcp@0.32.3 dashboard --open
 ```
 
 The dashboard binds to `127.0.0.1`, reads only local log/receipt files, and does
-not upload anything. Use `npx protect-mcp connect` only if you explicitly want a
+not upload anything. Use `npx --yes protect-mcp@0.32.3 connect` only if you explicitly want a
 hosted ScopeBlind dashboard.
 
 ## The gate as an MCP server
@@ -49,7 +51,7 @@ If you would rather call the gate as tools than wire the Claude Code hooks, run
 it as an MCP server:
 
 ```bash
-npx protect-mcp mcp
+npx --yes protect-mcp@0.32.3 mcp
 ```
 
 It speaks MCP over stdio and exposes four tools that evaluate and produce
@@ -60,17 +62,19 @@ artifacts without executing the proposed actions:
 - **`verify_receipt`**: verify a signed receipt offline against a public key. Returns `{ valid, error, type, kid, issuer }`.
 - **`self_test`**: prove it, no inputs. A known-forbidden action is denied, then a signed receipt round-trips and a tampered copy fails.
 
-Point any MCP host at it, for example Claude Desktop:
+Point a compatible MCP host at it, for example Claude Desktop:
 
 ```json
 {
   "mcpServers": {
-    "protect-mcp": { "command": "npx", "args": ["-y", "protect-mcp", "mcp"] }
+    "protect-mcp": { "command": "npx", "args": ["--yes", "protect-mcp@0.32.3", "mcp"] }
   }
 }
 ```
 
-Receipts are byte-compatible with the ones the gate signs at runtime, so a
+This helper evaluates proposals and checks artifacts; it does not intercept
+other MCP servers or native tools. Receipts use the same envelope as those
+the gate signs at runtime, so a
 receipt minted here uses the same Acta envelope. Verification capabilities and
 canonicalization compatibility depend on the verifier version; use the gateway's
 `verifyReceipt` API for the conformance behavior described below.
@@ -113,7 +117,7 @@ For live desktop fallback approvals, start the dashboard with the local gateway
 approval endpoint and nonce printed by the wrapper:
 
 ```bash
-npx protect-mcp dashboard --open \
+npx --yes protect-mcp@0.32.3 dashboard --open \
   --approval-endpoint http://127.0.0.1:9876 \
   --approval-nonce "$PROTECT_MCP_APPROVAL_NONCE"
 ```
@@ -132,11 +136,11 @@ Create a local sample record, then inspect and verify it with your own copy of
 the tools:
 
 ```bash
-npx protect-mcp sample     # seed a labeled sample record (8 decisions: 1 blocked, 2 payments)
-npx protect-mcp record     # open it: signatures verified in your browser
+npx --yes protect-mcp@0.32.3 sample     # seed a labeled sample record (8 decisions: 1 blocked, 2 payments)
+npx --yes protect-mcp@0.32.3 record     # open it: signatures verified in your browser
 
-npx protect-mcp claim --payment-under 100 --output payments-under-100.json
-npx protect-mcp verify-claim payments-under-100.json
+npx --yes protect-mcp@0.32.3 claim --payment-under 100 --output payments-under-100.json
+npx --yes protect-mcp@0.32.3 verify-claim payments-under-100.json
 ```
 
 Drop the generated `demo-tampered.jsonl` into the record page to watch a
@@ -148,10 +152,11 @@ below and the same commands run against your agent's own record.
 
 Most coding-agent setups want the same few things blocked and everything else
 left alone. `init --starter` writes that policy to `./protect.cedar` and creates
-the signing key the Claude Code plugin's receipts use:
+`protect-mcp.key` for explicit CLI signing. The HTTP gate setup instead uses
+`keys/gateway.json`; keep the key paths for the chosen route consistent:
 
 ```bash
-npx protect-mcp@0.32.2 init --starter
+npx --yes protect-mcp@0.32.3 init --starter
 ```
 
 It writes `protect.cedar` (never over an existing one without `--force`),
@@ -182,7 +187,7 @@ denies.
 To use it without a file, name it as a built-in:
 
 ```bash
-npx protect-mcp@0.32.2 evaluate --policy builtin:starter --tool Bash \
+npx --yes protect-mcp@0.32.3 evaluate --policy builtin:starter --tool Bash \
   --input '{"command":"git push --force origin main"}'
 echo $?   # 2
 ```
@@ -199,7 +204,7 @@ writes, and an `onboard` scenario.
 ### Keep writes inside this folder (`--contain`)
 
 ```bash
-npx protect-mcp@0.32.2 init --starter --contain
+npx --yes protect-mcp@0.32.3 init --starter --contain
 ```
 
 adds two opt-in rules with this folder's absolute path filled in and escaped
@@ -329,51 +334,21 @@ the preview first; the installer does not guess ownership of older hook entries.
 
 ### Manual command hooks
 
-Use command hooks as an alternative when you manage your own host configuration;
-do not install this example alongside the generated HTTP hooks for the same
-events. The two verbs are `evaluate` (PreToolUse, blocks on exit 2) and `sign`
-(PostToolUse, records a receipt). Claude Code hands a hook the call
-as JSON on stdin and sets no `TOOL_NAME` or `TOOL_INPUT` variables, so pass
-`--format claude` and nothing else about the call: the gate reads `tool_name`
-and `tool_input` from the payload, and on a deny it returns the reason to the
-model as `hookSpecificOutput.permissionDecisionReason` as well as exit 2. Pin
-the version so a Claude Code session always runs the gate you tested:
+For a command-hook installation, use the [Claude Code relay guide](claude-plugin.md).
+It uses a local Node relay, bounded requests and the host's failure-blocking
+setting. Do not install it alongside HTTP hooks for the same events.
 
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx --yes protect-mcp@0.32.3 evaluate --cedar ./cedar --format claude"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx --yes protect-mcp@0.32.3 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+The lower-level `evaluate --format claude` and `sign --format claude` commands
+remain available to integration authors. The first consumes the host's proposed
+call on stdin and returns its policy decision; the second can record an
+observation after execution. They do not install a host integration or establish
+its crash/timeout behavior. Avoid downloading a package on every tool call.
 
-A missing or unloadable policy denies (exit 2) unless you explicitly pass
-`--fail-on-missing-policy false`. `sign --receipts ./receipts` writes
-`./receipts/receipts.jsonl`; it is not the HTTP server's default receipt path.
-In Claude Code format the signing summary uses `receipt_decision`, leaving the
-host's reserved `decision` field unused. PostToolUse signing happens after the
-tool call and does not prevent that call from executing.
+`sign --receipts ./receipts` writes `./receipts/receipts.jsonl`, distinct from the
+HTTP gate's default receipt file. Its Claude summary uses `receipt_decision`,
+leaving the host's reserved `decision` field unused. Post-action signing cannot
+prevent a call that has already run, and its output alone does not prove durable
+receipt storage. Inspect the actual record and verify the expected signer key.
 
 ### Sign the policy decision itself
 
@@ -382,7 +357,7 @@ receipt instead of an unconditional allow. Pass the policy directory and the
 same input and context the hook would pass to `evaluate`:
 
 ```bash
-npx protect-mcp@0.32.2 sign --cedar ./cedar --tool Bash \
+npx --yes protect-mcp@0.32.3 sign --cedar ./cedar --tool Bash \
   --input '{"command":"rm -rf /"}' --context '{"command_pattern":"rm -rf"}' \
   --receipts ./receipts --key ./keys/gateway.json
 ```
@@ -409,23 +384,25 @@ configured, and if no signer is available it records an honest unsigned line
 
 ## Use it in other agents (Codex, Cursor, Gemini, Hermes)
 
-The same fail-closed gate runs as a tool hook in any agent that supports them. Add
-`--format <host>` so the verb reads that host's hook payload from stdin and denies
-in its contract:
+Use a host-specific guide rather than installing a generic pair of hook commands:
 
-```bash
-# the PreToolUse / before-tool command for each host
-npx -y protect-mcp@0.32.2 evaluate --format codex  --cedar ./cedar   # OpenAI Codex
-npx -y protect-mcp@0.32.2 evaluate --format gemini --cedar ./cedar   # Gemini CLI BeforeTool
-npx -y protect-mcp@0.32.2 evaluate --format cursor --cedar ./cedar   # Cursor beforeShellExecution
-npx -y protect-mcp@0.32.2 evaluate --format hermes --cedar ./cedar   # Hermes pre_tool_call
-```
+- [Cursor preview](../plugins/protect-mcp-cursor/README.md): explicit project
+  setup, reviewed tool mapping, generic pre/post hooks and an enforcing local gate.
+- [ChatGPT / Codex assistant preview](../plugins/protect-mcp-assistant/README.md):
+  guidance and verification workflows, with no hooks or automatic enforcement.
+- [MCP wrapper](#connect-your-mcp-server): protect one selected server in a
+  compatible host; other tools remain outside that route.
 
-Pair each with `sign --format <host>` on the post-tool event for receipts. The
-important case is **Hermes**, which ignores hook exit codes and reads the verdict
-from stdout, so `--format hermes` denies via `{"decision":"block"}` rather than
-exit 2 (a raw exit-2 would silently fail open there). Without `--format`, the
-verbs read `--tool`/`--input` flags exactly as in the Claude Code section above.
+The CLI's `--format` option is a payload adapter, not proof of host integration.
+Current source includes **unreleased** fixes for malformed hook input, Cursor's
+JSON-encoded MCP arguments and response fields, and Cursor/Gemini post-action
+output. npm remains **0.32.3**. Native Gemini, Codex and Hermes hooks are not
+validated end to end by this batch. Native tool names need matching policies:
+`Bash` and Gemini's `run_shell_command` are not interchangeable automatically.
+
+The [host compatibility guide](host-compatibility.md) lists test coverage,
+release boundaries and the real-host checks needed before enabling protection.
+Do not wire a post-action signer as a pre-action permission decision.
 
 ## Write a policy
 
@@ -473,11 +450,11 @@ Most teams should not write Cedar from scratch on day one. Install a starter
 pack, run in shadow mode, inspect receipts, then tighten or enforce:
 
 ```bash
-npx protect-mcp policy-packs list
-npx protect-mcp policy-packs show secrets-safe
-npx protect-mcp policy-packs install filesystem-safe --dir ./cedar
-npx protect-mcp policy-packs install all --dir ./cedar
-npx protect-mcp serve --cedar ./cedar
+npx --yes protect-mcp@0.32.3 policy-packs list
+npx --yes protect-mcp@0.32.3 policy-packs show secrets-safe
+npx --yes protect-mcp@0.32.3 policy-packs install filesystem-safe --dir ./cedar
+npx --yes protect-mcp@0.32.3 policy-packs install all --dir ./cedar
+npx --yes protect-mcp@0.32.3 serve --cedar ./cedar
 ```
 
 Built-in packs:

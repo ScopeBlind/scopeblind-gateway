@@ -35,11 +35,17 @@ jobs:
         run: |
           set -o pipefail
           npm test 2>&1 | tee release-validation/npm-test.log
-      - name: Verify Claude plugin hook failure handling
+      - name: Verify host contracts and plugin boundaries
         shell: bash
         run: |
           set -o pipefail
-          node --test scripts/claude-plugin-hooks.test.mjs 2>&1 | tee release-validation/plugin-hooks.log
+          npm run test:hosts 2>&1 | tee release-validation/host-contracts.log
+      - name: Verify the assistant demo from a clean published installation
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:assistant:smoke 2>&1 | tee release-validation/assistant-clean-install.log
       - name: Verify the real isolated Docker runtime
         timeout-minutes: 5
         shell: bash

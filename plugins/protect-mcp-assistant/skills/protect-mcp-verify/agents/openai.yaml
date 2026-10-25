@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verify a receipt"
+  short_description: "Check signed receipts against an expected key"
+  default_prompt: "Use $protect-mcp-verify to check this receipt against the expected public key."

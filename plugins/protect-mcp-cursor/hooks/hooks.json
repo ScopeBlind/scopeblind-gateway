@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [{ "command": "node ./hooks/relay.mjs preToolUse", "timeout": 15, "failClosed": true }],
+    "postToolUse": [{ "command": "node ./hooks/relay.mjs postToolUse", "timeout": 15 }]
+  }
+}

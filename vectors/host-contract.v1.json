@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "purpose": "Synthetic CLI contract vectors, not captures or proof of host integration.",
+  "cases": [
+    { "id": "nested-allowed", "tool": "lookup", "input": { "payment": { "amount": 75, "currency": "AUD" } }, "decision": "allow" },
+    { "id": "nested-denied", "tool": "lookup", "input": { "payment": { "amount": 150, "currency": "AUD" } }, "decision": "deny" },
+    { "id": "native-name-denied", "tool": "run_shell_command", "input": { "command": "printf synthetic" }, "decision": "deny" },
+    { "id": "unicode-and-spaces", "tool": "lookup", "input": { "path": "/synthetic/a folder/étude.txt", "payment": { "amount": 5 } }, "decision": "allow" }
+  ],
+  "invalid_payloads": ["", "not JSON", "null", "[]", "true", "{}", "{\"tool_name\":\"lookup\",\"tool_input\":null}", "{\"tool_name\":17,\"tool_input\":{}}", "{\"tool_name\":\"lookup\",\"tool_input\":[]}"]
+}

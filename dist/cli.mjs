@@ -4147,16 +4147,24 @@ async function readHookStdin() {
     const chunks = [];
     for await (const chunk of process.stdin) chunks.push(chunk);
     const raw = Buffer.concat(chunks).toString("utf-8").trim();
-    return raw ? JSON.parse(raw) : null;
+    const parsed = raw ? JSON.parse(raw) : null;
+    return hookObject(parsed) ? parsed : null;
   } catch {
     return null;
   }
 }
-function mapHookPayload(j) {
-  const tool = j.tool_name ?? j.toolName;
-  const input = j.tool_input ?? j.toolInput;
-  if (input === void 0 && j.command !== void 0) {
-    return { tool: tool ?? "Bash", input: { command: j.command } };
+function hookObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function mapHookPayload(j, format) {
+  const tool = Object.hasOwn(j, "tool_name") ? j.tool_name : j.toolName;
+  const hasInput = Object.hasOwn(j, "tool_input") || Object.hasOwn(j, "toolInput");
+  let input = Object.hasOwn(j, "tool_input") ? j.tool_input : j.toolInput;
+  if (format === "cursor" && typeof input === "string") input = JSON.parse(input);
+  if (hasInput && !hookObject(input)) throw new Error("invalid_hook_payload");
+  if ((format === "cursor" || !format) && !hasInput && !Object.hasOwn(j, "tool_name") && !Object.hasOwn(j, "toolName") && Object.hasOwn(j, "command")) {
+    if (typeof j.command !== "string" || !j.command.trim()) throw new Error("invalid_hook_payload");
+    return { tool: "Bash", input: { command: j.command } };
   }
   return { tool, input };
 }
@@ -4168,11 +4176,12 @@ function emitDecision(format, allowed, reason) {
     process.exit(0);
   }
   if (allowed) {
-    process.stdout.write(JSON.stringify({ allowed: true, reason }) + "\n");
+    const verdict = format === "cursor" ? { permission: "allow" } : format === "gemini" ? { decision: "allow" } : { allowed: true, reason };
+    process.stdout.write(JSON.stringify(verdict) + "\n");
     process.exit(0);
   }
   if (format === "cursor") {
-    process.stdout.write(JSON.stringify({ permission: "deny", userMessage: reason }) + "\n");
+    process.stdout.write(JSON.stringify({ permission: "deny", user_message: reason, agent_message: reason }) + "\n");
   } else if (format === "gemini") {
     process.stdout.write(JSON.stringify({ decision: "deny", reason }) + "\n");
   } else if (format === "claude") {
@@ -4191,10 +4200,14 @@ async function handleEvaluate(argv) {
   const failOnMissing = flagValue(argv, "--fail-on-missing-policy") !== "false";
   if (format) {
     const j = await readHookStdin();
-    if (j) {
-      const m = mapHookPayload(j);
-      if (m.tool) tool = m.tool;
-      if (m.input !== void 0) inputRaw = JSON.stringify(m.input);
+    if (!j) emitDecision(format, false, "invalid_hook_payload");
+    try {
+      const m = mapHookPayload(j, format);
+      if (typeof m.tool !== "string" || !m.tool.trim() || !hookObject(m.input)) throw new Error("invalid_hook_payload");
+      tool = m.tool;
+      inputRaw = JSON.stringify(m.input);
+    } catch {
+      emitDecision(format, false, "invalid_hook_payload");
     }
   }
   const policySet = loadPolicyArg(argv);
@@ -4256,10 +4269,20 @@ async function handleSign(argv) {
     }
   }
   const j = await readHookStdin();
+  if (format && !j) {
+    process.stderr.write("protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n");
+    process.exit(2);
+  }
   if (j) {
-    const m = mapHookPayload(j);
-    if (m.tool) tool = m.tool;
-    if (toolInput === void 0 && m.input && typeof m.input === "object") toolInput = m.input;
+    try {
+      const m = mapHookPayload(j, format);
+      if (format && (typeof m.tool !== "string" || !m.tool.trim() || m.input !== void 0 && !hookObject(m.input))) throw new Error("invalid_hook_payload");
+      if (m.tool) tool = m.tool;
+      if (toolInput === void 0 && hookObject(m.input)) toolInput = m.input;
+    } catch {
+      process.stderr.write("protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n");
+      process.exit(2);
+    }
   }
   let policyDigest = "none";
   let signing;
@@ -4354,7 +4377,7 @@ async function handleSign(argv) {
     } catch {
     }
     releaseLogLock();
-    if (format === "hermes") {
+    if (format === "hermes" || format === "cursor" || format === "gemini") {
       process.stdout.write("{}\n");
       process.exit(0);
     }

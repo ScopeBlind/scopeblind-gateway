@@ -1,0 +1,78 @@
+{
+  "schema": "protect-mcp.host-validation.v1",
+  "date": "2026-10-25",
+  "record_kind": "maintainer_test_report",
+  "base_commit": "f79f70d25f98c94f7673a2c4bdc5545fa513810f",
+  "source_sha256": {
+    "src/cli.ts": "f8e57d0542afa7bd52ce6f9d6863c8602a4cfe6a2c4afdc76a5e59db614b9947",
+    "plugins/protect-mcp-cursor/hooks/relay.mjs": "dde7d7a513226c7052088b634972d72c8b2df49bf7e29f78503153a2029ffae8",
+    "plugins/protect-mcp-cursor/lib/gate-client.mjs": "57d0704cc70041bc3f56243e3572e55f6d3979860c34252cc022bf550264ca74",
+    "plugins/protect-mcp-cursor/install-project.mjs": "e098f9f9ab648753d122675ac41db720be4c5e31e8c6e9ab8e5fb49b838bca19",
+    "plugins/protect-mcp-assistant/plugin.json": "43d246dfd0838e2032125802a25b79a79a1dd92060d2261743b1f91202d0379b"
+  },
+  "cursor": {
+    "version": "3.17.8",
+    "installation": "explicit disposable project command hooks",
+    "data": "synthetic printf commands; no production systems",
+    "observed": [
+      {
+        "case": "allowed Shell call",
+        "result": "exit 0; expected output; signed PreToolUse and PostToolUse receipts verified with the separately loaded fixture key"
+      },
+      {
+        "case": "policy-denied Shell call",
+        "result": "blocked before execution; signed deny receipt verified"
+      },
+      {
+        "case": "stopped gate",
+        "result": "blocked; final packaged relay reported connection_failed with recovery instructions"
+      },
+      {
+        "case": "another project hook denies",
+        "result": "other denial wins despite gateway allow; no matching post-action receipt"
+      }
+    ],
+    "initial_defect": "Cursor supplied an empty cwd; the adapter now resolves that explicit default to the checked single workspace root without changing tool arguments.",
+    "cleanup": "Local gate stopped; test project hooks uninstalled successfully.",
+    "not_checked": [
+      "native permission prompts",
+      "native marketplace installation",
+      "other native tools",
+      "real MCP tools",
+      "Windows and Linux GUI"
+    ]
+  },
+  "codex": {
+    "version": "0.145.0",
+    "installation": "temporary local marketplace",
+    "observed": [
+      "marketplace discovered",
+      "plugin add succeeded",
+      "plugin listed as installed and enabled",
+      "cached manifest and assets present",
+      "plugin and marketplace removed after testing"
+    ],
+    "not_checked": [
+      "ChatGPT public directory",
+      "onboarding UI",
+      "fresh conversation skill behavior"
+    ]
+  },
+  "automated": {
+    "gateway_tests": 905,
+    "host_contract_and_plugin_tests": 92,
+    "claude_guidance_static_tests": 6,
+    "clean_install": [
+      "assistant synthetic demo with published pins",
+      "Claude guidance shadow and enforce routing",
+      "packed gateway installation",
+      "README example against packed gateway"
+    ],
+    "docker": "not run locally: Docker CLI unavailable; retained in CI"
+  },
+  "release": {
+    "gateway_npm": "0.32.3 unchanged; CLI fixes remain unreleased",
+    "verifier_pin": "0.11.0",
+    "public_submissions": "none in this batch"
+  }
+}
