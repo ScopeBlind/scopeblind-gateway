@@ -1,0 +1,127 @@
+{
+  "schema": "protect-mcp.readme-demo.v1",
+  "capturedAt": "2026-10-25T00:57:54.797Z",
+  "node": "v22.22.3",
+  "packages": {
+    "protect-mcp": {
+      "version": "0.32.2",
+      "integrity": "sha512-91DuRi1IMbJuzdt60C0TEeVH0rhdydfal+92T2JemKo7aRYl+iNIT0WZIqaadESUW+EFR7VSUwBv2rr0GkXloQ=="
+    },
+    "@veritasacta/verify": {
+      "version": "0.11.0",
+      "integrity": "sha512-DTnac59XFunHXAZ+n2SpkZwMHN2yaMilJ6nHiIOlRDSuF+QTf5iVtZ5XesNlmD5sprDnUCBSaU0jzBN2iASRhw=="
+    }
+  },
+  "description": "Result summary of a real local run; proposed tools were not executed.",
+  "publicKeySource": "Fresh local key file, supplied explicitly to the verifier; not taken from the receipt. Demo identity only.",
+  "publicKey": "c88debf23f415d47c35d4d1c6c2ca4e59a96052c67e62aabcdc7d55fa52bd738",
+  "receiptLogSha256": "14d25cfc1104d0765926be6eb1f40566a51beb3a026266c50f3119319ff549a8",
+  "receipts": [
+    {
+      "payload": {
+        "type": "protectmcp:decision",
+        "tool_name": "Read",
+        "decision": "allow",
+        "reason": "cedar_allow",
+        "policy_digest": "sha256:46d57bf0461dbbeb16299e6eb7fca5fed1bab244aba00d9abaf227681889f9dd",
+        "scope": "tu-1792889873704-kb8s",
+        "mode": "enforce",
+        "request_id": "tu-1792889873704-kb8s",
+        "spec": "draft-farley-acta-signed-receipts-03",
+        "issuer_certification": "self-signed",
+        "public_key": "c88debf23f415d47c35d4d1c6c2ca4e59a96052c67e62aabcdc7d55fa52bd738",
+        "issuer_name": "protect-mcp",
+        "payload_digest": {
+          "input_hash": "7d6441497d2a000b8143602a7817c90abe7db88e139f89c062a1c36cfe0ad9d6",
+          "input_size": 20,
+          "canonical": "jcs"
+        },
+        "issued_at": "2026-10-25T00:57:53.704Z",
+        "issuer_id": "generated"
+      },
+      "signature": {
+        "alg": "EdDSA",
+        "kid": "generated",
+        "sig": "ba4d37e6489072fe31dd04b12272d73d3e54fe449d0bdb9ebb215cfee5de734a5d2435b89ea6a016fc5beb7815d9218e5b20501d73353f46e98e55535d11d10b"
+      }
+    },
+    {
+      "payload": {
+        "type": "protectmcp:decision",
+        "tool_name": "Bash",
+        "decision": "deny",
+        "reason": "cedar_deny: starter.force-push-main: Force-push to main or master, or a force-push that names no branch. Push a named feature branch instead.",
+        "policy_digest": "sha256:46d57bf0461dbbeb16299e6eb7fca5fed1bab244aba00d9abaf227681889f9dd",
+        "scope": "tu-1792889873918-yxfs",
+        "mode": "enforce",
+        "request_id": "tu-1792889873918-yxfs",
+        "spec": "draft-farley-acta-signed-receipts-03",
+        "issuer_certification": "self-signed",
+        "public_key": "c88debf23f415d47c35d4d1c6c2ca4e59a96052c67e62aabcdc7d55fa52bd738",
+        "issuer_name": "protect-mcp",
+        "previousReceiptHash": "sha256:79a46c2f8d31dd13f4581b0216afb34e7ed7cfc81841482daaea5b8b3eace2c9",
+        "payload_digest": {
+          "input_hash": "2c29a8326969480173c60a2f1083c6dbf5b73aa28539723243a204c8793dc5e9",
+          "input_size": 42,
+          "canonical": "jcs"
+        },
+        "issued_at": "2026-10-25T00:57:53.918Z",
+        "issuer_id": "generated"
+      },
+      "signature": {
+        "alg": "EdDSA",
+        "kid": "generated",
+        "sig": "08990835b2088265879fc1b72c039ee3e185d82193d71705b91ddad7eeff8aa43e306cc868671f10e9c2b777b434b049305bb7a6828001cc89c742e67c17600e"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "name": "allow_read",
+      "exitCode": 0,
+      "stdout": "{\"allowed\":true,\"policy_digest\":\"sha256:46d57bf0461dbbeb16299e6eb7fca5fed1bab244aba00d9abaf227681889f9dd\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "deny_force_push",
+      "exitCode": 2,
+      "stdout": "{\"allowed\":false,\"reason\":\"cedar_deny: starter.force-push-main: Force-push to main or master, or a force-push that names no branch. Push a named feature branch instead.\",\"policy_digest\":\"sha256:46d57bf0461dbbeb16299e6eb7fca5fed1bab244aba00d9abaf227681889f9dd\"}\n",
+      "stderr": "protect-mcp denied: cedar_deny: starter.force-push-main: Force-push to main or master, or a force-push that names no branch. Push a named feature branch instead.\n"
+    },
+    {
+      "name": "sign_allow",
+      "exitCode": 0,
+      "stdout": "{\"signed\":true,\"decision\":\"allow\",\"policy_digest\":\"sha256:46d57bf0461dbbeb16299e6eb7fca5fed1bab244aba00d9abaf227681889f9dd\",\"artifact_type\":\"decision_receipt\",\"request_id\":\"tu-1792889873704-kb8s\",\"log\":\"receipts/receipts.jsonl\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "sign_deny",
+      "exitCode": 0,
+      "stdout": "{\"signed\":true,\"decision\":\"deny\",\"policy_digest\":\"sha256:46d57bf0461dbbeb16299e6eb7fca5fed1bab244aba00d9abaf227681889f9dd\",\"artifact_type\":\"gateway_restraint\",\"request_id\":\"tu-1792889873918-yxfs\",\"log\":\"receipts/receipts.jsonl\"}\n",
+      "stderr": ""
+    },
+    {
+      "name": "verify_chain",
+      "exitCode": 0,
+      "stdout": "{\n  \"total\": 2,\n  \"verified\": 2,\n  \"failed\": 0,\n  \"undecidable\": 0,\n  \"chainBreaks\": 0,\n  \"byTier\": {\n    \"1\": 2,\n    \"2\": 0,\n    \"3\": 0,\n    \"4\": 0,\n    \"5\": 0\n  },\n  \"errors\": [],\n  \"receipts\": [\n    {\n      \"index\": 0,\n      \"valid\": true,\n      \"outcome\": \"valid\",\n      \"tier\": 1,\n      \"kid\": \"generated\",\n      \"type\": \"protectmcp:decision\",\n      \"checks\": {\n        \"signing_input\": {\n          \"result\": \"pass\"\n        },\n        \"signature\": {\n          \"result\": \"pass\"\n        },\n        \"carried_key\": {\n          \"result\": \"pass\"\n        },\n        \"issuer_kid\": {\n          \"result\": \"pass\"\n        },\n        \"chain_link\": {\n          \"result\": \"absent\"\n        },\n        \"key_window\": {\n          \"result\": \"not_established\"\n        }\n      },\n      \"keyStatus\": {\n        \"source\": \"provided\",\n        \"window\": null,\n        \"issued_at\": \"2026-10-25T00:57:53.704Z\",\n        \"applied\": false,\n        \"result\": \"not_established\",\n        \"detail\": \"The key was given directly, so no key source gives it a validity window: its validity at issuance is not established.\"\n      }\n    },\n    {\n      \"index\": 1,\n      \"valid\": true,\n      \"outcome\": \"valid\",\n      \"tier\": 1,\n      \"kid\": \"generated\",\n      \"type\": \"protectmcp:decision\",\n      \"checks\": {\n        \"signing_input\": {\n          \"result\": \"pass\"\n        },\n        \"signature\": {\n          \"result\": \"pass\"\n        },\n        \"carried_key\": {\n          \"result\": \"pass\"\n        },\n        \"issuer_kid\": {\n          \"result\": \"pass\"\n        },\n        \"chain_link\": {\n          \"result\": \"pass\"\n        },\n        \"key_window\": {\n          \"result\": \"not_established\"\n        },\n        \"previous\": {\n          \"result\": \"pass\"\n        }\n      },\n      \"keyStatus\": {\n        \"source\": \"provided\",\n        \"window\": null,\n        \"issued_at\": \"2026-10-25T00:57:53.918Z\",\n        \"applied\": false,\n        \"result\": \"not_established\",\n        \"detail\": \"The key was given directly, so no key source gives it a validity window: its validity at issuance is not established.\"\n      }\n    }\n  ],\n  \"valid\": true,\n  \"legacyLinks\": 0,\n  \"chains\": 1,\n  \"warnings\": [],\n  \"outcome\": \"valid\"\n}\n",
+      "stderr": ""
+    },
+    {
+      "name": "reject_tamper",
+      "exitCode": 1,
+      "stdout": "{\n  \"valid\": false,\n  \"outcome\": \"invalid\",\n  \"checks\": {\n    \"signing_input\": {\n      \"result\": \"pass\"\n    },\n    \"signature\": {\n      \"result\": \"fail\",\n      \"code\": \"invalid_signature\"\n    },\n    \"carried_key\": {\n      \"result\": \"pass\"\n    },\n    \"issuer_kid\": {\n      \"result\": \"pass\"\n    },\n    \"chain_link\": {\n      \"result\": \"pass\"\n    },\n    \"key_window\": {\n      \"result\": \"not_established\"\n    }\n  },\n  \"error\": \"invalid_signature\",\n  \"connectorAction\": null,\n  \"format\": \"passport\",\n  \"type\": \"protectmcp:decision\",\n  \"kid\": \"generated\",\n  \"issuer\": null,\n  \"keySource\": \"provided\",\n  \"publicKey\": \"c88debf23f415d47c35d4d1c6c2ca4e59a96052c67e62aabcdc7d55fa52bd738\",\n  \"algorithm\": \"EdDSA\",\n  \"payloadFields\": {\n    \"decision\": \"allow\",\n    \"scope\": \"tu-1792889873918-yxfs\",\n    \"tool_name\": \"Bash\",\n    \"spec\": \"draft-farley-acta-signed-receipts-03\",\n    \"previousReceiptHash\": \"sha256:79a46c2f8d31dd13f4581b0216afb34e7ed7cfc81841482daaea5b8b3eace2c9\"\n  },\n  \"entitlementAttested\": false,\n  \"entitlementVerifiedByRuntime\": false,\n  \"hash\": \"c19952772361e1881d3a6241d2bd8f10e585bb86b5f6f1efed45f531fcdb364b\",\n  \"canonicalization\": \"jcs\",\n  \"chainLink\": \"sha256\",\n  \"keyStatus\": {\n    \"source\": \"provided\",\n    \"window\": null,\n    \"issued_at\": \"2026-10-25T00:57:53.918Z\",\n    \"applied\": false,\n    \"result\": \"not_established\",\n    \"detail\": \"The key was given directly, so no key source gives it a validity window: its validity at issuance is not established.\"\n  },\n  \"scope\": \"tu-1792889873918-yxfs\",\n  \"tier\": {\n    \"tier\": 0,\n    \"label\": \"T0 not verified\",\n    \"features\": [],\n    \"declaredFeatures\": [\n      \"chain-linkage\"\n    ]\n  },\n  \"modeLabel\": \"Ed25519 Passport envelope (RFC 8032)\",\n  \"specVersion\": \"draft-farley-acta-signed-receipts-03\",\n  \"errorMeta\": {\n    \"code\": \"invalid_signature\",\n    \"description\": \"Cryptographic signature verification failed over the canonical payload.\",\n    \"class\": \"tampered\",\n    \"spec\": \"draft-farley-acta-signed-receipts-03 §6.6 Signature Scope\",\n    \"hint\": \"The receipt has been modified or signed by a different key than the one provided.\"\n  }\n}\n",
+      "stderr": ""
+    },
+    {
+      "name": "reject_embedded_key",
+      "exitCode": 2,
+      "stdout": "{\n  \"valid\": false,\n  \"error\": \"embedded_key_rejected\",\n  \"outcome\": \"undecidable\",\n  \"checks\": {\n    \"signing_input\": {\n      \"result\": \"pass\"\n    },\n    \"signature\": {\n      \"result\": \"undecidable\",\n      \"code\": \"embedded_key_rejected\"\n    },\n    \"issuer_kid\": {\n      \"result\": \"pass\"\n    },\n    \"chain_link\": {\n      \"result\": \"absent\"\n    },\n    \"key_window\": {\n      \"result\": \"not_run\"\n    }\n  },\n  \"format\": \"passport\",\n  \"kid\": \"generated\",\n  \"issuer\": null,\n  \"algorithm\": \"EdDSA\",\n  \"type\": \"protectmcp:decision\",\n  \"keyStatus\": {\n    \"source\": null,\n    \"window\": null,\n    \"issued_at\": \"2026-10-25T00:57:53.704Z\",\n    \"applied\": false,\n    \"result\": \"not_run\",\n    \"detail\": \"No key was resolved, so no validity window applies.\"\n  },\n  \"tier\": {\n    \"tier\": 0,\n    \"label\": \"T0 not verified\",\n    \"features\": [],\n    \"declaredFeatures\": []\n  },\n  \"modeLabel\": \"Ed25519 Passport envelope (RFC 8032)\",\n  \"specVersion\": \"draft-farley-acta-signed-receipts-03\",\n  \"errorMeta\": {\n    \"code\": \"embedded_key_rejected\",\n    \"description\": \"The record carries the key it would be verified with, and no key from outside the file was given. A carried key is not trusted.\",\n    \"class\": \"undecidable\",\n    \"spec\": \"draft-farley-acta-signed-receipts-03 §9.5 Key Distribution and Trust Anchors\",\n    \"hint\": \"Provide --key or --jwks externally. For an Acta receipt, --allow-embedded-key (deprecated) restores pre-0.4.0 behaviour; for a Gate, macro, governed-receipt, pack, repository-evidence, standard or run-manifest file, --allow-carried-key accepts the result, which then proves nothing about who signed. --strict refuses both.\"\n  }\n}\n",
+      "stderr": ""
+    }
+  ],
+  "limits": [
+    "Checks only the supplied records.",
+    "Does not prove tool execution or complete action coverage.",
+    "No third-party identity or authority is established."
+  ]
+}

@@ -11,6 +11,7 @@ Local policy enforcement and signed decision receipts for AI agent tool calls.
 [Quickstart](#try-it-without-an-agent) · [Agent setup](#connect-your-agent) ·
 [Policy packs](docs/local-gateway.md#starter-policy-packs) ·
 [Sample record](docs/local-gateway.md#explore-a-labelled-sample-record) ·
+[Integrations](#integrations-and-contributions) ·
 [Documentation](#documentation) · [Contribute](#contribute)
 
 Put the gateway between an MCP client and its tool server, or use its hooks in a
@@ -31,6 +32,23 @@ verification need no ScopeBlind account and send no decision telemetry.
 A gateway covers calls routed through it. It is not an OS sandbox, and a signed
 receipt does not establish that an action executed or that no action was omitted.
 The [security policy](SECURITY.md) describes the boundary and reporting process.
+
+## See the result
+
+A real local run: evaluate two proposed calls, sign the decisions, verify the
+receipts, then change a signed decision and check it again.
+
+![Five-step result summary: a read is allowed, a proposed force-push is denied, both decisions are signed, their receipts verify, and a modified denial fails signature verification. No proposed tool is executed.](docs/assets/readme-demo.png)
+
+<details>
+<summary>Watch the 14-second walkthrough</summary>
+
+![Animated result summary of the same five steps, based on captured CLI output.](docs/assets/readme-demo.gif)
+
+</details>
+
+[Text walkthrough and reproduction](docs/demo.md) ·
+[Captured results](docs/assets/readme-demo-run.json)
 
 ## Try it without an agent
 
@@ -111,6 +129,17 @@ miss alternate command spellings and can match harmless quoted text. Review the
 [starter policy's coverage and limits](docs/local-gateway.md#start-with-the-starter-policy)
 before relying on it.
 
+## Integrations and contributions
+
+| Project | Connection |
+|---|---|
+| [Microsoft AI Agents for Beginners](https://github.com/microsoft/ai-agents-for-beginners/tree/main/18-securing-ai-agents) | **Educational contribution.** protect-mcp's maintainer authored [Lesson 18](https://github.com/microsoft/ai-agents-for-beginners/pull/533) on signing, verifying and chaining agent receipts. |
+| [Cedar for Agents](https://github.com/cedar-policy/cedar-for-agents/tree/main/rust/cedar-policy-mcp-schema-generator-wasm) | **Upstream contribution.** Contributed the [WASM bindings](https://github.com/cedar-policy/cedar-for-agents/pull/64) that expose Cedar's Rust MCP schema generator to JavaScript and TypeScript. |
+| [wshobson/agents](https://github.com/wshobson/agents/tree/main/plugins/protect-mcp) | **Downstream integration.** Ships a protect-mcp plugin with Claude Code policy and receipt hooks. |
+| [TRACE](https://github.com/agentrust-io/trace-spec/tree/main/examples/action-receipts/acta) | **Interoperability checks.** Publishes Acta decision-receipt fixtures; our verifier [reports its results](https://github.com/VeritasActa/verify/blob/9d0fb12303212ac8bf6d94dcb101183f57477b14/docs/trace-fixtures.md) against a pinned snapshot. |
+
+[Sources, versions and check coverage](docs/ecosystem.md).
+
 ## Upgrading from 0.31
 
 0.32.0 closes several ways around the gate. Some of them change how you start it:
@@ -142,6 +171,9 @@ See the [changelog](CHANGELOG.md) for every change.
 - [Receipt and disclosure guide](docs/receipts.md): local records, selective
   disclosure and optional hosted digest anchoring.
 - [Command reference](docs/commands.md).
+- [Reproducible visual demo](docs/demo.md): captured results and rendering scripts.
+- [Integrations and contributions](docs/ecosystem.md): source links, versions
+  and the scope of published interoperability checks.
 - [Hosted coordination](docs/hosted-coordination.md): separate human approvals,
   invoice sandbox and repository review workflows.
 - [Release validation and provenance](docs/releases.md).
