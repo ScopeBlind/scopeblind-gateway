@@ -7,10 +7,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://127.0.0.1:9377/hook -H 'Content-Type: application/json' -d @-"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/relay.mjs",
+              "PreToolUse"
+            ],
+            "timeout": 15,
+            "onFailure": "block"
           }
-        ],
-        "description": "Send tool call to protect-mcp for Cedar policy evaluation and receipt signing"
+        ]
       }
     ],
     "PostToolUse": [
@@ -19,10 +24,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "curl -s -X POST http://127.0.0.1:9377/hook -H 'Content-Type: application/json' -d @-"
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/relay.mjs",
+              "PostToolUse"
+            ],
+            "timeout": 15
           }
-        ],
-        "description": "Record tool result and sign receipt for audit trail"
+        ]
       }
     ]
   }

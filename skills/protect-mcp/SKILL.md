@@ -17,7 +17,18 @@ can sign the resulting decision records. A receipt authenticates signed bytes
 under the expected key. It does not establish that a tool executed, that the
 record includes every action, or that the signer was entitled to approve it.
 
-## Set up Claude Code hooks
+## Choose the installation path
+
+If this skill came from the enabled protect-mcp plugin, follow the
+[plugin setup](../../docs/claude-plugin.md). The plugin already registers its
+hooks. Do not run `init-hooks` as well: duplicate hooks create duplicate
+decisions. Start its local gate from the intended project, then verify a real
+host call. Require Claude Code 2.1.295 or later for blocking hook failures.
+
+For a standalone project installation without the plugin, use the steps below.
+Do not change the user's existing installation path without checking it first.
+
+## Set up standalone Claude Code hooks
 
 Run from the intended project directory. Inspect existing configuration before
 changing it, and preserve the user's policy and signing keys.

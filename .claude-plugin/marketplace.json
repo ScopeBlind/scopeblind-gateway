@@ -5,21 +5,21 @@
     "url": "https://scopeblind.com"
   },
   "metadata": {
-    "description": "ScopeBlind governance plugins for Claude Code: a fail-closed policy gate that signs every decision, and an offline verifier that checks those decisions with no vendor trust.",
+    "description": "Local policy checks and offline receipt verification for Claude Code. Coverage depends on the configured hooks and tools; verification requires the expected signing key.",
     "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "protect-mcp",
       "source": "./",
-      "description": "Fail-closed Cedar policy gate plus Ed25519 signed receipts for every tool call. Denies on any policy error, proves the gate is live with a startup self-test, and lets you inspect and edit the policy from the CLI. Receipts verify offline with no vendor trust.",
-      "version": "0.32.2",
+      "description": "Check routed Claude Code tool calls against local Cedar policies and record signed decisions. Requires Claude Code 2.1.295 or later and a running local gate. Includes explicit MCP evaluation and receipt tools.",
+      "version": "0.32.3",
       "author": {
         "name": "ScopeBlind",
         "url": "https://scopeblind.com"
       },
       "license": "MIT",
-      "homepage": "https://scopeblind.com",
+      "homepage": "https://scopeblind.com/protect-mcp",
       "keywords": [
         "security",
         "mcp",

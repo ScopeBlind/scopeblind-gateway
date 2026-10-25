@@ -107,10 +107,21 @@ Choose the integration that matches your host. For Claude Code, the
 an installation preview, local diagnostics and reversible removal. `doctor`
 checks configuration; confirm enforcement with a real call from your host.
 
+For the Claude Code plugin, first [prepare and start the local gate](docs/claude-plugin.md),
+then install it in your project (Claude Code 2.1.295 or later):
+
+```sh
+claude plugin install protect-mcp --marketplace ScopeBlind/scopeblind-gateway --scope project
+```
+
+The plugin blocks routed tool calls while its gate is unavailable. Choose the
+plugin or standalone project hooks, so the same call is not recorded twice.
+
 | Use case | Start here |
 |---|---|
 | Wrap an existing MCP server | [MCP setup and shadow-to-enforce workflow](docs/local-gateway.md#connect-your-mcp-server) |
-| Claude Code hooks | [Hook setup](docs/local-gateway.md#claude-code-hook-quickstart) |
+| Claude Code plugin | [Plugin setup and local gate](docs/claude-plugin.md) |
+| Claude Code project hooks | [Hook setup](docs/local-gateway.md#claude-code-hook-quickstart) |
 | Codex, Cursor, Gemini or Hermes hooks | [Host payload formats](docs/local-gateway.md#use-it-in-other-agents-codex-cursor-gemini-hermes) |
 | Call the policy evaluator as MCP tools | [The gate as an MCP server](docs/local-gateway.md#the-gate-as-an-mcp-server) |
 | Host an HTTP gateway | [HTTP deployment notes](docs/CLOUD-QUICKSTART.md) |

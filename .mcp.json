@@ -3,12 +3,13 @@
     "protect-mcp": {
       "command": "npx",
       "args": [
-        "-y",
-        "protect-mcp",
-        "serve",
-        "--enforce"
+        "--yes",
+        "protect-mcp@0.32.3",
+        "mcp"
       ],
-      "description": "Ed25519 receipt signing + Cedar policy enforcement for tool calls"
+      "env": {
+        "PROTECT_MCP_VERSION": "0.32.3"
+      }
     }
   }
 }
