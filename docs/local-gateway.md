@@ -124,9 +124,8 @@ and the per-launch token the page carries. A script that posted to its API must
 send the same.
 ## Explore a labelled sample record
 
-[![Watch the two-minute demo film](https://scopeblind.com/media/scopeblind-demo-poster.jpg)](https://scopeblind.com/film)
-
-Watch the two-minute film at [scopeblind.com/film](https://scopeblind.com/film), then replay it against your own copy:
+Create a local sample record, then inspect and verify it with your own copy of
+the tools:
 
 ```bash
 npx protect-mcp sample     # seed a labeled sample record (8 decisions: 1 blocked, 2 payments)

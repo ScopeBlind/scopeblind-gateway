@@ -3,8 +3,15 @@
 Local policy enforcement and signed decision receipts for AI agent tool calls.
 
 [![npm version](https://img.shields.io/npm/v/protect-mcp)](https://www.npmjs.com/package/protect-mcp)
-[![Package checks](https://github.com/ScopeBlind/scopeblind-gateway/actions/workflows/validate-release.yml/badge.svg)](https://github.com/ScopeBlind/scopeblind-gateway/actions/workflows/validate-release.yml)
+[![Monthly npm downloads](https://img.shields.io/npm/dm/protect-mcp)](https://www.npmjs.com/package/protect-mcp)
+[![Node.js compatibility](https://img.shields.io/node/v/protect-mcp)](https://www.npmjs.com/package/protect-mcp)
+[![Package checks](https://github.com/ScopeBlind/scopeblind-gateway/actions/workflows/validate-release.yml/badge.svg?branch=main)](https://github.com/ScopeBlind/scopeblind-gateway/actions/workflows/validate-release.yml?query=branch%3Amain)
 [![MIT license](https://img.shields.io/npm/l/protect-mcp)](LICENSE)
+
+[Quickstart](#try-it-without-an-agent) · [Agent setup](#connect-your-agent) ·
+[Policy packs](docs/local-gateway.md#starter-policy-packs) ·
+[Sample record](docs/local-gateway.md#explore-a-labelled-sample-record) ·
+[Documentation](#documentation) · [Contribute](#contribute)
 
 Put the gateway between an MCP client and its tool server, or use its hooks in a
 coding agent. Review a [Cedar](https://www.cedarpolicy.com/) policy, enable
@@ -15,7 +22,8 @@ verification need no ScopeBlind account and send no decision telemetry.
   errors or evaluation errors in fail-closed mode. Shadow mode is the default
   for the MCP wrapper: use `--enforce` when ready to block.
 - **Check what was signed.** Ed25519 receipts include the decision and policy
-  digest. A separate verifier checks the bytes against the public key you trust.
+  digest. [@veritasacta/verify](https://github.com/VeritasActa/verify) checks the
+  bytes against the public key you trust.
 - **Start with existing tools.** Use MCP stdio, the HTTP gateway or coding-agent
   hooks. Optional [hosted collaboration](docs/hosted-coordination.md) has its own
   permissions and data flows.
