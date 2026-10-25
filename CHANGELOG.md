@@ -1,4 +1,9 @@
-## 0.32.4: output through a pipe arrives whole, chain links have the sha256: form, and hook payloads are checked
+## 0.32.4: two fail-open fixes (GHSA-xf4c-59j2-hgf2), output through a pipe arrives whole, chain links have the sha256: form, and hook payloads are checked
+
+### Security: GHSA-xf4c-59j2-hgf2
+
+- **Flags in the `--flag=value` form are read.** In 0.32.3 and earlier every flag written with `=` was silently dropped. A gateway started as `protect-mcp --enforce --cedar=./rules -- <server>`, or a hook server started as `protect-mcp serve --enforce --cedar=./rules`, ran without that policy and allowed calls the rules forbid, and `evaluate --format=claude` ignored the hook payload and evaluated an empty tool name. Every command now reads `--flag=value` as `--flag value`, a value given to a switch (`--enforce=false`) is refused with exit 2, and `evaluate` denies a call that names no tool before any policy is consulted. Commands that gave each flag and its value as separate arguments were not affected.
+- **The plugin relays always run their check.** The Claude Code plugin's relay in this repository (`hooks/relay.mjs`, not part of the npm package) exited 0 with no output when it was started through a path containing a symbolic link, such as a symlinked `~/.claude` or `CLAUDE_CONFIG_DIR`, so Claude Code went ahead without a check or a receipt. The Cursor preview's relay did the same for a path that differed only in letter case. Both entry files now always run the relay, which still fails closed when the gate is unreachable. Reinstall either plugin to pick this up; the Cursor installer refuses managed files that differ, so remove and add it again.
 
 ### Upgrading from 0.32.3: hook formats
 

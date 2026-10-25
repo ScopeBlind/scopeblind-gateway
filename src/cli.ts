@@ -4152,6 +4152,14 @@ async function handleEvaluate(argv: string[]): Promise<void> {
     } catch { emitDecision(format, false, 'invalid_hook_payload'); }
   }
 
+  // A call that names no tool cannot be matched to a rule, and under a default-allow policy an empty name was allowed.
+  // Deny it, whether the name was missing from the flags or from the hook payload, before any policy is consulted.
+  if (!tool.trim()) {
+    if (format) emitDecision(format, false, 'missing_tool_name');
+    process.stderr.write('protect-mcp evaluate: no tool name (give --tool <name>, or a hook payload with --format); denying (fail-closed).\n');
+    process.exit(2);
+  }
+
   const policySet = loadPolicyArg(argv);
   if (!policySet) {
     if (failOnMissing) {
@@ -4856,9 +4864,47 @@ async function handleEgressCheck(argv: string[]): Promise<void> {
   if (!report.raw_content_dropped || !report.private_key_dropped || !report.deny_receipt_forwardable || unsafe.length > 0) process.exitCode = 1;
 }
 
+/**
+ * Options this CLI reads only as a bare switch, never with a value. Given one as `--switch=value`, the run is refused
+ * rather than guessed: `init-hooks --uninstall=false` must not uninstall, and `--enforce=false` must not be read as
+ * either answer.
+ */
+const VALUELESS_SWITCHES = new Set([
+  '--all', '--anchor', '--check-anchor', '--claude', '--claude-desktop', '--connect', '--contain', '--delete-data',
+  '--delete-keys', '--disable-enforcement', '--dry-run', '--enforce', '--force', '--help', '--hosted', '--http',
+  '--install', '--json', '--link-stdin', '--live', '--no-open', '--offline', '--open', '--replace-connection',
+  '--require-anchor', '--starter', '--today', '--uninstall', '--verbose', '--version', '--watch', '--write', '--yes',
+]);
+
+/**
+ * Reads `--flag=value` as `--flag value`, for every option before a `--` separator. Every parser in this CLI reads an
+ * option and its value as two arguments, and up to 0.32.4 a `--flag=value` argument matched no option at all: it was
+ * ignored, or warned about and ignored. So `evaluate --format=claude` read neither the format nor the hook payload on
+ * stdin, evaluated an empty tool name and allowed the call, and `--cedar=<dir>` or `--policy=<file>` ran without that
+ * policy. Arguments after `--` belong to the wrapped command and are left as they are. Returns the switch given a value,
+ * if there is one, so the caller can refuse the run.
+ */
+function splitInlineValues(args: string[]): { args: string[] } | { refused: string } {
+  const out: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--') { out.push(...args.slice(i)); break; }
+    const inline = /^(--[A-Za-z0-9][A-Za-z0-9-]*)=([\s\S]*)$/.exec(arg);
+    if (!inline) { out.push(arg); continue; }
+    if (VALUELESS_SWITCHES.has(inline[1])) return { refused: inline[1] };
+    out.push(inline[1], inline[2]);
+  }
+  return { args: out };
+}
+
 async function main(): Promise<void> {
-  // Skip node + script path
-  const args = process.argv.slice(2);
+  // Skip node + script path. `--flag=value` reads as `--flag value` (splitInlineValues).
+  const split = splitInlineValues(process.argv.slice(2));
+  if ('refused' in split) {
+    process.stderr.write(`protect-mcp: ${split.refused} takes no value; give it as ${split.refused} alone. Nothing was done (exit 2).\n`);
+    return exitWhenWritten(2);
+  }
+  const args = split.args;
 
   // Read-only diagnostics and previews must remain read-only even for an
   // operator who previously opted into install telemetry for other commands.

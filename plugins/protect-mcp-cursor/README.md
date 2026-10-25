@@ -195,7 +195,7 @@ node --test scripts/cursor-plugin.test.mjs
 ```
 
 `lib/gate-client.mjs` is a generated exact copy of the canonical
-`hooks/relay.mjs` in the gateway repository. After a transport change, regenerate
+`hooks/relay-core.mjs` in the gateway repository. After a transport change, regenerate
 with `node scripts/cursor-plugin-sync.mjs --write` and run both host suites.
 This keeps the package self-contained without maintaining a second transport.
 

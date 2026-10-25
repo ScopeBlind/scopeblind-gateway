@@ -4195,6 +4195,11 @@ async function handleEvaluate(argv) {
       emitDecision(format, false, "invalid_hook_payload");
     }
   }
+  if (!tool.trim()) {
+    if (format) emitDecision(format, false, "missing_tool_name");
+    process.stderr.write("protect-mcp evaluate: no tool name (give --tool <name>, or a hook payload with --format); denying (fail-closed).\n");
+    process.exit(2);
+  }
   const policySet = loadPolicyArg(argv);
   if (!policySet) {
     if (failOnMissing) {
@@ -4953,8 +4958,67 @@ ${bold("protect-mcp egress-check")}  ${dim('(the "no raw data leaves the box" he
   process.stdout.write("\n");
   if (!report.raw_content_dropped || !report.private_key_dropped || !report.deny_receipt_forwardable || unsafe.length > 0) process.exitCode = 1;
 }
+var VALUELESS_SWITCHES = /* @__PURE__ */ new Set([
+  "--all",
+  "--anchor",
+  "--check-anchor",
+  "--claude",
+  "--claude-desktop",
+  "--connect",
+  "--contain",
+  "--delete-data",
+  "--delete-keys",
+  "--disable-enforcement",
+  "--dry-run",
+  "--enforce",
+  "--force",
+  "--help",
+  "--hosted",
+  "--http",
+  "--install",
+  "--json",
+  "--link-stdin",
+  "--live",
+  "--no-open",
+  "--offline",
+  "--open",
+  "--replace-connection",
+  "--require-anchor",
+  "--starter",
+  "--today",
+  "--uninstall",
+  "--verbose",
+  "--version",
+  "--watch",
+  "--write",
+  "--yes"
+]);
+function splitInlineValues(args) {
+  const out = [];
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--") {
+      out.push(...args.slice(i));
+      break;
+    }
+    const inline = /^(--[A-Za-z0-9][A-Za-z0-9-]*)=([\s\S]*)$/.exec(arg);
+    if (!inline) {
+      out.push(arg);
+      continue;
+    }
+    if (VALUELESS_SWITCHES.has(inline[1])) return { refused: inline[1] };
+    out.push(inline[1], inline[2]);
+  }
+  return { args: out };
+}
 async function main() {
-  const args = process.argv.slice(2);
+  const split = splitInlineValues(process.argv.slice(2));
+  if ("refused" in split) {
+    process.stderr.write(`protect-mcp: ${split.refused} takes no value; give it as ${split.refused} alone. Nothing was done (exit 2).
+`);
+    return exitWhenWritten(2);
+  }
+  const args = split.args;
   const readOnlySetup = args[0] === "doctor" || args[0] === "init-hooks" && args.includes("--dry-run");
   if (!readOnlySetup) await sendInstallTelemetry();
   process.env.PROTECT_MCP_VERSION = process.env.PROTECT_MCP_VERSION || await pkgVersion();

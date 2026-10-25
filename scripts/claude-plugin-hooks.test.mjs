@@ -7,12 +7,13 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, readFile, writeFile, rm, rename } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, rename, symlink } from 'node:fs/promises';
+import { existsSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { generateKeyPairSync } from 'node:crypto';
-import { parsePort, relay, validateInput } from '../hooks/relay.mjs';
+import { parsePort, relay, validateInput } from '../hooks/relay-core.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const relayPath = join(root, 'hooks', 'relay.mjs');
@@ -32,9 +33,9 @@ async function server(t, handler) {
   return String(instance.address().port);
 }
 
-function invoke(event, payload, port, extraEnv = {}) {
+function invoke(event, payload, port, extraEnv = {}, script = relayPath) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [relayPath, event], { env: { PATH: process.env.PATH, PROTECT_MCP_HOOK_PORT: port, ...extraEnv }, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, [script, event], { env: { PATH: process.env.PATH, PROTECT_MCP_HOOK_PORT: port, ...extraEnv }, stdio: ['pipe', 'pipe', 'pipe'] });
     let stdout = '', stderr = '';
     child.stdout.on('data', chunk => { stdout += chunk; });
     child.stderr.on('data', chunk => { stderr += chunk; });
@@ -251,4 +252,32 @@ test('real released gate denies an allow when its signed receipt cannot be recor
   await rename(receiptPath, receiptPath + '.saved');
   await mkdir(receiptPath);
   denied(await invoke('PreToolUse', input(), gate.port));
+});
+
+// The hook entry always runs the relay. It used to run only when its module URL matched process.argv[1], and Node
+// resolves symbolic links for the module but not for argv: through a symlinked plugin directory (a linked
+// ~/.claude, CLAUDE_CONFIG_DIR or --plugin-dir) the hook exited 0 with no output and the gate was never asked.
+async function closedPort() {
+  const instance = http.createServer();
+  instance.listen(0, '127.0.0.1');
+  await once(instance, 'listening');
+  const { port } = instance.address();
+  await new Promise(resolve => instance.close(resolve));
+  return String(port);
+}
+test('the hook runs, and blocks with the gate stopped, when invoked through a symlinked plugin directory', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'protect-claude-link-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await symlink(root, join(dir, 'plugin'));
+  const port = await closedPort();
+  for (const script of [join(dir, 'plugin', 'hooks', 'relay.mjs'), relayPath]) {
+    denied(await invoke('PreToolUse', input(), port, {}, script), /connection_failed|unreachable|gate/);
+  }
+});
+test('the hook runs, and blocks with the gate stopped, when invoked through a case-variant path', async t => {
+  // Only a case-insensitive file system (the macOS default) has such a path.
+  const real = realpathSync(relayPath);
+  const variant = real.replace(/hooks([/\\]relay\.mjs)$/, 'HOOKS$1');
+  if (variant === real || !existsSync(variant)) { t.skip('case-sensitive file system'); return; }
+  denied(await invoke('PreToolUse', input(), await closedPort(), {}, variant), /connection_failed|unreachable|gate/);
 });
