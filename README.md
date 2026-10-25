@@ -8,7 +8,7 @@ Local policy enforcement and signed decision receipts for AI agent tool calls.
 [![Package checks](https://github.com/ScopeBlind/scopeblind-gateway/actions/workflows/validate-release.yml/badge.svg?branch=main)](https://github.com/ScopeBlind/scopeblind-gateway/actions/workflows/validate-release.yml?query=branch%3Amain)
 [![MIT license](https://img.shields.io/npm/l/protect-mcp)](LICENSE)
 
-[Quickstart](#try-it-without-an-agent) · [Agent setup](#connect-your-agent) ·
+[Developer page](https://scopeblind.com/protect-mcp) · [Quickstart](#try-it-without-an-agent) · [Agent setup](#connect-your-agent) ·
 [Policy packs](docs/local-gateway.md#starter-policy-packs) ·
 [Sample record](docs/local-gateway.md#explore-a-labelled-sample-record) ·
 [Integrations](#integrations-and-contributions) ·
@@ -58,7 +58,7 @@ Use Node.js 22 and npm in a new directory. Install the pinned gateway and verifi
 mkdir protect-mcp-demo
 cd protect-mcp-demo
 npm init -y
-npm install --save-exact protect-mcp@0.32.2 @veritasacta/verify@0.11.0
+npm install --save-exact protect-mcp@0.32.3 @veritasacta/verify@0.11.0
 ```
 
 This example evaluates two proposed calls and signs their decisions. It does not
@@ -102,7 +102,10 @@ verifier. See [validation and releases](docs/releases.md).
 
 ## Connect your agent
 
-Choose the integration that matches your host:
+Choose the integration that matches your host. For Claude Code, the
+[hook setup guide](docs/local-gateway.md#claude-code-hook-quickstart) now includes
+an installation preview, local diagnostics and reversible removal. `doctor`
+checks configuration; confirm enforcement with a real call from your host.
 
 | Use case | Start here |
 |---|---|
@@ -116,8 +119,8 @@ For an existing MCP server, initialize its configuration in a separate directory
 from the example above, then run the wrapper with your server command:
 
 ```sh
-npx --yes protect-mcp@0.32.2 init
-npx --yes protect-mcp@0.32.2 --policy ./protect-mcp.json -- node your-mcp-server.js
+npx --yes protect-mcp@0.32.3 init
+npx --yes protect-mcp@0.32.3 --policy ./protect-mcp.json -- node your-mcp-server.js
 ```
 
 This starts in **shadow mode**. Review the observed calls and policy before
@@ -180,6 +183,11 @@ See the [changelog](CHANGELOG.md) for every change.
 - [Changes by version](CHANGELOG.md).
 
 ## Contribute
+
+Start with a bounded [help-wanted task](https://github.com/ScopeBlind/scopeblind-gateway/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22):
+[one real host capture](https://github.com/ScopeBlind/scopeblind-gateway/issues/16),
+[another clean-package runtime](https://github.com/ScopeBlind/scopeblind-gateway/issues/17), or
+[one tested policy recipe](https://github.com/ScopeBlind/scopeblind-gateway/issues/18).
 
 Bug reports, minimal reproductions, documentation fixes and compatibility tests
 are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and checks, and

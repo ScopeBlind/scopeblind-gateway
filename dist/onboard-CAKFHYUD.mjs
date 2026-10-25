@@ -345,7 +345,7 @@ async function handleOffboard(argv) {
     out(yellow("  config, policies, keys, or receipts. It only removes protect-mcp hooks (below)."));
     out(yellow("  If you really want the local data or keys gone, pass --delete-data / --delete-keys."));
   }
-  const settingsPath = join(process.cwd(), ".claude", "settings.json");
+  const settingsPath = join(dir, ".claude", "settings.json");
   const hookHits = disable ? countProtectHooks(settingsPath) : 0;
   out();
   out(bold("  protect-mcp offboard") + " will remove, in " + dir + ":");

@@ -2,9 +2,14 @@
 
 [Quickstart](../README.md) · [Local gateway guide](local-gateway.md) · [Hosted coordination](hosted-coordination.md)
 
+For a first Claude Code setup, follow the [recommended hook workflow](local-gateway.md#claude-code-hook-quickstart):
+preview the changes, install, check locally, then run the server and verify a
+real host call. The commands below cover other workflows as well.
+
 | Command | Description |
 |---------|-------------|
 | `serve` | Start the HTTP hook server for Claude Code (port 9377). `--enforce` runs the restraint self-test first; `--cedar <dir>` and `--policy <path>` select the policy. |
+| `init-hooks` | Install Claude Code HTTP hooks without replacing unrelated settings. `--dry-run` previews without writing files; `--uninstall` removes only unchanged entries tracked by the installer. Policies, keys and records are retained. `--dir <path>` selects the project and `--port <port>` selects the local hook port. |
 | `init` | Generate an Ed25519 keypair (`keys/gateway.json`, mode 0600 in a 0700 folder), a config template, and a sample policy. `init --starter` instead writes `./protect.cedar` from the starter policy and creates `./protect-mcp.key`; `--contain` adds the only-inside-this-folder rules. |
 | `sample` | Seed a clearly-labeled sample record (8 decisions: one blocked call, two payments; kid `sample-demo`) plus a tampered copy, so `record`, `claim`, `verify-claim`, and `anchor-record` are replayable from scratch before wiring an agent. Refuses to touch an existing record; `--force` overrides. |
 | `policy` | See and change the Cedar policy from the terminal: `policy list` (permit / forbid / default-deny per tool, with how often the gate allowed or denied it), `policy show`, `policy allow <tool>`, `policy deny <tool>`, `policy path`. A running `serve` hot-reloads on the change. |
@@ -20,10 +25,10 @@
 | `verify-disclosure` | Verify a `scopeblind.selective_disclosure.v0` package and explain disclosed versus hidden fields. |
 | `policy-packs` | List, inspect, and install starter Cedar policy packs. |
 | `evaluate` | Evaluate one tool call against a Cedar policy (PreToolUse gate). Exit 2 = deny (fail-closed), exit 0 = allow. On a deny the rule's `@id` and `@reason` go to stderr. `--policy builtin:starter` uses the bundled starter policy. |
-| `sign` | Sign one tool call into a receipt (PostToolUse). Best-effort: records an honest unsigned line if no key. |
+| `sign` | Record one decision, optionally evaluating Cedar with `--cedar`. With a key it signs a receipt; without one it records an unsigned line. `--receipts <dir>` writes `<dir>/receipts.jsonl`; otherwise it uses `.protect-mcp-receipts.jsonl` under `--dir`. This command does not execute the proposed tool. |
 | `simulate` | Dry-run a policy against a recorded decision log to see what it would have blocked. |
 | `demo` | Start a built-in demo server wrapped with the gate, to see receipts instantly. |
-| `doctor` | Check your setup (keys, policies, Cedar engine, verifier) and run the restraint self-test. |
+| `doctor` | Check local configuration, keys, policies, receipt files and the installed Cedar evaluator. `--dir`, `--policy` and `--cedar` select the setup; `--json` emits structured results. No network or package installation by default. `--hosted` adds an explicit ScopeBlind API health check. It does not establish that the host loaded its hooks. |
 | `bundle` | Export an offline-verifiable audit bundle of receipts plus the public key. |
 | `report` | Generate a compliance report (Markdown or JSON) from the decision log and receipts. |
 
@@ -34,4 +39,9 @@ needs `Authorization: Bearer <token>`, with the token from
 `PROTECT_MCP_HTTP_TOKEN` (at least 32 characters) or the one it prints; `--host`
 exposes it beyond this machine. `--cedar` with `--policy` applies both.
 
-Run `npx protect-mcp --help` for the full flag reference.
+`doctor` exits **0** when its local configured checks pass, **1** for a missing
+or broken selected setup or a failed check, and **2** for invalid flags. A
+`not_checked` result remains unestablished, even when other checks pass.
+Relative paths resolve from `--dir` (the current directory by default).
+
+Run `npx --yes protect-mcp@0.32.3 --help` for the full flag reference.

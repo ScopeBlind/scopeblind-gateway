@@ -276,7 +276,10 @@ context: inline
 
 # ScopeBlind Receipt Verification
 
-Every AI agent tool call gets a cryptographic receipt. Verify offline. No vendor trust required.
+Check supplied signed receipts against a public key obtained separately. The
+record covers calls received by the configured gateway; signatures do not prove
+that every action was recorded or executed. A local decision log is not itself
+a signed receipt.
 
 When the user asks to verify receipts or check the audit trail:
 
@@ -289,10 +292,18 @@ When the user asks to verify receipts or check the audit trail:
    tail -n 20 .protect-mcp-log.jsonl | jq -r '[.tool, .decision, .reason_code, .hook_event // "stdio"] | @tsv'
    \`\`\`
 
-3. **Verify receipt signatures:**
+3. **Verify receipt signatures and links:** For your own local demo, take the
+   public key from your separate signing-key file. Do not copy the private key.
+   For another party's record, obtain their expected public key through a trusted
+   channel outside the receipt and set PROTECT_MCP_PUBLIC_KEY to that value.
    \`\`\`bash
-   npx @veritasacta/verify .protect-mcp-receipts.jsonl --format jsonl
+   PROTECT_MCP_PUBLIC_KEY=$(node -p 'JSON.parse(require("fs").readFileSync("keys/gateway.json", "utf8")).publicKey')
+   npx --yes @veritasacta/verify@0.11.0 --replay-chain .protect-mcp-receipts.jsonl --key "$PROTECT_MCP_PUBLIC_KEY" --json
    \`\`\`
+   The pinned verifier is fetched during its first installation; verification
+   itself is local. Exit 0 is valid, 1 invalid, and 2 not checked/error. Do not
+   describe an embedded-key result as independently authenticated. Chain replay
+   checks supplied links, not whether an entire history was supplied.
 
 4. **Show swarm topology (if multi-agent):**
    \`\`\`bash

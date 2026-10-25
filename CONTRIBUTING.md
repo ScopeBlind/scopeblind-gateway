@@ -56,10 +56,24 @@ example on pull requests and `main`. Do not put real service secrets in tests.
 
 ## Good starting points
 
-- Reproduce a reported problem with the current npm release and a minimal input.
-- Improve a guide after following it in an empty directory.
-- Add a compatibility fixture for an existing supported host or receipt producer,
-  with expected results for both the valid case and a relevant failure.
+Choose one bounded task from the
+[help-wanted issues](https://github.com/ScopeBlind/scopeblind-gateway/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22),
+or report a reproducible onboarding problem. Say which host and version you use
+before starting a compatibility task so another contributor can pick a different
+one. Useful contributions include:
+
+| Contribution | Useful evidence | Where to start |
+|---|---|---|
+| Follow the setup in a clean project | Exact command, expected result, actual result, OS, Node and package version | [Local setup guide](docs/local-gateway.md#claude-code-hook-quickstart) |
+| Capture one supported host's hook contract | Sanitized allow/deny payloads, host version, output and evidence the host actually blocked the harmless test action | `src/cli-format.test.ts` |
+| Exercise another supported runtime | Packed-package installation, allow/deny/sign/verify/tamper result and exact runtime versions | `scripts/release-install-check.mjs`, `scripts/readme-smoke.mjs` |
+| Add one useful policy recipe | Permitted action, denied action, harmless look-alike and missing-field behavior, evaluated by the real Cedar engine | `src/policy-packs.test.ts`, `docs/local-gateway.md` |
+
+Host fixtures should use a disposable project with synthetic data. Remove private
+paths, identifiers, prompts and credentials, and document replacements that
+preserve the event shape. A CLI fixture test is not evidence that a real host
+loaded or obeyed its hooks; label the two checks separately. No private customer
+records or hosted account are needed for the committed fixture tests.
 
 Prefer a small pull request with one purpose over a broad cleanup. Generated
 `dist/` files are tracked: run `npm run build` when changing source and include

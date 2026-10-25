@@ -1,8 +1,8 @@
 {
   "name": "protect-mcp",
-  "version": "0.32.2",
+  "version": "0.32.3",
   "mcpName": "com.scopeblind/protect-mcp",
-  "description": "Cedar policy enforcement and signed receipts for AI agent tool calls, guided repository review, bounded coding work and exact human approvals. Built by ScopeBlind.",
+  "description": "Local Cedar policy enforcement and signed decision receipts for AI agent tool calls.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "module": "dist/index.mjs",
@@ -35,7 +35,8 @@
     "LICENSE",
     "PATENTS.md",
     "CONTRIBUTING.md",
-    "GOVERNANCE.md"
+    "GOVERNANCE.md",
+    "skills"
   ],
   "keywords": [
     "scopeblind",
@@ -64,7 +65,7 @@
   ],
   "author": "Tom Farley <tommy@scopeblind.com>",
   "license": "MIT",
-  "homepage": "https://scopeblind.com",
+  "homepage": "https://scopeblind.com/protect-mcp",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ScopeBlind/scopeblind-gateway.git"
