@@ -59,7 +59,7 @@ export class ProtectGateway {
   private clientReader: Interface | null = null;
   private logFilePath: string;
   private receiptFilePath: string;
-  /** s5.7 hash of the last line appended to the receipt file (chain link) */
+  /** The draft section 6.7 link to the last line appended to the receipt file: "sha256:" + the hex SHA-256 of its JCS bytes. */
   private lastReceiptHash: string | null = null;
   /** Set once the server has exited (or never started) and the gateway is on its way out. */
   private exitStarted = false;
@@ -668,7 +668,7 @@ export class ProtectGateway {
         // receipt did not land in the log is refused (refuseUnsigned).
         try {
           appendFileSync(this.receiptFilePath, signed.signed + '\n');
-          if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
+          if (signed.chain_link) this.lastReceiptHash = signed.chain_link;
         } catch (err) {
           recordFailed = true;
           process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}\n`);

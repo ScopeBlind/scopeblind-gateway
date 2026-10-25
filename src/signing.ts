@@ -151,8 +151,10 @@ export function ensurePrivateKeyDir(dir: string): void {
  * Returns the signed envelope JSON string, or null if signing is not
  * configured. On signing failure, returns an unsigned result with a warning.
  *
- * @param prevReceiptHash - Optional s5.7 chain link: the receiptHash of the
- *   previous line in the receipt log this envelope will be appended to.
+ * @param prevReceiptHash - Optional draft section 6.7 chain link to the previous
+ *   line in the receipt log this envelope will be appended to: "sha256:" + the
+ *   lowercase hex SHA-256 of that line's JCS bytes, as chainLink() computes it
+ *   and as chain_link returns it for the receipt this call signs.
  *
  * @standard draft-farley-acta-signed-receipts-02, RFC 8032 (Ed25519), RFC 8785 (JCS)
  */
@@ -160,7 +162,8 @@ export function signDecision(entry: DecisionLog, prevReceiptHash?: string): {
   ok: boolean;            // true only when a signature was actually produced
   signed: string | null;
   artifact_type: string;
-  receipt_hash?: string;  // s5.7 hash of the emitted envelope (chain link for the next receipt)
+  receipt_hash?: string;  // bare lowercase hex SHA-256 of the emitted envelope's JCS bytes: the receipt's identifier
+  chain_link?: string;    // the link the next receipt carries as previousReceiptHash: "sha256:" + receipt_hash (draft section 6.7)
   warning?: string;
   error?: string;         // set only when a signer IS configured but signing failed
 } {
@@ -266,6 +269,10 @@ export function signDecision(entry: DecisionLog, prevReceiptHash?: string): {
       signed: JSON.stringify(result.envelope),
       artifact_type: artifactType,
       receipt_hash: result.hash,
+      // result.hash is receiptHash(envelope), so this is chainLink(envelope). Up to 0.32.3 the gateway and the hook
+      // server chained with receipt_hash itself: the hook server wrote every link as bare hex, and the gateway every
+      // link after the first in each process, the form draft section 6.7 says an implementation must not emit.
+      chain_link: `sha256:${result.hash}`,
     };
   } catch (err) {
     // A signer IS configured but signing failed. Do not crash the process, but

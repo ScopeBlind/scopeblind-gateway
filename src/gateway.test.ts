@@ -522,9 +522,11 @@ async function hookServer(dir: string, args: string[]) {
   });
   let stderr = '';
   proc.stderr!.on('data', (b: Buffer) => { stderr += b.toString(); });
+  const exited = new Promise<number | null>((resolve) => proc.on('exit', (code) => resolve(code)));
   await waitForHttp(`http://127.0.0.1:${port}/health`);
   return {
     port,
+    exited,
     get stderr() { return stderr; },
     async pre(tool: string, input: Record<string, unknown> = {}): Promise<{ decision: string; reason: string }> {
       const res = await fetch(`http://127.0.0.1:${port}/hook`, {
@@ -788,6 +790,51 @@ d('a receipt log whose chain cannot be continued', () => {
     const [first, second] = receiptLines(dir);
     expect(first.payload.previousReceiptHash).toBeUndefined();
     expect(second.payload.previousReceiptHash).toBe(chainLink(first));
+  }, 30_000);
+
+  // Draft section 6.7: a link is "sha256:" + the hex digest of the whole previous receipt, and bare hex, the form of
+  // earlier revisions, must not be emitted. Up to 0.32.3 the gateway linked only the first receipt of each process
+  // that way and every later one with the bare digest, and the hook server wrote every link bare.
+  const linksOf = (lines: Array<Record<string, any>>) => lines.map((line, i) => ({ i, link: line.payload.previousReceiptHash, expected: i ? chainLink(lines[i - 1]) : undefined }));
+
+  it('the gateway links every receipt with the sha256: form, within one process and across a restart', async () => {
+    const dir = workspace({ 'protect-mcp.json': SIGNING_CONFIG });
+    writeKey(dir);
+    for (const ids of [[1, 2, 3], [4, 5]]) {
+      const g = new Gateway(dir, ['--enforce', '--policy', './protect-mcp.json']);
+      try {
+        for (const id of ids) expect(text(await g.call(id, 'pay', { to: `acct-${id}` }))).toBe('CHILD EXECUTED pay');
+      } finally {
+        await g.stop();
+      }
+    }
+    const links = linksOf(receiptLines(dir));
+    expect(links.length).toBe(5);
+    for (const { i, link, expected } of links) {
+      expect(link, `receipt ${i}`).toBe(expected);
+      if (i) expect(link, `receipt ${i}`).toMatch(/^sha256:[0-9a-f]{64}$/);
+    }
+  }, 30_000);
+
+  it('the hook server links every receipt with the sha256: form, within one process and across a restart', async () => {
+    const dir = workspace();
+    mkdirSync(join(dir, 'keys'));
+    writeKey(dir, join('keys', 'gateway.json'));
+    for (const tools of [['Read', 'Grep', 'Glob'], ['Read', 'Grep']]) {
+      const hs = await hookServer(dir, []);
+      try {
+        for (const tool of tools) expect((await hs.pre(tool, { file_path: `/tmp/${tool}` })).decision).toBe('allow');
+      } finally {
+        hs.stop();
+      }
+      await hs.exited;
+    }
+    const links = linksOf(receiptLines(dir));
+    expect(links.length).toBe(5);
+    for (const { i, link, expected } of links) {
+      expect(link, `receipt ${i}`).toBe(expected);
+      if (i) expect(link, `receipt ${i}`).toMatch(/^sha256:[0-9a-f]{64}$/);
+    }
   }, 30_000);
 
   it('the hook server under --enforce refuses to start, and in shadow mode moves the file aside', async () => {

@@ -18,6 +18,7 @@ import {
   createReceiptEnvelope,
   verifyReceipt,
   receiptHash,
+  chainLink,
   computeSbIssuerKid,
   canonicalize,
 } from './acta-envelope.js';
@@ -156,11 +157,14 @@ describe('signDecision emits chained draft-03 receipts', () => {
   it('threads previousReceiptHash and returns the next chain link', () => {
     const first = signDecision(entry);
     expect(first.receipt_hash).toMatch(/^[0-9a-f]{64}$/);
-    const second = signDecision({ ...entry, request_id: 'chain-2' } as DecisionLog, first.receipt_hash);
-    const env2 = JSON.parse(second.signed as string);
-    expect(env2.payload.previousReceiptHash).toBe(first.receipt_hash);
-    // The link is the s5.7 hash of the first envelope exactly as written.
+    // The identifier is the bare digest of the first envelope exactly as written; the link the next receipt
+    // carries is that digest with the "sha256:" prefix (draft section 6.7), never the bare form.
     expect(first.receipt_hash).toBe(receiptHash(JSON.parse(first.signed as string)));
+    expect(first.chain_link).toBe(chainLink(JSON.parse(first.signed as string)));
+    expect(first.chain_link).toBe(`sha256:${first.receipt_hash}`);
+    const second = signDecision({ ...entry, request_id: 'chain-2' } as DecisionLog, first.chain_link);
+    const env2 = JSON.parse(second.signed as string);
+    expect(env2.payload.previousReceiptHash).toBe(first.chain_link);
     expect(verifyReceipt(env2, pubHex).valid).toBe(true);
   });
 });
