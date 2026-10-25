@@ -4,11 +4,12 @@ import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { chmod, mkdtemp, mkdir, readFile, stat, writeFile, rm, symlink, realpath } from 'node:fs/promises';
+import { existsSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { generateKeyPairSync } from 'node:crypto';
-import { relay, normalizeInput, validateConfig } from '../plugins/protect-mcp-cursor/hooks/relay.mjs';
+import { relay, normalizeInput, validateConfig } from '../plugins/protect-mcp-cursor/lib/cursor-relay.mjs';
 import { configure } from '../plugins/protect-mcp-cursor/install-project.mjs';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -53,7 +54,7 @@ function denied(result, reason) {
 }
 
 test('self-contained transport is the exact canonical relay and manifest fails closed', async () => {
-  assert.equal(await readFile(join(plugin, 'lib/gate-client.mjs'), 'utf8'), await readFile(join(root, 'hooks/relay.mjs'), 'utf8'));
+  assert.equal(await readFile(join(plugin, 'lib/gate-client.mjs'), 'utf8'), await readFile(join(root, 'hooks/relay-core.mjs'), 'utf8'));
   const hooks = JSON.parse(await readFile(join(plugin, 'hooks/hooks.json')));
   assert.equal(hooks.version, 1);
   assert.deepEqual(Object.keys(hooks.hooks).sort(), ['postToolUse', 'preToolUse']);
@@ -314,4 +315,20 @@ test('actual released gate records signed safe, denied shell and denied nested M
     assert.equal(verifyReceipt({ ...record, payload: { ...record.payload, decision: expected === 'allow' ? 'deny' : 'allow' } }, gate.publicKey).valid, false);
   }
   assert.ok(records.some(value => value.payload?.hook_event === 'PostToolUse' && value.payload?.request_id === JSON.stringify(['cursor', 'cursor-test', 'call-1'])));
+});
+
+// The hook entry always runs the relay. It used to run only when its module URL matched the realpath of
+// process.argv[1], which a case-variant path on a case-insensitive file system did not match: the hook exited 0 with
+// no output and the gate was never asked.
+test('the Cursor hook runs, and blocks with the gate stopped, through a symlink and through a case-variant path', async t => {
+  const dir = await project(t, 1);
+  const links = await realpath(await mkdtemp(join(tmpdir(), 'protect-cursor-link-')));
+  t.after(() => rm(links, { recursive: true, force: true }));
+  await symlink(plugin, join(links, 'plugin'));
+  const scripts = [relayPath, join(links, 'plugin', 'hooks', 'relay.mjs')];
+  const real = realpathSync(relayPath);
+  const variant = real.replace(/hooks([/\\]relay\.mjs)$/, 'HOOKS$1');
+  if (variant !== real && existsSync(variant)) scripts.push(variant);
+  else t.diagnostic('case-sensitive file system: the case-variant path does not exist here');
+  for (const script of scripts) denied(await invoke('preToolUse', input(dir), { script, cwd: dir }));
 });

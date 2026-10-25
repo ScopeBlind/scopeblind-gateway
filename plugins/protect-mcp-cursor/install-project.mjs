@@ -5,10 +5,10 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { validateConfig } from './hooks/relay.mjs';
+import { validateConfig } from './lib/cursor-relay.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-const FILES = ['hooks/relay.mjs', 'lib/gate-client.mjs'];
+const FILES = ['hooks/relay.mjs', 'lib/cursor-relay.mjs', 'lib/gate-client.mjs'];
 const ENTRIES = {
   preToolUse: { command: 'node .cursor/protect-mcp/hooks/relay.mjs preToolUse', timeout: 15, failClosed: true },
   postToolUse: { command: 'node .cursor/protect-mcp/hooks/relay.mjs postToolUse', timeout: 15 },

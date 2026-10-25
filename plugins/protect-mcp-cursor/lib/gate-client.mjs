@@ -6,7 +6,6 @@
  * does not authenticate a process that can impersonate the loopback server.
  */
 import http from 'node:http';
-import { pathToFileURL } from 'node:url';
 
 const MAX_INPUT_BYTES = 2 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 64 * 1024;
@@ -133,7 +132,7 @@ export async function relay({ event, input, port = '9377', timeoutMs = REQUEST_T
   }
 }
 
-async function main() {
+export async function main() {
   const event = process.argv[2];
   let finished = false;
   function finish(result) {
@@ -166,5 +165,3 @@ async function main() {
     finish(failureResult(event, ['invalid_event', 'input_too_large', 'invalid_input_json'].includes(error.message) ? error.message : 'input_failed'));
   }
 }
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
