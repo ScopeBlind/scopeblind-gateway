@@ -1,0 +1,15 @@
+{
+  "conversation_id": "synthetic-conversation",
+  "generation_id": "synthetic-generation",
+  "model": "synthetic-model",
+  "tool_name": "Shell",
+  "tool_input": { "command": "printf PROTECT_MCP_ALLOW_TEST", "cwd": "", "timeout": 30000 },
+  "tool_use_id": "synthetic-tool-call",
+  "cwd": "",
+  "session_id": "synthetic-session",
+  "hook_event_name": "preToolUse",
+  "cursor_version": "3.17.8",
+  "workspace_roots": ["/synthetic/project"],
+  "user_email": null,
+  "transcript_path": null
+}

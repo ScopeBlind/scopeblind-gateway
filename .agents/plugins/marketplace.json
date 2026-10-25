@@ -1,0 +1,20 @@
+{
+  "name": "scopeblind-assistants",
+  "interface": {
+    "displayName": "ScopeBlind"
+  },
+  "plugins": [
+    {
+      "name": "protect-mcp-assistant",
+      "source": {
+        "source": "local",
+        "path": "./plugins/protect-mcp-assistant"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

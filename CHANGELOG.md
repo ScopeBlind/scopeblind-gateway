@@ -1,3 +1,38 @@
+## Unreleased: tested host adapters and separate guidance packages
+
+The npm release remains **0.32.3**. Changes below are source changes or separately
+versioned plugin previews; installing `protect-mcp@0.32.3` does not include the
+new standalone CLI fixes.
+
+- **Malformed hook input cannot fall back to explicit tool flags.** Formatted
+  evaluation denies missing, malformed and non-object payloads. Formatted
+  signing refuses invalid input without inventing a receipt.
+- **Cursor's dedicated hook payload is parsed as documented.** JSON-encoded
+  MCP arguments are decoded before policy evaluation; a server's launch command
+  is not mistaken for missing tool arguments. Permission output uses `permission`
+  and `user_message`, including an explicit allow response. Cursor and Gemini
+  post-action signing emits an empty host response instead of another decision.
+- **Cursor project preview.** A self-contained package uses generic pre/post
+  tool hooks, stable call IDs, an enforcing signed local gate, explicit native
+  tool aliases and reviewed MCP mappings. Missing configuration, unknown tools,
+  gate failures and timeouts block. Approval requirements remain held because
+  Cursor's generic hook does not enforce `ask`. Setup and removal preserve
+  unrelated settings, including removal when project configuration is malformed.
+  A live Cursor 3.17.8 project-hook trial checked a harmless Shell allow, policy
+  deny and stopped-gate block, with verified decision and after-action receipts.
+  A separate synthetic project hook's deny still blocked a gate-allowed call.
+  Other tools, native permission prompts and marketplace loading remain separate
+  validation steps.
+- **ChatGPT / Codex assistant preview.** Guidance skills and a harmless local
+  demo use pinned gateway and verifier releases. There are no hooks, connected
+  services or automatic host edits. This is distinct from Claude Code enforcement
+  and the existing Claude directory guidance plugin.
+- **Shared compatibility checks.** CLI contract vectors, Claude and Cursor
+  relays, assistant package checks and its clean-install demo run in CI. Tests
+  cover nested input, malformed payloads, missing policy, expected signer keys,
+  modified receipts and setup boundaries. They do not establish native Gemini,
+  Codex or Hermes hook integration.
+
 ## 0.32.3: reversible hook setup and diagnostics grounded in the local configuration
 
 - **Preview and remove hook installation safely.** `init-hooks --dry-run` shows the proposed changes without writing files. Installation preserves unrelated settings, hooks, policies and keys; a backup and ownership manifest record the entries it adds. `init-hooks --uninstall` removes only unchanged entries from that manifest, preserving later edits and retaining private keys, policy files and records. Malformed settings and symlink targets fail without overwriting them.

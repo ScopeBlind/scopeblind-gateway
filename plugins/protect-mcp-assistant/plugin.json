@@ -1,0 +1,35 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "protect-mcp-assistant",
+  "version": "0.1.0",
+  "description": "Set up protect-mcp for a chosen MCP server, try a harmless policy demo, and verify signed receipts against an expected key. Installation alone does not enable enforcement.",
+  "author": {
+    "name": "ScopeBlind",
+    "email": "tommy@scopeblind.com",
+    "url": "https://scopeblind.com/protect-mcp"
+  },
+  "homepage": "https://scopeblind.com/protect-mcp",
+  "repository": "https://github.com/ScopeBlind/scopeblind-gateway",
+  "license": "MIT",
+  "keywords": ["mcp", "cedar", "receipts", "verification", "agent-governance"],
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/protect-mcp-setup/SKILL.md",
+      "interface": {
+        "displayName": "protect-mcp Assistant",
+        "shortDescription": "Set up policies and verify decision receipts",
+        "longDescription": "Choose one MCP server to configure, try an allowed and denied policy decision with synthetic inputs, and verify a receipt with the expected signing key. Includes reusable skills and a local demo. No automatic hooks, connected services, or account required. Running the local workflows needs Node.js 22 or later and npm; chat-only sessions can prepare commands and explain results.",
+        "developerName": "ScopeBlind",
+        "category": "Developer Tools",
+        "websiteURL": "https://scopeblind.com/protect-mcp",
+        "logo": "./assets/scopeblind-logo.png",
+        "composerIcon": "./assets/scopeblind-logo.png",
+        "defaultPrompt": [
+          "Help me set up protect-mcp for one MCP server.",
+          "Show me a harmless policy and signed-receipt demo.",
+          "Verify this receipt against the expected public key."
+        ]
+      }
+    }
+  }
+}

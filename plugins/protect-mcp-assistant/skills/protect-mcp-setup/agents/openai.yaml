@@ -1,0 +1,4 @@
+interface:
+  display_name: "Set up protect-mcp"
+  short_description: "Configure one MCP server and check its coverage"
+  default_prompt: "Use $protect-mcp-setup to help me protect one MCP server."

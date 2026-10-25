@@ -4051,7 +4051,8 @@ async function readHookStdin(): Promise<Record<string, unknown> | null> {
     const chunks: Buffer[] = [];
     for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
     const raw = Buffer.concat(chunks).toString('utf-8').trim();
-    return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return hookObject(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -4062,11 +4063,21 @@ async function readHookStdin(): Promise<Record<string, unknown> | null> {
  * and Hermes all send tool_name + tool_input; Cursor's shell hook sends a bare
  * command. Field-name variants are tolerated.
  */
-function mapHookPayload(j: Record<string, unknown>): { tool?: string; input?: unknown } {
-  const tool = (j.tool_name ?? j.toolName) as string | undefined;
-  const input = (j.tool_input ?? j.toolInput) as unknown;
-  if (input === undefined && j.command !== undefined) {
-    return { tool: tool ?? 'Bash', input: { command: j.command } };
+function hookObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function mapHookPayload(j: Record<string, unknown>, format?: string): { tool?: string; input?: unknown } {
+  const tool = (Object.hasOwn(j, 'tool_name') ? j.tool_name : j.toolName) as string | undefined;
+  const hasInput = Object.hasOwn(j, 'tool_input') || Object.hasOwn(j, 'toolInput');
+  let input = Object.hasOwn(j, 'tool_input') ? j.tool_input : j.toolInput;
+  // Cursor's beforeMCPExecution serializes parameters as a JSON string.
+  // Decode exactly once so nested policy predicates see the actual arguments.
+  if (format === 'cursor' && typeof input === 'string') input = JSON.parse(input);
+  if (hasInput && !hookObject(input)) throw new Error('invalid_hook_payload');
+  if ((format === 'cursor' || !format) && !hasInput && !Object.hasOwn(j, 'tool_name') && !Object.hasOwn(j, 'toolName') && Object.hasOwn(j, 'command')) {
+    if (typeof j.command !== 'string' || !j.command.trim()) throw new Error('invalid_hook_payload');
+    return { tool: 'Bash', input: { command: j.command } };
   }
   return { tool, input };
 }
@@ -4085,17 +4096,20 @@ function emitDecision(format: string | undefined, allowed: boolean, reason: stri
     process.exit(0);
   }
   if (allowed) {
-    process.stdout.write(JSON.stringify({ allowed: true, reason }) + '\n');
+    // A CLI verdict does not replace the host's native permission checks.
+    const verdict = format === 'cursor' ? { permission: 'allow' }
+      : format === 'gemini' ? { decision: 'allow' }
+      : { allowed: true, reason };
+    process.stdout.write(JSON.stringify(verdict) + '\n');
     process.exit(0);
   }
-  // claude / codex / gemini / cursor / grok all block on exit code 2. For the
-  // hosts that ALSO accept a structured stdout verdict, emit it too so the deny
-  // holds even if a host stops honoring the exit code (belt and suspenders).
+  // Emit the adapter's blocking status and, for hosts that inspect JSON,
+  // its structured denial. Actual hook loading and coverage need host tests.
   // Claude Code reads a PreToolUse verdict from stdout and hands
   // permissionDecisionReason to the model, so the reason reaches the agent and
   // not only the terminal (scopeblind-gateway#10).
   if (format === 'cursor') {
-    process.stdout.write(JSON.stringify({ permission: 'deny', userMessage: reason }) + '\n');
+    process.stdout.write(JSON.stringify({ permission: 'deny', user_message: reason, agent_message: reason }) + '\n');
   } else if (format === 'gemini') {
     process.stdout.write(JSON.stringify({ decision: 'deny', reason }) + '\n');
   } else if (format === 'claude') {
@@ -4125,11 +4139,13 @@ async function handleEvaluate(argv: string[]): Promise<void> {
   // With --format, accept the host's hook payload from stdin (overrides flags).
   if (format) {
     const j = await readHookStdin();
-    if (j) {
-      const m = mapHookPayload(j);
-      if (m.tool) tool = m.tool;
-      if (m.input !== undefined) inputRaw = JSON.stringify(m.input);
-    }
+    if (!j) emitDecision(format, false, 'invalid_hook_payload');
+    try {
+      const m = mapHookPayload(j, format);
+      if (typeof m.tool !== 'string' || !m.tool.trim() || !hookObject(m.input)) throw new Error('invalid_hook_payload');
+      tool = m.tool;
+      inputRaw = JSON.stringify(m.input);
+    } catch { emitDecision(format, false, 'invalid_hook_payload'); }
   }
 
   const policySet = loadPolicyArg(argv);
@@ -4173,11 +4189,11 @@ async function handleEvaluate(argv: string[]): Promise<void> {
 /**
  * One-shot signed receipt for a PostToolUse hook. Appends an Ed25519-signed
  * receipt to the receipts directory when a key is configured. Never blocks the
- * tool: a missing signer records an honest unsigned line rather than failing.
+ * tool retroactively: a missing signer records an honest unsigned line.
  *
  * Pass --format <host> to read the host's PostToolUse payload from stdin. Since
- * PostToolUse never blocks, the only host-specific behavior is emitting a no-op
- * verdict ({}) for Hermes, which reads stdout.
+ * the action has already run, Cursor, Gemini and Hermes receive a no-op object
+ * rather than a new tool decision. Invalid input reports a recording failure.
  */
 async function handleSign(argv: string[]): Promise<void> {
   const format = flagValue(argv, '--format');
@@ -4208,10 +4224,20 @@ async function handleSign(argv: string[]): Promise<void> {
   // the conformance driver both pipe the payload with no --format, and this
   // was recording an empty tool name for them.
   const j = await readHookStdin();
+  if (format && !j) {
+    process.stderr.write('protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n');
+    process.exit(2);
+  }
   if (j) {
-    const m = mapHookPayload(j);
-    if (m.tool) tool = m.tool;
-    if (toolInput === undefined && m.input && typeof m.input === 'object') toolInput = m.input as Record<string, unknown>;
+    try {
+      const m = mapHookPayload(j, format);
+      if (format && (typeof m.tool !== 'string' || !m.tool.trim() || (m.input !== undefined && !hookObject(m.input)))) throw new Error('invalid_hook_payload');
+      if (m.tool) tool = m.tool;
+      if (toolInput === undefined && hookObject(m.input)) toolInput = m.input;
+    } catch {
+      process.stderr.write('protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n');
+      process.exit(2);
+    }
   }
 
   // Resolve a signer. --key wins; otherwise take signing.key_path from the
@@ -4319,8 +4345,9 @@ async function handleSign(argv: string[]): Promise<void> {
   // Release here, before process.exit: a finally block never runs past an exit, and a lock left behind makes every later sign wait for the stale sweep.
   releaseLogLock();
 
-  // PostToolUse never blocks; Hermes reads stdout, so emit a no-op verdict there.
-  if (format === 'hermes') { process.stdout.write('{}\n'); process.exit(0); }
+  // These hosts read stdout as hook instructions. A recorded policy decision
+  // must not hide or replace an already-produced result.
+  if (format === 'hermes' || format === 'cursor' || format === 'gemini') { process.stdout.write('{}\n'); process.exit(0); }
   // Claude Code reads a PostToolUse hook's stdout as hook output, where `decision` may only be "block", so a
   // `decision` member here could be reported as a hook error after every call. The receipt's own decision goes
   // under a name Claude Code does not read; scripts that check `signed` see the same object otherwise.
