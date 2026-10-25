@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Explicit, project-only installation for local preview. No user config. */
-import { lstat, mkdir, readFile, writeFile, rename, unlink, rmdir, realpath } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readFile, writeFile, rename, stat, unlink, rmdir, realpath } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -19,10 +19,21 @@ async function nonlink(path) {
   catch (error) { if (error.code !== 'ENOENT') throw error; }
 }
 async function optional(path) { try { return await readFile(path, 'utf8'); } catch (error) { if (error.code === 'ENOENT') return null; throw error; } }
-async function atomic(path, content) {
+async function atomic(path, content, mode = 0o600) {
   const temp = `${path}.protect-mcp-${randomUUID()}.tmp`;
-  try { await writeFile(temp, content, { flag: 'wx', mode: 0o600 }); await rename(temp, path); }
+  try { await writeFile(temp, content, { flag: 'wx', mode }); await chmod(temp, mode); await rename(temp, path); }
   finally { await unlink(temp).catch(error => { if (error.code !== 'ENOENT') throw error; }); }
+}
+// An existing hooks.json is the user's file: keep a copy of its bytes beside it
+// before the first rewrite, and keep its permissions on the rewritten file.
+async function rewriteHooks(hookPath, original, content) {
+  if (original === null) { await atomic(hookPath, content); return null; }
+  const mode = (await stat(hookPath)).mode & 0o777;
+  const backup = `${hookPath}.protect-mcp-backup-${new Date().toISOString().replace(/[-:.]/g, '')}-${randomUUID().slice(0, 8)}`;
+  await writeFile(backup, original, { flag: 'wx', mode });
+  await chmod(backup, mode);
+  await atomic(hookPath, content, mode);
+  return backup;
 }
 
 export async function configure({ project, mode = 'plan', port }) {
@@ -61,8 +72,9 @@ export async function configure({ project, mode = 'plan', port }) {
     await mkdir(join(managed, 'lib'), { recursive: true });
     for (let i = 0; i < FILES.length; i++) await atomic(join(managed, FILES[i]), contents[i]);
     if (configRaw === null) await atomic(configPath, JSON.stringify(config, null, 2) + '\n');
-    await atomic(hookPath, JSON.stringify(hooks, null, 2) + '\n');
-    return { project: root, installed: true, port: config.port, note: 'Project hooks enabled. Restart Cursor and complete the real-host checks. User and team settings were not changed.' };
+    const content = JSON.stringify(hooks, null, 2) + '\n';
+    const backup = content === original ? null : await rewriteHooks(hookPath, original, content);
+    return { project: root, installed: true, port: config.port, ...(backup ? { backup } : {}), note: 'Project hooks enabled. Restart Cursor and complete the real-host checks. User and team settings were not changed.' };
   }
 
   let changed = false;
@@ -75,7 +87,7 @@ export async function configure({ project, mode = 'plan', port }) {
       else delete hooks.hooks[event];
     }
   }
-  if (changed) await atomic(hookPath, JSON.stringify(hooks, null, 2) + '\n');
+  const backup = changed ? await rewriteHooks(hookPath, original, JSON.stringify(hooks, null, 2) + '\n') : null;
   const preserved = [];
   // Keep files if a modified hook still refers to them, or if the user edited
   // the files. Uninstall is never a recursive delete.
@@ -88,7 +100,7 @@ export async function configure({ project, mode = 'plan', port }) {
     else await unlink(path);
   }
   for (const path of [join(managed, 'hooks'), join(managed, 'lib'), managed]) await rmdir(path).catch(error => { if (!['ENOENT', 'ENOTEMPTY'].includes(error.code)) throw error; });
-  return { project: root, uninstalled: true, preserved, note: 'Only unchanged protect-mcp hook entries and scripts were removed. Project settings, keys, policies and receipts remain.' };
+  return { project: root, uninstalled: true, preserved, ...(backup ? { backup } : {}), note: 'Only unchanged protect-mcp hook entries and scripts were removed. Project settings, keys, policies and receipts remain.' };
 }
 
 async function main() {

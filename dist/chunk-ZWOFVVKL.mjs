@@ -1,6 +1,6 @@
 import {
   STARTER_POLICY
-} from "./chunk-WE2AYP6X.mjs";
+} from "./chunk-53HXPRKS.mjs";
 
 // src/policy-packs.ts
 var header = (id, description) => `// ScopeBlind protect-mcp policy pack: ${id}

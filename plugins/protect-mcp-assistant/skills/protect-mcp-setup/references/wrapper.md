@@ -1,6 +1,6 @@
 # Configure a selected stdio MCP server
 
-Use Node.js 22 or later and npm. Tested package versions are `protect-mcp@0.32.3` and `@veritasacta/verify@0.11.0`. The first npm or npx invocation downloads software; it does not connect a ScopeBlind account.
+Use Node.js 22 or later and npm, with `protect-mcp@0.32.3` and `@veritasacta/verify@0.11.0`. The first npm or npx invocation downloads software; it does not connect a ScopeBlind account.
 
 ## Initialize
 

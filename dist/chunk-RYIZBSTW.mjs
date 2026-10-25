@@ -164,7 +164,11 @@ function signDecision(entry, prevReceiptHash) {
       ok: true,
       signed: JSON.stringify(result.envelope),
       artifact_type: artifactType,
-      receipt_hash: result.hash
+      receipt_hash: result.hash,
+      // result.hash is receiptHash(envelope), so this is chainLink(envelope). Up to 0.32.3 the gateway and the hook
+      // server chained with receipt_hash itself: the hook server wrote every link as bare hex, and the gateway every
+      // link after the first in each process, the form draft section 6.7 says an implementation must not emit.
+      chain_link: `sha256:${result.hash}`
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";

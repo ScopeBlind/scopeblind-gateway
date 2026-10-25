@@ -901,8 +901,10 @@ declare class ProtectGateway {
     private clientReader;
     private logFilePath;
     private receiptFilePath;
-    /** s5.7 hash of the last line appended to the receipt file (chain link) */
+    /** The draft section 6.7 link to the last line appended to the receipt file: "sha256:" + the hex SHA-256 of its JCS bytes. */
     private lastReceiptHash;
+    /** Set once the server has exited (or never started) and the gateway is on its way out. */
+    private exitStarted;
     private evidenceStore;
     private receiptBuffer;
     /** Approval grants: once grants keyed by `${tool}:${payload_hash}` (one exact action), always grants by `always:${tool}` */
@@ -1003,6 +1005,13 @@ declare class ProtectGateway {
      * reads those, and an agent that has the nonce can approve its own calls.
      */
     private logApprovalHint;
+    /**
+     * The server this gateway wraps has exited, or could not start: exit with `code` once what it wrote has been relayed
+     * and written. Up to 0.32.3 the gateway exited the moment the server did, while the server's last replies could still
+     * be unread in its stdout pipe and while Node was still writing ours to the client: a reply larger than a pipe holds
+     * reached the client cut short. The first call decides the exit status, as the first process.exit() did.
+     */
+    private exitAfterChild;
     stop(): void;
 }
 
@@ -3459,8 +3468,10 @@ declare function initSigning(config: SigningConfig | undefined): Promise<string[
  * Returns the signed envelope JSON string, or null if signing is not
  * configured. On signing failure, returns an unsigned result with a warning.
  *
- * @param prevReceiptHash - Optional s5.7 chain link: the receiptHash of the
- *   previous line in the receipt log this envelope will be appended to.
+ * @param prevReceiptHash - Optional draft section 6.7 chain link to the previous
+ *   line in the receipt log this envelope will be appended to: "sha256:" + the
+ *   lowercase hex SHA-256 of that line's JCS bytes, as chainLink() computes it
+ *   and as chain_link returns it for the receipt this call signs.
  *
  * @standard draft-farley-acta-signed-receipts-02, RFC 8032 (Ed25519), RFC 8785 (JCS)
  */
@@ -3469,6 +3480,7 @@ declare function signDecision(entry: DecisionLog, prevReceiptHash?: string): {
     signed: string | null;
     artifact_type: string;
     receipt_hash?: string;
+    chain_link?: string;
     warning?: string;
     error?: string;
 };
@@ -3505,8 +3517,10 @@ declare function isSigningEnabled(): boolean;
  *    MUST match signature.kid.
  *  - s4.1/s5.6: the signature covers the JCS-canonical bytes of payload
  *    directly (PureEdDSA, no intermediate hash).
- *  - s5.7: previousReceiptHash is the bare lowercase hex SHA-256 of the JCS
- *    bytes of the predecessor's ENTIRE envelope, signature included.
+ *  - previousReceiptHash is "sha256:" + the lowercase hex SHA-256 of the JCS
+ *    bytes of the predecessor's ENTIRE envelope, signature included
+ *    (draft-03 section 6.7, chainLink). Bare hex is the form of earlier
+ *    revisions: verifiers accept it, and nothing here writes it.
  *
  * Verification is dual-shape: envelopes produced by protect-mcp <= 0.9.x
  * (flat v1 artifacts and structured v2 artifacts with a top-level signature
@@ -3535,10 +3549,11 @@ interface ReceiptVerification {
     legacy_hash?: string;
 }
 /**
- * s5.7 chain hash: lowercase hex SHA-256 over the JCS bytes of the object
- * exactly as written (for a signed envelope, signature included). Applied
- * uniformly to any receipt-log line (including legacy envelopes and signing
- * tombstones) so a chain can span the migration boundary.
+ * The lowercase hex SHA-256 over the JCS bytes of the object exactly as
+ * written (for a signed envelope, signature included): a receipt's identifier.
+ * The link a successor carries is chainLink(), this digest with the "sha256:"
+ * prefix. Both apply uniformly to any receipt-log line (including legacy
+ * envelopes and signing tombstones) so a chain can span the migration boundary.
  */
 declare function receiptHash(obj: unknown): string;
 /**

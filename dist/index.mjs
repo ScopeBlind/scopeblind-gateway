@@ -73,7 +73,7 @@ import {
   readInstalledConnectorPilots,
   simulate,
   writeConnectorPilots
-} from "./chunk-U4IYCTLF.mjs";
+} from "./chunk-LM663J3B.mjs";
 import {
   ProtectGateway,
   buildDecisionContext,
@@ -85,12 +85,12 @@ import {
   resolveCredential,
   sendApprovalNotification,
   validateCredentials
-} from "./chunk-RNVDZBTV.mjs";
+} from "./chunk-YRFAFP5H.mjs";
 import {
   POLICY_PACKS,
   getPolicyPack,
   policyPackIds
-} from "./chunk-HBK47UIZ.mjs";
+} from "./chunk-ZWOFVVKL.mjs";
 import {
   createSandboxServer
 } from "./chunk-NAMBXUSI.mjs";
@@ -99,7 +99,7 @@ import {
   generateHookSettings,
   generateSampleCedarPolicy,
   generateVerifyReceiptSkill
-} from "./chunk-4DFYHQ5M.mjs";
+} from "./chunk-STA5DZ6Q.mjs";
 import {
   BUILTIN_POLICY_PREFIX,
   STARTER_CONTAIN_TEMPLATE,
@@ -113,13 +113,13 @@ import {
   renderContainRules,
   resolveBuiltinPolicy,
   starterRules
-} from "./chunk-WE2AYP6X.mjs";
+} from "./chunk-53HXPRKS.mjs";
 import {
   ScopeBlindBridge,
   forwardReceipt,
   getScopeBlindBridge,
   startHookServer
-} from "./chunk-NZWAVO66.mjs";
+} from "./chunk-3X3WFLQN.mjs";
 import {
   EGRESS_SUMMARY_FIELDS,
   assertEgressSafe,
@@ -162,7 +162,7 @@ import {
   initSigning,
   isSigningEnabled,
   signDecision
-} from "./chunk-PNPJY37B.mjs";
+} from "./chunk-RYIZBSTW.mjs";
 import {
   cedarSafeContext,
   cedarSafeValue,

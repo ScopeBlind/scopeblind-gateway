@@ -4,8 +4,8 @@ import {
   REHEARSAL_TOOLS,
   handleCoordinationRequest,
   runCoordinationServer
-} from "./chunk-ZG6VKDE3.mjs";
-import "./chunk-DJFKORKV.mjs";
+} from "./chunk-AIUJZPC2.mjs";
+import "./chunk-INN337V3.mjs";
 import "./chunk-WUDE7YAF.mjs";
 import "./chunk-PUKT6ZUQ.mjs";
 import "./chunk-O3K3FPBT.mjs";

@@ -1,6 +1,6 @@
 {
   "name": "protect-mcp",
-  "version": "0.32.3",
+  "version": "0.32.4",
   "description": "Local Cedar policy checks and signed decision receipts for Claude Code tool calls routed through the plugin hooks. Includes MCP tools for explicit evaluation and receipt inspection. Requires a running local gate.",
   "author": {
     "name": "ScopeBlind",

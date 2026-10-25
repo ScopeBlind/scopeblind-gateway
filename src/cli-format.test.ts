@@ -126,12 +126,35 @@ describe.skipIf(!haveCli)('sign --format hook adapter', () => {
     expect(out.log).toBe(join(dir, 'rc', 'receipts.jsonl'));
   });
 
-  it('other formats keep the decision member', () => {
+  it('Codex PostToolUse output is an empty object, which its closed hook schema accepts', () => {
     const r = run(['sign', '--format', 'codex', '--receipts', join(dir, 'rx')], '{"tool_name":"Bash","tool_input":{"command":"ls"},"tool_response":{"ok":true}}');
+    expect(r.code).toBe(0);
+    expect(JSON.parse(r.out)).toEqual({});
+    expect(readFileSync(join(dir, 'rx', 'receipts.jsonl'), 'utf-8').trim().split('\n')).toHaveLength(1);
+  });
+
+  it('without --format the summary keeps the decision member', () => {
+    const r = run(['sign', '--receipts', join(dir, 'rn')], '{"tool_name":"Bash","tool_input":{"command":"ls"},"tool_response":{"ok":true}}');
     expect(r.code).toBe(0);
     const out = JSON.parse(r.out.trim().split('\n').pop()!);
     expect(out.decision).toBe('allow');
     expect(out).not.toHaveProperty('receipt_decision');
+  });
+
+  it('a payload sign cannot record exits 1, a recording failure, and writes no receipt', () => {
+    for (const fmt of ['claude', 'codex', 'gemini', 'cursor', 'hermes']) {
+      const r = runAll(['sign', '--format', fmt, '--receipts', join(dir, `bad-${fmt}`)], 'not json');
+      expect(r.code, fmt).toBe(1);
+      expect(r.out, fmt).toBe('');
+      expect(r.err, fmt).toMatch(/no receipt recorded/);
+      expect(existsSync(join(dir, `bad-${fmt}`, 'receipts.jsonl')), fmt).toBe(false);
+    }
+  });
+
+  it('Codex PreToolUse allow output is an empty object', () => {
+    const r = run(['evaluate', '--format', 'codex', '--cedar', dir], ALLOW);
+    expect(r.code).toBe(0);
+    expect(JSON.parse(r.out)).toEqual({});
   });
 });
 

@@ -14,8 +14,10 @@
  *    MUST match signature.kid.
  *  - s4.1/s5.6: the signature covers the JCS-canonical bytes of payload
  *    directly (PureEdDSA, no intermediate hash).
- *  - s5.7: previousReceiptHash is the bare lowercase hex SHA-256 of the JCS
- *    bytes of the predecessor's ENTIRE envelope, signature included.
+ *  - previousReceiptHash is "sha256:" + the lowercase hex SHA-256 of the JCS
+ *    bytes of the predecessor's ENTIRE envelope, signature included
+ *    (draft-03 section 6.7, chainLink). Bare hex is the form of earlier
+ *    revisions: verifiers accept it, and nothing here writes it.
  *
  * Verification is dual-shape: envelopes produced by protect-mcp <= 0.9.x
  * (flat v1 artifacts and structured v2 artifacts with a top-level signature
@@ -120,10 +122,11 @@ function verifyEncoding(payload: unknown, envelope: unknown, signature: string, 
 }
 
 /**
- * s5.7 chain hash: lowercase hex SHA-256 over the JCS bytes of the object
- * exactly as written (for a signed envelope, signature included). Applied
- * uniformly to any receipt-log line (including legacy envelopes and signing
- * tombstones) so a chain can span the migration boundary.
+ * The lowercase hex SHA-256 over the JCS bytes of the object exactly as
+ * written (for a signed envelope, signature included): a receipt's identifier.
+ * The link a successor carries is chainLink(), this digest with the "sha256:"
+ * prefix. Both apply uniformly to any receipt-log line (including legacy
+ * envelopes and signing tombstones) so a chain can span the migration boundary.
  */
 export function receiptHash(obj: unknown): string {
   return bytesToHex(sha256(utf8ToBytes(canonicalize(obj))));

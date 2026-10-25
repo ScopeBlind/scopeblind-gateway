@@ -1,37 +1,36 @@
-## Unreleased: tested host adapters and separate guidance packages
+## 0.32.4: output through a pipe arrives whole, chain links have the sha256: form, and hook payloads are checked
 
-The npm release remains **0.32.3**. Changes below are source changes or separately
-versioned plugin previews; installing `protect-mcp@0.32.3` does not include the
-new standalone CLI fixes.
+### Upgrading from 0.32.3: hook formats
 
-- **Malformed hook input cannot fall back to explicit tool flags.** Formatted
-  evaluation denies missing, malformed and non-object payloads. Formatted
-  signing refuses invalid input without inventing a receipt.
-- **Cursor's dedicated hook payload is parsed as documented.** JSON-encoded
-  MCP arguments are decoded before policy evaluation; a server's launch command
-  is not mistaken for missing tool arguments. Permission output uses `permission`
-  and `user_message`, including an explicit allow response. Cursor and Gemini
-  post-action signing emits an empty host response instead of another decision.
-- **Cursor project preview.** A self-contained package uses generic pre/post
-  tool hooks, stable call IDs, an enforcing signed local gate, explicit native
-  tool aliases and reviewed MCP mappings. Missing configuration, unknown tools,
-  gate failures and timeouts block. Approval requirements remain held because
-  Cursor's generic hook does not enforce `ask`. Setup and removal preserve
-  unrelated settings, including removal when project configuration is malformed.
-  A live Cursor 3.17.8 project-hook trial checked a harmless Shell allow, policy
-  deny and stopped-gate block, with verified decision and after-action receipts.
-  A separate synthetic project hook's deny still blocked a gate-allowed call.
-  Other tools, native permission prompts and marketplace loading remain separate
-  validation steps.
-- **ChatGPT / Codex assistant preview.** Guidance skills and a harmless local
-  demo use pinned gateway and verifier releases. There are no hooks, connected
-  services or automatic host edits. This is distinct from Claude Code enforcement
-  and the existing Claude directory guidance plugin.
-- **Shared compatibility checks.** CLI contract vectors, Claude and Cursor
-  relays, assistant package checks and its clean-install demo run in CI. Tests
-  cover nested input, malformed payloads, missing policy, expected signer keys,
-  modified receipts and setup boundaries. They do not establish native Gemini,
-  Codex or Hermes hook integration.
+`evaluate --format <host>` and `sign --format <host>` now check the host's payload before deciding or recording anything. With a well-formed payload (a tool name and a `tool_input` object), the `claude` and `hermes` formats print the same output and give the same exit status as in 0.32.3, for allowed and denied calls alike, and `codex` gives the same exit statuses. What changed:
+
+- **`evaluate --format` denies a malformed or missing payload.** A payload that is not JSON, is not a JSON object, names no tool, or has a `tool_input` that is not an object (including `null`, which Hermes can send) used to fall back to the `--tool` and `--input` flags: under a policy that permits everything, every such call was allowed, with exit 0. Each is now denied as `invalid_hook_payload` in that host's deny form: exit 2 for `claude`, `codex`, `cursor` and `gemini` (with their structured deny on stdout where they have one), and for `hermes`, which ignores exit codes, exit 0 with `{"decision":"block","reason":"invalid_hook_payload"}` on stdout. With `--format` the payload on stdin is required, so an empty stdin is denied too, whatever the flags say.
+- **`sign --format` exits 1 on a malformed or missing payload** and records no receipt. stdout is empty and stderr says `protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.` Exit 1 is a failed hook, which hosts report without blocking: the tool has already run. In 0.32.3 it recorded a receipt anyway and exited 0. This includes a Hermes call whose `tool_input` is `null`, and `sign --format <host> --tool <name>` run from a terminal, since that has no payload. Without `--format`, `sign` changes only for a JSON payload whose `tool_input` is not an object, or whose bare `command` is empty or not a string: it now gets the same exit 1 instead of a receipt. Without `--format`, `evaluate` is unchanged.
+- **A bare `{"command": ...}` payload is read as a Bash call only by `cursor` and without `--format`.** That is the shape of Cursor's shell hook. The `claude`, `codex`, `gemini` and `hermes` formats read it as a Bash call in 0.32.3, and now deny it (`evaluate`) or refuse it (`sign`) as malformed.
+- **Cursor's other hooks.** Cursor's `beforeReadFile` and `afterFileEdit` payloads name no tool. If `evaluate --format cursor` is wired to `beforeReadFile`, the read is now denied (exit 2), and if `sign --format cursor` is wired to `afterFileEdit`, the edit is no longer recorded (exit 1). 0.32.3 allowed the read and recorded the edit. The preview in `plugins/protect-mcp-cursor` uses the generic `preToolUse` and `postToolUse` hooks instead.
+- **`codex`:** an allow prints `{}` instead of `{"allowed":true,"reason":...}`, and `sign --format codex` prints `{}` instead of the receipt summary; the receipt is still written. Codex 0.145.0 checks hook output against closed schemas, with no members beyond its own and a PostToolUse `decision` that may only be `block`, so the old objects did not match them. Exit statuses are unchanged: a deny is still exit 2 with the reason on stderr.
+- **`cursor`:** a deny prints `{"permission":"deny","user_message":...,"agent_message":...}`, where 0.32.3 printed `userMessage`; an allow prints `{"permission":"allow"}` instead of `{"allowed":true,"reason":...}`. Exit statuses are unchanged. `sign --format cursor` prints `{}` instead of the receipt summary. A `tool_input` that Cursor's MCP hook sends as a JSON string is decoded once before the policy is evaluated.
+- **`gemini`:** an allow prints `{"decision":"allow"}` instead of `{"allowed":true,"reason":...}`; a deny is unchanged. `sign --format gemini` prints `{}`.
+- **`grok`** gets the same payload checks and keeps its 0.32.3 output for well-formed payloads, but the new host suite (`npm run test:hosts`) does not cover it.
+
+So for well-formed payloads, `claude` and `hermes` behave exactly as before, and `codex`, `cursor` and `gemini` keep their exit statuses and print the new allow and post-action shapes above. For malformed or missing payloads, every format now denies or refuses.
+
+### Fixes
+
+- **Output larger than a pipe holds reaches the reader whole.** Most commands ended with `process.exit()`, which ends the process at once, while Node writes stdout to a pipe asynchronously on macOS and on Linux. The part of the output the reader had not yet taken was lost, and the exit status was still 0: a reader such as `| jq` got the first 64 or 128 KiB of a 507,570-byte `report --format json`, while the same report written to a file was whole. `report`, `simulate`, `receipts`, `recommend`, `coverage --json`, `digest`, `trace`, `policy show` and `policy list` were cut this way once their output passed 64 KiB, several of them even with a reader that kept up. These commands, and the others that ended the same way, now finish once stdout and stderr have taken everything written to them and then exit, so nothing left open keeps the process running. Exit statuses and stderr messages are unchanged, also when the reader closes the pipe early (`| head`).
+- **The stdio gateway relays the last reply whole.** `protect-mcp -- <server>` exited the moment the server it wraps did, while the server's last replies could still be unread in its stdout pipe and while Node was still writing them to the client: a 1 MiB reply reached the client as 64 KiB. The gateway now stops taking requests, waits for the server's stdout and stderr to close (at most 2 seconds, so a process the server started cannot hold it open), and exits with the server's status once its own output is written. Nothing changes while the server runs.
+- **Every receipt chain link has the `sha256:` form.** Draft section 6.7 makes `previousReceiptHash` `"sha256:"` followed by the lowercase hex SHA-256 of the whole previous receipt, and says the bare hex digest of earlier revisions must not be emitted. `sign`, and the first receipt the gateway wrote after each start, used that form. Every later receipt in a gateway process, and every receipt from the hook server (`protect-mcp serve`), carried the bare digest. All of them now use the `sha256:` form, the hook server's signing-failure tombstones included. Existing logs need no change: `@veritasacta/verify` 0.11.1 replays a log that 0.32.3 began and 0.32.4 continued as one valid chain, and it accepts the bare links already written. `signDecision()` also returns the link as `chain_link`; `receipt_hash` stays the bare identifier.
+- `evaluate` and `sign`, the hook commands, still exit at once. Each writes one short line, which a pipe takes whole.
+
+### Host packages and checks
+
+- **Claude Code plugin** (#21). The plugin in this repository launches the stdio MCP entry point of the pinned release, and its hooks run through a bounded loopback relay instead of curl. A pre-tool call is denied when the gate cannot be reached or answers unexpectedly (Claude Code 2.1.295 or later); a post-tool failure is reported and does not claim to undo the action. Setup is in `docs/claude-plugin.md`.
+- **Cursor project preview** (#22), in `plugins/protect-mcp-cursor`. It uses Cursor's generic pre and post tool hooks with stable call IDs, an enforcing signed local gate, explicit native tool aliases and reviewed MCP mappings. Missing configuration, unknown tools, gate failures and timeouts block. Approval requirements stay held, because Cursor's generic hook does not enforce `ask`. Setup and removal preserve unrelated settings, including when the project configuration is malformed. A live Cursor 3.17.8 project-hook trial checked a harmless Shell allow, a policy deny and a stopped-gate block, with verified decision and after-action receipts; other tools, native permission prompts and marketplace loading are not yet validated. That trial ran on a pre-release build, before 0.32.4 (the sources it used are recorded in `docs/host-validation-20261025.json`); 0.32.4 itself has not been re-validated in Cursor.
+- **ChatGPT / Codex assistant preview** (#22), in `plugins/protect-mcp-assistant`: guidance skills and a harmless local demo, with no hooks, connected services or automatic host edits. Its demo pins protect-mcp 0.32.3 and `@veritasacta/verify` 0.11.0; the pin moves to 0.32.4 once 0.32.4 is on npm and the demo has run against it.
+- **Shared compatibility checks** (#22): CLI contract vectors, the Claude and Cursor relays, the assistant package checks and its clean-install demo run in CI (`npm run test:hosts`, `npm run test:assistant:smoke`). They cover nested input, malformed payloads, missing policy, expected signer keys, modified receipts and setup boundaries, and do not establish native Gemini, Codex or Hermes hook integration. Host status is in `docs/host-compatibility.md`.
+- **The starter policy protects the Cursor preview's own files.** `starter.write-sensitive-location` now also forbids writing `.cursor/hooks.json`, `.cursor/protect-mcp.json` and anything under `.cursor/protect-mcp/` (the preview's relay and gate client), so a Cursor agent cannot switch off its own gate, and it covers Cursor's Delete tool (`Delete`, which reaches the gate as `delete_file`) for every file the rule names. Deleting an ordinary project file is still allowed. The starter's text changes, so its policy digest is now `sha256:94428dedc59ccc1dc58578871f5b81893cb4bc376dbf97922cbda494083b2d1f` (it was `sha256:46d57bf0461dbbeb16299e6eb7fca5fed1bab244aba00d9abaf227681889f9dd`); `vectors/starter-policy.v1.json` pins it and carries seven new cases.
+- The plugin, the MCP configurations, the Docker image, the hook examples, the Cursor preview and the guides pin 0.32.4.
+- Tests: `src/piped-output.test.ts` sends 200 KB to 1.4 MB through a shell pipe for `report`, `simulate`, `receipts` and the gateway relay, and every case failed before this release. The gateway and the hook server each check every chain link over two processes.
 
 ## 0.32.3: reversible hook setup and diagnostics grounded in the local configuration
 

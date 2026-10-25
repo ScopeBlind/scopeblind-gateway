@@ -5,7 +5,7 @@
     "file": "policies/starter.cedar",
     "version": 1,
     "forbid_rules": 7,
-    "policy_digest": "sha256:46d57bf0461dbbeb16299e6eb7fca5fed1bab244aba00d9abaf227681889f9dd",
+    "policy_digest": "sha256:94428dedc59ccc1dc58578871f5b81893cb4bc376dbf97922cbda494083b2d1f",
     "digest_construction": "acta-policy-digest-v1 over one file named policy.cedar, as evaluate --policy computes it for a single file"
   },
   "evaluation": "Each call is evaluated as `protect-mcp evaluate --policy <policy> --tool <tool> --input <input>` evaluates it: principal Agent::\"unknown\", action Action::\"MCP::Tool::call\", resource Tool::\"<tool>\", with the input under context.input and its fields also at the top of context.",
@@ -605,6 +605,78 @@
       "decision": "deny",
       "rule": "starter.write-sensitive-location",
       "note": "Write through src/../../../ to a shell profile"
+    },
+    {
+      "id": "deny-write-cursor-hooks",
+      "tool": "Write",
+      "input": {
+        "file_path": "/w/app/.cursor/hooks.json",
+        "content": "{}"
+      },
+      "decision": "deny",
+      "rule": "starter.write-sensitive-location",
+      "note": "Write .cursor/hooks.json, which loads the Cursor preview's hooks"
+    },
+    {
+      "id": "deny-write-cursor-gate-config",
+      "tool": "Write",
+      "input": {
+        "file_path": "/w/app/.cursor/protect-mcp.json",
+        "content": "{}"
+      },
+      "decision": "deny",
+      "rule": "starter.write-sensitive-location",
+      "note": "Write .cursor/protect-mcp.json, the Cursor preview's gate configuration"
+    },
+    {
+      "id": "deny-write-cursor-relay",
+      "tool": "Write",
+      "input": {
+        "file_path": "/w/app/.cursor/protect-mcp/hooks/relay.mjs",
+        "content": "x"
+      },
+      "decision": "deny",
+      "rule": "starter.write-sensitive-location",
+      "note": "Write the Cursor preview's relay script"
+    },
+    {
+      "id": "deny-delete-cursor-hooks",
+      "tool": "delete_file",
+      "input": {
+        "file_path": "/w/app/.cursor/hooks.json"
+      },
+      "decision": "deny",
+      "rule": "starter.write-sensitive-location",
+      "note": "Delete .cursor/hooks.json (Cursor's Delete reaches the gate as delete_file)"
+    },
+    {
+      "id": "deny-delete-cursor-gate-client",
+      "tool": "Delete",
+      "input": {
+        "file_path": "/w/app/.cursor/protect-mcp/lib/gate-client.mjs"
+      },
+      "decision": "deny",
+      "rule": "starter.write-sensitive-location",
+      "note": "Delete the Cursor preview's gate client"
+    },
+    {
+      "id": "allow-delete-project-file",
+      "tool": "delete_file",
+      "input": {
+        "file_path": "/w/app/src/old.ts"
+      },
+      "decision": "allow",
+      "note": "Delete an ordinary project file"
+    },
+    {
+      "id": "allow-write-cursor-rules",
+      "tool": "Write",
+      "input": {
+        "file_path": "/w/app/.cursor/rules/style.mdc",
+        "content": "x"
+      },
+      "decision": "allow",
+      "note": "Write a Cursor rules file, which does not load hooks"
     }
   ],
   "input_cases": [

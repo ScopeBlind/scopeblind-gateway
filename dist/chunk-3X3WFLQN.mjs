@@ -36,7 +36,7 @@ import {
   isSigningEnabled,
   signDecision,
   signGenericArtifact
-} from "./chunk-PNPJY37B.mjs";
+} from "./chunk-RYIZBSTW.mjs";
 import {
   evaluateCedar,
   isCedarAvailable,
@@ -44,6 +44,7 @@ import {
   runEvaluatorSelfTest
 } from "./chunk-P2YFFXF2.mjs";
 import {
+  chainLink,
   receiptHash
 } from "./chunk-SRLE63GU.mjs";
 
@@ -922,7 +923,7 @@ function emitDecisionLog(state, entry) {
     if (signed.signed) {
       try {
         appendFileSync(state.receiptFilePath, signed.signed + "\n");
-        if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
+        if (signed.chain_link) state.lastReceiptHash = signed.chain_link;
       } catch (err) {
         recordFailed = true;
         process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
@@ -953,7 +954,7 @@ function emitDecisionLog(state, entry) {
       const tombstone = JSON.stringify(tombstoneObj);
       try {
         appendFileSync(state.receiptFilePath, tombstone + "\n");
-        state.lastReceiptHash = receiptHash(tombstoneObj);
+        state.lastReceiptHash = chainLink(tombstoneObj);
       } catch {
       }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
@@ -1180,7 +1181,7 @@ async function startHookServer(options = {}) {
     // stops an enforcing gate and is moved aside by an observing one.
     lastReceiptHash: resumeReceiptLog(join2(dataDir, RECEIPTS_FILE), {
       enforce,
-      link: receiptHash,
+      link: chainLink,
       warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}
 `)
     }),

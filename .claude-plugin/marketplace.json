@@ -13,7 +13,7 @@
       "name": "protect-mcp",
       "source": "./",
       "description": "Check routed Claude Code tool calls against local Cedar policies and record signed decisions. Requires Claude Code 2.1.295 or later and a running local gate. Includes explicit MCP evaluation and receipt tools.",
-      "version": "0.32.3",
+      "version": "0.32.4",
       "author": {
         "name": "ScopeBlind",
         "url": "https://scopeblind.com"

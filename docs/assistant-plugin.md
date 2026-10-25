@@ -23,7 +23,7 @@ node --test scripts/assistant-plugin.test.mjs
 node scripts/assistant-plugin-smoke.mjs
 ```
 
-The first check validates package identity, portable manifest structure, in-package references, the explicit hookless boundary, and exact runtime pins. The clean-install smoke runs the shipped demo helper in a new temporary directory, verifies allow and deny receipts against its newly generated test key, rejects tampering and untrusted keys, and checks that a repeated run cannot overwrite the directory. npm access is needed for installation; Node networking is blocked in the demo subprocesses after installation.
+The first check validates package identity, portable manifest structure, in-package references, the explicit hookless boundary, and exact runtime pins. The clean-install smoke runs the shipped demo helper in a new temporary directory, verifies allow and deny receipts against its newly generated test key, rejects tampering and untrusted keys, and checks that a repeated run cannot overwrite the directory. npm access is needed for installation. After installation, the demo subprocesses load `scripts/no-network.cjs`, which replaces Node's `http` and `https` `request` and `get`, `net.connect`, `net.createConnection`, `net.Socket.prototype.connect`, `tls.connect` and `fetch` with functions that throw. It is a test guard, not an operating-system sandbox: any other route, for example `dgram`, a DNS lookup or a child process, is not blocked.
 
 Separately, on 25 October 2026, **Codex CLI 0.145.0** successfully added and
 listed a temporary local marketplace, installed and enabled the plugin using

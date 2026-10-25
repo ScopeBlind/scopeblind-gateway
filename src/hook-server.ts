@@ -41,7 +41,7 @@ import type {
 import { loadCedarPolicies, evaluateCedar, isCedarAvailable, runEvaluatorSelfTest, type CedarPolicySet } from './cedar-evaluator.js';
 import { loadStandardFile, standardDecision, readAmount, heldIdFor, RecordReporter, type StandardGate } from './standard-gate.js';
 import { initSigning, signDecision, isSigningEnabled, getSignerInfo } from './signing.js';
-import { receiptHash } from './acta-envelope.js';
+import { chainLink, receiptHash } from './acta-envelope.js';
 import { loadPolicy, getToolPolicy, parseRateLimit, checkRateLimit } from './policy.js';
 import { ReceiptBuffer, isLoopbackHost } from './http-server.js';
 import { resumeReceiptLog } from './receipt-log.js';
@@ -130,7 +130,7 @@ interface HookServerState {
   logFilePath: string;
   /** Receipt file path */
   receiptFilePath: string;
-  /** s5.7 hash of the last line appended to the receipt file (chain link), null until known */
+  /** The draft section 6.7 link to the last line appended to the receipt file ("sha256:" + hex), null until known */
   lastReceiptHash: string | null;
   /** Permission suggestions accumulated during session */
   permissionSuggestions: Map<string, string>;
@@ -942,8 +942,8 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
       // Under --enforce an allow whose receipt did not land in the log is refused.
       try {
         appendFileSync(state.receiptFilePath, signed.signed + '\n');
-        // Advance the s5.7 chain only when the line actually landed on disk.
-        if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
+        // Advance the chain only when the line actually landed on disk.
+        if (signed.chain_link) state.lastReceiptHash = signed.chain_link;
       } catch (err) {
         recordFailed = true;
         process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}\n`);
@@ -980,7 +980,7 @@ function emitDecisionLog(state: HookServerState, entry: Partial<DecisionLog>): {
         appendFileSync(state.receiptFilePath, tombstone + '\n');
         // Tombstones are chain links too: an unsigned gap must not detach the
         // chain, or omission of the gap becomes undetectable.
-        state.lastReceiptHash = receiptHash(tombstoneObj);
+        state.lastReceiptHash = chainLink(tombstoneObj);
       } catch { /* best-effort */ }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}\n`);
       return { signingFailed: true, recordFailed: false };
@@ -1253,7 +1253,7 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
     // A missing or empty log starts a new chain; one that cannot be continued
     // stops an enforcing gate and is moved aside by an observing one.
     lastReceiptHash: resumeReceiptLog(join(dataDir, RECEIPTS_FILE), {
-      enforce, link: receiptHash, warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}\n`),
+      enforce, link: chainLink, warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}\n`),
     }),
     permissionSuggestions: new Map(),
     configAlerts: [],

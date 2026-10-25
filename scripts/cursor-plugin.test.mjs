@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, mkdir, readFile, writeFile, rm, symlink, realpath } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, readFile, stat, writeFile, rm, symlink, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -224,6 +224,25 @@ test('project installer plans without mutation, merges idempotently and uninstal
   await configure({ project: dir, mode: 'uninstall' });
   assert.deepEqual(JSON.parse(await readFile(path, 'utf8')), original);
   assert.equal(JSON.parse(await readFile(join(dir, '.cursor/protect-mcp.json'), 'utf8')).port, 1);
+});
+
+test('installer keeps a copy of an existing hooks.json and its permissions before rewriting it', async t => {
+  const dir = await project(t);
+  const path = join(dir, '.cursor/hooks.json');
+  const original = JSON.stringify({ version: 1, hooks: { stop: [{ command: 'keep-me' }] } });
+  await writeFile(path, original, { mode: 0o644 });
+  await chmod(path, 0o644);
+  const installed = await configure({ project: dir, mode: 'install' });
+  assert.equal(await readFile(installed.backup, 'utf8'), original);
+  assert.equal((await stat(path)).mode & 0o777, 0o644);
+  assert.equal((await stat(installed.backup)).mode & 0o777, 0o644);
+  // A repeated install changes nothing, so it writes no second copy.
+  assert.equal((await configure({ project: dir, mode: 'install' })).backup, undefined);
+  const removed = await configure({ project: dir, mode: 'uninstall' });
+  assert.notEqual(removed.backup, installed.backup);
+  assert.equal(JSON.parse(await readFile(removed.backup, 'utf8')).hooks.preToolUse.length, 1);
+  assert.equal(await readFile(path, 'utf8'), JSON.stringify(JSON.parse(original), null, 2) + '\n');
+  assert.equal((await stat(path)).mode & 0o777, 0o644);
 });
 
 test('installer refuses conflicts and symbolic links; uninstall preserves edited hook files', async t => {

@@ -58,7 +58,7 @@ Use Node.js 22 and npm in a new directory. Install the pinned gateway and verifi
 mkdir protect-mcp-demo
 cd protect-mcp-demo
 npm init -y
-npm install --save-exact protect-mcp@0.32.3 @veritasacta/verify@0.11.0
+npm install --save-exact protect-mcp@0.32.4 @veritasacta/verify@0.11.0
 ```
 
 This example evaluates two proposed calls and signs their decisions. It does not
@@ -129,16 +129,16 @@ plugin or standalone project hooks, so the same call is not recorded twice.
 
 [Host compatibility and release status](docs/host-compatibility.md) separates
 adapter tests from real-host validation. The Cursor and assistant packages are
-previews, not public directory listings. Current source fixes to standalone
-hook formats are **unreleased**; npm remains **0.32.3**. A format flag alone does
-not establish a working Codex, Gemini or Hermes integration.
+previews, not public directory listings. The standalone hook-format fixes ship in
+**0.32.4**; its [changelog](CHANGELOG.md) lists what changed for each format. A
+format flag alone does not establish a working Codex, Gemini or Hermes integration.
 
 For an existing MCP server, initialize its configuration in a separate directory
 from the example above, then run the wrapper with your server command:
 
 ```sh
-npx --yes protect-mcp@0.32.3 init
-npx --yes protect-mcp@0.32.3 --policy ./protect-mcp.json -- node your-mcp-server.js
+npx --yes protect-mcp@0.32.4 init
+npx --yes protect-mcp@0.32.4 --policy ./protect-mcp.json -- node your-mcp-server.js
 ```
 
 This starts in **shadow mode**. Review the observed calls and policy before

@@ -19,6 +19,8 @@ a policy-denied call is blocked, and a stopped gate blocks another call.
 The observed decision and after-action receipts verified against the expected
 test public key. The package contains a sanitized fixture from that host input.
 A separate synthetic project hook's deny still blocked a call the gate allowed.
+That trial ran on a pre-release build, before 0.32.4 (the validation record lists
+the sources it used); 0.32.4 itself has not been re-validated in Cursor.
 
 This does not establish native marketplace loading, every tool or native
 permission prompts. Complete and record the package's acceptance checks

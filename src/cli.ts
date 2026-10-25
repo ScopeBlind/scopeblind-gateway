@@ -33,6 +33,7 @@
 import { ProtectGateway } from './gateway.js';
 import { loadPolicy, ownEntry, setOwnEntry } from './policy.js';
 import { resumeReceiptLog } from './receipt-log.js';
+import { exitWhenWritten } from './exit-when-written.js';
 import { initSigning, signDecision, isSigningEnabled, writePrivateKeyFile, ensurePrivateKeyDir } from './signing.js';
 import { chainLink, canonicalize as canonicalizeReceipt } from './acta-envelope.js';
 import { digestCedarDir, buildPolicyBundle, verifyPolicyBundle, shortPolicyLabel } from './policy-digest.js';
@@ -330,7 +331,7 @@ async function handleInit(argv: string[]): Promise<void> {
   if (existsSync(configPath)) {
     process.stderr.write(`[PROTECT_MCP] Config already exists at ${configPath}\n`);
     process.stderr.write('[PROTECT_MCP] Delete it first if you want to regenerate.\n');
-    process.exit(1);
+    return exitWhenWritten(1);
   }
 
   // Generate Ed25519 keypair using noble-curves
@@ -659,7 +660,7 @@ async function handleStatus(argv: string[]): Promise<void> {
     process.stderr.write(`${bold('protect-mcp status')}\n\n`);
     process.stderr.write(`No log file found at ${logPath}\n`);
     process.stderr.write(`Run protect-mcp with a wrapped server first to generate logs.\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   const raw = readFileSync(logPath, 'utf-8');
@@ -667,7 +668,7 @@ async function handleStatus(argv: string[]): Promise<void> {
 
   if (lines.length === 0) {
     process.stderr.write(`${bold('protect-mcp status')}\n\nNo entries in log file.\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Parse all log entries
@@ -692,7 +693,7 @@ async function handleStatus(argv: string[]): Promise<void> {
 
   if (entries.length === 0) {
     process.stderr.write(`${bold('protect-mcp status')}\n\nNo valid entries in log file.\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Calculate statistics
@@ -2143,7 +2144,7 @@ async function handleWrap(argv: string[]): Promise<void> {
 
   if (!existsSync(claudePath)) {
     process.stderr.write(`protect-mcp wrap: Claude Desktop config not found at ${claudePath}\n`);
-    process.exit(1);
+    return exitWhenWritten(1);
   }
 
   let parsed: ClaudeDesktopConfig;
@@ -2151,14 +2152,14 @@ async function handleWrap(argv: string[]): Promise<void> {
     parsed = JSON.parse(readFileSync(claudePath, 'utf-8')) as ClaudeDesktopConfig;
   } catch (err) {
     process.stderr.write(`protect-mcp wrap: could not parse ${claudePath}: ${err instanceof Error ? err.message : err}\n`);
-    process.exit(1);
+    return exitWhenWritten(1);
   }
 
   const servers = parsed.mcpServers || {};
   const names = Object.keys(servers).filter((name) => !serverName || name === serverName);
   if (names.length === 0) {
     process.stderr.write(`protect-mcp wrap: no MCP servers found${serverName ? ` matching "${serverName}"` : ''}.\n`);
-    process.exit(1);
+    return exitWhenWritten(1);
   }
 
   const next: ClaudeDesktopConfig = { ...parsed, mcpServers: { ...servers } };
@@ -2245,7 +2246,7 @@ async function handleDigest(argv: string[]): Promise<void> {
 
   if (!existsSync(logPath)) {
     process.stderr.write(`${bold('protect-mcp digest')}\n\nNo log file found. Run protect-mcp first.\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   const raw = readFileSync(logPath, 'utf-8');
@@ -2273,7 +2274,7 @@ async function handleDigest(argv: string[]): Promise<void> {
 
   if (entries.length === 0) {
     process.stdout.write(`\n${bold('🛡️ Agent Digest')}\n\n  No activity${today ? ' today' : ''}.\n\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Compute stats
@@ -2339,7 +2340,7 @@ async function handleReceipts(argv: string[]): Promise<void> {
 
   if (!existsSync(receiptsPath)) {
     process.stderr.write(`${bold('protect-mcp receipts')}\n\nNo signed receipt file found. Run protect-mcp with signing enabled first.\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   const raw = readFileSync(receiptsPath, 'utf-8');
@@ -2437,7 +2438,7 @@ async function handleRecord(argv: string[]): Promise<void> {
   if (!chosen) {
     process.stderr.write(`\n${bold('protect-mcp record')}\n\nNo record found in ${dir}.\nStart the gate with ${bold('npx protect-mcp serve')}, use your agent, then run this again.\n`);
     process.stderr.write(`Tip: run this in the directory where your gate is signing (where .protect-mcp-receipts.jsonl lives), or pass ${bold('--dir <path>')}.\n\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
     return;
   }
   const readRecs = (file: string): any[] => readFileSync(file, 'utf-8').split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
@@ -2486,7 +2487,7 @@ async function handleRecord(argv: string[]): Promise<void> {
     });
     server.on('error', (e: NodeJS.ErrnoException) => {
       process.stderr.write(`\nprotect-mcp record --live: could not start on port ${port}${e && e.code ? ` (${e.code})` : ''}. Try ${bold('--port <n>')}.\n\n`);
-      process.exit(1);
+      void exitWhenWritten(1);
     });
     server.listen(port, '127.0.0.1', () => {
       const url = `http://127.0.0.1:${port}`;
@@ -2519,7 +2520,7 @@ async function handleRecord(argv: string[]): Promise<void> {
     process.stdout.write(`  Opened in your browser. If it did not open, open: ${out}\n`);
   }
   process.stdout.write(`  ${dim('Want it to update live as your agent runs? npx protect-mcp record --live')}\n\n`);
-  process.exit(0);
+  return exitWhenWritten(0);
 }
 
 const RECORD_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>protect-mcp record</title>
@@ -2696,26 +2697,26 @@ async function handleClaim(argv: string[]): Promise<void> {
   else if (puIdx !== -1 && argv[puIdx + 1] && isFinite(parseFloat(argv[puIdx + 1]))) predicate = { kind: 'payment_under', cap: parseFloat(argv[puIdx + 1]) };
   if (!predicate) {
     process.stderr.write(`\n${bold('protect-mcp claim')}\n\nAttest a signed, position-blind claim over your record:\n  --no <capability>        no action used it, e.g. ${dim('--no net.egress')} or ${dim('--no payment')}\n  --only <c1,c2,...>       all actions confined to these capabilities\n  --no-verdict <verdict>   e.g. ${dim('--no-verdict blocked')}\n  --count <verdict>        how many, e.g. ${dim('--count blocked')}\n  --payment-under <cap>    every agent payment stayed under the cap (amounts the\n                           gate could not read count as OVER, so this cannot lie)\n  --anchor                 also record the claim digest in the public append-only\n                           log so a counterparty can trust it is complete (only the\n                           hash is sent; your record stays local)\n\nExample: ${bold('npx protect-mcp claim --no net.egress --anchor')}\n\n`);
-    process.exit(0); return;
+    return exitWhenWritten(0);
   }
 
   const keyPath = join(dir, 'keys', 'gateway.json');
   if (!existsSync(keyPath)) {
     process.stderr.write(`\n${bold('protect-mcp claim')}\n\nNo signing key at ${keyPath}. A claim must be signed. Run ${bold('npx protect-mcp init')} first.\n\n`);
-    process.exit(1); return;
+    return exitWhenWritten(1);
   }
   let key: { privateKey?: string; publicKey?: string; kid?: string };
-  try { key = JSON.parse(readFileSync(keyPath, 'utf-8')); } catch { process.stderr.write(`\nprotect-mcp claim: ${keyPath} is not valid JSON.\n\n`); process.exit(1); return; }
-  if (!key.privateKey || !key.publicKey) { process.stderr.write(`\nprotect-mcp claim: ${keyPath} is missing privateKey/publicKey.\n\n`); process.exit(1); return; }
+  try { key = JSON.parse(readFileSync(keyPath, 'utf-8')); } catch { process.stderr.write(`\nprotect-mcp claim: ${keyPath} is not valid JSON.\n\n`); return exitWhenWritten(1); }
+  if (!key.privateKey || !key.publicKey) { process.stderr.write(`\nprotect-mcp claim: ${keyPath} is missing privateKey/publicKey.\n\n`); return exitWhenWritten(1); }
 
   const recPath = join(dir, '.protect-mcp-receipts.jsonl');
   if (!existsSync(recPath)) {
     process.stderr.write(`\n${bold('protect-mcp claim')}\n\nNo signed receipts in ${dir}. Run the gate with signing on, then try again.\n\n`);
-    process.exit(0); return;
+    return exitWhenWritten(0);
   }
   const receipts = readFileSync(recPath, 'utf-8').split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
     .map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((x): x is Record<string, unknown> => x !== null);
-  if (!receipts.length) { process.stderr.write(`\nprotect-mcp claim: no readable receipts in ${recPath}.\n\n`); process.exit(0); return; }
+  if (!receipts.length) { process.stderr.write(`\nprotect-mcp claim: no readable receipts in ${recPath}.\n\n`); return exitWhenWritten(0); }
 
   const pack = buildClaim(receipts, predicate, { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || 'gateway', issuer: 'protect-mcp' }, new Date().toISOString());
   const oi = argv.indexOf('--output');
@@ -2758,7 +2759,7 @@ async function handleClaim(argv: string[]): Promise<void> {
     }
   }
   process.stdout.write(`\n`);
-  process.exit(0);
+  return exitWhenWritten(0);
 }
 
 // anchor-record: checkpoint the record's CURRENT commitment (Merkle root +
@@ -2780,20 +2781,20 @@ async function handleAnchorRecord(argv: string[]): Promise<void> {
   const keyPath = join(dir, 'keys', 'gateway.json');
   if (!existsSync(keyPath)) {
     process.stderr.write(`\n${bold('protect-mcp anchor-record')}\n\nNo signing key at ${keyPath}. A checkpoint must be signed. Run ${bold('npx protect-mcp init')} first.\n\n`);
-    process.exit(1); return;
+    return exitWhenWritten(1);
   }
   let key: { privateKey?: string; publicKey?: string; kid?: string };
-  try { key = JSON.parse(readFileSync(keyPath, 'utf-8')); } catch { process.stderr.write(`\nprotect-mcp anchor-record: ${keyPath} is not valid JSON.\n\n`); process.exit(1); return; }
-  if (!key.privateKey || !key.publicKey) { process.stderr.write(`\nprotect-mcp anchor-record: ${keyPath} is missing privateKey/publicKey.\n\n`); process.exit(1); return; }
+  try { key = JSON.parse(readFileSync(keyPath, 'utf-8')); } catch { process.stderr.write(`\nprotect-mcp anchor-record: ${keyPath} is not valid JSON.\n\n`); return exitWhenWritten(1); }
+  if (!key.privateKey || !key.publicKey) { process.stderr.write(`\nprotect-mcp anchor-record: ${keyPath} is missing privateKey/publicKey.\n\n`); return exitWhenWritten(1); }
 
   const recPath = join(dir, '.protect-mcp-receipts.jsonl');
   if (!existsSync(recPath)) {
     process.stderr.write(`\n${bold('protect-mcp anchor-record')}\n\nNo signed receipts in ${dir}. Run the gate with signing on, then try again.\n\n`);
-    process.exit(0); return;
+    return exitWhenWritten(0);
   }
   const receipts = readFileSync(recPath, 'utf-8').split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
     .map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((x): x is Record<string, unknown> => x !== null);
-  if (!receipts.length) { process.stderr.write(`\nprotect-mcp anchor-record: no readable receipts in ${recPath}.\n\n`); process.exit(0); return; }
+  if (!receipts.length) { process.stderr.write(`\nprotect-mcp anchor-record: no readable receipts in ${recPath}.\n\n`); return exitWhenWritten(0); }
 
   const claimKey = { privateKey: key.privateKey, publicKey: key.publicKey, kid: key.kid || 'gateway', issuer: 'protect-mcp' };
   const historyPath = join(dir, '.protect-mcp-anchors.jsonl');
@@ -2808,7 +2809,7 @@ async function handleAnchorRecord(argv: string[]): Promise<void> {
       process.stdout.write(`\n${bold('🛡️  Record checkpoint')}\n`);
       process.stdout.write(`  Unchanged since entry ${bold('#' + last.seq)} ${dim('(' + last.total + ' receipts, anchored ' + (last.anchored_at || '') + ')')}. Nothing new to anchor.\n`);
       process.stdout.write(`  ${dim('Use --force to re-anchor anyway.')}\n\n`);
-      process.exit(0); return;
+      return exitWhenWritten(0);
     }
   }
 
@@ -2817,7 +2818,7 @@ async function handleAnchorRecord(argv: string[]): Promise<void> {
   process.stdout.write(`  ${res.total} receipts ${dim('·')} root ${dim(res.record_root.slice(0, 16) + '…')} ${dim('(' + res.checkpoint.from.slice(0, 10) + ' → ' + res.checkpoint.to.slice(0, 10) + ')')}\n`);
   if (!res.ok) {
     process.stdout.write(`  ${yellow('Anchor failed')} ${dim('(' + (res.error || 'unavailable') + '). Nothing was recorded; try again.')}\n\n`);
-    process.exit(1); return;
+    return exitWhenWritten(1);
   }
   appendFileSync(historyPath, JSON.stringify({ schema: res.checkpoint.schema, seq: res.seq, anchored_at: res.anchored_at, total: res.total, record_root: res.record_root, entry_url: res.entry_url, digest: res.checkpoint.digest }) + '\n');
   process.stdout.write(`  ${green('Anchored')} as log entry ${bold('#' + res.seq)}  ${dim(res.entry_url || '')}\n`);
@@ -2832,7 +2833,7 @@ async function handleAnchorRecord(argv: string[]): Promise<void> {
   }
   process.stdout.write(`  ${dim('A claim whose commitment matches this root is provably over the complete record as of')}\n`);
   process.stdout.write(`  ${dim('this checkpoint. Run this on a heartbeat (e.g. cron) to keep the anchored history growing.')}\n\n`);
-  process.exit(0);
+  return exitWhenWritten(0);
 }
 
 async function handleVerifyClaim(argv: string[]): Promise<void> {
@@ -2841,11 +2842,11 @@ async function handleVerifyClaim(argv: string[]): Promise<void> {
   const file = argv.find((a) => !a.startsWith('--'));
   if (!file || !existsSync(file)) {
     process.stderr.write(`\n${bold('protect-mcp verify-claim')} <claim.json> [--key <public-hex>]\n\nProvide a claim pack file.\n\n`);
-    process.exit(2); return;
+    return exitWhenWritten(2);
   }
   let pack: import('./claim.js').ClaimPack;
-  try { pack = JSON.parse(readFileSync(file, 'utf-8')); } catch { process.stderr.write(`\nprotect-mcp verify-claim: ${file} is not valid JSON.\n\n`); process.exit(2); return; }
-  if (!pack || pack.type !== 'scopeblind.claim.v1') { process.stderr.write(`\nprotect-mcp verify-claim: not a scopeblind.claim.v1 pack.\n\n`); process.exit(2); return; }
+  try { pack = JSON.parse(readFileSync(file, 'utf-8')); } catch { process.stderr.write(`\nprotect-mcp verify-claim: ${file} is not valid JSON.\n\n`); return exitWhenWritten(2); }
+  if (!pack || pack.type !== 'scopeblind.claim.v1') { process.stderr.write(`\nprotect-mcp verify-claim: not a scopeblind.claim.v1 pack.\n\n`); return exitWhenWritten(2); }
 
   const ki = argv.indexOf('--key');
   const v = verifyClaim(pack, ki !== -1 ? argv[ki + 1] : undefined);
@@ -2916,7 +2917,7 @@ async function handleVerifyClaim(argv: string[]): Promise<void> {
   process.stdout.write(`  ${dim('Proves the pack came from the issuer key and the claim is true over the disclosed decision')}\n`);
   process.stdout.write(`  ${dim('categories (verdict + capabilities), which reveal no tool inputs, outputs, or data. Completeness')}\n`);
   process.stdout.write(`  ${dim('of the disclosed set is attested by the issuer; the anchor fixes it in a public append-only log.')}\n\n`);
-  process.exit(finalValid ? 0 : 1);
+  return exitWhenWritten(finalValid ? 0 : 1);
 }
 
 async function handleBundle(argv: string[]): Promise<void> {
@@ -2938,12 +2939,12 @@ async function handleBundle(argv: string[]): Promise<void> {
 
   if (!existsSync(receiptsPath)) {
     process.stderr.write(`${bold('protect-mcp bundle')}\n\nNo signed receipt file found. Run protect-mcp with signing enabled first.\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   if (!existsSync(keyPath)) {
     process.stderr.write(`${bold('protect-mcp bundle')}\n\nNo key file found at ${keyPath}\n`);
-    process.exit(1);
+    return exitWhenWritten(1);
   }
 
   const receipts = readFileSync(receiptsPath, 'utf-8')
@@ -3238,7 +3239,7 @@ async function handleRegistry(argv: string[]): Promise<void> {
   }
 
   process.stderr.write('Usage: protect-mcp registry init|anchor|status [--dir <path>] [--org <name>] [--hosted]\\n');
-  process.exit(1);
+  return exitWhenWritten(1);
 }
 
 async function handleKillerDemo(argv: string[]): Promise<void> {
@@ -3521,7 +3522,7 @@ async function handleVerifyDisclosure(argv: string[]): Promise<void> {
   const disclosurePath = flagValue(argv, '--disclosure');
   if (!receiptPath || !disclosurePath) {
     process.stderr.write('Usage: protect-mcp verify-disclosure --receipt <committed-receipt.json> --disclosure <selective-disclosure.json>\\n');
-    process.exit(1);
+    return exitWhenWritten(1);
   }
   const { verifySelectiveDisclosurePackage } = await import('./signing-committed.js');
   const receipt = JSON.parse(readFileSyncCli(resolveCli(receiptPath), 'utf-8')) as Record<string, unknown>;
@@ -3543,7 +3544,7 @@ async function handleVerifyDisclosure(argv: string[]): Promise<void> {
     for (const err of result.errors) process.stdout.write(`  - ${err}\n`);
   }
   process.stdout.write('\n');
-  if (!result.valid) process.exit(2);
+  if (!result.valid) return exitWhenWritten(2);
 }
 
 async function handlePolicyPacks(argv: string[]): Promise<void> {
@@ -3568,7 +3569,7 @@ async function handlePolicyPacks(argv: string[]): Promise<void> {
     const pack = getPolicyPack(packArg || '');
     if (!pack) {
       process.stderr.write(`Unknown policy pack "${packArg || ''}". Available: ${policyPackIds().join(', ')}\n`);
-      process.exit(1);
+      return exitWhenWritten(1);
     }
     process.stdout.write(`\n${bold(pack.name)} (${pack.id})\n\n`);
     process.stdout.write(`${pack.description}\n`);
@@ -3587,7 +3588,7 @@ async function handlePolicyPacks(argv: string[]): Promise<void> {
       : [getPolicyPack(packArg || '')].filter(Boolean) as typeof POLICY_PACKS;
     if (packs.length === 0) {
       process.stderr.write(`Usage: protect-mcp policy-packs install <${policyPackIds().join('|')}|all> [--dir ./cedar] [--force]\n`);
-      process.exit(1);
+      return exitWhenWritten(1);
     }
     mkdirSyncCli(dir, { recursive: true });
     const written: string[] = [];
@@ -3596,7 +3597,7 @@ async function handlePolicyPacks(argv: string[]): Promise<void> {
         const outPath = joinCli(dir, file.path);
         if (existsSyncCli(outPath) && !force) {
           process.stderr.write(`Refusing to overwrite ${outPath}. Re-run with --force if intentional.\n`);
-          process.exit(1);
+          return exitWhenWritten(1);
         }
         writeFileSyncCli(outPath, file.contents.endsWith('\n') ? file.contents : `${file.contents}\n`);
         written.push(outPath);
@@ -3610,7 +3611,7 @@ async function handlePolicyPacks(argv: string[]): Promise<void> {
   }
 
   process.stderr.write('Usage: protect-mcp policy-packs list|show|install [pack] [--dir ./cedar] [--force]\n');
-  process.exit(1);
+  return exitWhenWritten(1);
 }
 
 async function handleConnectors(argv: string[]): Promise<void> {
@@ -3635,7 +3636,7 @@ async function handleConnectors(argv: string[]): Promise<void> {
     const pilot = getConnectorPilot(pilotArg || '');
     if (!pilot) {
       process.stderr.write(`Unknown connector pilot "${pilotArg || ''}". Available: ${CONNECTOR_PILOTS.map((p) => p.id).join(', ')}\n`);
-      process.exit(1);
+      return exitWhenWritten(1);
     }
     process.stdout.write(`\n${bold(pilot.name)} (${pilot.id})\n\n`);
     process.stdout.write(`${pilot.description}\n\n`);
@@ -3663,7 +3664,7 @@ async function handleConnectors(argv: string[]): Promise<void> {
       const pilot = getConnectorPilot(pilotArg);
       if (!pilot) {
         process.stderr.write(`Unknown connector pilot "${pilotArg}". Available: ${CONNECTOR_PILOTS.map((p) => p.id).join(', ')}\n`);
-        process.exit(1);
+        return exitWhenWritten(1);
       }
       rows = rows.filter((row) => row.id === pilot.id);
     }
@@ -3681,7 +3682,7 @@ async function handleConnectors(argv: string[]): Promise<void> {
   }
 
   process.stderr.write('Usage: protect-mcp connectors list|show|init|doctor [connector|all] [--dir <path>] [--force]\n');
-  process.exit(1);
+  return exitWhenWritten(1);
 }
 
 /**
@@ -3692,7 +3693,7 @@ async function handleTrace(argv: string[]): Promise<void> {
   const receiptId = argv[0];
   if (!receiptId) {
     process.stderr.write('[PROTECT_MCP] Usage: protect-mcp trace <receipt_id> [--endpoint <url>] [--depth <n>]\n');
-    process.exit(1);
+    return exitWhenWritten(1);
   }
 
   let endpoint = 'https://api.scopeblind.com/evidence';
@@ -3721,7 +3722,7 @@ async function handleTrace(argv: string[]): Promise<void> {
     if (!resp.ok) {
       const body = await resp.text();
       process.stderr.write(`[PROTECT_MCP] Error fetching graph: ${resp.status} ${body}\n`);
-      process.exit(1);
+      return exitWhenWritten(1);
     }
     graphData = await resp.json();
   } catch (err) {
@@ -4097,8 +4098,11 @@ function emitDecision(format: string | undefined, allowed: boolean, reason: stri
   }
   if (allowed) {
     // A CLI verdict does not replace the host's native permission checks.
+    // Codex checks PreToolUse output against a closed schema (no members beyond its own, in codex-cli 0.145.0), so
+    // an allow says nothing there.
     const verdict = format === 'cursor' ? { permission: 'allow' }
       : format === 'gemini' ? { decision: 'allow' }
+      : format === 'codex' ? {}
       : { allowed: true, reason };
     process.stdout.write(JSON.stringify(verdict) + '\n');
     process.exit(0);
@@ -4224,9 +4228,11 @@ async function handleSign(argv: string[]): Promise<void> {
   // the conformance driver both pipe the payload with no --format, and this
   // was recording an empty tool name for them.
   const j = await readHookStdin();
+  // A payload sign cannot record is a recording failure, exit 1, which hosts report without blocking. Exit 2 would
+  // read as a block in a PostToolUse hook, for a tool that has already run.
   if (format && !j) {
     process.stderr.write('protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n');
-    process.exit(2);
+    process.exit(1);
   }
   if (j) {
     try {
@@ -4236,7 +4242,7 @@ async function handleSign(argv: string[]): Promise<void> {
       if (toolInput === undefined && hookObject(m.input)) toolInput = m.input;
     } catch {
       process.stderr.write('protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n');
-      process.exit(2);
+      process.exit(1);
     }
   }
 
@@ -4346,8 +4352,9 @@ async function handleSign(argv: string[]): Promise<void> {
   releaseLogLock();
 
   // These hosts read stdout as hook instructions. A recorded policy decision
-  // must not hide or replace an already-produced result.
-  if (format === 'hermes' || format === 'cursor' || format === 'gemini') { process.stdout.write('{}\n'); process.exit(0); }
+  // must not hide or replace an already-produced result. Codex checks PostToolUse
+  // output against a closed schema whose `decision` may only be "block".
+  if (format === 'hermes' || format === 'cursor' || format === 'gemini' || format === 'codex') { process.stdout.write('{}\n'); process.exit(0); }
   // Claude Code reads a PostToolUse hook's stdout as hook output, where `decision` may only be "block", so a
   // `decision` member here could be reported as a hook error after every call. The receipt's own decision goes
   // under a name Claude Code does not read; scripts that check `signed` see the same object otherwise.
@@ -4397,7 +4404,7 @@ async function handleSample(argv: string[]): Promise<void> {
         'This command seeds a LABELED SAMPLE record and will not touch a real one.\n' +
         'Run it in an empty folder, or pass --force to overwrite.\n\n',
       );
-      process.exit(1);
+      return exitWhenWritten(1);
     }
     throw err;
   }
@@ -4412,7 +4419,7 @@ async function handleSample(argv: string[]): Promise<void> {
   process.stdout.write('  npx protect-mcp anchor-record\n\n');
   process.stdout.write(`${dim('Drop demo-tampered.jsonl into the record page to watch tampering get caught.')}\n`);
   process.stdout.write(`${dim('Everything runs locally; --anchor publishes only a digest to the public log.')}\n\n`);
-  process.exit(0);
+  return exitWhenWritten(0);
 }
 
 function mandateFlag(argv: string[], name: string): string | undefined {
@@ -4506,7 +4513,7 @@ async function handleMandate(argv: string[]): Promise<void> {
         process.stdout.write(`\n${dim(`append-only transition export: ${mandatePaths(cedarDir).auditLog}`)}\n`);
       }
     }
-    process.exit(check.valid ? 0 : 1);
+    return exitWhenWritten(check.valid ? 0 : 1);
   }
 
   if (sub === 'propose') {
@@ -4599,7 +4606,7 @@ async function handleMandate(argv: string[]): Promise<void> {
     const anchored = await anchorMandateContinuityCheckpoint(checkpoint, { ...(log ? { log } : {}) });
     if (!anchored.ok) {
       process.stdout.write(`${red('External anchor failed')} ${dim(anchored.error || 'unknown error')}\n`);
-      if (argv.includes('--require-anchor')) process.exit(1);
+      if (argv.includes('--require-anchor')) return exitWhenWritten(1);
       return;
     }
     const sidecar = output.replace(/\.json$/i, '') + '.anchor.json';
@@ -4621,7 +4628,7 @@ async function handleMandate(argv: string[]): Promise<void> {
       cedar_directory_matches_signed_head: onDiskMatches,
       transitions: registry.history.length,
     }, null, 2) + '\n');
-    process.exit(valid ? 0 : 1);
+    return exitWhenWritten(valid ? 0 : 1);
   }
 
   throw new Error('usage: protect-mcp mandate init|status|history|propose|approve|export|continuity|verify [--cedar <dir>]');
@@ -4662,30 +4669,30 @@ async function handlePolicy(argv: string[]): Promise<void> {
   const targetFile = cedarFiles.includes('agent.cedar') ? 'agent.cedar' : cedarFiles[0];
 
   if (sub === 'path') {
-    if (!dir) { process.stdout.write('No Cedar policy directory found (looked in ./cedar, ./policies, .).\n'); process.exit(0); }
+    if (!dir) { process.stdout.write('No Cedar policy directory found (looked in ./cedar, ./policies, .).\n'); return exitWhenWritten(0); }
     process.stdout.write(`${pj(dir, targetFile)}\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   if (sub === 'show') {
-    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); return exitWhenWritten(1); }
     const src = readAll();
     process.stdout.write(`${bold('Cedar policy')} ${dim(`(${cedarFiles.length} file${cedarFiles.length === 1 ? '' : 's'} in ${dir}, digest ${digestOf(src)})`)}\n\n`);
     process.stdout.write(src.endsWith('\n') ? src : src + '\n');
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   if (sub === 'allow' || sub === 'deny') {
     const tool = argv[1];
-    if (!tool) { process.stderr.write(`Usage: npx protect-mcp policy ${sub} <ToolName>\n`); process.exit(1); }
-    if (!/^[A-Za-z0-9_.:-]+$/.test(tool)) { process.stderr.write(`Refusing: "${tool}" is not a valid tool name.\n`); process.exit(1); }
-    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    if (!tool) { process.stderr.write(`Usage: npx protect-mcp policy ${sub} <ToolName>\n`); return exitWhenWritten(1); }
+    if (!/^[A-Za-z0-9_.:-]+$/.test(tool)) { process.stderr.write(`Refusing: "${tool}" is not a valid tool name.\n`); return exitWhenWritten(1); }
+    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); return exitWhenWritten(1); }
     if (ex(mandatePaths(dir).registry)) {
       process.stderr.write(
         'This Cedar directory is managed by a signed mandate lifecycle. Direct policy writes are refused.\n' +
         'Create a candidate policy, then run: protect-mcp mandate propose --candidate <dir> --denial-receipt <receipt.json> --reason <reason> --expires-at <ISO-8601>\n',
       );
-      process.exit(1);
+      return exitWhenWritten(1);
     }
     const effect = sub === 'allow' ? 'permit' : 'forbid';
     const before = readAll();
@@ -4695,7 +4702,7 @@ async function handlePolicy(argv: string[]): Promise<void> {
     const ruleRe = new RegExp(`${effect}\\s*\\([^)]*resource\\s*==\\s*Tool::"${tool.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}"`, 's');
     if (ruleRe.test(stripComments(before))) {
       process.stdout.write(`${dim('No change:')} a ${effect} rule for ${bold(tool)} already exists in ${targetFile}.\n`);
-      process.exit(0);
+      return exitWhenWritten(0);
     }
     const block = `\n// ${effect === 'permit' ? 'Allow' : 'Block'} ${tool} (added by \`protect-mcp policy ${sub}\`)\n${effect}(\n  principal,\n  action == Action::"MCP::Tool::call",\n  resource == Tool::"${tool}"\n);\n`;
     af(pj(dir, targetFile), block);
@@ -4704,14 +4711,14 @@ async function handlePolicy(argv: string[]): Promise<void> {
     process.stdout.write(`  ${dim(`appended to ${pj(dir, targetFile)}`)}\n`);
     process.stdout.write(`  ${dim(`policy digest ${beforeLabel} → ${digestOf(after)}`)}\n`);
     process.stdout.write(`\n${dim('A running gate (protect-mcp serve) hot-reloads on this change; no restart needed. The one-shot hook path re-reads per call.')}\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   if (sub === 'digest') {
     // Print the normative policy digest and everything needed to recompute
     // it with no protect-mcp code: per-file SHA-256s, the manifest rule, and
     // the construction id. --expect compares (for CI); --json for tooling.
-    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); return exitWhenWritten(1); }
     const result = digestCedarDir(dir);
     const expectIdx = argv.indexOf('--expect');
     const expected = expectIdx >= 0 ? argv[expectIdx + 1] : null;
@@ -4725,7 +4732,7 @@ async function handlePolicy(argv: string[]): Promise<void> {
       process.stdout.write(`${dim('recompute: sha256 each file; M = {construction, engine, files:[{name, sha256}] sorted by name}; digest = "sha256:" + hex(SHA-256(JCS(M)))')}\n`);
       if (expected) process.stdout.write(expected === result.policy_digest ? `${bold('✓ matches --expect')}\n` : `${bold('✗ does NOT match --expect')} ${dim(expected)}\n`);
     }
-    process.exit(expected && expected !== result.policy_digest ? 1 : 0);
+    return exitWhenWritten(expected && expected !== result.policy_digest ? 1 : 0);
   }
 
   if (sub === 'publish') {
@@ -4733,13 +4740,13 @@ async function handlePolicy(argv: string[]): Promise<void> {
     // preimage spec, addressed by the digest itself. Host the output at
     // .well-known/acta-policies/<hex>.json and any verifier can confirm which
     // policy governed a receipt from public bytes alone.
-    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); return exitWhenWritten(1); }
     const outIdx = argv.indexOf('--out');
     const outDir = outIdx >= 0 && argv[outIdx + 1] ? argv[outIdx + 1] : pj('.well-known', 'acta-policies');
     const files = cedarFiles.map((f) => ({ name: f, content: rf(pj(dir, f), 'utf-8') }));
     const bundle = buildPolicyBundle('cedar', files);
     const check = verifyPolicyBundle(bundle);
-    if (!check.valid) { process.stderr.write(`internal error: bundle failed self-verification (${check.error})\n`); process.exit(1); }
+    if (!check.valid) { process.stderr.write(`internal error: bundle failed self-verification (${check.error})\n`); return exitWhenWritten(1); }
     const { mkdirSync: mk } = await import('node:fs');
     mk(outDir, { recursive: true });
     const outPath = pj(outDir, `${bundle.policy_digest.replace(/^sha256:/, '')}.json`);
@@ -4748,11 +4755,11 @@ async function handlePolicy(argv: string[]): Promise<void> {
     process.stdout.write(`  ${dim(`policy_digest ${bundle.policy_digest}`)}\n`);
     process.stdout.write(`  ${dim('self-verified: per-file hashes and manifest digest recompute from the bundle bytes alone')}\n`);
     process.stdout.write(`  ${dim('serve this directory at https://<your-domain>/.well-known/acta-policies/')}\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   if (sub === 'list') {
-    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); process.exit(1); }
+    if (!dir) { process.stderr.write('No Cedar policy found. Run: npx protect-mcp init-hooks\n'); return exitWhenWritten(1); }
     const src = readAll();
     const active = stripComments(src);
     // Cheap static read of which tools are named in ACTIVE permit vs forbid blocks.
@@ -4783,7 +4790,7 @@ async function handlePolicy(argv: string[]): Promise<void> {
     } catch { /* no log */ }
     process.stdout.write(`${bold('Cedar policy')} ${dim(`(${dir}, digest ${digestOf(src)}) · default-deny, fail-closed`)}\n\n`);
     const allTools = new Set<string>([...permitted, ...forbidden, ...seen.keys()]);
-    if (allTools.size === 0) { process.stdout.write(dim('  No rules and no decisions logged yet.\n')); process.exit(0); }
+    if (allTools.size === 0) { process.stdout.write(dim('  No rules and no decisions logged yet.\n')); return exitWhenWritten(0); }
     const rows = [...allTools].sort().map((t) => {
       const label = forbidden.has(t) ? 'forbid' : permitted.has(t) ? 'permit' : 'default-deny';
       const colored = forbidden.has(t) ? red(label) : permitted.has(t) ? green(label) : yellow(label);
@@ -4794,11 +4801,11 @@ async function handlePolicy(argv: string[]): Promise<void> {
     });
     process.stdout.write(rows.join('\n') + '\n');
     process.stdout.write(`\n${dim('Allow a tool: npx protect-mcp policy allow <ToolName>  ·  Block one: policy deny <ToolName>')}\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   process.stderr.write('Usage: npx protect-mcp policy <list|show|allow <tool>|deny <tool>|path>\n');
-  process.exit(1);
+  return exitWhenWritten(1);
 }
 
 /**
@@ -4868,11 +4875,11 @@ async function main(): Promise<void> {
   const preSep = args.includes('--') ? args.slice(0, args.indexOf('--')) : args;
   if (args[0] === 'version' || preSep.includes('--version') || preSep.includes('-V')) {
     process.stdout.write(`${process.env.PROTECT_MCP_VERSION || 'unknown'}\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
   if (args.length === 0 || args[0] === 'help' || preSep.includes('--help') || preSep.includes('-h')) {
     printHelp();
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // One-shot PreToolUse gate (fail-closed) and PostToolUse receipt signer. These
@@ -4916,7 +4923,7 @@ async function main(): Promise<void> {
         for (const c of selfTest.cases.filter((c) => !c.pass)) {
           process.stderr.write(`  [FAIL] ${c.name}: expected ${c.expected}, got ${c.actual}\n`);
         }
-        process.exit(1);
+        return exitWhenWritten(1);
       }
       if (verbose) process.stderr.write(`protect-mcp: restraint self-test passed (${selfTest.cases.length} vectors). Arming gate.\n`);
     }
@@ -4925,7 +4932,7 @@ async function main(): Promise<void> {
       await startHookServer({ port, policyPath, cedarDir, enforce, verbose, standardPath, reportUrl, reportToken, runId });
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error: ${err instanceof Error ? err.message : err}\n`);
-      process.exit(1);
+      return exitWhenWritten(1);
     }
     return; // Server keeps running
   }
@@ -4952,7 +4959,7 @@ async function main(): Promise<void> {
   // Handle init-hooks command — Claude Code integration setup
   if (args[0] === 'init-hooks') {
     await handleInitHooks(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle quickstart command
@@ -4978,7 +4985,7 @@ async function main(): Promise<void> {
   // Handle wrap command
   if (args[0] === 'wrap') {
     await handleWrap(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle dashboard command
@@ -4990,13 +4997,13 @@ async function main(): Promise<void> {
   // Handle recommend command
   if (args[0] === 'recommend') {
     await handleRecommend(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle registry command
   if (args[0] === 'registry') {
     await handleRegistry(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle trial command — buyer-friendly alias for the complete proof pack.
@@ -5005,43 +5012,43 @@ async function main(): Promise<void> {
     process.stdout.write(`${bold('Next: open the local dashboard')}\n`);
     process.stdout.write(`  npx protect-mcp dashboard --dir ${dim(flagValue(args.slice(1), '--dir') || '<demo dir printed above>')} --open\n\n`);
     process.stdout.write(`${dim('No ScopeBlind account is required for local receipts. Add --hosted with SCOPEBLIND_TOKEN when you want independent digest anchoring.')}\n\n`);
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle killer-demo command
   if (args[0] === 'killer-demo') {
     await handleKillerDemo(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle selective-disclosure verifier command
   if (args[0] === 'verify-disclosure') {
     await handleVerifyDisclosure(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle starter Cedar policy packs
   if (args[0] === 'policy-packs') {
     await handlePolicyPacks(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle real connector pilots
   if (args[0] === 'connectors') {
     await handleConnectors(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle connect command
   if (args[0] === 'connect') {
     await handleConnect();
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle init command
   if (args[0] === 'init') {
     await handleInit(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle demo command
@@ -5054,54 +5061,54 @@ async function main(): Promise<void> {
   if (args[0] === 'coverage') {
     const { handleCoverage } = await import('./coverage.js');
     await handleCoverage(args.slice(1));
-    process.exit(process.exitCode || 0);
+    return exitWhenWritten(process.exitCode || 0);
   }
 
   // Handle egress-check — the pilot "no raw data leaves the box" health check
   if (args[0] === 'egress-check') {
     await handleEgressCheck(args.slice(1));
-    process.exit(process.exitCode || 0);
+    return exitWhenWritten(process.exitCode || 0);
   }
 
   // Handle status command
   if (args[0] === 'status') {
     await handleStatus(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle digest command
   if (args[0] === 'digest') {
     await handleDigest(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle receipts command
   if (args[0] === 'receipts') {
     await handleReceipts(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   if (args[0] === 'bundle') {
     await handleBundle(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle trace command
   if (args[0] === 'trace') {
     await handleTrace(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle simulate command
   if (args[0] === 'simulate') {
     await handleSimulate(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   // Handle report command
   if (args[0] === 'report') {
     await handleReport(args.slice(1));
-    process.exit(0);
+    return exitWhenWritten(0);
   }
 
   if (args[0] === 'doctor') {
@@ -5172,7 +5179,7 @@ async function main(): Promise<void> {
       }
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error loading Cedar policies: ${err instanceof Error ? err.message : err}\n`);
-      process.exit(1);
+      return exitWhenWritten(1);
     }
     // With --policy as well, its tool rules (block, require_approval, rate
     // limits, min_tier) apply after a Cedar allow, and its signing and
@@ -5186,7 +5193,7 @@ async function main(): Promise<void> {
         process.stderr.write(`[PROTECT_MCP] JSON policy loaded from ${policyPath}: its tool rules apply after a Cedar allow\n`);
       } catch (err) {
         process.stderr.write(`[PROTECT_MCP] Error loading policy: ${err instanceof Error ? err.message : err}\n`);
-        process.exit(1);
+        return exitWhenWritten(1);
       }
     }
   } else if (policyPath) {
@@ -5201,7 +5208,7 @@ async function main(): Promise<void> {
       }
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error loading policy: ${err instanceof Error ? err.message : err}\n`);
-      process.exit(1);
+      return exitWhenWritten(1);
     }
   }
 
@@ -5229,24 +5236,24 @@ async function main(): Promise<void> {
       standard = loadStandardFile(standardPath);
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error loading the standard ${standardPath}: ${err instanceof Error ? err.message : err}\n`);
-      process.exit(1);
+      return exitWhenWritten(1);
     }
   }
   if (reportUrl) {
     if (!standard) {
       process.stderr.write('[PROTECT_MCP] Error: --report needs --standard <standard.json>; the page belongs to a signed standard\n');
-      process.exit(1);
+      return exitWhenWritten(1);
     }
     const token = reportToken || process.env.PROTECT_MCP_REPORT_TOKEN || '';
     if (!token) {
       process.stderr.write('[PROTECT_MCP] Error: --report needs the page\'s write token: --report-token <token> or PROTECT_MCP_REPORT_TOKEN\n');
-      process.exit(1);
+      return exitWhenWritten(1);
     }
     try {
       reporter = new RecordReporter({ url: reportUrl, token, runId: runId || `run-${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}` });
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error: ${err instanceof Error ? err.message : err}\n`);
-      process.exit(1);
+      return exitWhenWritten(1);
     }
   }
 
@@ -5302,14 +5309,14 @@ async function handleSimulate(args: string[]): Promise<void> {
 
   if (!policyPath) {
     process.stderr.write('Usage: protect-mcp simulate --policy <path> [--log <path>] [--tier <tier>] [--json]\n');
-    process.exit(1);
+    return exitWhenWritten(1);
   }
 
   const { existsSync } = await import('node:fs');
   if (!existsSync(logPath)) {
     process.stderr.write(`Log file not found: ${logPath}\n`);
     process.stderr.write('Run protect-mcp in shadow mode first to generate a log file.\n');
-    process.exit(1);
+    return exitWhenWritten(1);
   }
 
   const { policy } = loadPolicy(policyPath);
@@ -5317,7 +5324,7 @@ async function handleSimulate(args: string[]): Promise<void> {
 
   if (entries.length === 0) {
     process.stderr.write('No tool call entries found in log file.\n');
-    process.exit(1);
+    return exitWhenWritten(1);
   }
 
   const summary = simulate(entries, policy, tier as any);
@@ -5377,5 +5384,5 @@ async function handleReport(args: string[]): Promise<void> {
 
 main().catch((err) => {
   process.stderr.write(`[PROTECT_MCP] Fatal error: ${err instanceof Error ? err.message : err}\n`);
-  process.exit(1);
+  void exitWhenWritten(1);
 });
