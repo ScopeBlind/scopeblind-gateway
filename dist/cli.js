@@ -3236,10 +3236,10 @@ var init_starter_policy = __esm({
       "};",
       "",
       '@id("starter.write-sensitive-location")',
-      '@reason("Writes a system, shell-profile, SSH, credential or agent-control file. A person makes this change.")',
+      '@reason("Writes or deletes a system, shell-profile, SSH, credential or agent-control file. A person makes this change.")',
       'forbid (principal, action == Action::"MCP::Tool::call", resource)',
       "when {",
-      '  (resource == Tool::"Write" || resource == Tool::"Edit" || resource == Tool::"MultiEdit") &&',
+      '  (resource == Tool::"Write" || resource == Tool::"Edit" || resource == Tool::"MultiEdit" || resource == Tool::"Delete" || resource == Tool::"delete_file") &&',
       "  context has input && context.input has file_path && (",
       '    context.input.file_path like "/etc/*" || context.input.file_path like "/private/etc/*" ||',
       '    context.input.file_path like "/usr/*" || context.input.file_path like "/bin/*" ||',
@@ -3253,6 +3253,8 @@ var init_starter_policy = __esm({
       '    context.input.file_path like "*/.netrc" || context.input.file_path like "*/.git-credentials" ||',
       '    context.input.file_path like "*/.claude/settings.json" || context.input.file_path like "*/.claude/settings.local.json" ||',
       '    context.input.file_path like "*/.codex/config.toml" || context.input.file_path like "*/.codex/hooks.json" ||',
+      '    context.input.file_path like "*/.cursor/hooks.json" || context.input.file_path like "*/.cursor/protect-mcp.json" ||',
+      '    context.input.file_path like "*/.cursor/protect-mcp/*" ||',
       '    context.input.file_path like "*/protect.cedar" || context.input.file_path like "*/protect-mcp.key" ||',
       '    context.input.file_path like "*/keys/gateway.json" || context.input.file_path like "*/../*")',
       "};",
@@ -20027,7 +20029,7 @@ function emitDecision(format, allowed, reason) {
     process.exit(0);
   }
   if (allowed) {
-    const verdict = format === "cursor" ? { permission: "allow" } : format === "gemini" ? { decision: "allow" } : { allowed: true, reason };
+    const verdict = format === "cursor" ? { permission: "allow" } : format === "gemini" ? { decision: "allow" } : format === "codex" ? {} : { allowed: true, reason };
     process.stdout.write(JSON.stringify(verdict) + "\n");
     process.exit(0);
   }
@@ -20122,7 +20124,7 @@ async function handleSign(argv) {
   const j = await readHookStdin();
   if (format && !j) {
     process.stderr.write("protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n");
-    process.exit(2);
+    process.exit(1);
   }
   if (j) {
     try {
@@ -20132,7 +20134,7 @@ async function handleSign(argv) {
       if (toolInput === void 0 && hookObject(m.input)) toolInput = m.input;
     } catch {
       process.stderr.write("protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n");
-      process.exit(2);
+      process.exit(1);
     }
   }
   let policyDigest = "none";
@@ -20228,7 +20230,7 @@ async function handleSign(argv) {
     } catch {
     }
     releaseLogLock();
-    if (format === "hermes" || format === "cursor" || format === "gemini") {
+    if (format === "hermes" || format === "cursor" || format === "gemini" || format === "codex") {
       process.stdout.write("{}\n");
       process.exit(0);
     }

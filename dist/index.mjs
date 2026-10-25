@@ -90,7 +90,7 @@ import {
   POLICY_PACKS,
   getPolicyPack,
   policyPackIds
-} from "./chunk-HBK47UIZ.mjs";
+} from "./chunk-ZWOFVVKL.mjs";
 import {
   createSandboxServer
 } from "./chunk-NAMBXUSI.mjs";
@@ -99,7 +99,7 @@ import {
   generateHookSettings,
   generateSampleCedarPolicy,
   generateVerifyReceiptSkill
-} from "./chunk-4DFYHQ5M.mjs";
+} from "./chunk-STA5DZ6Q.mjs";
 import {
   BUILTIN_POLICY_PREFIX,
   STARTER_CONTAIN_TEMPLATE,
@@ -113,7 +113,7 @@ import {
   renderContainRules,
   resolveBuiltinPolicy,
   starterRules
-} from "./chunk-WE2AYP6X.mjs";
+} from "./chunk-53HXPRKS.mjs";
 import {
   ScopeBlindBridge,
   forwardReceipt,

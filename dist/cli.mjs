@@ -18,7 +18,7 @@ import {
   POLICY_PACKS,
   getPolicyPack,
   policyPackIds
-} from "./chunk-HBK47UIZ.mjs";
+} from "./chunk-ZWOFVVKL.mjs";
 import {
   STARTER_POLICY,
   STARTER_POLICY_VERSION,
@@ -27,7 +27,7 @@ import {
   isBuiltinPolicySpec,
   renderContainRules,
   resolveBuiltinPolicy
-} from "./chunk-WE2AYP6X.mjs";
+} from "./chunk-53HXPRKS.mjs";
 import {
   approvePolicyProposalWithDirectSignature,
   createDirectControllerApproval,
@@ -3994,7 +3994,7 @@ function getTypeEmoji(type) {
   }
 }
 async function handleInitHooks(argv) {
-  const { installHooks } = await import("./hook-install-73BXONDO.mjs");
+  const { installHooks } = await import("./hook-install-6DFDX4OE.mjs");
   let dir = process.cwd();
   let port = 9377;
   let dryRun = false;
@@ -4161,7 +4161,7 @@ function emitDecision(format, allowed, reason) {
     process.exit(0);
   }
   if (allowed) {
-    const verdict = format === "cursor" ? { permission: "allow" } : format === "gemini" ? { decision: "allow" } : { allowed: true, reason };
+    const verdict = format === "cursor" ? { permission: "allow" } : format === "gemini" ? { decision: "allow" } : format === "codex" ? {} : { allowed: true, reason };
     process.stdout.write(JSON.stringify(verdict) + "\n");
     process.exit(0);
   }
@@ -4256,7 +4256,7 @@ async function handleSign(argv) {
   const j = await readHookStdin();
   if (format && !j) {
     process.stderr.write("protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n");
-    process.exit(2);
+    process.exit(1);
   }
   if (j) {
     try {
@@ -4266,7 +4266,7 @@ async function handleSign(argv) {
       if (toolInput === void 0 && hookObject(m.input)) toolInput = m.input;
     } catch {
       process.stderr.write("protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n");
-      process.exit(2);
+      process.exit(1);
     }
   }
   let policyDigest = "none";
@@ -4362,7 +4362,7 @@ async function handleSign(argv) {
     } catch {
     }
     releaseLogLock();
-    if (format === "hermes" || format === "cursor" || format === "gemini") {
+    if (format === "hermes" || format === "cursor" || format === "gemini" || format === "codex") {
       process.stdout.write("{}\n");
       process.exit(0);
     }
@@ -5073,12 +5073,12 @@ async function main() {
     return;
   }
   if (args[0] === "onboard") {
-    const { handleOnboard } = await import("./onboard-EJP2ALZ6.mjs");
+    const { handleOnboard } = await import("./onboard-YJEQCQNW.mjs");
     await handleOnboard(args.slice(1));
     return;
   }
   if (args[0] === "offboard") {
-    const { handleOffboard } = await import("./onboard-EJP2ALZ6.mjs");
+    const { handleOffboard } = await import("./onboard-YJEQCQNW.mjs");
     await handleOffboard(args.slice(1));
     return;
   }

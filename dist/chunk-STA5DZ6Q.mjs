@@ -1,6 +1,6 @@
 import {
   STARTER_POLICY
-} from "./chunk-WE2AYP6X.mjs";
+} from "./chunk-53HXPRKS.mjs";
 
 // src/hook-patterns.ts
 var BUILTIN_PATTERNS = [
