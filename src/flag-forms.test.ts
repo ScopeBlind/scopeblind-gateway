@@ -7,6 +7,7 @@
 import { describe, it, expect, afterAll } from 'vitest';
 import { spawn, spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
+import { createServer } from 'node:net';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -110,5 +111,23 @@ describe.skipIf(!haveCli)('the stdio gateway reads --cedar=<dir>', () => {
     expect(reply.error?.message ?? JSON.stringify(reply)).toMatch(/danger/);
     expect(reply.result).toBeUndefined();
     expect(existsSync(join(work, 'executed.jsonl'))).toBe(false);
+  }, 60_000);
+});
+
+describe.skipIf(!haveCli)('the hook server reads --cedar=<dir>', () => {
+  it('serve --enforce --cedar=<dir> denies a call the policy forbids', async () => {
+    const work = mkdtempSync(join(dir, 'serve-'));
+    mkdirSync(join(work, 'rules'));
+    writeFileSync(join(work, 'rules', 'policy.cedar'), 'permit(principal, action, resource);\nforbid(principal, action, resource == Tool::"danger");\n');
+    const port = await new Promise<number>((resolve) => { const s = createServer(); s.listen(0, '127.0.0.1', () => { const p = (s.address() as { port: number }).port; s.close(() => resolve(p)); }); });
+    const proc = spawn(process.execPath, [CLI, 'serve', '--enforce', '--cedar=./rules', '--port', String(port)], { cwd: work, env, stdio: ['ignore', 'ignore', 'ignore'] });
+    try {
+      for (let i = 0; i < 200; i++) { try { await fetch(`http://127.0.0.1:${port}/health`); break; } catch { await new Promise((r) => setTimeout(r, 50)); } }
+      const call = (tool: string) => fetch(`http://127.0.0.1:${port}/hook`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hook_event_name: 'PreToolUse', session_id: 's', tool_name: tool, tool_input: {} }) }).then((r) => r.json() as Promise<Record<string, any>>);
+      expect((await call('danger')).hookSpecificOutput?.permissionDecision).toBe('deny');
+      expect((await call('Read')).hookSpecificOutput?.permissionDecision).not.toBe('deny');
+    } finally {
+      proc.kill('SIGTERM');
+    }
   }, 60_000);
 });
