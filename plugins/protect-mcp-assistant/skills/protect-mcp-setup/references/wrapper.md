@@ -1,13 +1,13 @@
 # Configure a selected stdio MCP server
 
-Use Node.js 22 or later and npm, with `protect-mcp@0.32.3` and `@veritasacta/verify@0.11.0`. The first npm or npx invocation downloads software; it does not connect a ScopeBlind account.
+Use Node.js 22 or later and npm, with `protect-mcp@0.32.4` and `@veritasacta/verify@0.11.0`. The first npm or npx invocation downloads software; it does not connect a ScopeBlind account.
 
 ## Initialize
 
 In a new configuration directory chosen for this server:
 
 ```sh
-npx --yes protect-mcp@0.32.3 init
+npx --yes protect-mcp@0.32.4 init
 ```
 
 This creates `protect-mcp.json` and `keys/gateway.json`. Preserve an existing configuration and key. Never print, upload, or commit the private signing key.
@@ -37,13 +37,13 @@ The keys are `block`, `require_approval`, and `rate_limit`. An exact rule takes 
 For shadow observation from the configuration directory:
 
 ```sh
-npx --yes protect-mcp@0.32.3 --policy ./protect-mcp.json -- node /absolute/path/to/server.js
+npx --yes protect-mcp@0.32.4 --policy ./protect-mcp.json -- node /absolute/path/to/server.js
 ```
 
 For enforcement:
 
 ```sh
-npx --yes protect-mcp@0.32.3 --policy ./protect-mcp.json --enforce -- node /absolute/path/to/server.js
+npx --yes protect-mcp@0.32.4 --policy ./protect-mcp.json --enforce -- node /absolute/path/to/server.js
 ```
 
 Replace the illustrative child command with the selected server's reviewed executable and arguments. Configure the host to launch this wrapper in place of that server. Use absolute policy, signing-key, and server paths when the host starts in another directory. Keep the host's credentials in its existing secret mechanism; do not copy them into the conversation or policy file.

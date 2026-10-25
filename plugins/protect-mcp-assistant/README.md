@@ -58,7 +58,7 @@ From the repository root, with Node.js 22 or later and npm, choose a new absolut
 node plugins/protect-mcp-assistant/skills/protect-mcp-demo/scripts/demo.mjs --workspace /absolute/path/to/new/protect-mcp-demo
 ```
 
-The helper installs **protect-mcp 0.32.3** and **@veritasacta/verify 0.11.0** from npm with lifecycle scripts disabled. It leaves a small policy, test key, original receipts, an altered copy, and a JSON report in the new directory. Existing directories are refused. No real tools are called and no MCP host settings are changed.
+The helper installs **protect-mcp 0.32.4** and **@veritasacta/verify 0.11.0** from npm with lifecycle scripts disabled. It leaves a small policy, test key, original receipts, an altered copy, and a JSON report in the new directory. Existing directories are refused. No real tools are called and no MCP host settings are changed.
 
 Expected result: **allow → deny → two receipts verified → altered receipt rejected**. Missing and wrong expected keys are rejected too. Open `demo-summary.json` to inspect the results. Keep `protect-mcp.key` private; `demo-public-key.txt` contains only the test public key. This demonstrates the checker, not protection of your current host.
 

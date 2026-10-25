@@ -82,7 +82,7 @@ test('all bundled relative guidance links remain inside the package', () => {
 });
 
 test('runtime commands stay pinned to the tested releases', () => {
-  assert.deepEqual(pins, { 'protect-mcp': '0.32.3', '@veritasacta/verify': '0.11.0' });
+  assert.deepEqual(pins, { 'protect-mcp': '0.32.4', '@veritasacta/verify': '0.11.0' });
   for (const path of files(plugin).filter(path => /\.(md|mjs)$/.test(path))) {
     const text = readFileSync(path, 'utf8');
     for (const match of text.matchAll(/(protect-mcp|@veritasacta\/verify)@([\w.^~*-]+)/g)) {
