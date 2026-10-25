@@ -3,8 +3,8 @@
 The gateway is the shared runtime. Host packages choose how to connect to it;
 guidance plugins explain setup and verification without intercepting tools.
 The npm release these guides pin is **protect-mcp 0.32.4**, with
-**@veritasacta/verify 0.11.0**. The assistant preview's demo still pins 0.32.3
-until it is checked against 0.32.4. Plugin versions are separate.
+**@veritasacta/verify 0.11.0**. The assistant preview's demo pins the same two
+releases; its smoke test passes against npm's 0.32.4. Plugin versions are separate.
 
 ## Choose the route
 
