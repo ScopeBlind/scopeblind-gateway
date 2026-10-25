@@ -16,7 +16,7 @@ import {
 import {
   isSigningEnabled,
   signDecision
-} from "./chunk-PNPJY37B.mjs";
+} from "./chunk-RYIZBSTW.mjs";
 import {
   evaluateCedar
 } from "./chunk-P2YFFXF2.mjs";
@@ -24,6 +24,26 @@ import {
   canonicalize,
   chainLink
 } from "./chunk-SRLE63GU.mjs";
+
+// src/exit-when-written.ts
+var exiting;
+function exitWhenWritten(code = 0) {
+  if (exiting) return exiting;
+  process.exitCode = code;
+  exiting = new Promise(() => {
+    afterWritten(process.stdout, () => afterWritten(process.stderr, () => process.exit(code)));
+  });
+  return exiting;
+}
+function afterWritten(stream, then) {
+  stream.on("error", () => {
+  });
+  try {
+    stream.write("", () => then());
+  } catch {
+    then();
+  }
+}
 
 // src/evidence-store.ts
 import { readFileSync, writeFileSync, existsSync } from "fs";
@@ -665,6 +685,12 @@ function readConnectorContext(params, tool, input, keys) {
 import { createInterface } from "readline";
 import { appendFileSync } from "fs";
 import { join as join2 } from "path";
+var CHILD_OUTPUT_GRACE_MS = 2e3;
+function closed(stream) {
+  return new Promise((resolve) => {
+    stream.once("close", () => resolve());
+  });
+}
 var LOG_FILE = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE = ".protect-mcp-receipts.jsonl";
 var ProtectGateway = class {
@@ -674,8 +700,10 @@ var ProtectGateway = class {
   clientReader = null;
   logFilePath;
   receiptFilePath;
-  /** s5.7 hash of the last line appended to the receipt file (chain link) */
+  /** The draft section 6.7 link to the last line appended to the receipt file: "sha256:" + the hex SHA-256 of its JCS bytes. */
   lastReceiptHash = null;
+  /** Set once the server has exited (or never started) and the gateway is on its way out. */
+  exitStarted = false;
   evidenceStore;
   receiptBuffer;
   /** Approval grants: once grants keyed by `${tool}:${payload_hash}` (one exact action), always grants by `always:${tool}` */
@@ -783,6 +811,7 @@ var ProtectGateway = class {
     if (!this.child.stdin || !this.child.stdout || !this.child.stderr) {
       throw new Error("Failed to create pipes to child process");
     }
+    const childOutputRelayed = Promise.all([closed(this.child.stdout), closed(this.child.stderr)]);
     this.child.stderr.on("data", (data) => {
       process.stderr.write(data);
     });
@@ -797,11 +826,11 @@ var ProtectGateway = class {
     this.child.on("exit", (code, signal) => {
       if (verbose) this.log(`Child process exited (code=${code}, signal=${signal})`);
       this.evidenceStore.save();
-      process.exit(code ?? 1);
+      this.exitAfterChild(code ?? 1, childOutputRelayed);
     });
     this.child.on("error", (err) => {
       this.log(`Child process error: ${err.message}`);
-      process.exit(1);
+      this.exitAfterChild(1);
     });
     process.on("SIGINT", () => this.stop());
     process.on("SIGTERM", () => this.stop());
@@ -1189,7 +1218,7 @@ var ProtectGateway = class {
 `);
         try {
           appendFileSync(this.receiptFilePath, signed.signed + "\n");
-          if (signed.receipt_hash) this.lastReceiptHash = signed.receipt_hash;
+          if (signed.chain_link) this.lastReceiptHash = signed.chain_link;
         } catch (err) {
           recordFailed = true;
           process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
@@ -1401,6 +1430,27 @@ var ProtectGateway = class {
     const where = this.statusPort ? `POST http://127.0.0.1:${this.statusPort}/approve` : "POST /approve on the status server (not running in this process)";
     this.log(`Approval required for ${JSON.stringify(toolName)}: to run this exact call once, ${where} with ${body}`);
   }
+  /**
+   * The server this gateway wraps has exited, or could not start: exit with `code` once what it wrote has been relayed
+   * and written. Up to 0.32.3 the gateway exited the moment the server did, while the server's last replies could still
+   * be unread in its stdout pipe and while Node was still writing ours to the client: a reply larger than a pipe holds
+   * reached the client cut short. The first call decides the exit status, as the first process.exit() did.
+   */
+  exitAfterChild(code, relayed = Promise.resolve()) {
+    if (this.exitStarted) return;
+    this.exitStarted = true;
+    this.clientReader?.close();
+    this.child?.stdin?.on("error", () => {
+    });
+    let timer;
+    const grace = new Promise((resolve) => {
+      timer = setTimeout(resolve, CHILD_OUTPUT_GRACE_MS);
+    });
+    void Promise.race([relayed, grace]).then(() => {
+      clearTimeout(timer);
+      return exitWhenWritten(code);
+    });
+  }
   stop() {
     this.evidenceStore.save();
     if (this.clientReader) this.clientReader.close();
@@ -1413,6 +1463,7 @@ var ProtectGateway = class {
 };
 
 export {
+  exitWhenWritten,
   evaluateTier,
   meetsMinTier,
   resolveCredential,

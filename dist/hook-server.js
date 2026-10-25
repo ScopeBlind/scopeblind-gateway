@@ -134,6 +134,9 @@ function verifyEncoding(payload, envelope, signature, publicKeyHex, shape, allow
 function receiptHash(obj) {
   return (0, import_utils.bytesToHex)((0, import_sha256.sha256)((0, import_utils.utf8ToBytes)(canonicalize(obj))));
 }
+function chainLink(receipt) {
+  return "sha256:" + receiptHash(receipt);
+}
 var B58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 function base58(bytes) {
   let n = BigInt("0x" + (0, import_utils.bytesToHex)(bytes));
@@ -872,7 +875,11 @@ function signDecision(entry, prevReceiptHash) {
       ok: true,
       signed: JSON.stringify(result.envelope),
       artifact_type: artifactType,
-      receipt_hash: result.hash
+      receipt_hash: result.hash,
+      // result.hash is receiptHash(envelope), so this is chainLink(envelope). Up to 0.32.3 the gateway and the hook
+      // server chained with receipt_hash itself: the hook server wrote every link as bare hex, and the gateway every
+      // link after the first in each process, the form draft section 6.7 says an implementation must not emit.
+      chain_link: `sha256:${result.hash}`
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
@@ -2992,7 +2999,7 @@ function emitDecisionLog(state, entry) {
     if (signed.signed) {
       try {
         (0, import_node_fs10.appendFileSync)(state.receiptFilePath, signed.signed + "\n");
-        if (signed.receipt_hash) state.lastReceiptHash = signed.receipt_hash;
+        if (signed.chain_link) state.lastReceiptHash = signed.chain_link;
       } catch (err) {
         recordFailed = true;
         process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
@@ -3023,7 +3030,7 @@ function emitDecisionLog(state, entry) {
       const tombstone = JSON.stringify(tombstoneObj);
       try {
         (0, import_node_fs10.appendFileSync)(state.receiptFilePath, tombstone + "\n");
-        state.lastReceiptHash = receiptHash(tombstoneObj);
+        state.lastReceiptHash = chainLink(tombstoneObj);
       } catch {
       }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
@@ -3250,7 +3257,7 @@ async function startHookServer(options = {}) {
     // stops an enforcing gate and is moved aside by an observing one.
     lastReceiptHash: resumeReceiptLog((0, import_node_path7.join)(dataDir, RECEIPTS_FILE), {
       enforce,
-      link: receiptHash,
+      link: chainLink,
       warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}
 `)
     }),

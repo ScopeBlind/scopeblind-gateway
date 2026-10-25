@@ -4,9 +4,9 @@ LABEL org.opencontainers.image.description="MCP security gateway with Ed25519-si
 LABEL org.opencontainers.image.source="https://github.com/ScopeBlind/scopeblind-gateway"
 LABEL org.opencontainers.image.licenses="MIT"
 
-RUN npm install -g protect-mcp@0.32.3
+RUN npm install -g protect-mcp@0.32.4
 
-ENV PROTECT_MCP_VERSION=0.32.3
+ENV PROTECT_MCP_VERSION=0.32.4
 
 ENTRYPOINT ["protect-mcp"]
 CMD ["mcp"]

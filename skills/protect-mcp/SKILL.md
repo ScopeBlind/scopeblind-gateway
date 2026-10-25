@@ -34,9 +34,9 @@ Run from the intended project directory. Inspect existing configuration before
 changing it, and preserve the user's policy and signing keys.
 
 ```sh
-npx --yes protect-mcp@0.32.3 init-hooks --dry-run
-npx --yes protect-mcp@0.32.3 init-hooks
-npx --yes protect-mcp@0.32.3 doctor
+npx --yes protect-mcp@0.32.4 init-hooks --dry-run
+npx --yes protect-mcp@0.32.4 init-hooks
+npx --yes protect-mcp@0.32.4 doctor
 ```
 
 The installer merges its HTTP hooks into `.claude/settings.json`. It creates
@@ -48,7 +48,7 @@ before relying on it. Cedar is an authorization policy engine, not AWS IAM.
 Start the server in a terminal that stays open:
 
 ```sh
-npx --yes protect-mcp@0.32.3 serve --enforce --cedar ./policies --policy ./protect-mcp.json
+npx --yes protect-mcp@0.32.4 serve --enforce --cedar ./policies --policy ./protect-mcp.json
 ```
 
 Reload the project's hooks in Claude Code, then make a harmless tool call such
@@ -65,7 +65,7 @@ hosted integrations when the user asked only to verify an existing record.
 To remove the installed hook entries:
 
 ```sh
-npx --yes protect-mcp@0.32.3 init-hooks --uninstall
+npx --yes protect-mcp@0.32.4 init-hooks --uninstall
 ```
 
 Uninstall removes unchanged entries tracked by the installer. It preserves

@@ -44,4 +44,4 @@ or broken selected setup or a failed check, and **2** for invalid flags. A
 `not_checked` result remains unestablished, even when other checks pass.
 Relative paths resolve from `--dir` (the current directory by default).
 
-Run `npx --yes protect-mcp@0.32.3 --help` for the full flag reference.
+Run `npx --yes protect-mcp@0.32.4 --help` for the full flag reference.

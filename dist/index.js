@@ -6561,11 +6561,11 @@ var require_doc = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.Doc = void 0;
     var Doc = class {
-      constructor(args = [], closed = {}) {
+      constructor(args = [], closed2 = {}) {
         this.content = [];
         this.indent = 0;
         this.args = args;
-        this.closed = closed;
+        this.closed = closed2;
       }
       // the compiler catches a child's throw and keeps writing into this doc, so the indent has to unwind with it
       indented(fn) {
@@ -43937,6 +43937,26 @@ function cannotContinue(path, problem, options) {
   return null;
 }
 
+// src/exit-when-written.ts
+var exiting;
+function exitWhenWritten(code2 = 0) {
+  if (exiting) return exiting;
+  process.exitCode = code2;
+  exiting = new Promise(() => {
+    afterWritten(process.stdout, () => afterWritten(process.stderr, () => process.exit(code2)));
+  });
+  return exiting;
+}
+function afterWritten(stream, then) {
+  stream.on("error", () => {
+  });
+  try {
+    stream.write("", () => then());
+  } catch {
+    then();
+  }
+}
+
 // src/gateway.ts
 var import_node_path6 = require("path");
 
@@ -44419,7 +44439,11 @@ function signDecision(entry, prevReceiptHash) {
       ok: true,
       signed: JSON.stringify(result.envelope),
       artifact_type: artifactType,
-      receipt_hash: result.hash
+      receipt_hash: result.hash,
+      // result.hash is receiptHash(envelope), so this is chainLink(envelope). Up to 0.32.3 the gateway and the hook
+      // server chained with receipt_hash itself: the hook server wrote every link as bare hex, and the gateway every
+      // link after the first in each process, the form draft section 6.7 says an implementation must not emit.
+      chain_link: `sha256:${result.hash}`
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
@@ -45672,6 +45696,12 @@ var RecordReporter = class {
 };
 
 // src/gateway.ts
+var CHILD_OUTPUT_GRACE_MS = 2e3;
+function closed(stream) {
+  return new Promise((resolve2) => {
+    stream.once("close", () => resolve2());
+  });
+}
 var LOG_FILE2 = ".protect-mcp-log.jsonl";
 var RECEIPTS_FILE = ".protect-mcp-receipts.jsonl";
 var ProtectGateway = class {
@@ -45681,8 +45711,10 @@ var ProtectGateway = class {
   clientReader = null;
   logFilePath;
   receiptFilePath;
-  /** s5.7 hash of the last line appended to the receipt file (chain link) */
+  /** The draft section 6.7 link to the last line appended to the receipt file: "sha256:" + the hex SHA-256 of its JCS bytes. */
   lastReceiptHash = null;
+  /** Set once the server has exited (or never started) and the gateway is on its way out. */
+  exitStarted = false;
   evidenceStore;
   receiptBuffer;
   /** Approval grants: once grants keyed by `${tool}:${payload_hash}` (one exact action), always grants by `always:${tool}` */
@@ -45790,6 +45822,7 @@ var ProtectGateway = class {
     if (!this.child.stdin || !this.child.stdout || !this.child.stderr) {
       throw new Error("Failed to create pipes to child process");
     }
+    const childOutputRelayed = Promise.all([closed(this.child.stdout), closed(this.child.stderr)]);
     this.child.stderr.on("data", (data) => {
       process.stderr.write(data);
     });
@@ -45804,11 +45837,11 @@ var ProtectGateway = class {
     this.child.on("exit", (code2, signal) => {
       if (verbose) this.log(`Child process exited (code=${code2}, signal=${signal})`);
       this.evidenceStore.save();
-      process.exit(code2 ?? 1);
+      this.exitAfterChild(code2 ?? 1, childOutputRelayed);
     });
     this.child.on("error", (err) => {
       this.log(`Child process error: ${err.message}`);
-      process.exit(1);
+      this.exitAfterChild(1);
     });
     process.on("SIGINT", () => this.stop());
     process.on("SIGTERM", () => this.stop());
@@ -46196,7 +46229,7 @@ var ProtectGateway = class {
 `);
         try {
           (0, import_node_fs9.appendFileSync)(this.receiptFilePath, signed2.signed + "\n");
-          if (signed2.receipt_hash) this.lastReceiptHash = signed2.receipt_hash;
+          if (signed2.chain_link) this.lastReceiptHash = signed2.chain_link;
         } catch (err) {
           recordFailed = true;
           process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
@@ -46407,6 +46440,27 @@ var ProtectGateway = class {
     const body = JSON.stringify({ request_id: requestId, tool: toolName, mode: "once", nonce: this.approvalNonce });
     const where = this.statusPort ? `POST http://127.0.0.1:${this.statusPort}/approve` : "POST /approve on the status server (not running in this process)";
     this.log(`Approval required for ${JSON.stringify(toolName)}: to run this exact call once, ${where} with ${body}`);
+  }
+  /**
+   * The server this gateway wraps has exited, or could not start: exit with `code` once what it wrote has been relayed
+   * and written. Up to 0.32.3 the gateway exited the moment the server did, while the server's last replies could still
+   * be unread in its stdout pipe and while Node was still writing ours to the client: a reply larger than a pipe holds
+   * reached the client cut short. The first call decides the exit status, as the first process.exit() did.
+   */
+  exitAfterChild(code2, relayed = Promise.resolve()) {
+    if (this.exitStarted) return;
+    this.exitStarted = true;
+    this.clientReader?.close();
+    this.child?.stdin?.on("error", () => {
+    });
+    let timer;
+    const grace = new Promise((resolve2) => {
+      timer = setTimeout(resolve2, CHILD_OUTPUT_GRACE_MS);
+    });
+    void Promise.race([relayed, grace]).then(() => {
+      clearTimeout(timer);
+      return exitWhenWritten(code2);
+    });
   }
   stop() {
     this.evidenceStore.save();
@@ -50752,7 +50806,7 @@ function emitDecisionLog(state, entry) {
     if (signed2.signed) {
       try {
         (0, import_node_fs14.appendFileSync)(state.receiptFilePath, signed2.signed + "\n");
-        if (signed2.receipt_hash) state.lastReceiptHash = signed2.receipt_hash;
+        if (signed2.chain_link) state.lastReceiptHash = signed2.chain_link;
       } catch (err) {
         recordFailed = true;
         process.stderr.write(`[PROTECT_MCP_RECORD_FAILURE] ${JSON.stringify({ request_id: log.request_id, tool: log.tool, decision: log.decision, error: err instanceof Error ? err.message : String(err) })}
@@ -50783,7 +50837,7 @@ function emitDecisionLog(state, entry) {
       const tombstone = JSON.stringify(tombstoneObj);
       try {
         (0, import_node_fs14.appendFileSync)(state.receiptFilePath, tombstone + "\n");
-        state.lastReceiptHash = receiptHash(tombstoneObj);
+        state.lastReceiptHash = chainLink(tombstoneObj);
       } catch {
       }
       process.stderr.write(`[PROTECT_MCP_SIGNING_FAILURE] ${tombstone}
@@ -51010,7 +51064,7 @@ async function startHookServer(options = {}) {
     // stops an enforcing gate and is moved aside by an observing one.
     lastReceiptHash: resumeReceiptLog((0, import_node_path9.join)(dataDir, RECEIPTS_FILE2), {
       enforce,
-      link: receiptHash,
+      link: chainLink,
       warn: (message) => process.stderr.write(`[PROTECT_MCP] ${message}
 `)
     }),

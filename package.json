@@ -1,6 +1,6 @@
 {
   "name": "protect-mcp",
-  "version": "0.32.3",
+  "version": "0.32.4",
   "mcpName": "com.scopeblind/protect-mcp",
   "description": "Local Cedar policy enforcement and signed decision receipts for AI agent tool calls.",
   "main": "dist/index.js",
