@@ -2,6 +2,10 @@
 
 [Back to the quickstart](../README.md) · [Command reference](commands.md)
 
+**Using Claude Code?** Start with the [hook quickstart](#claude-code-hook-quickstart).
+It previews the project changes, checks the local setup and ends with a receipt
+from a real tool call. The MCP wrapper below is for an existing MCP server.
+
 ## Connect your MCP server
 
 ```bash
@@ -258,34 +262,77 @@ sent it, not over the Cedar-safe copy.
 
 ## Claude Code hook quickstart
 
-```bash
-# Generate hook config and the starter policy (policies/agent.cedar).
-npx protect-mcp init-hooks
+From the project you want to protect, preview and then install the hooks:
 
-# Serve the Claude Code hook gate in enforce mode. It runs a restraint self-test
-# first and refuses to start if it cannot prove it denies a forbidden vector.
-npx protect-mcp serve --enforce --cedar ./policies
+```sh
+npx --yes protect-mcp@0.32.3 init-hooks --dry-run
+npx --yes protect-mcp@0.32.3 init-hooks
+npx --yes protect-mcp@0.32.3 doctor
 ```
 
-One-shot evaluation, the way a PreToolUse hook calls it. Exit code 2 means deny
-(the tool is blocked); exit 0 means allow:
+The preview writes nothing. Installation adds HTTP hook entries to
+`.claude/settings.json`, preserving other hooks and settings, and records its
+entries in `.claude/protect-mcp-hooks.json`. It backs up existing settings before
+changing them and refuses malformed JSON instead of replacing it.
 
-```bash
-npx protect-mcp evaluate --cedar ./policies --tool Bash --input '{"command":"git push --force origin main"}'
-echo $?   # 2  -> denied, fail-closed
+When absent, it creates `policies/agent.cedar`, `keys/gateway.json`,
+`protect-mcp.json` and a local `/verify-receipt` skill. Existing policies,
+configuration and signing keys stay in place. Review `policies/agent.cedar`:
+the starter allows calls except for [seven named forbids](#start-with-the-starter-policy).
 
-npx protect-mcp evaluate --cedar ./policies --tool Read --input '{"path":"README.md"}'
-echo $?   # 0  -> allowed
+`doctor` checks the selected local configuration, signing key, policy files and
+installed Cedar evaluator. It makes no network request and installs no packages
+by default. A passing result means those checks passed; it does not mean Claude
+Code has loaded the hooks. Use `--json` for machine-readable check results.
+
+Start the hook server and keep this terminal open:
+
+```sh
+npx --yes protect-mcp@0.32.3 serve --enforce --cedar ./policies --policy ./protect-mcp.json
 ```
 
-A missing or unloadable policy denies (exit 2) unless you explicitly pass
-`--fail-on-missing-policy false`.
+It listens at `http://127.0.0.1:9377/hook`. `--enforce` runs the evaluator's
+restraint self-test and refuses startup when configured signing cannot load its
+key. Reload the project's hooks in Claude Code, then ask it to read `README.md`
+or another harmless project file. Confirm a new event appears in
+`.protect-mcp-log.jsonl` and a signed receipt in `.protect-mcp-receipts.jsonl`.
 
-## Claude Code hooks
+In a second terminal in the same project, verify the receipt chain using the
+public key from your own setup:
 
-`protect-mcp init-hooks` writes a `.claude/settings.json` for you. To wire the
-gate by hand, the two verbs you need are `evaluate` (PreToolUse, blocks on exit 2)
-and `sign` (PostToolUse, records a receipt). Claude Code hands a hook the call
+```sh
+PROTECT_MCP_PUBLIC_KEY=$(node -p 'JSON.parse(require("node:fs").readFileSync("keys/gateway.json", "utf8")).publicKey')
+npx --yes @veritasacta/verify@0.11.0 --replay-chain .protect-mcp-receipts.jsonl --key "$PROTECT_MCP_PUBLIC_KEY" --json
+```
+
+The key file stays private; only its public member is passed to the verifier.
+For someone else's receipts, obtain their expected public key through a separate
+trusted channel. Verification exits **0** for valid, **1** for invalid and **2**
+for not checked/error. It checks the supplied signed record, not whether every
+possible action passed through the hook. `npx` may download packages on first
+use; local evaluation and receipt verification need no ScopeBlind account.
+
+Keep Claude Code's native permissions enabled. The gate enforces requests that
+reach it; HTTP-hook failure behavior is controlled by the host, so a stopped
+server is not an assurance that tool calls will be blocked.
+
+### Remove the hooks
+
+```sh
+npx --yes protect-mcp@0.32.3 init-hooks --uninstall
+```
+
+This removes only unchanged entries tracked by the installer. It keeps unrelated
+hooks, custom edits, policies, keys, skills and receipts. Read the uninstall
+report for anything retained. For an installation created before 0.32.3, inspect
+the preview first; the installer does not guess ownership of older hook entries.
+
+### Manual command hooks
+
+Use command hooks as an alternative when you manage your own host configuration;
+do not install this example alongside the generated HTTP hooks for the same
+events. The two verbs are `evaluate` (PreToolUse, blocks on exit 2) and `sign`
+(PostToolUse, records a receipt). Claude Code hands a hook the call
 as JSON on stdin and sets no `TOOL_NAME` or `TOOL_INPUT` variables, so pass
 `--format claude` and nothing else about the call: the gate reads `tool_name`
 and `tool_input` from the payload, and on a deny it returns the reason to the
@@ -301,7 +348,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.32.2 evaluate --cedar ./cedar --format claude"
+            "command": "npx --yes protect-mcp@0.32.3 evaluate --cedar ./cedar --format claude"
           }
         ]
       }
@@ -312,7 +359,7 @@ the version so a Claude Code session always runs the gate you tested:
         "hooks": [
           {
             "type": "command",
-            "command": "npx protect-mcp@0.32.2 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
+            "command": "npx --yes protect-mcp@0.32.3 sign --format claude --receipts ./receipts --key ./keys/gateway.json"
           }
         ]
       }
@@ -320,6 +367,14 @@ the version so a Claude Code session always runs the gate you tested:
   }
 }
 ```
+
+A missing or unloadable policy denies (exit 2) unless you explicitly pass
+`--fail-on-missing-policy false`. `sign --receipts ./receipts` writes
+`./receipts/receipts.jsonl`; it is not the HTTP server's default receipt path.
+In Claude Code format the signing summary uses `receipt_decision`, leaving the
+host's reserved `decision` field unused. PostToolUse signing happens after the
+tool call and does not prevent that call from executing.
+
 ### Sign the policy decision itself
 
 From 0.13.0, `sign` can evaluate the policy and record the real decision in the

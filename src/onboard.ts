@@ -358,7 +358,7 @@ export async function handleOffboard(argv: string[]): Promise<void> {
     out(yellow('  If you really want the local data or keys gone, pass --delete-data / --delete-keys.'));
   }
 
-  const settingsPath = join(process.cwd(), '.claude', 'settings.json');
+  const settingsPath = join(dir, '.claude', 'settings.json');
   const hookHits = disable ? countProtectHooks(settingsPath) : 0;
 
   out();

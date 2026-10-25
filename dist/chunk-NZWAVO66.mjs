@@ -1,10 +1,10 @@
 import {
-  buildEnrichment
-} from "./chunk-KRKZ2YX7.mjs";
-import {
   inspectEgress,
   toEgressSummary
 } from "./chunk-OTJXWQDE.mjs";
+import {
+  buildEnrichment
+} from "./chunk-KRKZ2YX7.mjs";
 import {
   approvePolicyProposalWithWebAuthn,
   createWebAuthnPolicyChallenge,

@@ -10,14 +10,14 @@ import {
   writeConnectorPilots
 } from "./chunk-U4IYCTLF.mjs";
 import {
+  ProtectGateway,
+  validateCredentials
+} from "./chunk-RNVDZBTV.mjs";
+import {
   POLICY_PACKS,
   getPolicyPack,
   policyPackIds
 } from "./chunk-HBK47UIZ.mjs";
-import {
-  ProtectGateway,
-  validateCredentials
-} from "./chunk-RNVDZBTV.mjs";
 import {
   STARTER_POLICY,
   STARTER_POLICY_VERSION,
@@ -99,7 +99,8 @@ Usage:
   protect-mcp coordination agent import --config <existing-private-file> [--profile <private-file>]
   protect-mcp coordination --config <private-file>
   protect-mcp coordination --endpoint <url> --room <id> --authority-key <hex> [--token-env <name>] [--run <id>]
-  protect-mcp init-hooks [--dir <path>] [--port <port>]
+  protect-mcp init-hooks [--dir <path>] [--port <port>] [--dry-run] [--uninstall]
+  protect-mcp doctor [--dir <path>] [--policy <json>] [--cedar <dir>] [--json] [--hosted]
   protect-mcp quickstart [--connect]
   protect-mcp wrap [--write] [--claude-desktop] [-- <command>]
   protect-mcp dashboard [--port <port>] [--dir <path>] [--open]
@@ -157,7 +158,7 @@ Commands:
   serve             Start HTTP hook server for Claude Code integration (port 9377)
   evaluate          Evaluate one tool call against a Cedar policy (PreToolUse gate; exit 2 = deny, fail-closed)
   sign              Sign one tool call into a receipt (PostToolUse)
-  init-hooks        Generate Claude Code hook config + skill + sample Cedar policy
+  init-hooks        Preview, install or safely remove project-local Claude Code HTTP hooks
   quickstart        Zero-config onboarding: init + demo + show receipts in one command
   onboard           Guided first run: pick a policy pack, run a governed demo, verify a receipt
   offboard          Remove ScopeBlind cleanly: delete local data / disable enforcement / uninstall
@@ -176,7 +177,7 @@ Commands:
                     (--starter: write ./protect.cedar from the starter policy and ./protect-mcp.key;
                     --contain adds the opt-in only-inside-this-folder rules)
   demo              Start a demo server wrapped with protect-mcp (see receipts instantly)
-  doctor            Check your setup: keys, policies, verifier, API connectivity
+  doctor            Read-only local setup checks; --hosted explicitly checks API health
   trace <id>        Visualize the receipt DAG from a given receipt_id (ASCII tree)
   status            Show tool call statistics from the local decision log
   digest            Generate a human-readable summary of agent activity
@@ -729,8 +730,10 @@ function shellQuoteArg(arg) {
 function shellCommand(command, args) {
   return [command, ...args].map(shellQuoteArg).join(" ");
 }
-function wrapperArgsFor(command, opts) {
-  const args = ["-y", "protect-mcp@latest"];
+async function wrapperArgsFor(command, opts) {
+  const version = await pkgVersion();
+  if (version === "0.0.0") throw new Error("Could not resolve this package version; refusing to generate an unpinned wrapper.");
+  const args = ["-y", `protect-mcp@${version}`];
   if (opts.cedarDir) args.push("--cedar", opts.cedarDir);
   else args.push("--policy", opts.configPath || absoluteOrCwd("protect-mcp.json"));
   if (opts.enforce) args.push("--enforce");
@@ -1924,7 +1927,7 @@ async function handleWrap(argv) {
   const reportToken = flagValue(argv, "--report-token") || void 0;
   const runId = flagValue(argv, "--run") || void 0;
   if (childCommand.length > 0) {
-    const args = wrapperArgsFor(childCommand, { configPath, cedarDir, enforce, standardPath, reportUrl, reportToken, runId });
+    const args = await wrapperArgsFor(childCommand, { configPath, cedarDir, enforce, standardPath, reportUrl, reportToken, runId });
     process.stdout.write(`
 ${bold("protect-mcp wrap")}
 
@@ -1999,7 +2002,7 @@ ${bold("protect-mcp wrap")}
       changes.push({ name, before, after: before, skipped: "already wrapped" });
       continue;
     }
-    const wrappedArgs = wrapperArgsFor([originalCommand, ...originalArgs], { configPath, cedarDir, enforce, standardPath, reportUrl, reportToken, runId });
+    const wrappedArgs = await wrapperArgsFor([originalCommand, ...originalArgs], { configPath, cedarDir, enforce, standardPath, reportUrl, reportToken, runId });
     const after = { ...before, command: "npx", args: wrappedArgs };
     next.mcpServers[name] = after;
     changes.push({ name, before, after });
@@ -4006,175 +4009,71 @@ function getTypeEmoji(type) {
   }
 }
 async function handleInitHooks(argv) {
-  const { writeFileSync, existsSync, mkdirSync, readFileSync } = await import("fs");
-  const { join } = await import("path");
-  const { generateHookSettings, generateSampleCedarPolicy, generateVerifyReceiptSkill } = await import("./hook-patterns.mjs");
+  const { installHooks } = await import("./hook-install-73BXONDO.mjs");
   let dir = process.cwd();
-  const dirIdx = argv.indexOf("--dir");
-  if (dirIdx !== -1 && argv[dirIdx + 1]) dir = argv[dirIdx + 1];
-  const portIdx = argv.indexOf("--port");
-  const port = portIdx >= 0 && argv[portIdx + 1] ? parseInt(argv[portIdx + 1]) : 9377;
-  const hookUrl = `http://127.0.0.1:${port}/hook`;
+  let port = 9377;
+  let dryRun = false;
+  let uninstall = false;
+  for (let index = 0; index < argv.length; index++) {
+    const argument = argv[index];
+    if (argument === "--dry-run") dryRun = true;
+    else if (argument === "--uninstall") uninstall = true;
+    else if (argument === "--dir" || argument === "--port") {
+      const value = argv[++index];
+      if (!value || value.startsWith("--")) throw new Error(`init-hooks: ${argument} needs a value.`);
+      if (argument === "--dir") dir = value;
+      else {
+        if (!/^\d+$/.test(value)) throw new Error("init-hooks: --port must be an integer from 1 to 65535.");
+        port = Number(value);
+      }
+    } else throw new Error(`init-hooks: unknown argument ${argument}`);
+  }
+  const result = installHooks({ dir, port, dryRun, uninstall });
+  const version = await pkgVersion();
+  const npx = `npx --yes protect-mcp@${version}`;
   process.stdout.write(`
-${bold("protect-mcp init-hooks")}
-`);
-  process.stdout.write(`${"\u2500".repeat(55)}
+${bold(`protect-mcp init-hooks${uninstall ? " --uninstall" : ""}${dryRun ? " --dry-run" : ""}`)}
 
 `);
-  const claudeDir = join(dir, ".claude");
-  const settingsPath = join(claudeDir, "settings.json");
-  let existingSettings = {};
-  if (!existsSync(claudeDir)) {
-    mkdirSync(claudeDir, { recursive: true });
+  process.stdout.write(`Project: ${result.directory}
+`);
+  process.stdout.write(`Hook URL: ${result.hookUrl}
+
+`);
+  for (const path of result.changed) process.stdout.write(`  ${dryRun ? "Would update" : "Updated"}: ${path}
+`);
+  for (const path of result.preserved) process.stdout.write(`  Preserved existing file: ${path}
+`);
+  for (const warning of result.warnings) process.stdout.write(`  Note: ${warning}
+`);
+  if (!result.changed.length) process.stdout.write("  No files changed.\n");
+  if (result.backup) process.stdout.write(`
+Settings backup${dryRun ? " would be written to" : ""}: ${result.backup}
+`);
+  if (dryRun) {
+    process.stdout.write("\nPreview only: no files or keys were created.\n");
+    return;
   }
-  if (existsSync(settingsPath)) {
-    try {
-      existingSettings = JSON.parse(readFileSync(settingsPath, "utf-8"));
-    } catch {
-      process.stderr.write(`[PROTECT_MCP] Warning: Could not parse existing ${settingsPath}
-`);
-    }
+  if (uninstall) {
+    process.stdout.write("\nOnly unchanged installer-owned hook entries were removed. Policies, keys, receipts, configuration and skills were kept.\n");
+    process.stdout.write("Review any unmatched entries above and restart your Claude Code session.\n");
+    return;
   }
-  const hookSettings = generateHookSettings(hookUrl);
-  const mergedSettings = {
-    ...existingSettings,
-    hooks: {
-      ...existingSettings.hooks || {},
-      ...hookSettings.hooks
-    }
-  };
-  writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2) + "\n");
-  process.stdout.write(`  ${green("\u2713")} ${settingsPath}
-`);
-  process.stdout.write(`    Hook URL: ${dim(hookUrl)}
-`);
-  process.stdout.write(`    Events: PreToolUse, PostToolUse, SubagentStart/Stop, Task, Session, Config, Stop
+  process.stdout.write(`
+Review the starter policy and existing configuration, then start the hook server in this project:
 
 `);
-  const keysDir = join(dir, "keys");
-  const keyPath = join(keysDir, "gateway.json");
-  if (!existsSync(keyPath)) {
-    ensurePrivateKeyDir(keysDir);
-    const { randomBytes: rb } = await import("crypto");
-    try {
-      const { ed25519 } = await import("@noble/curves/ed25519");
-      const { bytesToHex } = await import("@noble/hashes/utils");
-      const privateKey = rb(32);
-      const publicKey = ed25519.getPublicKey(privateKey);
-      writePrivateKeyFile(keyPath, JSON.stringify({
-        privateKey: bytesToHex(privateKey),
-        publicKey: bytesToHex(publicKey),
-        kid: `hook-${Date.now()}`,
-        generated_at: (/* @__PURE__ */ new Date()).toISOString(),
-        warning: "KEEP THIS FILE SECRET. Never commit to version control."
-      }, null, 2) + "\n", { overwrite: false });
-      const gitignorePath = join(keysDir, ".gitignore");
-      if (!existsSync(gitignorePath)) {
-        writeFileSync(gitignorePath, "# Never commit signing keys\n*.json\n");
-      }
-      process.stdout.write(`  ${green("\u2713")} ${keyPath} (Ed25519 keypair)
+  process.stdout.write(`  cd ${shellQuoteArg(result.directory)}
+`);
+  process.stdout.write(`  ${npx} serve --enforce --port ${port} --policy ./protect-mcp.json --cedar ./policies
 
 `);
-    } catch {
-      process.stdout.write(`  ${yellow("\u26A0")} Could not generate Ed25519 keys, signing disabled
-
+  process.stdout.write("Keep that terminal running and open a new Claude Code session in this project.\n");
+  process.stdout.write("Setup alone does not establish that the host invokes the hooks. Check a real host call and its receipt.\n");
+  process.stdout.write(`
+Preview removal: ${npx} init-hooks --dir ${shellQuoteArg(result.directory)} --uninstall --dry-run
 `);
-    }
-  } else {
-    process.stdout.write(`  ${green("\u2713")} ${keyPath} (existing keys found)
-
-`);
-  }
-  const policiesDir = join(dir, "policies");
-  const cedarPath = join(policiesDir, "agent.cedar");
-  if (!existsSync(cedarPath)) {
-    if (!existsSync(policiesDir)) mkdirSync(policiesDir, { recursive: true });
-    writeFileSync(cedarPath, generateSampleCedarPolicy());
-    process.stdout.write(`  ${green("\u2713")} ${cedarPath}
-`);
-    process.stdout.write(`    The starter policy: every tool call is allowed except seven named forbids, and a forbid always wins.
-`);
-    process.stdout.write(`    Edit it to fit your project: npx protect-mcp policy show
-
-`);
-  } else {
-    process.stdout.write(`  ${green("\u2713")} ${cedarPath} (existing policy found)
-
-`);
-  }
-  const configPath = join(dir, "protect-mcp.json");
-  if (!existsSync(configPath)) {
-    const config = {
-      tools: { "*": { rate_limit: "100/hour" } },
-      default_tier: "unknown",
-      signing: {
-        key_path: "./keys/gateway.json",
-        issuer: "protect-mcp",
-        enabled: true
-      }
-    };
-    writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
-    process.stdout.write(`  ${green("\u2713")} ${configPath}
-
-`);
-  }
-  const skillsDir = join(dir, ".claude", "skills", "verify-receipt");
-  const skillPath = join(skillsDir, "SKILL.md");
-  if (!existsSync(skillPath)) {
-    mkdirSync(skillsDir, { recursive: true });
-    writeFileSync(skillPath, generateVerifyReceiptSkill());
-    process.stdout.write(`  ${green("\u2713")} ${skillPath}
-`);
-    process.stdout.write(`    Use ${dim("/verify-receipt")} in Claude Code to check audit trails.
-
-`);
-  } else {
-    process.stdout.write(`  ${green("\u2713")} ${skillPath} (existing skill found)
-
-`);
-  }
-  process.stdout.write(`${"\u2500".repeat(55)}
-
-`);
-  process.stdout.write(`${bold("Next steps:")}
-
-`);
-  process.stdout.write(`  1. Start the hook server:
-`);
-  process.stdout.write(`     ${dim(`npx protect-mcp serve`)}
-
-`);
-  process.stdout.write(`  2. Open a Claude Code session in this project.
-`);
-  process.stdout.write(`     Every tool call will be receipted automatically.
-
-`);
-  process.stdout.write(`  3. See your record: a searchable view of every decision.
-`);
-  process.stdout.write(`     ${dim(`npx protect-mcp record`)}
-`);
-  process.stdout.write(`     ${dim(`Everything stays on this machine. Nothing is uploaded.`)}
-
-`);
-  process.stdout.write(`     Prefer the terminal? ${dim(`npx protect-mcp receipts`)}, or ${dim("/verify-receipt")} in Claude Code.
-
-`);
-  process.stdout.write(`  4. View policy suggestions:
-`);
-  process.stdout.write(`     ${dim(`curl http://127.0.0.1:${port}/suggestions`)}
-
-`);
-  process.stdout.write(`${bold("Key facts:")}
-`);
-  process.stdout.write(`  \u2022 deny decisions are ${bold("AUTHORITATIVE")}: they cannot be overridden
-`);
-  process.stdout.write(`  \u2022 PostToolUse runs ${bold("async")}, so there is zero latency impact on tool execution
-`);
-  process.stdout.write(`  \u2022 Receipts are Ed25519-signed and append-only
-`);
-  process.stdout.write(`  \u2022 Swarm topology (coordinator/workers) is tracked automatically
-
-`);
+  process.stdout.write("Removal preserves existing hooks and later user edits; modified installer entries need manual review.\n\n");
 }
 async function sendInstallTelemetry() {
   try {
@@ -5047,8 +4946,9 @@ ${bold("protect-mcp egress-check")}  ${dim('(the "no raw data leaves the box" he
   if (!report.raw_content_dropped || !report.private_key_dropped || !report.deny_receipt_forwardable || unsafe.length > 0) process.exitCode = 1;
 }
 async function main() {
-  await sendInstallTelemetry();
   const args = process.argv.slice(2);
+  const readOnlySetup = args[0] === "doctor" || args[0] === "init-hooks" && args.includes("--dry-run");
+  if (!readOnlySetup) await sendInstallTelemetry();
   process.env.PROTECT_MCP_VERSION = process.env.PROTECT_MCP_VERSION || await pkgVersion();
   const preSep = args.includes("--") ? args.slice(0, args.indexOf("--")) : args;
   if (args[0] === "version" || preSep.includes("--version") || preSep.includes("-V")) {
@@ -5165,12 +5065,12 @@ async function main() {
     return;
   }
   if (args[0] === "onboard") {
-    const { handleOnboard } = await import("./onboard-O6X2P2H6.mjs");
+    const { handleOnboard } = await import("./onboard-CAKFHYUD.mjs");
     await handleOnboard(args.slice(1));
     return;
   }
   if (args[0] === "offboard") {
-    const { handleOffboard } = await import("./onboard-O6X2P2H6.mjs");
+    const { handleOffboard } = await import("./onboard-CAKFHYUD.mjs");
     await handleOffboard(args.slice(1));
     return;
   }
@@ -5268,8 +5168,9 @@ async function main() {
     process.exit(0);
   }
   if (args[0] === "doctor") {
-    await handleDoctor();
-    process.exit(0);
+    const { handleDoctor } = await import("./doctor-65PGAPJI.mjs");
+    process.exitCode = await handleDoctor(args.slice(1));
+    return;
   }
   const { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port } = parseArgs(args);
   let policy = null;
@@ -5469,145 +5370,6 @@ async function handleSimulate(args) {
     process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
   } else {
     process.stdout.write(formatSimulation(summary) + "\n");
-  }
-}
-async function handleDoctor() {
-  const { existsSync, readFileSync, readdirSync } = await import("fs");
-  const { join } = await import("path");
-  const { execSync } = await import("child_process");
-  const green2 = (s) => `\x1B[32m\u2713\x1B[0m ${s}`;
-  const red2 = (s) => `\x1B[31m\u2717\x1B[0m ${s}`;
-  const yellow2 = (s) => `\x1B[33m\u26A0\x1B[0m ${s}`;
-  const dim2 = (s) => `\x1B[2m${s}\x1B[0m`;
-  process.stdout.write("\n\x1B[1mprotect-mcp doctor\x1B[0m\n");
-  process.stdout.write(dim2("Checking your ScopeBlind setup...\n\n"));
-  let issues = 0;
-  const nodeVersion = process.version;
-  const major = parseInt(nodeVersion.slice(1));
-  if (major >= 18) {
-    process.stdout.write(green2(`Node.js ${nodeVersion}
-`));
-  } else {
-    process.stdout.write(red2(`Node.js ${nodeVersion}, requires >= 18
-`));
-    issues++;
-  }
-  const configPath = join(process.cwd(), "scopeblind.config.json");
-  if (existsSync(configPath)) {
-    try {
-      const config = JSON.parse(readFileSync(configPath, "utf-8"));
-      if (config.signing?.private_key || config.signing?.key_file) {
-        process.stdout.write(green2("Signing keys configured\n"));
-      } else {
-        process.stdout.write(yellow2("Config found but no signing keys. Run: protect-mcp init\n"));
-        issues++;
-      }
-    } catch {
-      process.stdout.write(red2("Invalid scopeblind.config.json\n"));
-      issues++;
-    }
-  } else {
-    process.stdout.write(yellow2("No scopeblind.config.json. Run: protect-mcp init\n"));
-  }
-  let policyFound = false;
-  for (const dir of ["cedar", "policies", "."]) {
-    try {
-      if (existsSync(dir) && readdirSync(dir).some((f) => f.endsWith(".cedar"))) {
-        process.stdout.write(green2(`Cedar policies found in ./${dir}/
-`));
-        policyFound = true;
-        break;
-      }
-    } catch {
-    }
-  }
-  if (!policyFound) {
-    for (const name of ["policy.json", "protect-mcp.policy.json", "scopeblind-policy.json"]) {
-      if (existsSync(name)) {
-        process.stdout.write(green2(`JSON policy found: ${name}
-`));
-        policyFound = true;
-        break;
-      }
-    }
-  }
-  if (!policyFound) {
-    process.stdout.write(yellow2("No policy files found, running in shadow mode (allow all)\n"));
-  }
-  try {
-    const cedarAvailable = await isCedarAvailable();
-    if (cedarAvailable) {
-      process.stdout.write(green2("Cedar WASM engine available\n"));
-    } else {
-      process.stdout.write(dim2("  Cedar WASM not installed. Install: npm install @cedar-policy/cedar-wasm\n"));
-    }
-  } catch {
-    process.stdout.write(dim2("  Cedar WASM not installed\n"));
-  }
-  const logFile = join(process.cwd(), "protect-mcp-decisions.jsonl");
-  const receiptFile = join(process.cwd(), "protect-mcp-receipts.jsonl");
-  if (existsSync(logFile)) {
-    try {
-      const lines = readFileSync(logFile, "utf-8").trim().split("\n").length;
-      process.stdout.write(green2(`Decision log: ${lines} entries
-`));
-    } catch {
-      process.stdout.write(green2("Decision log exists\n"));
-    }
-  } else {
-    process.stdout.write(dim2("  No decision log yet, will be created on first tool call\n"));
-  }
-  if (existsSync(receiptFile)) {
-    try {
-      const lines = readFileSync(receiptFile, "utf-8").trim().split("\n").length;
-      process.stdout.write(green2(`Receipt file: ${lines} signed receipts
-`));
-    } catch {
-      process.stdout.write(green2("Receipt file exists\n"));
-    }
-  }
-  try {
-    execSync("npx @veritasacta/verify --version 2>/dev/null", { stdio: "pipe", timeout: 1e4 });
-    process.stdout.write(green2("Verifier available: @veritasacta/verify\n"));
-  } catch {
-    process.stdout.write(dim2("  Verifier not cached. Install: npm install -g @veritasacta/verify\n"));
-  }
-  try {
-    const res = await fetch("https://api.scopeblind.com/health", { signal: AbortSignal.timeout(5e3) });
-    if (res.ok) {
-      process.stdout.write(green2("ScopeBlind API reachable\n"));
-    } else {
-      process.stdout.write(yellow2("ScopeBlind API returned non-200, receipts will be stored locally\n"));
-    }
-  } catch {
-    process.stdout.write(dim2("  ScopeBlind API not reachable, offline mode (receipts stored locally)\n"));
-  }
-  process.stdout.write("\nRestraint self-test:\n");
-  try {
-    const st = await runEvaluatorSelfTest();
-    if (!st.wasmAvailable) {
-      process.stdout.write(dim2("  Cedar WASM not installed; the gate fails closed (denies) until it is.\n"));
-    }
-    for (const c of st.cases) {
-      process.stdout.write(c.pass ? green2(`  ${c.name}
-`) : `\x1B[31m  FAIL: ${c.name} (expected ${c.expected}, got ${c.actual})
-\x1B[0m`);
-    }
-    if (!st.passed) issues++;
-    else process.stdout.write(green2("  the gate denies what it should and allows what it should\n"));
-  } catch (err) {
-    process.stdout.write(yellow2(`  self-test could not run: ${err instanceof Error ? err.message : "unknown"}
-`));
-    issues++;
-  }
-  process.stdout.write("\n");
-  if (issues === 0) {
-    process.stdout.write("\x1B[32m\x1B[1mAll checks passed.\x1B[0m Ready to wrap MCP servers.\n");
-    process.stdout.write(dim2("\n  npx protect-mcp -- node your-server.js\n\n"));
-  } else {
-    process.stdout.write(`\x1B[33m\x1B[1m${issues} issue(s) found.\x1B[0m Fix them and run doctor again.
-
-`);
   }
 }
 async function handleReport(args) {

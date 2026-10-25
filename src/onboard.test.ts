@@ -139,6 +139,27 @@ describe('offboard (clean removal)', () => {
     const cmds = settings.hooks.PreToolUse[0].hooks.map((h: { command: string }) => h.command);
     expect(cmds).toEqual(['some-other-tool', 'my-protect-mcp-audit --log x']);
   });
+
+  it('--disable-enforcement honors --dir instead of removing hooks from the caller directory', async () => {
+    const caller = mkdtempSync(join(tmpdir(), 'onb-caller-'));
+    const selected = mkdtempSync(join(tmpdir(), 'onb-selected-'));
+    const original = JSON.stringify({ hooks: { PreToolUse: [{ matcher: '*', hooks: [
+      { type: 'command', command: 'npx protect-mcp evaluate' },
+      { type: 'command', command: 'unrelated-hook' },
+    ] }] } });
+    for (const dir of [caller, selected]) {
+      mkdirSync(join(dir, '.claude'));
+      writeFileSync(join(dir, '.claude/settings.json'), original);
+    }
+    const cwd = process.cwd();
+    process.chdir(caller);
+    try {
+      await handleOffboard(['--dir', selected, '--disable-enforcement', '--yes']);
+    } finally { process.chdir(cwd); }
+    expect(readFileSync(join(caller, '.claude/settings.json'), 'utf8')).toBe(original);
+    const after = JSON.parse(readFileSync(join(selected, '.claude/settings.json'), 'utf8'));
+    expect(after.hooks.PreToolUse[0].hooks).toEqual([{ type: 'command', command: 'unrelated-hook' }]);
+  });
 });
 
 describe('research-safe pack (new) enforces via real Cedar', () => {
