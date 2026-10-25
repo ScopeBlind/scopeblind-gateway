@@ -11,6 +11,8 @@ decision and after-action receipts verified against the test setup's expected
 public key. A sanitized host-input fixture is included in
 [`tests/fixtures/cursor-3.17.8-shell.json`](tests/fixtures/cursor-3.17.8-shell.json).
 A second synthetic project hook's deny also blocked a call the gate allowed.
+The trial ran on a pre-release build of the gateway and this preview, before
+protect-mcp 0.32.4; 0.32.4 has not been re-validated in Cursor.
 This does not establish every tool, native permission prompts or native
 plugin marketplace loading. Complete the checks below for your installation.
 This package is not listed as a Cursor partner integration.
@@ -24,7 +26,7 @@ adapter does not configure Cursor permissions or change tool arguments.
 
 Use Node.js 22 or later, npm and a current Cursor desktop application supporting
 `preToolUse`, `postToolUse` and `failClosed`. The project-hook trial used Cursor
-3.17.8. This release does not establish support for older versions, cloud
+3.17.8, on a pre-release build. This release does not establish support for older versions, cloud
 agents, the standalone Cursor CLI agent or Tab completions.
 
 In the project you want to protect, prepare the pinned gateway:
