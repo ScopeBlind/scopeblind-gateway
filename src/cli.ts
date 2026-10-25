@@ -4098,8 +4098,11 @@ function emitDecision(format: string | undefined, allowed: boolean, reason: stri
   }
   if (allowed) {
     // A CLI verdict does not replace the host's native permission checks.
+    // Codex checks PreToolUse output against a closed schema (no members beyond its own, in codex-cli 0.145.0), so
+    // an allow says nothing there.
     const verdict = format === 'cursor' ? { permission: 'allow' }
       : format === 'gemini' ? { decision: 'allow' }
+      : format === 'codex' ? {}
       : { allowed: true, reason };
     process.stdout.write(JSON.stringify(verdict) + '\n');
     process.exit(0);
@@ -4225,9 +4228,11 @@ async function handleSign(argv: string[]): Promise<void> {
   // the conformance driver both pipe the payload with no --format, and this
   // was recording an empty tool name for them.
   const j = await readHookStdin();
+  // A payload sign cannot record is a recording failure, exit 1, which hosts report without blocking. Exit 2 would
+  // read as a block in a PostToolUse hook, for a tool that has already run.
   if (format && !j) {
     process.stderr.write('protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n');
-    process.exit(2);
+    process.exit(1);
   }
   if (j) {
     try {
@@ -4237,7 +4242,7 @@ async function handleSign(argv: string[]): Promise<void> {
       if (toolInput === undefined && hookObject(m.input)) toolInput = m.input;
     } catch {
       process.stderr.write('protect-mcp sign: invalid hook payload; no receipt recorded. This does not undo an executed tool call.\n');
-      process.exit(2);
+      process.exit(1);
     }
   }
 
@@ -4347,8 +4352,9 @@ async function handleSign(argv: string[]): Promise<void> {
   releaseLogLock();
 
   // These hosts read stdout as hook instructions. A recorded policy decision
-  // must not hide or replace an already-produced result.
-  if (format === 'hermes' || format === 'cursor' || format === 'gemini') { process.stdout.write('{}\n'); process.exit(0); }
+  // must not hide or replace an already-produced result. Codex checks PostToolUse
+  // output against a closed schema whose `decision` may only be "block".
+  if (format === 'hermes' || format === 'cursor' || format === 'gemini' || format === 'codex') { process.stdout.write('{}\n'); process.exit(0); }
   // Claude Code reads a PostToolUse hook's stdout as hook output, where `decision` may only be "block", so a
   // `decision` member here could be reported as a hook error after every call. The receipt's own decision goes
   // under a name Claude Code does not read; scripts that check `signed` see the same object otherwise.

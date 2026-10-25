@@ -44,6 +44,8 @@ function expectDecision(host, actual, decision) {
     if (decision === 'deny') assert.equal(typeof actual.verdict.user_message, 'string');
   } else if (host === 'gemini') assert.equal(actual.verdict.decision, decision);
   else if (host === 'hermes') assert.deepEqual(actual.verdict, decision === 'allow' ? {} : { decision: 'block', reason: actual.verdict.reason });
+  // Codex 0.145.0 checks hook output against closed schemas: an allow prints {}, and a deny is exit 2 with the reason on stderr.
+  else if (host === 'codex') assert.deepEqual(actual.verdict, decision === 'allow' ? {} : null);
   else if (host === 'claude' && decision === 'deny') assert.equal(actual.verdict.hookSpecificOutput.permissionDecision, 'deny');
   if (decision === 'deny') assert.match(actual.stderr, /protect-mcp denied:/);
 }
@@ -88,8 +90,8 @@ test('Cursor never interprets an MCP launch command as missing tool arguments', 
     { tool_name: 'lookup', tool_input: null, toolInput: {}, command: 'node server.js' },
   ]) expectDecision('cursor', call('cursor', JSON.stringify(payload)), 'deny');
 });
-test('after-tool signing never emits a new Cursor or Gemini tool decision', () => {
-  for (const host of ['cursor', 'gemini']) {
+test('after-tool signing never emits a new Cursor, Gemini or Codex tool decision', () => {
+  for (const host of ['cursor', 'gemini', 'codex']) {
     const receipts = join(dir, `receipts-${host}`);
     const actual = spawnSync(process.execPath, [cli, 'sign', '--format', host, '--key', keyFile, '--receipts', receipts], {
       cwd: dir, input: JSON.stringify({ tool_name: 'lookup', tool_input: host === 'cursor' ? '{"nested":{"value":1}}' : { nested: { value: 1 } }, tool_response: { ok: true } }), encoding: 'utf8', timeout: 10000,
@@ -109,7 +111,9 @@ test('invalid formatted signing does not invent a receipt', () => {
       cwd: dir, input: 'null', encoding: 'utf8', timeout: 10000,
     });
     assert.ifError(actual.error);
-    assert.equal(actual.status, 2);
+    // A recording failure, not a block: in a PostToolUse hook the tool has already run.
+    assert.equal(actual.status, 1);
+    assert.equal(actual.stdout, '');
     assert.match(actual.stderr, /no receipt recorded/);
     assert.equal(existsSync(join(receipts, 'receipts.jsonl')), false);
   }
