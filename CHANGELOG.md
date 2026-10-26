@@ -3,7 +3,32 @@
 ### Security: GHSA-xf4c-59j2-hgf2
 
 - **Flags in the `--flag=value` form are read.** In 0.32.3 and earlier every flag written with `=` was silently dropped. A gateway started as `protect-mcp --enforce --cedar=./rules -- <server>`, or a hook server started as `protect-mcp serve --enforce --cedar=./rules`, ran without that policy and allowed calls the rules forbid, and `evaluate --format=claude` ignored the hook payload and evaluated an empty tool name. Every command now reads `--flag=value` as `--flag value`, a value given to a switch (`--enforce=false`) is refused with exit 2, and `evaluate` denies a call that names no tool before any policy is consulted. Commands that gave each flag and its value as separate arguments were not affected.
-- **The plugin relays always run their check.** The Claude Code plugin's relay in this repository (`hooks/relay.mjs`, not part of the npm package) exited 0 with no output when it was started through a path containing a symbolic link, such as a symlinked `~/.claude` or `CLAUDE_CONFIG_DIR`, so Claude Code went ahead without a check or a receipt. The Cursor preview's relay did the same for a path that differed only in letter case. Both entry files now always run the relay, which still fails closed when the gate is unreachable. Reinstall either plugin to pick this up; the Cursor installer refuses managed files that differ, so remove and add it again.
+- **The plugin relays always run their check.** The Claude Code plugin's relay in this repository (`hooks/relay.mjs`, not part of the npm package) exited 0 with no output when it was started through a path containing a symbolic link, such as a symlinked `~/.claude` or `CLAUDE_CONFIG_DIR`, so Claude Code went ahead without a check or a receipt. The Cursor preview's relay did the same for a path that differed only in letter case. Both entry files now always run the relay, which still fails closed when the gate is unreachable. Reinstall either plugin to pick this up; the Cursor installer refuses managed files that differ, so remove and add it again. The commands are under "Upgrading the Claude Code plugin and the Cursor preview" below.
+
+### Upgrading the Claude Code plugin and the Cursor preview
+
+A plugin installed before 0.32.4 keeps its old relay until it is updated.
+
+- **Claude Code plugin.** From the project directory, refresh the marketplace, update the plugin and restart Claude Code:
+
+  ```sh
+  claude plugin marketplace update scopeblind
+  claude plugin update protect-mcp@scopeblind --scope project
+  ```
+
+  Use the scope that `claude plugin list` shows for `protect-mcp@scopeblind` (`user` for an installation made without `--scope`). Reinstalling with the commands in `docs/claude-plugin.md` works too: `claude plugin uninstall protect-mcp@scopeblind --scope project`, then `claude plugin install protect-mcp --marketplace ScopeBlind/scopeblind-gateway --scope project`. After the restart, `claude plugin list` shows version 0.32.4. Restart the gate on 0.32.4 as well: `npx --yes protect-mcp@0.32.4 serve --enforce --cedar ./policies --policy ./protect-mcp.json`.
+- **Cursor preview.** Setup refuses managed files that differ, and the 0.32.4 installer keeps files that differ from its own when it uninstalls, so remove the old copy with the installer it came from, then install the new one. Every copy installed from `main` before 0.32.4 has the files of commit `7a73d00b8748a5a48955dcd69426ee086241b830`, so that commit's installer removes it. Close the project in Cursor first: between the two steps it has no protect-mcp hooks. From your gateway checkout:
+
+  ```sh
+  git fetch --tags origin
+  git checkout 7a73d00b8748a5a48955dcd69426ee086241b830
+  node plugins/protect-mcp-cursor/install-project.mjs --project /absolute/path/to/project --uninstall
+  git checkout v0.32.4
+  node plugins/protect-mcp-cursor/install-project.mjs --project /absolute/path/to/project
+  node plugins/protect-mcp-cursor/install-project.mjs --project /absolute/path/to/project --install
+  ```
+
+  The uninstall should list nothing under `preserved`; a file listed there was edited, so review it before installing. Keys, policies, receipts and `.cursor/protect-mcp.json` are kept. To take the new starter rules for the preview's own files, and to restart the gate, follow `docs/cursor-plugin.md`.
 
 ### Upgrading from 0.32.3: hook formats
 
@@ -33,7 +58,7 @@ So for well-formed payloads, `claude` and `hermes` behave exactly as before, and
 - **Cursor project preview** (#22), in `plugins/protect-mcp-cursor`. It uses Cursor's generic pre and post tool hooks with stable call IDs, an enforcing signed local gate, explicit native tool aliases and reviewed MCP mappings. Missing configuration, unknown tools, gate failures and timeouts block. Approval requirements stay held, because Cursor's generic hook does not enforce `ask`. Setup and removal preserve unrelated settings, including when the project configuration is malformed. A live Cursor 3.17.8 project-hook trial checked a harmless Shell allow, a policy deny and a stopped-gate block, with verified decision and after-action receipts; other tools, native permission prompts and marketplace loading are not yet validated. That trial ran on a pre-release build, before 0.32.4 (the sources it used are recorded in `docs/host-validation-20261025.json`); 0.32.4 itself has not been re-validated in Cursor.
 - **ChatGPT / Codex assistant preview** (#22), in `plugins/protect-mcp-assistant`: guidance skills and a harmless local demo, with no hooks, connected services or automatic host edits. Its demo pins protect-mcp 0.32.3 and `@veritasacta/verify` 0.11.0; the pin moves to 0.32.4 once 0.32.4 is on npm and the demo has run against it.
 - **Shared compatibility checks** (#22): CLI contract vectors, the Claude and Cursor relays, the assistant package checks and its clean-install demo run in CI (`npm run test:hosts`, `npm run test:assistant:smoke`). They cover nested input, malformed payloads, missing policy, expected signer keys, modified receipts and setup boundaries, and do not establish native Gemini, Codex or Hermes hook integration. Host status is in `docs/host-compatibility.md`.
-- **The starter policy protects the Cursor preview's own files.** `starter.write-sensitive-location` now also forbids writing `.cursor/hooks.json`, `.cursor/protect-mcp.json` and anything under `.cursor/protect-mcp/` (the preview's relay and gate client), so a Cursor agent cannot switch off its own gate, and it covers Cursor's Delete tool (`Delete`, which reaches the gate as `delete_file`) for every file the rule names. Deleting an ordinary project file is still allowed. The starter's text changes, so its policy digest is now `sha256:94428dedc59ccc1dc58578871f5b81893cb4bc376dbf97922cbda494083b2d1f` (it was `sha256:46d57bf0461dbbeb16299e6eb7fca5fed1bab244aba00d9abaf227681889f9dd`); `vectors/starter-policy.v1.json` pins it and carries seven new cases.
+- **The starter policy protects the Cursor preview's own files.** `starter.write-sensitive-location` now also forbids writing `.cursor/hooks.json`, `.cursor/protect-mcp.json` and anything under `.cursor/protect-mcp/` (the preview's relay and gate client), and it covers Cursor's Delete tool (`Delete`, which reaches the gate as `delete_file`) for every file the rule names. So the starter blocks direct writes and deletes of the preview's hook files through the tools it covers, Write and Delete. Shell access is a separate concern that the policy does not cover: a Shell command can still change or delete those files. Deleting an ordinary project file is still allowed. The starter's text changes, so its policy digest is now `sha256:94428dedc59ccc1dc58578871f5b81893cb4bc376dbf97922cbda494083b2d1f` (it was `sha256:46d57bf0461dbbeb16299e6eb7fca5fed1bab244aba00d9abaf227681889f9dd`); `vectors/starter-policy.v1.json` pins it and carries seven new cases.
 - The plugin, the MCP configurations, the Docker image, the hook examples, the Cursor preview and the guides pin 0.32.4.
 - Tests: `src/piped-output.test.ts` sends 200 KB to 1.4 MB through a shell pipe for `report`, `simulate`, `receipts` and the gateway relay, and every case failed before this release. The gateway and the hook server each check every chain link over two processes.
 

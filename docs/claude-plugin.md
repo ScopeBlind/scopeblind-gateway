@@ -80,6 +80,35 @@ After a tool call, failures are reported but cannot undo the action. Version
 0.32.4's post-action HTTP response does not itself confirm that the receipt was
 saved. Inspect the local receipt log before claiming after-action evidence.
 
+## Update an installation made before 0.32.4
+
+Plugin versions before 0.32.4 can let a tool call through without a check
+(GHSA-xf4c-59j2-hgf2). From the project directory, refresh the marketplace and
+update the plugin:
+
+```sh
+claude plugin marketplace update scopeblind
+claude plugin update protect-mcp@scopeblind --scope project
+```
+
+Use the scope that `claude plugin list` shows for `protect-mcp@scopeblind`
+(`user` for an installation made without `--scope`). To reinstall instead, use
+the remove and install commands from this guide:
+
+```sh
+claude plugin uninstall protect-mcp@scopeblind --scope project
+claude plugin install protect-mcp --marketplace ScopeBlind/scopeblind-gateway --scope project
+```
+
+Restart Claude Code and check that `claude plugin list` shows version 0.32.4.
+Stop the gate and start it again on the same release:
+
+```sh
+npx --yes protect-mcp@0.32.4 serve --enforce --cedar ./policies --policy ./protect-mcp.json
+```
+
+Then repeat the checks in [Confirm the route is working](#confirm-the-route-is-working).
+
 ## Data and trust
 
 The relay sends tool names, arguments, session information and, after execution,
