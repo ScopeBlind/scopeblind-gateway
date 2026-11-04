@@ -1,0 +1,46 @@
+name: Trade-booking teaching example
+on:
+  pull_request:
+    paths:
+      - examples/trade-booking/**
+      - src/trade-booking-example.test.ts
+      - package-lock.json
+      - .github/workflows/trade-booking.yml
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - examples/trade-booking/**
+      - src/trade-booking-example.test.ts
+      - package-lock.json
+      - .github/workflows/trade-booking.yml
+permissions:
+  contents: read
+jobs:
+  example:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22.22.3'
+      - run: npm ci
+      - name: Install only the hash-pinned evidence wheel
+        run: |
+          python3 -m venv examples/trade-booking/.venv
+          examples/trade-booking/.venv/bin/python -m pip install --require-hashes --only-binary=:all: --no-deps -r examples/trade-booking/requirements.txt
+      - name: Check state, evidence mutations, and types
+        run: |
+          npx vitest run src/trade-booking-example.test.ts
+          examples/trade-booking/.venv/bin/python -m unittest discover -s examples/trade-booking -p 'test_*.py'
+          npx tsc --noEmit --strict --target ES2022 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --skipLibCheck examples/trade-booking/gate.ts examples/trade-booking/run.ts
+      - name: Assess all 21 evidence cases with the real Cedar engine
+        run: node --experimental-strip-types examples/trade-booking/run.ts --output examples/trade-booking/report.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: trade-booking-report
+          path: examples/trade-booking/report.json
+          if-no-files-found: error
