@@ -1,0 +1,2 @@
+# Fixture + reference reader only; no model client or production service dependency.
+agent-evidence-vectors==0.28.0 --hash=sha256:e87a2d64e3ba0953c23f6556f8665be4149c37f61e6f7095a9949580cbab0b4f
