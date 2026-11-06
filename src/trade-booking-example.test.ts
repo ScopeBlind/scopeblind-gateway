@@ -15,6 +15,15 @@ describe('synthetic trade-booking starter, real Cedar engine', () => {
     expect(evaluatePolicy('listen', context({ nowMs })).allowed).toBe(nowMs < 1000);
     expect(evaluatePolicy('lookup', context({ nowMs })).allowed).toBe(nowMs >= 1000);
   });
+  it('enforces fixed deadline with mutable clock on a single gate instance', () => {
+    let now = 999;
+    const gate = new SyntheticGate('R1', 1000, () => now);
+    expect(gate.assess(proposal('listen')).allowed).toBe(true);
+    now = 1000;
+    expect(gate.assess(proposal('listen')).allowed).toBe(false);
+    expect(gate.assess(proposal('listen')).allowed).toBe(false);
+    expect(gate.assess(proposal('lookup')).allowed).toBe(true);
+  });
   it('does not turn a successful booking into a timeout recovery', () => {
     expect(evaluatePolicy('lookup', context({ timedOut: false })).allowed).toBe(false);
     expect(evaluatePolicy('cancel', context({ ...booked, cancellationNeeded: false })).allowed).toBe(false);
