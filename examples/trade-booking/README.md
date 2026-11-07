@@ -22,13 +22,12 @@ The eight demo decisions are allow, deny, allow, deny, allow, deny, deny, allow.
 Read each proposal next to the rule that admitted or refused it. No tool is
 executed after an allow; `cancel` only reserves an in-memory attempt.
 
-Your first contribution: write a test using **one** `SyntheticGate` instance and
-a mutable clock. At 999 ms, `listen` should be allowed. Move to 1000 ms and try
-`listen` twice: both should be denied; `lookup` for the original reference should
-be allowed. Explain why retrying the proposal must not reset the deadline. Share
-the test and explanation on issue #26 for review before extending the policy.
-The configured window is illustrative; this example does not prescribe a banking
-service's timeout value.
+To see the boundary, run the [mutable-clock test](../../src/trade-booking-example.test.ts)
+added in [#28](https://github.com/ScopeBlind/scopeblind-gateway/pull/28). On one
+`SyntheticGate` instance, `listen` is allowed at 999 ms. At 1000 ms two successive
+`listen` proposals are denied and `lookup` for the original reference is allowed.
+Each proposal uses the deadline set when the recovery session began. The 1000 ms
+cutoff is illustrative.
 
 ## Run the promised 21 cases
 
@@ -95,8 +94,16 @@ Pinned signed statements -> upstream verifier -> counted facts -> Cedar evidence
 engine and fails closed on evaluation errors. The model cannot submit policy
 context through `SyntheticGate.assess`: extra proposal fields are refused. The
 `observe` method and `evaluatePolicy` function are trusted internal teaching seams,
-not model tools. The synthetic adapter models a session already in timeout recovery;
-the lower-level policy also tests a normal booking that needs no cancellation.
+not model tools. The synthetic adapter starts after the initial booking request
+ended without a definitive reply. It sets `timedOut: true` locally to represent
+entry into recovery. A lost reply can leave the booking outcome unknown even if
+the downstream service processed it.
+
+`deadlineMs` is a separate, fixed cutoff for listening for a late event during
+recovery. Before that cutoff the policy permits listening. At or after it the
+policy permits lookup by the original booking reference. Crossing the cutoff
+alone cannot put an acknowledged booking into recovery. Permission for a lookup
+also leaves the actual booking outcome open until evidence arrives.
 
 Cedar does not keep time, verify booking-system signatures, or remember prior
 attempts. A production state adapter would need authenticated, fresh observations
