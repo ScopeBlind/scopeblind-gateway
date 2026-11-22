@@ -4,11 +4,11 @@
       "command": "npx",
       "args": [
         "--yes",
-        "protect-mcp@0.32.4",
+        "protect-mcp@0.32.5",
         "mcp"
       ],
       "env": {
-        "PROTECT_MCP_VERSION": "0.32.4"
+        "PROTECT_MCP_VERSION": "0.32.5"
       }
     }
   }

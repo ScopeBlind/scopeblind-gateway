@@ -12,7 +12,7 @@ public key. A sanitized host-input fixture is included in
 [`tests/fixtures/cursor-3.17.8-shell.json`](tests/fixtures/cursor-3.17.8-shell.json).
 A second synthetic project hook's deny also blocked a call the gate allowed.
 The trial ran on a pre-release build of the gateway and this preview, before
-protect-mcp 0.32.4; 0.32.4 has not been re-validated in Cursor.
+protect-mcp 0.32.4; 0.32.4 and 0.32.5 have not been re-validated in Cursor.
 This does not establish every tool, native permission prompts or native
 plugin marketplace loading. Complete the checks below for your installation.
 This package is not listed as a Cursor partner integration.
@@ -32,8 +32,8 @@ agents, the standalone Cursor CLI agent or Tab completions.
 In the project you want to protect, prepare the pinned gateway:
 
 ```sh
-npx --yes protect-mcp@0.32.4 init
-npx --yes protect-mcp@0.32.4 policy-packs install coding-starter --dir ./policies
+npx --yes protect-mcp@0.32.5 init
+npx --yes protect-mcp@0.32.5 policy-packs install coding-starter --dir ./policies
 ```
 
 Keep any existing configuration and signing key. Review the policy before
@@ -42,7 +42,7 @@ it is not a deny-by-default sandbox. Shell rules inspect command text and do
 not constrain every process or network request a command can start.
 
 ```sh
-npx --yes protect-mcp@0.32.4 serve --enforce --cedar ./policies --policy ./protect-mcp.json
+npx --yes protect-mcp@0.32.5 serve --enforce --cedar ./policies --policy ./protect-mcp.json
 ```
 
 Leave that terminal open. npm is used during setup, never from the hot hook
@@ -146,7 +146,7 @@ the tool executed. Successful `postToolUse` events use the same conversation
 and call IDs and forward the actual JSON result for after-action recording.
 Failed tools and denied calls are not mislabeled as successful execution.
 
-Gateway 0.32.4's post-action response does not confirm durable receipt storage.
+Gateway 0.32.5's post-action response does not confirm durable receipt storage.
 The relay suppresses its optimistic receipt message. Check the actual local
 receipt log. A post-action failure cannot undo the action. The adapter neither
 rewrites a tool result nor claims complete execution coverage.

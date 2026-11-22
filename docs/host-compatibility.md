@@ -2,7 +2,7 @@
 
 The gateway is the shared runtime. Host packages choose how to connect to it;
 guidance plugins explain setup and verification without intercepting tools.
-The npm release these guides pin is **protect-mcp 0.32.4**, with
+The npm release these guides pin is **protect-mcp 0.32.5**, with
 **@veritasacta/verify 0.11.0**. The assistant preview's demo pins the same two
 releases; its smoke test passes against npm's 0.32.4. Plugin versions are separate.
 
@@ -13,7 +13,7 @@ releases; its smoke test passes against npm's 0.32.4. Plugin versions are separa
 | [MCP wrapper](local-gateway.md#connect-your-mcp-server) | Wraps one selected stdio or HTTP MCP server. | Released. Covers routed calls, not unrelated host tools or direct network access. |
 | [Claude Code enforcement plugin](claude-plugin.md) | Relays pre/post tool events to a local signed Cedar gate. | Automated relay and gateway checks. Requires the documented host version and real-host setup checks. |
 | [Claude Code project HTTP hooks](local-gateway.md#claude-code-hook-quickstart) | Installs reversible project hooks. | Released installer. Host HTTP-hook failure behavior differs from the command relay; a stopped server alone does not establish blocking. |
-| [Cursor project preview](../plugins/protect-mcp-cursor/README.md) | Uses generic pre/post hooks, explicit project configuration and tool mappings. | Live Cursor 3.17.8 project-hook trial: harmless Shell allow, policy deny, stopped-gate block and a second hook's deny overriding gate allow; observed receipts verified. The trial ran on a pre-release build, before 0.32.4, and 0.32.4 has not been re-validated in Cursor. Other tools, native permission prompts and marketplace loading remain unvalidated. |
+| [Cursor project preview](../plugins/protect-mcp-cursor/README.md) | Uses generic pre/post hooks, explicit project configuration and tool mappings. | Live Cursor 3.17.8 project-hook trial: harmless Shell allow, policy deny, stopped-gate block and a second hook's deny overriding gate allow; observed receipts verified. The trial ran on a pre-release build, before 0.32.4, and 0.32.4 and 0.32.5 have not been re-validated in Cursor. Other tools, native permission prompts and marketplace loading remain unvalidated. |
 | [ChatGPT / Codex assistant preview](../plugins/protect-mcp-assistant/README.md) | Guides setup, runs a harmless local demo and verifies receipts where execution is available. | Local discovery and installation verified with Codex 0.145.0; the test entry was removed afterward. No hooks, automatic enforcement, completed host onboarding or public OpenAI directory listing is claimed. |
 | [Existing Claude directory guidance plugin](https://github.com/tomjwxf/protect-mcp-plugin) | Provides manually selected setup and verification workflows. | Separate repository and publication process. Installing guidance does not enable enforcement. |
 | Standalone `evaluate --format` / `sign --format` | Reads selected host payloads and writes that host's response shape. | Contract-level support is not a completed native integration. See the source status below. |

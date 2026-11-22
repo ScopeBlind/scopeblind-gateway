@@ -1,4 +1,4 @@
-## Unreleased: an enforcing gate starts only with the policy it was given
+## 0.32.5: an enforcing gate starts only with the policy it was given (GHSA-XXXX-XXXX-XXXX)
 
 ### Security
 
