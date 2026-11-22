@@ -3,7 +3,7 @@ import {
   NEGOTIATION_TOOLS,
   REHEARSAL_TOOLS,
   handleCoordinationRequest
-} from "./chunk-AIUJZPC2.mjs";
+} from "./chunk-BXX2SUGF.mjs";
 import {
   NEGOTIATION_PAIRING_AUDIENCE,
   NEGOTIATION_PAIRING_SCOPE,
@@ -13,7 +13,7 @@ import {
   claimPairing,
   coordinationConfigFromFile,
   readPrivateConfig
-} from "./chunk-INN337V3.mjs";
+} from "./chunk-FNXSAFES.mjs";
 import {
   CoordinationClient,
   CoordinationError

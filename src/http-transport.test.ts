@@ -152,7 +152,10 @@ d('--http transport: loopback, bearer token, no CORS', () => {
 
   it('refuses a call it cannot evaluate (arguments nested 20,000 deep) as a JSON-RPC error, and keeps serving', async () => {
     const port = await freePort();
-    const g = new HttpGateway(['--port', String(port), '--enforce']);
+    // A policy that permits the call: an enforcing gate with none refuses to start.
+    const allow = join(mkdtempSync(join(tmpdir(), 'pmcp-http-allow-')), 'allow.json');
+    writeFileSync(allow, '{"tools":{}}\n');
+    const g = new HttpGateway(['--port', String(port), '--enforce', '--policy', allow]);
     try {
       const token = (await g.stderrMatch(/Bearer token: ([0-9a-f]{64})/))[1];
       const deep = '{"a":'.repeat(20_000) + '1' + '}'.repeat(20_000);

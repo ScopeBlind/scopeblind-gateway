@@ -58,7 +58,7 @@ Use Node.js 22 and npm in a new directory. Install the pinned gateway and verifi
 mkdir protect-mcp-demo
 cd protect-mcp-demo
 npm init -y
-npm install --save-exact protect-mcp@0.32.4 @veritasacta/verify@0.11.0
+npm install --save-exact protect-mcp@0.32.5 @veritasacta/verify@0.11.0
 ```
 
 This example evaluates two proposed calls and signs their decisions. It does not
@@ -137,8 +137,8 @@ For an existing MCP server, initialize its configuration in a separate directory
 from the example above, then run the wrapper with your server command:
 
 ```sh
-npx --yes protect-mcp@0.32.4 init
-npx --yes protect-mcp@0.32.4 --policy ./protect-mcp.json -- node your-mcp-server.js
+npx --yes protect-mcp@0.32.5 init
+npx --yes protect-mcp@0.32.5 --policy ./protect-mcp.json -- node your-mcp-server.js
 ```
 
 This starts in **shadow mode**. Review the observed calls and policy before
@@ -201,6 +201,11 @@ See the [changelog](CHANGELOG.md) for every change.
   invoice sandbox and repository review workflows.
 - [Release validation and provenance](docs/releases.md).
 - [Changes by version](CHANGELOG.md).
+
+## Commercial contact
+
+Running agents where a wrong tool call has regulatory or financial consequences?
+Email [tommy@scopeblind.com](mailto:tommy@scopeblind.com) or see [scopeblind.com](https://scopeblind.com).
 
 ## Contribute
 

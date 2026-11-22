@@ -1,3 +1,28 @@
+## 0.32.5: an enforcing gate starts only with the policy it was given (GHSA-r7rf-7g68-8rcg)
+
+### Security
+
+- **An enforcing gate refuses to start without the policy it was named.** In 0.32.4 and earlier each of these started an enforcing gate that allowed calls its policy forbids:
+  - `protect-mcp --enforce --ceder ./rules -- <server>` and `protect-mcp serve --enforce --ceder ./rules`. An option the command does not read was warned about on stderr, which an MCP host does not show, and ignored.
+  - `--cedar` with no value, and `--slug --enforce --cedar ./rules`. An option that takes a value took the next option as its value, so the gateway ran in shadow mode, and `serve --cedar --enforce` armed with no policy.
+  - `serve --enforce --cedar <dir> --policy <file>` where the directory was missing or held no `.cedar` files. The hook server went on with the JSON policy alone. A `--policy` file it could not use was dropped the same way.
+  - `--enforce` with no policy option, started in a directory with no `./cedar` or `./policies`. Every call was allowed.
+  - `--cedar=` or `--cedar "$UNSET"` beside `--policy <file>`. An empty value read as no option, so the gate armed on the JSON policy alone. A repeated option kept one value and dropped the other (the last in the gateway, the first in `serve`).
+
+  Under `--enforce`, the gateway (stdio and `--http`) and `serve` now refuse an option they do not read (exit 2). They refuse to start when a policy they were given does not load, or when no Cedar policy, JSON policy or standard was loaded (exit 1). In every mode, an option that takes a value is refused (exit 2) when it is followed by nothing or by another option, when its value is empty, or when it is given twice. Without `--enforce`, an unknown option is still only a warning. `evaluate` already denied these.
+
+### Listing
+
+- **The MCP Registry description no longer calls the MCP server a gate.** `protect-mcp mcp` gives an agent policy checks and receipts as tools, and blocks nothing by itself; the hooks and the gateway block calls.
+
+### Upgrading
+
+- A gateway or hook server started with `--enforce` and no policy used to allow every call. It now refuses to start. To enforce no rules on purpose, pass a policy file that allows everything (`{"tools":{}}`).
+- A value can no longer be empty, begin with `--`, or be `-v`, `-h` or `-V`. An option can no longer be given twice.
+- `startHookServer()` keeps its allow-all default for callers that load no policy. `serve` sets its new `requirePolicy` option.
+
+Tests: `src/enforce-startup.test.ts` runs the built CLI through each case above, and checks that shadow mode and correctly configured enforcing gates still start. Three tests that started an enforcing gate with no policy, to test something else, now give it an allow-everything policy.
+
 ## 0.32.4: two fail-open fixes (GHSA-xf4c-59j2-hgf2), output through a pipe arrives whole, chain links have the sha256: form, and hook payloads are checked
 
 ### Security: GHSA-xf4c-59j2-hgf2

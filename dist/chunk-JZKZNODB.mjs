@@ -1023,7 +1023,9 @@ async function startHookServer(options = {}) {
         );
       }
     } catch (err) {
-      process.stderr.write(`[PROTECT_MCP] Cedar load error: ${err instanceof Error ? err.message : err}
+      const message = err instanceof Error ? err.message : String(err);
+      if (enforce) throw new Error(`enforce mode refused to start: the Cedar policies in ${cedarDir} did not load (${message})`);
+      process.stderr.write(`[PROTECT_MCP] Cedar load error: ${message}
 `);
     }
   }
@@ -1042,7 +1044,9 @@ async function startHookServer(options = {}) {
         }
       }
     } catch (err) {
-      process.stderr.write(`[PROTECT_MCP] Policy load error: ${err instanceof Error ? err.message : err}
+      const message = err instanceof Error ? err.message : String(err);
+      if (enforce) throw new Error(`enforce mode refused to start: the policy ${options.policyPath} could not be used (${message})`);
+      process.stderr.write(`[PROTECT_MCP] Policy load error: ${message}
 `);
     }
   }
@@ -1157,6 +1161,11 @@ async function startHookServer(options = {}) {
     process.stderr.write(`[PROTECT_MCP] Record lands on ${new URL(reporter.url).origin}/standard?s=${reporter.sid} as run ${reporter.runId}
 `);
     if (!isSigningEnabled()) process.stderr.write("[PROTECT_MCP] Warning: signing is not configured, so only unsigned call lines reach the page; add a signing key for receipts\n");
+  }
+  if (enforce && options.requirePolicy && !cedarPolicies && !jsonPolicy && !standard) {
+    throw new Error(
+      "enforce mode refused to start: no policy was loaded, so there is nothing to enforce. Give --cedar <dir>, --policy <file> or --standard <file>, or start it in a directory whose ./cedar or ./policies holds .cedar files"
+    );
   }
   const state = {
     cedarPolicies,

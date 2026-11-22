@@ -1047,6 +1047,12 @@ export interface HookServerOptions {
   reportToken?: string;
   /** A name for this run on the page. */
   runId?: string;
+  /**
+   * With enforce, refuse to start when no Cedar policy, JSON policy or standard was loaded. `protect-mcp serve` sets
+   * it: up to 0.32.4 `serve --enforce` with a misspelled or missing policy armed a gate that allowed every call.
+   * Callers of this function that leave it unset keep the allow-all default.
+   */
+  requirePolicy?: boolean;
 }
 
 export async function startHookServer(options: HookServerOptions = {}): Promise<Server> {
@@ -1080,7 +1086,11 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
         );
       }
     } catch (err) {
-      process.stderr.write(`[PROTECT_MCP] Cedar load error: ${err instanceof Error ? err.message : err}\n`);
+      const message = err instanceof Error ? err.message : String(err);
+      // Up to 0.32.4 an enforcing gate went on without these policies, and with a JSON policy as well it allowed
+      // what they forbid.
+      if (enforce) throw new Error(`enforce mode refused to start: the Cedar policies in ${cedarDir} did not load (${message})`);
+      process.stderr.write(`[PROTECT_MCP] Cedar load error: ${message}\n`);
     }
   }
 
@@ -1100,7 +1110,10 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
         }
       }
     } catch (err) {
-      process.stderr.write(`[PROTECT_MCP] Policy load error: ${err instanceof Error ? err.message : err}\n`);
+      const message = err instanceof Error ? err.message : String(err);
+      // Up to 0.32.4 an enforcing gate went on without this file's tool rules, rate limits and signing.
+      if (enforce) throw new Error(`enforce mode refused to start: the policy ${options.policyPath} could not be used (${message})`);
+      process.stderr.write(`[PROTECT_MCP] Policy load error: ${message}\n`);
     }
   }
 
@@ -1229,6 +1242,14 @@ export async function startHookServer(options: HookServerOptions = {}): Promise<
     reporter = new RecordReporter({ url: options.reportUrl, token, runId: options.runId || `run-${new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '')}` });
     process.stderr.write(`[PROTECT_MCP] Record lands on ${new URL(reporter.url).origin}/standard?s=${reporter.sid} as run ${reporter.runId}\n`);
     if (!isSigningEnabled()) process.stderr.write('[PROTECT_MCP] Warning: signing is not configured, so only unsigned call lines reach the page; add a signing key for receipts\n');
+  }
+
+  // Before the receipt log is touched: an enforcing gate with nothing to enforce does not start.
+  if (enforce && options.requirePolicy && !cedarPolicies && !jsonPolicy && !standard) {
+    throw new Error(
+      'enforce mode refused to start: no policy was loaded, so there is nothing to enforce. Give --cedar <dir>, ' +
+      '--policy <file> or --standard <file>, or start it in a directory whose ./cedar or ./policies holds .cedar files',
+    );
   }
 
   const state: HookServerState = {

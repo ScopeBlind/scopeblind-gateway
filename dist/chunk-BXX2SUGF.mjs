@@ -1,6 +1,6 @@
 import {
   coordinationConfigFromFile
-} from "./chunk-INN337V3.mjs";
+} from "./chunk-FNXSAFES.mjs";
 import {
   CoordinationClient,
   CoordinationError

@@ -13,8 +13,8 @@ not supported for this setup. Keep Claude Code's native permissions enabled.
 In a terminal, change to the project you want to protect. For a new setup:
 
 ```sh
-npx --yes protect-mcp@0.32.4 init
-npx --yes protect-mcp@0.32.4 policy-packs install coding-starter --dir ./policies
+npx --yes protect-mcp@0.32.5 init
+npx --yes protect-mcp@0.32.5 policy-packs install coding-starter --dir ./policies
 ```
 
 The first command creates `protect-mcp.json` and an owner-readable signing key
@@ -29,7 +29,7 @@ not process isolation. Adapt the policy to the project.
 Start the gate from that same project directory and leave the terminal open:
 
 ```sh
-npx --yes protect-mcp@0.32.4 serve --enforce --cedar ./policies --policy ./protect-mcp.json
+npx --yes protect-mcp@0.32.5 serve --enforce --cedar ./policies --policy ./protect-mcp.json
 ```
 
 Use one project and one gate at a time on the default port, `9377`. The relay
@@ -77,7 +77,7 @@ Hook launch failures and host timeouts are blocked by `onFailure: "block"` on
 the supported host versions.
 
 After a tool call, failures are reported but cannot undo the action. Version
-0.32.4's post-action HTTP response does not itself confirm that the receipt was
+0.32.5's post-action HTTP response does not itself confirm that the receipt was
 saved. Inspect the local receipt log before claiming after-action evidence.
 
 ## Update an installation made before 0.32.4
@@ -100,11 +100,11 @@ claude plugin uninstall protect-mcp@scopeblind --scope project
 claude plugin install protect-mcp --marketplace ScopeBlind/scopeblind-gateway --scope project
 ```
 
-Restart Claude Code and check that `claude plugin list` shows version 0.32.4.
+Restart Claude Code and check that `claude plugin list` shows version 0.32.5.
 Stop the gate and start it again on the same release:
 
 ```sh
-npx --yes protect-mcp@0.32.4 serve --enforce --cedar ./policies --policy ./protect-mcp.json
+npx --yes protect-mcp@0.32.5 serve --enforce --cedar ./policies --policy ./protect-mcp.json
 ```
 
 Then repeat the checks in [Confirm the route is working](#confirm-the-route-is-working).

@@ -214,6 +214,58 @@ Dashboard:
 `);
 }
 
+/**
+ * Whether the argument after an option that takes a value cannot be that value: there is none, or it is another
+ * option. Up to 0.32.4 the gateway took the next argument whatever it was, so `--slug --enforce --cedar ./rules`
+ * read `--enforce` as the slug and ran in shadow mode, and `serve --cedar --enforce` read it as the Cedar directory
+ * and armed with no policy. An argument that starts with `--`, or is one of the short switches, is another option. An
+ * empty value is refused too.
+ */
+function notAValue(next: string | undefined): boolean {
+  return next === undefined || next.trim() === '' || next.startsWith('--') || next === '-v' || next === '-h' || next === '-V';
+}
+
+function missingValueMessage(option: string, next: string | undefined): string {
+  if (next === undefined) return `${option} needs a value and none was given`;
+  // `--cedar=` or `--cedar "$UNSET"`: up to 0.32.4 an empty value read as no option at all, so a gate given another
+  // policy as well armed without this one.
+  if (next.trim() === '') return `${option} was given an empty value (an unset variable?)`;
+  return `${option} needs a value, but the argument after it is the option ${next}`;
+}
+
+function repeatedOptionMessage(option: string): string {
+  return `${option} was given more than once; give it once (a second policy is not added to the first)`;
+}
+
+/**
+ * Options a command does not read. An enforcing gate refuses them: up to 0.32.4 `--enforce --ceder ./rules` printed a
+ * warning on stderr, which an MCP host does not show, and ran with no policy. Shadow mode warns, as before. Returns
+ * whether the run is refused.
+ */
+function refuseUnknownOptions(unknown: string[], enforce: boolean, command: string): boolean {
+  if (unknown.length === 0) return false;
+  if (enforce) {
+    const list = unknown.map((o) => `"${o}"`).join(', ');
+    process.stderr.write(
+      `${command} --enforce: unknown option${unknown.length > 1 ? 's' : ''} ${list}. An enforcing gate starts only from ` +
+      'options it reads. Nothing was started (exit 2).\n',
+    );
+    return true;
+  }
+  for (const o of unknown) process.stderr.write(`[PROTECT_MCP] Warning: Unknown option "${o}"\n`);
+  return false;
+}
+
+/** Why an enforcing gate with no policy does not start. */
+function noPolicyRefusal(command: string): string {
+  return `${command} --enforce: no policy was loaded, so there is nothing to enforce. Give --cedar <dir>, --policy <file> ` +
+    'or --standard <file>, or start it in a directory whose ./cedar or ./policies holds .cedar files. ' +
+    'Nothing was started (exit 1).\n';
+}
+
+/** The gateway's options that take a value. Each must be followed by one (notAValue). */
+const GATEWAY_VALUE_OPTIONS = new Set(['--policy', '--cedar', '--slug', '--standard', '--report', '--report-token', '--run', '--host', '--port']);
+
 function parseArgs(argv: string[]): {
   policyPath?: string;
   cedarDir?: string;
@@ -228,6 +280,10 @@ function parseArgs(argv: string[]): {
   host?: string;
   http: boolean;
   port?: number;
+  /** Set when an option that takes a value has none, an empty one, or is repeated; the run is refused whatever the mode. */
+  usageError?: string;
+  /** Options the gateway does not read, for refuseUnknownOptions. */
+  unknownOptions: string[];
 } {
   let policyPath: string | undefined;
   let cedarDir: string | undefined;
@@ -265,42 +321,91 @@ function parseArgs(argv: string[]): {
 
   // Parse options before --
   const options = argv.slice(0, separatorIndex);
+  const unknownOptions: string[] = [];
+  const seen = new Set<string>();
+  let usageError: string | undefined;
   for (let i = 0; i < options.length; i++) {
     const arg = options[i];
+
+    if (GATEWAY_VALUE_OPTIONS.has(arg)) {
+      if (notAValue(options[i + 1])) { usageError = missingValueMessage(arg, options[i + 1]); break; }
+      // Up to 0.32.4 the last of a repeated option won here and the first in `serve`; the other was dropped.
+      if (seen.has(arg)) { usageError = repeatedOptionMessage(arg); break; }
+      seen.add(arg);
+    }
 
     if (arg === '--help' || arg === '-h') {
       printHelp();
       process.exit(0);
-    } else if (arg === '--policy' && i + 1 < options.length) {
+    } else if (arg === '--policy') {
       policyPath = options[++i];
-    } else if (arg === '--cedar' && i + 1 < options.length) {
+    } else if (arg === '--cedar') {
       cedarDir = options[++i];
-    } else if (arg === '--slug' && i + 1 < options.length) {
+    } else if (arg === '--slug') {
       slug = options[++i];
     } else if (arg === '--enforce') {
       enforce = true;
     } else if (arg === '--verbose' || arg === '-v') {
       verbose = true;
-    } else if (arg === '--standard' && i + 1 < options.length) {
+    } else if (arg === '--standard') {
       standardPath = options[++i];
-    } else if (arg === '--report' && i + 1 < options.length) {
+    } else if (arg === '--report') {
       reportUrl = options[++i];
-    } else if (arg === '--report-token' && i + 1 < options.length) {
+    } else if (arg === '--report-token') {
       reportToken = options[++i];
-    } else if (arg === '--run' && i + 1 < options.length) {
+    } else if (arg === '--run') {
       runId = options[++i];
-    } else if (arg === '--host' && i + 1 < options.length) {
+    } else if (arg === '--host') {
       host = options[++i];
     } else if (arg === '--http') {
       http = true;
-    } else if (arg === '--port' && i + 1 < options.length) {
+    } else if (arg === '--port') {
       port = parseInt(options[++i], 10);
     } else {
-      process.stderr.write(`[PROTECT_MCP] Warning: Unknown option "${arg}"\n`);
+      unknownOptions.push(arg);
     }
   }
 
-  return { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port };
+  return { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port, usageError, unknownOptions };
+}
+
+/** The hook server's options that take a value. */
+const SERVE_VALUE_OPTIONS = new Set(['--port', '--policy', '--cedar', '--standard', '--report', '--report-token', '--run']);
+
+/**
+ * The hook server's options. Up to 0.32.4 `serve` looked each option up wherever it appeared: an option it does not
+ * read was ignored without a word, `--cedar --enforce` read `--enforce` as the Cedar directory while also arming the
+ * gate, an empty value read as no option, and the second of a repeated option was dropped. Each of those is refused.
+ */
+function parseServeArgs(argv: string[]): {
+  value: (option: string) => string | undefined;
+  enforce: boolean;
+  verbose: boolean;
+  usageError?: string;
+  unknownOptions: string[];
+} {
+  const values = new Map<string, string>();
+  const unknownOptions: string[] = [];
+  const value = (option: string) => values.get(option);
+  let enforce = false;
+  let verbose = false;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--enforce') {
+      enforce = true;
+    } else if (arg === '--verbose' || arg === '-v') {
+      verbose = true;
+    } else if (SERVE_VALUE_OPTIONS.has(arg)) {
+      const next = argv[i + 1];
+      if (notAValue(next)) return { value, enforce, verbose, unknownOptions, usageError: missingValueMessage(arg, next) };
+      if (values.has(arg)) return { value, enforce, verbose, unknownOptions, usageError: repeatedOptionMessage(arg) };
+      values.set(arg, next as string);
+      i++;
+    } else {
+      unknownOptions.push(arg);
+    }
+  }
+  return { value, enforce, verbose, unknownOptions };
 }
 
 /**
@@ -4946,18 +5051,21 @@ async function main(): Promise<void> {
   // Handle serve command — Claude Code Hook Server
   if (args[0] === 'serve') {
     const { startHookServer } = await import('./hook-server.js');
-    const portIdx = args.indexOf('--port');
-    const port = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 9377;
-    const policyIdx = args.indexOf('--policy');
-    const policyPath = policyIdx >= 0 && args[policyIdx + 1] ? args[policyIdx + 1] : undefined;
-    const cedarIdx = args.indexOf('--cedar');
-    const cedarDir = cedarIdx >= 0 && args[cedarIdx + 1] ? args[cedarIdx + 1] : undefined;
-    const enforce = args.includes('--enforce');
-    const verbose = args.includes('--verbose') || args.includes('-v');
-    const standardPath = flagValue(args, '--standard') || undefined;
-    const reportUrl = flagValue(args, '--report') || undefined;
-    const reportToken = flagValue(args, '--report-token') || undefined;
-    const runId = flagValue(args, '--run') || undefined;
+    const flags = parseServeArgs(args.slice(1));
+    if (flags.usageError) {
+      process.stderr.write(`protect-mcp serve: ${flags.usageError}. Nothing was started (exit 2).\n`);
+      return exitWhenWritten(2);
+    }
+    const { enforce, verbose } = flags;
+    if (refuseUnknownOptions(flags.unknownOptions, enforce, 'protect-mcp serve')) return exitWhenWritten(2);
+    const portValue = flags.value('--port');
+    const port = portValue ? parseInt(portValue) : 9377;
+    const policyPath = flags.value('--policy');
+    const cedarDir = flags.value('--cedar');
+    const standardPath = flags.value('--standard');
+    const reportUrl = flags.value('--report');
+    const reportToken = flags.value('--report-token');
+    const runId = flags.value('--run');
 
     // Proof of restraint: before arming an enforcing gate, prove it actually
     // denies a known-forbidden vector. If it cannot, refuse to serve (fail-closed)
@@ -4975,7 +5083,7 @@ async function main(): Promise<void> {
     }
 
     try {
-      await startHookServer({ port, policyPath, cedarDir, enforce, verbose, standardPath, reportUrl, reportToken, runId });
+      await startHookServer({ port, policyPath, cedarDir, enforce, verbose, standardPath, reportUrl, reportToken, runId, requirePolicy: true });
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error: ${err instanceof Error ? err.message : err}\n`);
       return exitWhenWritten(1);
@@ -5163,7 +5271,12 @@ async function main(): Promise<void> {
     return;
   }
 
-  const { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port } = parseArgs(args);
+  const { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port, usageError, unknownOptions } = parseArgs(args);
+  if (usageError) {
+    process.stderr.write(`protect-mcp: ${usageError}. Nothing was started (exit 2).\n`);
+    return exitWhenWritten(2);
+  }
+  if (refuseUnknownOptions(unknownOptions, enforce, 'protect-mcp')) return exitWhenWritten(2);
 
   // Load policy if provided
   let policy = null;
@@ -5301,6 +5414,13 @@ async function main(): Promise<void> {
       process.stderr.write(`[PROTECT_MCP] Error: ${err instanceof Error ? err.message : err}\n`);
       return exitWhenWritten(1);
     }
+  }
+
+  // An enforcing gate with nothing to enforce does not start, on stdio or --http. Up to 0.32.4 one whose policy option
+  // was misspelled, or whose working directory had no ./cedar or ./policies, allowed every call.
+  if (enforce && !policy && !standard) {
+    process.stderr.write(noPolicyRefusal('protect-mcp'));
+    return exitWhenWritten(1);
   }
 
   const config: ProtectConfig = {

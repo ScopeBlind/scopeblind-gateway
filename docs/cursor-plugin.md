@@ -20,7 +20,7 @@ The observed decision and after-action receipts verified against the expected
 test public key. The package contains a sanitized fixture from that host input.
 A separate synthetic project hook's deny still blocked a call the gate allowed.
 That trial ran on a pre-release build, before 0.32.4 (the validation record lists
-the sources it used); 0.32.4 itself has not been re-validated in Cursor.
+the sources it used); 0.32.4 and 0.32.5 have not been re-validated in Cursor.
 
 This does not establish native marketplace loading, every tool or native
 permission prompts. Complete and record the package's acceptance checks
@@ -59,19 +59,19 @@ you installed the coding starter before 0.32.4 and have not edited it, replace
 it with the new text:
 
 ```sh
-npx --yes protect-mcp@0.32.4 policy-packs install coding-starter --dir ./policies --force
+npx --yes protect-mcp@0.32.5 policy-packs install coding-starter --dir ./policies --force
 ```
 
 `--force` overwrites your copy. If you edited it, compare it with
-`npx --yes protect-mcp@0.32.4 policy-packs show coding-starter` and add the new
+`npx --yes protect-mcp@0.32.5 policy-packs show coding-starter` and add the new
 forbids yourself. The starter blocks direct writes and deletes of the
 preview's hook files through Write and Delete. It does not cover shell access:
 a Shell command can still change or delete those files.
 
-Stop the gate and start it again on 0.32.4:
+Stop the gate and start it again on 0.32.5:
 
 ```sh
-npx --yes protect-mcp@0.32.4 serve --enforce --cedar ./policies --policy ./protect-mcp.json
+npx --yes protect-mcp@0.32.5 serve --enforce --cedar ./policies --policy ./protect-mcp.json
 ```
 
 Restart Cursor, open the project as a trusted workspace and repeat the checks
