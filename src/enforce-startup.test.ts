@@ -66,6 +66,9 @@ describe.skipIf(!haveCli)('an enforcing gateway starts only with the policy it w
     ['--cedar followed by --enforce', ['--cedar', '--enforce'], 2, /--cedar needs a value, but the argument after it is the option --enforce/],
     ['--enforce taken as the value of --slug', ['--slug', '--enforce', '--cedar', './rules'], 2, /--slug needs a value, but the argument after it is the option --enforce/],
     ['--port followed by another option', ['--enforce', '--cedar', './rules', '--port', '--http'], 2, /--port needs a value/],
+    ['an empty --cedar beside a JSON policy', ['--enforce', '--cedar', '', '--policy', './open.json'], 2, /--cedar was given an empty value/],
+    ['--cedar= beside a JSON policy', ['--enforce', '--cedar=', '--policy', './open.json'], 2, /--cedar was given an empty value/],
+    ['--cedar given twice', ['--enforce', '--cedar', './rules', '--cedar', './empty'], 2, /--cedar was given more than once/],
     ['no policy at all', ['--enforce'], 1, /no policy was loaded, so there is nothing to enforce/],
     ['no policy at all, over --http', ['--http', '--enforce'], 1, /no policy was loaded/],
     ['a Cedar directory that does not exist', ['--enforce', '--cedar', './missing'], 1, /Cedar policy directory not found/],
@@ -119,6 +122,8 @@ describe.skipIf(!haveCli)('an enforcing hook server starts only with the policy 
     ['--cedar followed by --enforce', ['--cedar', '--enforce'], 2, /--cedar needs a value, but the argument after it is the option --enforce/],
     ['a misspelled policy option', ['--enforce', '--ceder', './rules'], 2, /unknown options "--ceder", "\.\/rules"/],
     ['--policy followed by another option', ['--enforce', '--cedar', './rules', '--policy'], 2, /--policy needs a value, but the argument after it is the option --port/],
+    ['--cedar= beside a JSON policy', ['--enforce', '--cedar=', '--policy', './open.json'], 2, /--cedar was given an empty value/],
+    ['--cedar given twice', ['--enforce', '--cedar', './rules', '--cedar', './missing'], 2, /--cedar was given more than once/],
   ];
   for (const [name, args, code, message] of refused) {
     it(`refuses ${name}`, async () => {

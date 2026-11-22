@@ -218,16 +218,23 @@ Dashboard:
  * Whether the argument after an option that takes a value cannot be that value: there is none, or it is another
  * option. Up to 0.32.4 the gateway took the next argument whatever it was, so `--slug --enforce --cedar ./rules`
  * read `--enforce` as the slug and ran in shadow mode, and `serve --cedar --enforce` read it as the Cedar directory
- * and armed with no policy. An argument that starts with `--`, or is one of the short switches, is another option.
+ * and armed with no policy. An argument that starts with `--`, or is one of the short switches, is another option. An
+ * empty value is refused too.
  */
 function notAValue(next: string | undefined): boolean {
-  return next === undefined || next.startsWith('--') || next === '-v' || next === '-h' || next === '-V';
+  return next === undefined || next.trim() === '' || next.startsWith('--') || next === '-v' || next === '-h' || next === '-V';
 }
 
 function missingValueMessage(option: string, next: string | undefined): string {
-  return next === undefined
-    ? `${option} needs a value and none was given`
-    : `${option} needs a value, but the argument after it is the option ${next}`;
+  if (next === undefined) return `${option} needs a value and none was given`;
+  // `--cedar=` or `--cedar "$UNSET"`: up to 0.32.4 an empty value read as no option at all, so a gate given another
+  // policy as well armed without this one.
+  if (next.trim() === '') return `${option} was given an empty value (an unset variable?)`;
+  return `${option} needs a value, but the argument after it is the option ${next}`;
+}
+
+function repeatedOptionMessage(option: string): string {
+  return `${option} was given more than once; give it once (a second policy is not added to the first)`;
 }
 
 /**
@@ -273,7 +280,7 @@ function parseArgs(argv: string[]): {
   host?: string;
   http: boolean;
   port?: number;
-  /** Set when an option that takes a value has none; the run is refused whatever the mode. */
+  /** Set when an option that takes a value has none, an empty one, or is repeated; the run is refused whatever the mode. */
   usageError?: string;
   /** Options the gateway does not read, for refuseUnknownOptions. */
   unknownOptions: string[];
@@ -315,13 +322,16 @@ function parseArgs(argv: string[]): {
   // Parse options before --
   const options = argv.slice(0, separatorIndex);
   const unknownOptions: string[] = [];
+  const seen = new Set<string>();
   let usageError: string | undefined;
   for (let i = 0; i < options.length; i++) {
     const arg = options[i];
 
-    if (GATEWAY_VALUE_OPTIONS.has(arg) && notAValue(options[i + 1])) {
-      usageError = missingValueMessage(arg, options[i + 1]);
-      break;
+    if (GATEWAY_VALUE_OPTIONS.has(arg)) {
+      if (notAValue(options[i + 1])) { usageError = missingValueMessage(arg, options[i + 1]); break; }
+      // Up to 0.32.4 the last of a repeated option won here and the first in `serve`; the other was dropped.
+      if (seen.has(arg)) { usageError = repeatedOptionMessage(arg); break; }
+      seen.add(arg);
     }
 
     if (arg === '--help' || arg === '-h') {
@@ -364,8 +374,8 @@ const SERVE_VALUE_OPTIONS = new Set(['--port', '--policy', '--cedar', '--standar
 
 /**
  * The hook server's options. Up to 0.32.4 `serve` looked each option up wherever it appeared: an option it does not
- * read was ignored without a word, and `--cedar --enforce` read `--enforce` as the Cedar directory while also arming
- * the gate. The first of a repeated option wins, as before. An empty value reads as no value, as before.
+ * read was ignored without a word, `--cedar --enforce` read `--enforce` as the Cedar directory while also arming the
+ * gate, an empty value read as no option, and the second of a repeated option was dropped. Each of those is refused.
  */
 function parseServeArgs(argv: string[]): {
   value: (option: string) => string | undefined;
@@ -376,7 +386,7 @@ function parseServeArgs(argv: string[]): {
 } {
   const values = new Map<string, string>();
   const unknownOptions: string[] = [];
-  const value = (option: string) => values.get(option) || undefined;
+  const value = (option: string) => values.get(option);
   let enforce = false;
   let verbose = false;
   for (let i = 0; i < argv.length; i++) {
@@ -388,7 +398,8 @@ function parseServeArgs(argv: string[]): {
     } else if (SERVE_VALUE_OPTIONS.has(arg)) {
       const next = argv[i + 1];
       if (notAValue(next)) return { value, enforce, verbose, unknownOptions, usageError: missingValueMessage(arg, next) };
-      if (!values.has(arg)) values.set(arg, next as string);
+      if (values.has(arg)) return { value, enforce, verbose, unknownOptions, usageError: repeatedOptionMessage(arg) };
+      values.set(arg, next as string);
       i++;
     } else {
       unknownOptions.push(arg);
