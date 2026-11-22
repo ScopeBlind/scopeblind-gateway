@@ -46,6 +46,12 @@ interface HookServerOptions {
     reportToken?: string;
     /** A name for this run on the page. */
     runId?: string;
+    /**
+     * With enforce, refuse to start when no Cedar policy, JSON policy or standard was loaded. `protect-mcp serve` sets
+     * it: up to 0.32.4 `serve --enforce` with a misspelled or missing policy armed a gate that allowed every call.
+     * Callers of this function that leave it unset keep the allow-all default.
+     */
+    requirePolicy?: boolean;
 }
 declare function startHookServer(options?: HookServerOptions): Promise<Server>;
 

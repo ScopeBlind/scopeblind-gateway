@@ -1,4 +1,4 @@
-## 0.32.5: an enforcing gate starts only with the policy it was given (GHSA-XXXX-XXXX-XXXX)
+## 0.32.5: an enforcing gate starts only with the policy it was given (GHSA-r7rf-7g68-8rcg)
 
 ### Security
 

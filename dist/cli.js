@@ -9916,7 +9916,7 @@ var AGENT_PACKAGE_URL, AGENT_CLIENTS, shellQuote;
 var init_coordination_agent_setup = __esm({
   "src/coordination-agent-setup.ts"() {
     "use strict";
-    AGENT_PACKAGE_URL = "protect-mcp@0.32.4";
+    AGENT_PACKAGE_URL = "protect-mcp@0.32.5";
     AGENT_CLIENTS = [
       { id: "claude-code", label: "Claude Code" },
       { id: "codex", label: "Codex CLI" },
@@ -13056,7 +13056,9 @@ async function startHookServer(options2 = {}) {
         );
       }
     } catch (err) {
-      process.stderr.write(`[PROTECT_MCP] Cedar load error: ${err instanceof Error ? err.message : err}
+      const message = err instanceof Error ? err.message : String(err);
+      if (enforce) throw new Error(`enforce mode refused to start: the Cedar policies in ${cedarDir} did not load (${message})`);
+      process.stderr.write(`[PROTECT_MCP] Cedar load error: ${message}
 `);
     }
   }
@@ -13075,7 +13077,9 @@ async function startHookServer(options2 = {}) {
         }
       }
     } catch (err) {
-      process.stderr.write(`[PROTECT_MCP] Policy load error: ${err instanceof Error ? err.message : err}
+      const message = err instanceof Error ? err.message : String(err);
+      if (enforce) throw new Error(`enforce mode refused to start: the policy ${options2.policyPath} could not be used (${message})`);
+      process.stderr.write(`[PROTECT_MCP] Policy load error: ${message}
 `);
     }
   }
@@ -13190,6 +13194,11 @@ async function startHookServer(options2 = {}) {
     process.stderr.write(`[PROTECT_MCP] Record lands on ${new URL(reporter.url).origin}/standard?s=${reporter.sid} as run ${reporter.runId}
 `);
     if (!isSigningEnabled()) process.stderr.write("[PROTECT_MCP] Warning: signing is not configured, so only unsigned call lines reach the page; add a signing key for receipts\n");
+  }
+  if (enforce && options2.requirePolicy && !cedarPolicies && !jsonPolicy && !standard) {
+    throw new Error(
+      "enforce mode refused to start: no policy was loaded, so there is nothing to enforce. Give --cedar <dir>, --policy <file> or --standard <file>, or start it in a directory whose ./cedar or ./policies holds .cedar files"
+    );
   }
   const state = {
     cedarPolicies,
@@ -16098,6 +16107,36 @@ Dashboard:
 
 `);
 }
+function notAValue(next) {
+  return next === void 0 || next.trim() === "" || next.startsWith("--") || next === "-v" || next === "-h" || next === "-V";
+}
+function missingValueMessage(option, next) {
+  if (next === void 0) return `${option} needs a value and none was given`;
+  if (next.trim() === "") return `${option} was given an empty value (an unset variable?)`;
+  return `${option} needs a value, but the argument after it is the option ${next}`;
+}
+function repeatedOptionMessage(option) {
+  return `${option} was given more than once; give it once (a second policy is not added to the first)`;
+}
+function refuseUnknownOptions(unknown, enforce, command) {
+  if (unknown.length === 0) return false;
+  if (enforce) {
+    const list = unknown.map((o) => `"${o}"`).join(", ");
+    process.stderr.write(
+      `${command} --enforce: unknown option${unknown.length > 1 ? "s" : ""} ${list}. An enforcing gate starts only from options it reads. Nothing was started (exit 2).
+`
+    );
+    return true;
+  }
+  for (const o of unknown) process.stderr.write(`[PROTECT_MCP] Warning: Unknown option "${o}"
+`);
+  return false;
+}
+function noPolicyRefusal(command) {
+  return `${command} --enforce: no policy was loaded, so there is nothing to enforce. Give --cedar <dir>, --policy <file> or --standard <file>, or start it in a directory whose ./cedar or ./policies holds .cedar files. Nothing was started (exit 1).
+`;
+}
+var GATEWAY_VALUE_OPTIONS = /* @__PURE__ */ new Set(["--policy", "--cedar", "--slug", "--standard", "--report", "--report-token", "--run", "--host", "--port"]);
 function parseArgs(argv) {
   let policyPath;
   let cedarDir;
@@ -16125,41 +16164,79 @@ function parseArgs(argv) {
     process.exit(1);
   }
   const options2 = argv.slice(0, separatorIndex);
+  const unknownOptions = [];
+  const seen = /* @__PURE__ */ new Set();
+  let usageError;
   for (let i = 0; i < options2.length; i++) {
     const arg = options2[i];
+    if (GATEWAY_VALUE_OPTIONS.has(arg)) {
+      if (notAValue(options2[i + 1])) {
+        usageError = missingValueMessage(arg, options2[i + 1]);
+        break;
+      }
+      if (seen.has(arg)) {
+        usageError = repeatedOptionMessage(arg);
+        break;
+      }
+      seen.add(arg);
+    }
     if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
-    } else if (arg === "--policy" && i + 1 < options2.length) {
+    } else if (arg === "--policy") {
       policyPath = options2[++i];
-    } else if (arg === "--cedar" && i + 1 < options2.length) {
+    } else if (arg === "--cedar") {
       cedarDir = options2[++i];
-    } else if (arg === "--slug" && i + 1 < options2.length) {
+    } else if (arg === "--slug") {
       slug = options2[++i];
     } else if (arg === "--enforce") {
       enforce = true;
     } else if (arg === "--verbose" || arg === "-v") {
       verbose = true;
-    } else if (arg === "--standard" && i + 1 < options2.length) {
+    } else if (arg === "--standard") {
       standardPath = options2[++i];
-    } else if (arg === "--report" && i + 1 < options2.length) {
+    } else if (arg === "--report") {
       reportUrl = options2[++i];
-    } else if (arg === "--report-token" && i + 1 < options2.length) {
+    } else if (arg === "--report-token") {
       reportToken = options2[++i];
-    } else if (arg === "--run" && i + 1 < options2.length) {
+    } else if (arg === "--run") {
       runId = options2[++i];
-    } else if (arg === "--host" && i + 1 < options2.length) {
+    } else if (arg === "--host") {
       host = options2[++i];
     } else if (arg === "--http") {
       http = true;
-    } else if (arg === "--port" && i + 1 < options2.length) {
+    } else if (arg === "--port") {
       port = parseInt(options2[++i], 10);
     } else {
-      process.stderr.write(`[PROTECT_MCP] Warning: Unknown option "${arg}"
-`);
+      unknownOptions.push(arg);
     }
   }
-  return { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port };
+  return { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port, usageError, unknownOptions };
+}
+var SERVE_VALUE_OPTIONS = /* @__PURE__ */ new Set(["--port", "--policy", "--cedar", "--standard", "--report", "--report-token", "--run"]);
+function parseServeArgs(argv) {
+  const values = /* @__PURE__ */ new Map();
+  const unknownOptions = [];
+  const value = (option) => values.get(option);
+  let enforce = false;
+  let verbose = false;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--enforce") {
+      enforce = true;
+    } else if (arg === "--verbose" || arg === "-v") {
+      verbose = true;
+    } else if (SERVE_VALUE_OPTIONS.has(arg)) {
+      const next = argv[i + 1];
+      if (notAValue(next)) return { value, enforce, verbose, unknownOptions, usageError: missingValueMessage(arg, next) };
+      if (values.has(arg)) return { value, enforce, verbose, unknownOptions, usageError: repeatedOptionMessage(arg) };
+      values.set(arg, next);
+      i++;
+    } else {
+      unknownOptions.push(arg);
+    }
+  }
+  return { value, enforce, verbose, unknownOptions };
 }
 async function handleInit(argv) {
   if (argv.includes("--starter") || argv.includes("--contain")) {
@@ -20934,18 +21011,22 @@ async function main() {
   }
   if (args[0] === "serve") {
     const { startHookServer: startHookServer2 } = await Promise.resolve().then(() => (init_hook_server(), hook_server_exports));
-    const portIdx = args.indexOf("--port");
-    const port2 = portIdx >= 0 && args[portIdx + 1] ? parseInt(args[portIdx + 1]) : 9377;
-    const policyIdx = args.indexOf("--policy");
-    const policyPath2 = policyIdx >= 0 && args[policyIdx + 1] ? args[policyIdx + 1] : void 0;
-    const cedarIdx = args.indexOf("--cedar");
-    const cedarDir2 = cedarIdx >= 0 && args[cedarIdx + 1] ? args[cedarIdx + 1] : void 0;
-    const enforce2 = args.includes("--enforce");
-    const verbose2 = args.includes("--verbose") || args.includes("-v");
-    const standardPath2 = flagValue(args, "--standard") || void 0;
-    const reportUrl2 = flagValue(args, "--report") || void 0;
-    const reportToken2 = flagValue(args, "--report-token") || void 0;
-    const runId2 = flagValue(args, "--run") || void 0;
+    const flags = parseServeArgs(args.slice(1));
+    if (flags.usageError) {
+      process.stderr.write(`protect-mcp serve: ${flags.usageError}. Nothing was started (exit 2).
+`);
+      return exitWhenWritten(2);
+    }
+    const { enforce: enforce2, verbose: verbose2 } = flags;
+    if (refuseUnknownOptions(flags.unknownOptions, enforce2, "protect-mcp serve")) return exitWhenWritten(2);
+    const portValue = flags.value("--port");
+    const port2 = portValue ? parseInt(portValue) : 9377;
+    const policyPath2 = flags.value("--policy");
+    const cedarDir2 = flags.value("--cedar");
+    const standardPath2 = flags.value("--standard");
+    const reportUrl2 = flags.value("--report");
+    const reportToken2 = flags.value("--report-token");
+    const runId2 = flags.value("--run");
     if (enforce2) {
       const selfTest = await runEvaluatorSelfTest();
       if (!selfTest.passed) {
@@ -20960,7 +21041,7 @@ async function main() {
 `);
     }
     try {
-      await startHookServer2({ port: port2, policyPath: policyPath2, cedarDir: cedarDir2, enforce: enforce2, verbose: verbose2, standardPath: standardPath2, reportUrl: reportUrl2, reportToken: reportToken2, runId: runId2 });
+      await startHookServer2({ port: port2, policyPath: policyPath2, cedarDir: cedarDir2, enforce: enforce2, verbose: verbose2, standardPath: standardPath2, reportUrl: reportUrl2, reportToken: reportToken2, runId: runId2, requirePolicy: true });
     } catch (err) {
       process.stderr.write(`[PROTECT_MCP] Error: ${err instanceof Error ? err.message : err}
 `);
@@ -21112,7 +21193,13 @@ async function main() {
     process.exitCode = await handleDoctor2(args.slice(1));
     return;
   }
-  const { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port } = parseArgs(args);
+  const { policyPath, cedarDir, slug, enforce, verbose, childCommand, standardPath, reportUrl, reportToken, runId, host, http, port, usageError, unknownOptions } = parseArgs(args);
+  if (usageError) {
+    process.stderr.write(`protect-mcp: ${usageError}. Nothing was started (exit 2).
+`);
+    return exitWhenWritten(2);
+  }
+  if (refuseUnknownOptions(unknownOptions, enforce, "protect-mcp")) return exitWhenWritten(2);
   let policy = null;
   let policyDigest = "none";
   let credentials;
@@ -21244,6 +21331,10 @@ async function main() {
 `);
       return exitWhenWritten(1);
     }
+  }
+  if (enforce && !policy && !standard) {
+    process.stderr.write(noPolicyRefusal("protect-mcp"));
+    return exitWhenWritten(1);
   }
   const config = {
     command: childCommand[0],
