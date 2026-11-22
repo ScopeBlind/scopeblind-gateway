@@ -202,6 +202,11 @@ See the [changelog](CHANGELOG.md) for every change.
 - [Release validation and provenance](docs/releases.md).
 - [Changes by version](CHANGELOG.md).
 
+## Commercial contact
+
+Running agents where a wrong tool call has regulatory or financial consequences?
+Email [tommy@scopeblind.com](mailto:tommy@scopeblind.com) or see [scopeblind.com](https://scopeblind.com).
+
 ## Contribute
 
 Start with a bounded [help-wanted task](https://github.com/ScopeBlind/scopeblind-gateway/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22):
