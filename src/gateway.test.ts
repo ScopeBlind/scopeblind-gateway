@@ -839,9 +839,11 @@ d('a receipt log whose chain cannot be continued', () => {
 
   it('the hook server under --enforce refuses to start, and in shadow mode moves the file aside', async () => {
     const enforced = workspace();
+    // A policy that permits everything: an enforcing gate with none refuses to start before it reads the log.
+    writeFileSync(join(enforced, 'allow.json'), '{"tools":{}}\n');
     writeFileSync(join(enforced, RECEIPTS), `${CORRUPT_TAILS[0]}\n`);
     const port = await freePort();
-    const proc = spawn(process.execPath, [CLI, 'serve', '--enforce', '--port', String(port)], {
+    const proc = spawn(process.execPath, [CLI, 'serve', '--enforce', '--policy', './allow.json', '--port', String(port)], {
       cwd: enforced, env: { ...process.env, PROTECT_MCP_HTTP_PORT: '0' }, stdio: ['ignore', 'ignore', 'pipe'],
     });
     let stderr = '';
@@ -908,7 +910,9 @@ d('an allowed call whose receipt cannot be recorded', () => {
       mkdirSync(join(dir, 'keys'));
       writeKey(dir, join('keys', 'gateway.json'));
       readOnlyReceiptLog(dir);
-      const hs = await hookServer(dir, enforce ? ['--enforce'] : []);
+      // A policy that permits the call, so only the receipt that cannot be recorded decides it.
+      writeFileSync(join(dir, 'allow.json'), '{"tools":{}}\n');
+      const hs = await hookServer(dir, enforce ? ['--enforce', '--policy', './allow.json'] : []);
       try {
         const r = await hs.pre('Read', { file_path: '/tmp/x' });
         if (enforce) {
